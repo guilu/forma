@@ -27,13 +27,56 @@ Always inspect the current repository state before assuming any component exists
 
 Repository state has priority over roadmap/spec intent. Specs describe the target for a story; the repository describes reality. If they differ, document the gap and do not invent missing code.
 
-## Canonical technical references
+## Project stack guidance
 
-- Runtime/tool versions: `docs/stack.md`
-- Verification/check commands by story type: `docs/verification-checks.md`
-- Bootstrap dependency graph: `docs/story-dependency-graph.md`
+Technical stack guidance currently lives here until the stack is split into a dedicated docs file.
+
+Planned bootstrap stack:
+
+- Backend: Java 21, Spring Boot 3.x, build tool selected by FOR-80.
+- Frontend: Node.js 24.x or active LTS, React 19.x if compatible, TypeScript, Vite, package manager selected by FOR-81.
+- Persistence: PostgreSQL 17.x where practical, migration tool selected by FOR-83.
+- Infrastructure: Docker Compose v2 selected by FOR-82.
+- CI: GitHub workflow selected by FOR-84.
 
 Do not store technical configuration decisions in `.ai/`. The `.ai/` directory is shared context for agents, not the source of truth for stack versions or executable commands.
+
+## Verification guidance
+
+Run the checks that match the story type and current repository state. If a command does not exist yet, document it as planned instead of inventing it.
+
+| Story type | Expected verification |
+|---|---|
+| Documentation | Check links and referenced files. Confirm docs match repository reality. |
+| Backend | Run backend build and backend tests once FOR-80 defines commands. |
+| Frontend | Run frontend build, tests or type checks once FOR-81 defines commands. |
+| Infrastructure | Run Docker Compose validation once FOR-82 defines compose files. |
+| Persistence | Run migrations against a local database once FOR-83 defines commands. |
+| Formatting/linting | Run formatting/linting checks once FOR-85 defines commands. |
+| CI | Confirm workflow runs and reports status once FOR-84 defines CI. |
+
+For documentation-only stories in the current docs-only repository, file existence and link checks are valid verification.
+
+## Bootstrap dependency graph
+
+Use this graph to understand context. Reading related specs is allowed; implementing related stories is not allowed unless explicitly requested.
+
+| Story | Depends on | Notes |
+|---|---|---|
+| FOR-80 | FOR-92 | Backend skeleton can start after specs exist. |
+| FOR-81 | FOR-92 | Frontend skeleton can start after specs exist. |
+| FOR-82 | FOR-80, FOR-81 where practical | Compose may wire backend/frontend only if they exist. |
+| FOR-83 | FOR-80, FOR-82 | PostgreSQL wiring needs backend and local DB service. |
+| FOR-84 | FOR-80, FOR-81, FOR-85, FOR-86, FOR-87 where practical | CI should run whatever checks exist at the time. |
+| FOR-85 | FOR-80, FOR-81 where practical | Lint/format depends on selected backend/frontend tooling. |
+| FOR-86 | FOR-80 | Backend testing baseline depends on backend skeleton. |
+| FOR-87 | FOR-81 | Frontend testing baseline depends on frontend skeleton. |
+| FOR-88 | FOR-80 | API skeleton depends on backend skeleton. |
+| FOR-89 | FOR-80 through FOR-88 as references only | Docs may describe planned commands honestly. |
+| FOR-90 | FOR-80, FOR-81 where practical | Environment handling follows selected app structure. |
+| FOR-91 | FOR-80, FOR-88 where practical | Logging/correlation works through backend/API baseline. |
+| FOR-92 | Documentation foundation | Creates story specs. |
+| FOR-93 | FOR-92 and one pilot story | Validates the workflow. |
 
 ## Required reading order
 
@@ -44,12 +87,10 @@ Before modifying code, read:
 3. `docs/definition-of-ready.md`
 4. `docs/definition-of-done.md`
 5. `docs/coding-standards.md`
-6. `docs/stack.md`
-7. `docs/verification-checks.md`
-8. `docs/story-dependency-graph.md`
-9. Relevant ADRs under `docs/adr/`
-10. Relevant story spec under `specs/FOR-XXX/` when available
-11. `.ai/product.md`, `.ai/architecture.md`, `.ai/domain.md`, `.ai/conventions.md`, `.ai/roadmap.md`
+6. This file's stack, verification and dependency sections
+7. Relevant ADRs under `docs/adr/`
+8. Relevant story spec under `specs/FOR-XXX/` when available
+9. `.ai/product.md`, `.ai/architecture.md`, `.ai/domain.md`, `.ai/conventions.md`, `.ai/roadmap.md`
 
 ## Jira implementation workflow
 
@@ -62,7 +103,7 @@ When asked to implement a Jira story:
 5. Inspect the repository state before changing files.
 6. Create or use a branch named `feature/FOR-XXX-short-description`.
 7. Implement only the requested story.
-8. Run checks listed in `docs/verification-checks.md` for the story type.
+8. Run checks from the Verification guidance section for the story type.
 9. Commit and open a PR.
 10. Stop after the PR unless explicitly asked to continue.
 
@@ -94,7 +135,7 @@ Every implementation should satisfy:
 
 - Story acceptance criteria.
 - Definition of Done.
-- Relevant tests/checks from `docs/verification-checks.md`.
+- Relevant tests/checks from the Verification guidance section.
 - No known security regression.
 - No hidden coupling between modules.
 - Clear error handling.
@@ -108,9 +149,22 @@ Every implementation should satisfy:
 - Creating speculative abstractions not needed by the current story.
 - Claiming a component exists without checking the repository.
 
-## Commit and PR expectations
+## Pull request expectations
 
-- Branch names should reference Jira keys when implementing stories: `feature/FOR-123-short-description`.
-- PR titles should start with the Jira key when applicable.
-- PR descriptions should include what changed, how it was tested and any known limitations.
-- Use `.github/pull_request_template.md` when opening PRs.
+PR titles should start with the Jira key when applicable.
+
+Use this structure in PR descriptions:
+
+```markdown
+## What changed
+
+## How it was tested
+
+## Known limitations
+
+## Jira
+
+https://dbhlab.atlassian.net/browse/FOR-XXX
+```
+
+Stop after opening the PR unless explicitly asked to continue with another story.
