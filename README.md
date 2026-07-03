@@ -44,6 +44,7 @@ MVP scope:
 
 ## Documentation
 
+- [Local development](docs/local-development.md)
 - [Product vision](docs/vision.md)
 - [Roadmap](docs/roadmap.md)
 - [Architecture](docs/architecture.md)
