@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: forma-backend
+
+server:
+  port: ${SERVER_PORT:8080}
+
+# Observability baseline (ADR-008): expose health only and never leak internal
+# configuration or details. Broader API/error handling is owned by FOR-88.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
