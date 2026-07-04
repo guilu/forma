@@ -22,8 +22,8 @@ export function PagePlaceholder({ title, description }: PagePlaceholderProps) {
           {description ?? 'Esta sección se implementará en una historia posterior.'}
         </p>
         <p className={styles.hint}>
-          El esqueleto de la aplicación (FOR-81) provee navegación, layout y tema. El
-          contenido de esta pantalla aún no está disponible.
+          El esqueleto de la aplicación (FOR-81) provee navegación, layout y tema. El contenido de
+          esta pantalla aún no está disponible.
         </p>
       </Card>
     </div>

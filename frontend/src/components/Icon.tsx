@@ -21,7 +21,8 @@ const PATHS: Record<IconName, string> = {
   measurements: 'M3 12h4l3 7 4-14 3 7h4',
   training: 'M6 6v12M18 6v12M4 9h2v6H4zM18 9h2v6h-2zM6 12h12',
   nutrition: 'M12 3c4 0 6 3 6 7a6 6 0 0 1-12 0c0-4 2-7 6-7zM12 3v6',
-  shopping: 'M4 4h2l2 12h10l2-8H7M9 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM17 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2z',
+  shopping:
+    'M4 4h2l2 12h10l2-8H7M9 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM17 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2z',
   progress: 'M4 20V4M4 20h16M8 16l4-5 3 3 5-7',
   goals: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM12 3v3M12 18v3',
   settings:

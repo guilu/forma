@@ -2,6 +2,8 @@ plugins {
     id 'java'
     id 'org.springframework.boot' version '3.3.5'
     id 'io.spring.dependency-management' version '1.1.6'
+    // Formatting/linting baseline (FOR-85): Spotless with google-java-format.
+    id 'com.diffplug.spotless' version '6.25.0'
 }
 
 group = 'dev.diegobarrioh'
@@ -37,4 +39,16 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+}
+
+// Code style baseline (FOR-85, docs/coding-standards.md). `spotlessCheck` runs
+// as part of `check`/`build` (and therefore in CI); `spotlessApply` auto-fixes.
+spotless {
+    java {
+        googleJavaFormat('1.23.0')
+        target 'src/**/*.java'
+        removeUnusedImports()
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
 }
