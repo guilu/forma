@@ -5,9 +5,10 @@ How to work on FORMA from a clean checkout.
 > **Current repository status:** FORMA is in the **Project Bootstrap** phase.
 > The backend skeleton (FOR-80), frontend skeleton (FOR-81), local Docker
 > Compose environment (FOR-82), PostgreSQL + Flyway migration baseline
-> (FOR-83), CI quality gate (FOR-84), lint/format baseline (FOR-85) and backend
-> testing baseline (FOR-86) now exist. The dedicated frontend testing baseline
-> (FOR-87) is still delivered by a later story.
+> (FOR-83), CI quality gate (FOR-84), lint/format baseline (FOR-85), backend
+> testing baseline (FOR-86) and frontend testing baseline (FOR-87) now exist.
+> Remaining bootstrap work (e.g. API skeleton, environment config, logging) is
+> delivered by later stories.
 >
 > Commands for components that are not scaffolded yet are marked
 > **`PLANNED — not available yet`** and point to the story that will add them.
@@ -185,12 +186,10 @@ FORMA uses a layered testing strategy (ADR-007).
 # Backend tests (FOR-86)
 cd backend && ./gradlew test    # or ./gradlew build to include tests + Spotless
 
-# Frontend tests / type check (FOR-87 — PLANNED)
-cd frontend && npm test
+# Frontend tests + type check (FOR-87)
+cd frontend && npm test         # Vitest run
+cd frontend && npm run typecheck
 ```
-
-The frontend already ships a Vitest suite from FOR-81; the dedicated frontend
-testing baseline and its conventions are finalized by FOR-87.
 
 ### Backend testing baseline (FOR-86)
 
@@ -217,6 +216,38 @@ Conventions:
   (in-memory H2), so `./gradlew test` needs no Docker.
 - Replace the `Example*` placeholder tests with real ones as product behavior
   lands; do not test the framework itself.
+
+### Frontend testing baseline (FOR-87)
+
+The frontend testing baseline is [Vitest](https://vitest.dev/) + Testing Library
++ `@testing-library/user-event`, running in a jsdom environment (configured in
+`vite.config.ts`). Static validation is `tsc` via `npm run typecheck`.
+
+```bash
+npm test            # run the suite once (Vitest)
+npm run test:watch  # watch mode
+npm run typecheck   # type-check (static validation)
+```
+
+| Kind | Style | Example in repo |
+| --- | --- | --- |
+| Component render | Render one component in isolation; assert accessible output | `components/Card.test.tsx` |
+| Interaction | Drive the UI with `user-event`; assert resulting state | `layout/navigation.test.tsx` |
+| Routing / smoke | Mount `App` in a `MemoryRouter`; assert the rendered route | `App.test.tsx` |
+| Module | Plain unit test for non-UI modules | `api/client.test.ts` |
+
+Conventions:
+
+- **Naming** — test files sit next to the code as `*.test.ts(x)`; `describe` names
+  the unit under test, `it`/`test` describes the behavior in words.
+- **Query by role/text**, not by test IDs or snapshots — assert what the user
+  perceives. Prefer `getByRole` and accessible names.
+- **Isolation** — never call a real backend; the API client boundary
+  (`src/api/client.ts`) is where future tests stub network access.
+- **No domain logic** — the frontend does not own domain calculations, so do not
+  test them here (ADR-006).
+- Later UI stories should add loading, empty, error and interaction-state tests
+  following these examples.
 
 ## Lint and format commands
 
