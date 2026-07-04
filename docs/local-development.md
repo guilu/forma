@@ -205,6 +205,19 @@ FOR-85. Expected shape:
 # frontend: npm run lint   /   npm run format
 ```
 
+## Continuous integration
+
+CI runs on every pull request and on pushes to `main` (FOR-84), defined in
+`.github/workflows/ci.yml`. It runs the same commands you run locally, as two
+independent jobs — either failing fails the pipeline:
+
+- **Backend** — `cd backend && ./gradlew build` (compile + tests).
+- **Frontend** — `cd frontend && npm ci && npm run typecheck && npm test && npm run build`.
+
+Gradle and npm dependencies are cached between runs. Lint/format checks join the
+pipeline once FOR-85 configures them. Keep CI green — see the merge policy in
+`docs/branching-strategy.md`.
+
 ## Local reset procedure
 
 Use these to return to a clean local state.
