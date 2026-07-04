@@ -3,9 +3,10 @@
 How to work on FORMA from a clean checkout.
 
 > **Current repository status:** FORMA is in the **Project Bootstrap** phase.
-> The backend skeleton (FOR-80), frontend skeleton (FOR-81) and local Docker
-> Compose environment (FOR-82) now exist. Database migrations and test suites
-> are still delivered by later bootstrap stories.
+> The backend skeleton (FOR-80), frontend skeleton (FOR-81), local Docker
+> Compose environment (FOR-82) and PostgreSQL + Flyway migration baseline
+> (FOR-83) now exist. Dedicated lint/format and test-suite tooling are still
+> delivered by later bootstrap stories.
 >
 > Commands for components that are not scaffolded yet are marked
 > **`PLANNED — not available yet`** and point to the story that will add them.
@@ -108,19 +109,42 @@ wired now but consumed once FOR-83 adds the database driver and migrations.
 
 ## Database and migrations
 
-**PLANNED — not available yet (FOR-83).**
+PostgreSQL is the primary store (ADR-003) and schema evolution is
+migration-driven with **Flyway** (FOR-83) — no manual schema changes.
 
-PostgreSQL is the primary store (ADR-003). Schema evolution is migration-driven;
-no manual schema changes. Migration tooling and the baseline migration are
-delivered by FOR-83. Expected shape:
+**Migrations run automatically on backend startup.** Flyway applies any pending
+files from `backend/src/main/resources/db/migration` before the application
+finishes booting, so starting the backend (natively or via Docker Compose)
+migrates the database:
 
 ```bash
-# PLANNED (FOR-83) — will not work until migration tooling is configured
-# Run migrations against the local database
-# (exact command — e.g. a Flyway/Gradle task — pinned by FOR-83)
+docker compose up --build -d      # postgres + backend; backend applies migrations on start
+docker compose logs -f backend    # watch Flyway apply pending migrations
 ```
 
-Migration naming conventions will be documented by FOR-83.
+Connection settings come from `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`
+and `SPRING_DATASOURCE_PASSWORD` (env-driven, with local defaults in
+`application.yml` and `compose.yaml`). A fresh database is migrated from scratch;
+re-running is a no-op once all versions are applied.
+
+### Adding a migration
+
+Create a versioned SQL file in `backend/src/main/resources/db/migration` using
+the Flyway naming convention:
+
+```text
+V<version>__<snake_case_description>.sql   e.g. V2__add_body_measurements.sql
+```
+
+- `V` prefix, an increasing integer version, then `__` (double underscore) and a
+  short description.
+- Never edit an already-applied migration — add a new versioned file instead.
+- The current baseline is `V1__baseline.sql` (empty on purpose: it only
+  establishes Flyway history; product tables arrive with their own stories).
+
+Migrations are verified in tests against an in-memory H2 database (PostgreSQL
+mode), so `cd backend && ./gradlew test` proves the baseline applies from
+scratch without Docker.
 
 ## Backend startup
 
@@ -222,11 +246,14 @@ Named volume data (`forma-postgres-data`) persists across `docker compose stop`
   environment (FOR-82) exist. Database migrations (FOR-83), lint/format (FOR-85)
   and dedicated test suites (FOR-86/FOR-87) are still **planned** and marked as
   such above.
-- The backend runs but does not yet connect to PostgreSQL: the datasource
-  variables are wired in `compose.yaml`, but the driver and migrations arrive
-  with FOR-83. Until then `postgres` and `backend` start independently.
-- Migration commands and exact test/lint tasks are decided by their owning
-  stories and are marked as such above.
+- The backend now connects to PostgreSQL and applies Flyway migrations on
+  startup (FOR-83). The `V1__baseline.sql` migration is intentionally empty —
+  product tables arrive with their own stories.
+- Automated migration verification runs against in-memory H2 (PostgreSQL mode)
+  so `./gradlew test` needs no Docker. Running migrations against real
+  PostgreSQL happens when the backend starts via Docker Compose.
+- Exact lint/format and dedicated test-suite tasks are decided by their owning
+  stories (FOR-85/FOR-86/FOR-87) and are marked as such above.
 - This is a local development guide only. Production operations, cloud deployment
   and a full contributor handbook are out of scope (see FOR-89 spec).
 

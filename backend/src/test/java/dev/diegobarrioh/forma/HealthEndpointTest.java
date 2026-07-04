@@ -9,13 +9,16 @@ import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.context.ActiveProfiles;
 
 /**
  * Smoke test for the Actuator health endpoint (FOR-80). Confirms the backend
  * responds over HTTP and reports UP without exposing internal details
- * (ADR-008: {@code show-details: never}).
+ * (ADR-008: {@code show-details: never}). Uses the {@code test} profile so the
+ * context boots against in-memory H2 instead of a real PostgreSQL (FOR-83).
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@ActiveProfiles("test")
 class HealthEndpointTest {
 
     @LocalServerPort

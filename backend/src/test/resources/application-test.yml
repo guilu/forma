@@ -1,0 +1,10 @@
+# Test profile (FOR-83): run the Flyway migration baseline against an in-memory
+# H2 database in PostgreSQL-compatibility mode. This lets `./gradlew test` boot
+# the context and exercise migrations without Docker or a real PostgreSQL server.
+# Real environments use the PostgreSQL datasource from the base application.yml.
+spring:
+  datasource:
+    url: jdbc:h2:mem:forma;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
