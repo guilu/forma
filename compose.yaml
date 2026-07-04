@@ -1,0 +1,91 @@
+# FORMA local development environment (FOR-82).
+#
+# Follows the Compose Specification (no top-level `version:` key) and Docker
+# Compose v2 (`docker compose`, not `docker-compose`). Every value has a safe
+# local default, so a fresh checkout runs with zero setup:
+#
+#   docker compose up --build -d
+#
+# Override any default by exporting the variable or copying `.env.example` to
+# `.env`. These are LOCAL DEVELOPMENT credentials only — never real secrets.
+name: forma
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: forma-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-forma}
+      POSTGRES_USER: ${POSTGRES_USER:-forma}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-forma_local_password}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - forma-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      # pg_isready ships with the image and needs no extra tooling.
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-forma} -d ${POSTGRES_DB:-forma}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - forma
+
+  backend:
+    build:
+      context: ./backend
+    container_name: forma-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: 8080
+      # Datasource wiring is consumed once FOR-83 adds the driver + migrations;
+      # the values are provided here so that story needs no compose change.
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-forma}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-forma}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-forma_local_password}
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    networks:
+      - forma
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # The browser runs on the host, so it reaches the backend through the
+        # published port, not the compose service name.
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
+    container_name: forma-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_started
+    ports:
+      - "${FRONTEND_PORT:-3000}:8080"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - forma
+
+volumes:
+  forma-postgres-data:
+    name: forma-postgres-data
+
+networks:
+  forma:
+    name: forma

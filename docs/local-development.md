@@ -2,11 +2,10 @@
 
 How to work on FORMA from a clean checkout.
 
-> **Current repository status (FOR-89):** FORMA is in the **Project Bootstrap**
-> phase. At the time of writing, the repository contains **documentation and
-> story specs only**. The backend, frontend, Docker Compose environment,
-> database migrations and test suites **do not exist yet** — they are delivered
-> by the bootstrap stories listed below.
+> **Current repository status:** FORMA is in the **Project Bootstrap** phase.
+> The backend skeleton (FOR-80), frontend skeleton (FOR-81) and local Docker
+> Compose environment (FOR-82) now exist. Database migrations and test suites
+> are still delivered by later bootstrap stories.
 >
 > Commands for components that are not scaffolded yet are marked
 > **`PLANNED — not available yet`** and point to the story that will add them.
@@ -40,16 +39,16 @@ docker compose version
 The intended layout once bootstrap stories land:
 
 ```text
-frontend/   React + TypeScript + Vite + TailwindCSS + Recharts   (FOR-81)
-backend/    Java 21 + Spring Boot 3 + PostgreSQL + Flyway         (FOR-80, FOR-83)
-infra/      Docker Compose first                                  (FOR-82)
-docs/       Global documentation and ADRs                         (present)
-specs/      Story-specific specs (specs/FOR-XXX/)                 (present)
-.ai/        Shared AI agent context                               (present)
+frontend/     React + TypeScript + Vite                          (FOR-81)
+backend/      Java 21 + Spring Boot 3 + PostgreSQL + Flyway       (FOR-80, FOR-83)
+compose.yaml  Local Docker Compose environment (repo root)        (FOR-82)
+docs/         Global documentation and ADRs                       (present)
+specs/        Story-specific specs (specs/FOR-XXX/)               (present)
+.ai/          Shared AI agent context                             (present)
 ```
 
-Currently present: `docs/`, `specs/`, `.ai/`, `AGENTS.md`, `README.md`.
-Not present yet: `backend/`, `frontend/`, `infra/`.
+Currently present: `backend/`, `frontend/`, `compose.yaml`, `docs/`, `specs/`,
+`.ai/`, `AGENTS.md`, `README.md`.
 
 ## Getting the code
 
@@ -60,22 +59,52 @@ cd forma
 
 ## Infrastructure startup (Docker Compose)
 
-**PLANNED — not available yet (FOR-82).**
+The local environment is defined by `compose.yaml` at the repository root
+(FOR-82). It provides three services on the `forma` network:
 
-Once FOR-82 lands, local services (PostgreSQL, and optionally backend/frontend)
-will be started with Docker Compose. Expected shape:
+| Service | Image / build | Host port | Purpose |
+| --- | --- | --- | --- |
+| `postgres` | `postgres:17-alpine` | 5432 | Primary database (ADR-003), named volume `forma-postgres-data` |
+| `backend` | built from `backend/Dockerfile` | 8080 | Spring Boot API, waits for `postgres` to be healthy |
+| `frontend` | built from `frontend/Dockerfile` | 3000 | Static SPA served by nginx |
+
+Requires **Docker Engine** with **Compose v2** (`docker compose`). Every setting
+has a safe local default baked into `compose.yaml`, so a fresh checkout starts
+with no extra configuration:
 
 ```bash
-# PLANNED (FOR-82) — will not work until the compose file exists
-docker compose up -d        # start services in the background
-docker compose ps           # list running services
-docker compose logs -f      # follow logs
-docker compose down         # stop services (keeps named volumes)
+docker compose up --build -d   # build images and start services in the background
+docker compose ps              # list services and health status
+docker compose logs -f         # follow logs (add a service name to filter)
+docker compose stop            # stop services (keeps containers and volumes)
+docker compose down            # remove containers/network (keeps named volumes)
 ```
 
-Environment variable examples and service names will be documented by FOR-82.
-Do not commit real secrets; see `docs/adr/ADR-008-observability.md` and the
-forbidden-shortcuts section of `AGENTS.md`.
+Once started: the API health check is at <http://localhost:8080/actuator/health>
+and the frontend at <http://localhost:3000>.
+
+### Environment variables
+
+Defaults live in `compose.yaml`; override them by copying `env.example` to
+`.env` (gitignored) and editing the values:
+
+```bash
+cp env.example .env
+```
+
+| Variable | Default | Used by |
+| --- | --- | --- |
+| `POSTGRES_DB` | `forma` | postgres, backend datasource |
+| `POSTGRES_USER` | `forma` | postgres, backend datasource |
+| `POSTGRES_PASSWORD` | `forma_local_password` | postgres, backend datasource |
+| `POSTGRES_PORT` | `5432` | published postgres port |
+| `BACKEND_PORT` | `8080` | published backend port |
+| `FRONTEND_PORT` | `3000` | published frontend port |
+| `VITE_API_BASE_URL` | `http://localhost:8080` | frontend build (browser → backend) |
+
+These are **local-only fake credentials**. Do not commit real secrets; see the
+forbidden-shortcuts section of `AGENTS.md`. The backend datasource variables are
+wired now but consumed once FOR-83 adds the database driver and migrations.
 
 ## Database and migrations
 
@@ -95,34 +124,33 @@ Migration naming conventions will be documented by FOR-83.
 
 ## Backend startup
 
-**PLANNED — not available yet (FOR-80).**
-
-The backend is a Java 21 + Spring Boot 3 application (README, ADR-001). The
-build tool and exact tasks are chosen by FOR-80. Expected shape:
+The backend is a Java 21 + Spring Boot 3 application built with Gradle (FOR-80,
+ADR-001). To run it natively (outside Docker):
 
 ```bash
-# PLANNED (FOR-80) — will not work until the backend skeleton exists
 cd backend
-# build:   ./gradlew build   (or the Maven equivalent, decided by FOR-80)
-# run:     ./gradlew bootRun
+./gradlew build     # compile and run tests
+./gradlew bootRun   # start the app on http://localhost:8080
 ```
 
-A health placeholder endpoint may be exposed by the skeleton (FOR-80).
+The skeleton exposes an Actuator health endpoint at
+<http://localhost:8080/actuator/health> (FOR-80). Inside Docker Compose the
+backend runs as the `backend` service instead.
 
 ## Frontend startup
 
-**PLANNED — not available yet (FOR-81).**
-
-The frontend is React + TypeScript + Vite (README, ADR-006). Expected shape:
+The frontend is React + TypeScript + Vite (FOR-81, ADR-006). To run the dev
+server natively (outside Docker):
 
 ```bash
-# PLANNED (FOR-81) — will not work until the frontend skeleton exists
 cd frontend
 npm install
-npm run dev        # start the Vite dev server
+npm run dev        # start the Vite dev server on http://localhost:5173
 ```
 
-The dev server port and API client base URL will be documented by FOR-81.
+The API base URL is read from `VITE_API_BASE_URL` (default
+`http://localhost:8080`); see `frontend/README.md`. Inside Docker Compose the
+frontend is built and served by nginx as the `frontend` service on port 3000.
 
 ## Test commands
 
@@ -166,16 +194,16 @@ git checkout .        # discard tracked-file changes
 git clean -fdx        # remove untracked/ignored files (very destructive)
 ```
 
-Reset local infrastructure and data — **PLANNED (FOR-82)**:
+Reset local infrastructure and data (FOR-82):
 
 ```bash
-# PLANNED (FOR-82) — removes containers AND named volumes (deletes local DB data)
-docker compose down -v
-docker compose up -d
+docker compose down -v          # remove containers AND named volumes (deletes local DB data)
+docker compose up --build -d    # rebuild and start fresh
 ```
 
-After a data reset, re-run migrations (**PLANNED — FOR-83**) to rebuild the
-schema from scratch.
+Named volume data (`forma-postgres-data`) persists across `docker compose stop`
+/ `down`; only `down -v` deletes it. After a data reset, re-run migrations
+(**PLANNED — FOR-83**) to rebuild the schema from scratch.
 
 ## Troubleshooting
 
@@ -185,19 +213,20 @@ schema from scratch.
 | `java -version` shows the wrong major version | Multiple JDKs installed | Point `JAVA_HOME` at JDK 21 |
 | `docker compose` reports "command not found" | Compose v1 or Docker not installed | Install Docker with Compose v2 (`docker compose`, not `docker-compose`) |
 | Port already in use on startup | Another local process/container holds the port | Stop the other process or change the configured port |
-| Database connection refused | Postgres container not running | `docker compose ps`, then `docker compose up -d` (once FOR-82 lands) |
+| Database connection refused | Postgres container not running | `docker compose ps`, then `docker compose up -d` |
 | Local DB in a bad state | Stale volume data | Run the local reset procedure above |
 
 ## Known limitations
 
-- The repository currently contains **documentation and specs only**. No runnable
-  application, infrastructure, migrations or tests exist yet.
-- All startup, migration, test and lint commands are **planned** and tied to the
-  bootstrap stories FOR-80, FOR-81, FOR-82, FOR-83, FOR-85, FOR-86 and FOR-87.
-  They cannot be verified from this document alone until those stories land.
-- Exact versions (Node.js, package manager) and exact build tasks (Gradle vs
-  Maven, migration command) are decided by their owning stories and are marked as
+- The backend skeleton (FOR-80), frontend skeleton (FOR-81) and Docker Compose
+  environment (FOR-82) exist. Database migrations (FOR-83), lint/format (FOR-85)
+  and dedicated test suites (FOR-86/FOR-87) are still **planned** and marked as
   such above.
+- The backend runs but does not yet connect to PostgreSQL: the datasource
+  variables are wired in `compose.yaml`, but the driver and migrations arrive
+  with FOR-83. Until then `postgres` and `backend` start independently.
+- Migration commands and exact test/lint tasks are decided by their owning
+  stories and are marked as such above.
 - This is a local development guide only. Production operations, cloud deployment
   and a full contributor handbook are out of scope (see FOR-89 spec).
 
