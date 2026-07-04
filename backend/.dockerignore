@@ -1,0 +1,13 @@
+# Keep the build context small and reproducible.
+.gradle/
+build/
+.git/
+.gitignore
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
