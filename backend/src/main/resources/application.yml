@@ -18,6 +18,13 @@ spring:
 
 server:
   port: ${SERVER_PORT:8080}
+  # API error safety baseline (FOR-88, ADR-005): never leak stack traces or raw
+  # exception messages to clients. The GlobalExceptionHandler owns the response
+  # shape; these settings harden the container's default error path too.
+  error:
+    include-stacktrace: never
+    include-message: never
+    include-binding-errors: never
 
 # Observability baseline (ADR-008): expose health only and never leak internal
 # configuration or details. Broader API/error handling is owned by FOR-88.

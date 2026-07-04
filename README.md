@@ -45,6 +45,7 @@ MVP scope:
 ## Documentation
 
 - [Local development](docs/local-development.md)
+- [API conventions](docs/api-conventions.md)
 - [Product vision](docs/vision.md)
 - [Roadmap](docs/roadmap.md)
 - [Architecture](docs/architecture.md)
