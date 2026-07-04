@@ -1,0 +1,31 @@
+.shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  grid-template-rows: var(--topbar-height) 1fr;
+  grid-template-areas:
+    'sidebar topbar'
+    'sidebar content';
+}
+
+.content {
+  grid-area: content;
+  padding: var(--space-6);
+  overflow-y: auto;
+}
+
+/* Single column with a bottom nav bar on small screens. */
+@media (max-width: 768px) {
+  .shell {
+    grid-template-columns: 1fr;
+    grid-template-rows: var(--topbar-height) 1fr auto;
+    grid-template-areas:
+      'topbar'
+      'content'
+      'mobilenav';
+  }
+
+  .content {
+    padding: var(--space-4);
+  }
+}
