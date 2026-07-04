@@ -74,7 +74,9 @@ services:
     ports:
       - "${FRONTEND_PORT:-3000}:8080"
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/"]
+      # Use IPv4 explicitly: BusyBox wget resolves localhost to ::1 first,
+      # while the unprivileged nginx image listens on IPv4 0.0.0.0:8080.
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8080/"]
       interval: 15s
       timeout: 5s
       retries: 5
