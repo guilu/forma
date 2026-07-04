@@ -5,8 +5,9 @@ How to work on FORMA from a clean checkout.
 > **Current repository status:** FORMA is in the **Project Bootstrap** phase.
 > The backend skeleton (FOR-80), frontend skeleton (FOR-81), local Docker
 > Compose environment (FOR-82), PostgreSQL + Flyway migration baseline
-> (FOR-83), CI quality gate (FOR-84) and lint/format baseline (FOR-85) now
-> exist. Dedicated test-suite tooling is still delivered by later stories.
+> (FOR-83), CI quality gate (FOR-84), lint/format baseline (FOR-85) and backend
+> testing baseline (FOR-86) now exist. The dedicated frontend testing baseline
+> (FOR-87) is still delivered by a later story.
 >
 > Commands for components that are not scaffolded yet are marked
 > **`PLANNED — not available yet`** and point to the story that will add them.
@@ -178,19 +179,44 @@ frontend is built and served by nginx as the `frontend` service on port 3000.
 
 ## Test commands
 
-**PLANNED — not available yet (FOR-86 backend, FOR-87 frontend).**
-
-FORMA uses a layered testing strategy (ADR-007). Expected shape:
+FORMA uses a layered testing strategy (ADR-007).
 
 ```bash
-# PLANNED (FOR-86) — backend tests
-cd backend && ./gradlew test
+# Backend tests (FOR-86)
+cd backend && ./gradlew test    # or ./gradlew build to include tests + Spotless
 
-# PLANNED (FOR-87) — frontend tests / type check
+# Frontend tests / type check (FOR-87 — PLANNED)
 cd frontend && npm test
 ```
 
-Test naming conventions are documented by FOR-86 and FOR-87.
+The frontend already ships a Vitest suite from FOR-81; the dedicated frontend
+testing baseline and its conventions are finalized by FOR-87.
+
+### Backend testing baseline (FOR-86)
+
+The backend testing baseline is JUnit 5 + AssertJ (via
+`spring-boot-starter-test`), run with `./gradlew test`. Tests are organized by
+the layer they exercise (ADR-007):
+
+| Layer | Style | Example in repo |
+| --- | --- | --- |
+| Domain | Fast, **framework-free** unit tests (no Spring) | `domain/ExampleDomainUnitTest` |
+| Application | Use-case tests (added when the application layer exists) | — |
+| API / delivery | `@SpringBootTest(webEnvironment = RANDOM_PORT)` smoke tests | `HealthEndpointTest` |
+| Persistence | Integration tests against in-memory H2 (PostgreSQL mode) | `MigrationBaselineTest` |
+
+Conventions:
+
+- **Naming** — test classes end in `Test` (e.g. `FooTest`); test methods
+  describe the behavior in words (e.g. `returnsUpWhenHealthy`). Use `@DisplayName`
+  for readable reports where useful.
+- **Speed** — keep domain/unit tests free of Spring, PostgreSQL and provider
+  SDKs so they run in milliseconds. Only reach for `@SpringBootTest` when the
+  behavior genuinely needs the context.
+- **Profile** — integration tests that need a datasource use `@ActiveProfiles("test")`
+  (in-memory H2), so `./gradlew test` needs no Docker.
+- Replace the `Example*` placeholder tests with real ones as product behavior
+  lands; do not test the framework itself.
 
 ## Lint and format commands
 
