@@ -2,6 +2,20 @@ spring:
   application:
     name: forma-backend
 
+  # PostgreSQL access (FOR-83, ADR-003). Environment-driven with local defaults
+  # that match the Docker Compose service (FOR-82); SPRING_DATASOURCE_* env vars
+  # override these for containers and other environments.
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/forma}
+    username: ${SPRING_DATASOURCE_USERNAME:forma}
+    password: ${SPRING_DATASOURCE_PASSWORD:forma_local_password}
+
+  # Schema evolution is migration-driven (ADR-003). Flyway runs pending
+  # migrations from db/migration automatically on application startup.
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
 server:
   port: ${SERVER_PORT:8080}
 

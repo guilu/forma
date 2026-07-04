@@ -1,0 +1,9 @@
+-- FORMA schema baseline (FOR-83).
+--
+-- Intentionally empty: this establishes the Flyway migration history for a fresh
+-- database without creating any product tables. Body composition, training,
+-- nutrition, shopping and insights schemas are added by their own stories as
+-- new versioned migrations (V2__, V3__, ...). See ADR-003.
+--
+-- Applying this migration creates the `flyway_schema_history` table and records
+-- version 1, so subsequent runs are no-ops until a new migration is added.

@@ -21,8 +21,18 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
+    // Persistence baseline (FOR-83): JDBC DataSource + Flyway migrations against
+    // PostgreSQL (ADR-003). No JPA/ORM yet — the domain stays framework-free.
+    implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-database-postgresql'
+    runtimeOnly 'org.postgresql:postgresql'
+
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    // In-memory database (PostgreSQL compatibility mode) so the migration
+    // baseline runs in tests without requiring Docker/PostgreSQL locally.
+    testRuntimeOnly 'com.h2database:h2'
 }
 
 tasks.named('test') {
