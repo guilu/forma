@@ -38,8 +38,6 @@ describe('App', () => {
       </MemoryRouter>,
     );
 
-    expect(
-      screen.getByRole('heading', { name: 'Página no encontrada' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Página no encontrada' })).toBeInTheDocument();
   });
 });

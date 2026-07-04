@@ -4,9 +4,9 @@ How to work on FORMA from a clean checkout.
 
 > **Current repository status:** FORMA is in the **Project Bootstrap** phase.
 > The backend skeleton (FOR-80), frontend skeleton (FOR-81), local Docker
-> Compose environment (FOR-82) and PostgreSQL + Flyway migration baseline
-> (FOR-83) now exist. Dedicated lint/format and test-suite tooling are still
-> delivered by later bootstrap stories.
+> Compose environment (FOR-82), PostgreSQL + Flyway migration baseline
+> (FOR-83), CI quality gate (FOR-84) and lint/format baseline (FOR-85) now
+> exist. Dedicated test-suite tooling is still delivered by later stories.
 >
 > Commands for components that are not scaffolded yet are marked
 > **`PLANNED — not available yet`** and point to the story that will add them.
@@ -194,16 +194,29 @@ Test naming conventions are documented by FOR-86 and FOR-87.
 
 ## Lint and format commands
 
-**PLANNED — not available yet (FOR-85).**
+Formatting and linting baselines are configured (FOR-85, `docs/coding-standards.md`).
 
-Formatting and linting baselines for backend and frontend are delivered by
-FOR-85. Expected shape:
+**Backend** uses [Spotless](https://github.com/diffplug/spotless) with
+google-java-format. The check runs automatically inside `./gradlew build`:
 
 ```bash
-# PLANNED (FOR-85)
-# backend:  formatting/lint check + apply tasks (tooling chosen by FOR-85)
-# frontend: npm run lint   /   npm run format
+cd backend
+./gradlew spotlessCheck   # verify formatting (also part of build/check)
+./gradlew spotlessApply   # auto-format Java sources
 ```
+
+**Frontend** uses ESLint (flat config) for linting and Prettier for formatting:
+
+```bash
+cd frontend
+npm run lint            # ESLint
+npm run lint:fix        # ESLint with auto-fix
+npm run format:check    # Prettier check
+npm run format          # Prettier auto-format (src/)
+```
+
+A root `.editorconfig` provides editor-agnostic defaults (charset, line endings,
+indentation) that match these tools.
 
 ## Continuous integration
 
@@ -211,8 +224,8 @@ CI runs on every pull request and on pushes to `main` (FOR-84), defined in
 `.github/workflows/ci.yml`. It runs the same commands you run locally, as two
 independent jobs — either failing fails the pipeline:
 
-- **Backend** — `cd backend && ./gradlew build` (compile + tests).
-- **Frontend** — `cd frontend && npm ci && npm run typecheck && npm test && npm run build`.
+- **Backend** — `cd backend && ./gradlew build` (compile + tests + Spotless check).
+- **Frontend** — `cd frontend && npm ci && npm run lint && npm run format:check && npm run typecheck && npm test && npm run build`.
 
 Gradle and npm dependencies are cached between runs. Lint/format checks join the
 pipeline once FOR-85 configures them. Keep CI green — see the merge policy in

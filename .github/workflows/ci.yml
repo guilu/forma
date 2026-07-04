@@ -3,8 +3,8 @@
 # First pipeline: builds and tests the backend and frontend on every pull
 # request and on pushes to main. Backend and frontend run as independent jobs,
 # so either one failing fails the pipeline. Commands mirror what developers run
-# locally (see docs/local-development.md). Lint/format checks are added by
-# FOR-85 once configured.
+# locally (see docs/local-development.md). Backend lint/format runs via Spotless
+# inside `./gradlew build`; frontend lint/format run as explicit steps (FOR-85).
 name: CI
 
 on:
@@ -58,6 +58,12 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check
 
       - name: Type check
         run: npm run typecheck
