@@ -65,6 +65,31 @@ The frontend reads `VITE_API_BASE_URL` through the centralized API client
 inlines `VITE_*` variables into the built bundle at build time, so they are
 **public** — only non-secret values belong there.
 
+## Logging and correlation IDs
+
+Backend logging is structured around a per-request **correlation id** (FOR-91,
+[ADR-008](adr/ADR-008-observability.md)).
+
+- **`CorrelationIdFilter`** runs first on every request. It reads the
+  `X-Correlation-Id` header or generates a UUID, sanitizes client-supplied
+  values (safe characters only, capped length — prevents log forging), stores it
+  in the SLF4J MDC and echoes it back on the response header.
+- Every log line includes it via the console pattern
+  (`logging.pattern.level`): `LEVEL [forma-backend,<correlationId>] logger : message`.
+- A minimal request log is emitted per request: `METHOD /path -> status (N ms)`.
+  It logs the path only — never headers, query strings, bodies or personal data.
+- API error responses carry the same correlation id (`ApiError.correlationId`,
+  see [API conventions](api-conventions.md)), so a client-visible error can be
+  matched to server logs.
+
+### Sensitive logging rules (ADR-008)
+
+- Never log passwords, access tokens, refresh tokens or provider secrets.
+- Never log full personal health payloads.
+- Health endpoints must not expose sensitive configuration.
+- Keep the request log to non-sensitive metadata (method, path, status,
+  duration).
+
 ## Secret handling rules
 
 - Never commit real secrets, tokens, provider API keys or personal credentials

@@ -36,3 +36,11 @@ management:
   endpoint:
     health:
       show-details: never
+
+# Structured logging baseline (FOR-91, ADR-008). Every log line carries the
+# request correlation id (from CorrelationIdFilter's MDC) after the level, so
+# local logs stay readable: "LEVEL [forma-backend,<correlationId>] logger : msg".
+# Never log secrets, tokens or full personal health payloads.
+logging:
+  pattern:
+    level: "%5p [${spring.application.name:forma-backend},%X{correlationId:-}]"
