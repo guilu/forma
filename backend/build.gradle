@@ -22,6 +22,8 @@ repositories {
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    // Bean Validation for API request DTOs and the validation error baseline (FOR-88).
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
 
     // Persistence baseline (FOR-83): JDBC DataSource + Flyway migrations against
     // PostgreSQL (ADR-003). No JPA/ORM yet — the domain stays framework-free.
