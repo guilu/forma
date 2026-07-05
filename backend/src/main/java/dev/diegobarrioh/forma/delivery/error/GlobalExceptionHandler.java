@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -18,8 +19,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-  /** Header carrying a request correlation id; populated end-to-end by FOR-91. */
+  /** Header carrying a request correlation id (fallback when the MDC is not set). */
   static final String CORRELATION_HEADER = "X-Correlation-Id";
+
+  /** MDC key populated per request by the CorrelationIdFilter (FOR-91). */
+  static final String CORRELATION_MDC_KEY = "correlationId";
 
   private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
@@ -51,7 +55,15 @@ public class GlobalExceptionHandler {
         ApiErrorCode.INTERNAL_ERROR, "An unexpected error occurred", correlationId, null);
   }
 
+  /**
+   * Prefer the correlation id assigned by the CorrelationIdFilter (MDC); fall back to the request
+   * header when no filter ran (e.g. isolated tests).
+   */
   private String correlationId(HttpServletRequest request) {
+    String fromMdc = MDC.get(CORRELATION_MDC_KEY);
+    if (fromMdc != null && !fromMdc.isBlank()) {
+      return fromMdc;
+    }
     return request == null ? null : request.getHeader(CORRELATION_HEADER);
   }
 }

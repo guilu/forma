@@ -48,7 +48,7 @@ Every error returns the same JSON shape (`ApiError`). Null fields are omitted.
 | --- | --- |
 | `code` | Stable, machine-readable error code (see below). Clients branch on this, not on `message`. |
 | `message` | Safe, human-readable summary. Never contains stack traces, secrets or internals. |
-| `correlationId` | Request correlation id when available (from the `X-Correlation-Id` header). Wired end-to-end by FOR-91. |
+| `correlationId` | Per-request correlation id (from the `X-Correlation-Id` header, or generated). Set by `CorrelationIdFilter` and echoed on the response header; see [configuration](configuration.md#logging-and-correlation-ids). |
 | `details` | Optional per-field validation problems (`field`, `message`). Present only for validation errors. |
 
 ### Error codes
