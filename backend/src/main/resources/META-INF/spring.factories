@@ -1,0 +1,3 @@
+# Fail-fast validation of critical configuration in the prod profile (FOR-90).
+org.springframework.boot.env.EnvironmentPostProcessor=\
+  dev.diegobarrioh.forma.config.CriticalConfigEnvironmentPostProcessor

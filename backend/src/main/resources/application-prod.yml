@@ -1,0 +1,13 @@
+# Production profile (FOR-90). Critical configuration is REQUIRED from the
+# environment with no fallback value: if a secret such as the database password
+# is missing, the application fails to start with a clear "Could not resolve
+# placeholder" error instead of silently using an unsafe local default.
+#
+# Activate with SPRING_PROFILES_ACTIVE=prod. Local development uses the default
+# profile (safe local defaults in application.yml); Docker Compose provides the
+# values explicitly. See docs/configuration.md.
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
