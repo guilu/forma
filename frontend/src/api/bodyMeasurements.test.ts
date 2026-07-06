@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createBodyMeasurement } from './bodyMeasurements';
+import { createBodyMeasurement, listBodyMeasurements } from './bodyMeasurements';
 import { ApiRequestError, type ApiClient } from './client';
 
 /**
@@ -41,5 +41,18 @@ describe('createBodyMeasurement', () => {
         client,
       ),
     ).rejects.toBeInstanceOf(ApiRequestError);
+  });
+});
+
+describe('listBodyMeasurements', () => {
+  it('GETs the versioned endpoint and returns the measurements', async () => {
+    const measurements = [{ source: 'MANUAL', weightKg: 73.6 }];
+    const request = vi.fn().mockResolvedValue(measurements);
+    const client: ApiClient = { baseUrl: 'http://test', request };
+
+    const result = await listBodyMeasurements(client);
+
+    expect(request).toHaveBeenCalledWith('/api/v1/body/measurements');
+    expect(result).toBe(measurements);
   });
 });

@@ -1,7 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { App } from './App';
+
+// The Dashboard (index route) fetches measurements on mount; keep this routing
+// smoke test hermetic by stubbing the API call.
+vi.mock('./api/bodyMeasurements', () => ({
+  listBodyMeasurements: vi.fn().mockResolvedValue([]),
+}));
 
 /**
  * Router smoke tests (FOR-81): the shell mounts, the index route renders the

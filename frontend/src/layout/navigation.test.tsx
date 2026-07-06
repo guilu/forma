@@ -1,8 +1,14 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { App } from '../App';
+
+// The Dashboard (index route) fetches measurements on mount; stub the API so this
+// navigation test stays hermetic.
+vi.mock('../api/bodyMeasurements', () => ({
+  listBodyMeasurements: vi.fn().mockResolvedValue([]),
+}));
 
 /**
  * Interaction example (FOR-87). Template for future UI stories: drive the UI with
