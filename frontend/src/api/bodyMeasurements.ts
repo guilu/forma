@@ -40,3 +40,8 @@ export function createBodyMeasurement(
     body: JSON.stringify(request),
   });
 }
+
+/** Lists measurements, most recent first (FOR-16/FOR-17 default order). */
+export function listBodyMeasurements(client: ApiClient = apiClient): Promise<BodyMeasurement[]> {
+  return client.request<BodyMeasurement[]>(MEASUREMENTS_PATH);
+}

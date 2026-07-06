@@ -1,0 +1,38 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.title {
+  font-size: var(--font-size-xl);
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.grid {
+  display: grid;
+  /* Mobile-first: cards stack, then flow into a responsive multi-column row on
+   * wider screens (up to five across on desktop, per docs/1-dashboard.png). */
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--space-4);
+}
+
+.message {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.message a {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
