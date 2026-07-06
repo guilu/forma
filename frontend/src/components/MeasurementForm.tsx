@@ -152,9 +152,7 @@ export function MeasurementForm({ onCreated, onCancel }: MeasurementFormProps) {
         </p>
       )}
       {status === 'success' && (
-        <p className={styles.success} role="status">
-          Medición guardada correctamente.
-        </p>
+        <output className={styles.success}>Medición guardada correctamente.</output>
       )}
 
       <div className={styles.actions}>

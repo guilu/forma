@@ -60,6 +60,7 @@
 }
 
 .success {
+  display: block;
   margin: 0;
   padding: var(--space-3);
   font-size: var(--font-size-sm);

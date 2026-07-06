@@ -2,11 +2,10 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import styles from './Modal.module.css';
 
 /**
- * Accessible modal dialog (FOR-18). Provides the surface, title and dismissal
- * affordances (Escape key, backdrop click, close button) so content components
- * stay surface-agnostic. A lightweight custom implementation is used instead of
- * the native `<dialog>` element because `HTMLDialogElement.showModal` is not
- * implemented in the jsdom test environment.
+ * Accessible modal dialog (FOR-18). Uses the native `<dialog>` element (rendered
+ * with the `open` attribute rather than `showModal()`, which jsdom does not
+ * implement) so it is a first-class interactive/accessible element. Dismissal is
+ * available via the close button, the Escape key and a backdrop click.
  */
 interface ModalProps {
   readonly title: string;
@@ -15,7 +14,7 @@ interface ModalProps {
 }
 
 export function Modal({ title, onClose, children }: ModalProps) {
-  const dialogRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = 'modal-title';
 
   useEffect(() => {
@@ -31,22 +30,21 @@ export function Modal({ title, onClose, children }: ModalProps) {
   }, [onClose]);
 
   return (
-    <div
-      className={styles.overlay}
+    <dialog
+      ref={dialogRef}
+      open
+      className={styles.dialog}
+      aria-labelledby={titleId}
+      tabIndex={-1}
+      // The dialog fills the viewport and acts as its own backdrop; a click that
+      // lands on it (not on the inner panel) dismisses the modal.
       onClick={(event) => {
         if (event.target === event.currentTarget) {
           onClose();
         }
       }}
     >
-      <div
-        ref={dialogRef}
-        className={styles.dialog}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        tabIndex={-1}
-      >
+      <div className={styles.panel}>
         <header className={styles.header}>
           <h2 id={titleId} className={styles.title}>
             {title}
@@ -57,6 +55,6 @@ export function Modal({ title, onClose, children }: ModalProps) {
         </header>
         {children}
       </div>
-    </div>
+    </dialog>
   );
 }
