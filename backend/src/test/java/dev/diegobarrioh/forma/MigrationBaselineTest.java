@@ -2,6 +2,7 @@ package dev.diegobarrioh.forma;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Arrays;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationInfo;
 import org.junit.jupiter.api.Test;
@@ -22,10 +23,16 @@ class MigrationBaselineTest {
 
   @Test
   void baselineMigrationIsApplied() {
-    MigrationInfo current = flyway.info().current();
+    // Assert the V1 baseline itself is applied, not that it is the latest migration:
+    // later stories add migrations (V2+, e.g. FOR-16 body_measurements) so "current" moves on.
+    MigrationInfo baseline =
+        Arrays.stream(flyway.info().applied())
+            .filter(info -> info.getVersion() != null)
+            .filter(info -> "1".equals(info.getVersion().getVersion()))
+            .findFirst()
+            .orElse(null);
 
-    assertThat(current).isNotNull();
-    assertThat(current.getVersion().getVersion()).isEqualTo("1");
-    assertThat(current.getState().isApplied()).isTrue();
+    assertThat(baseline).isNotNull();
+    assertThat(baseline.getState().isApplied()).isTrue();
   }
 }
