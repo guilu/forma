@@ -7,7 +7,7 @@ import { ApiRequestError, createApiClient, getApiBaseUrl, apiClient } from './cl
  */
 describe('api client', () => {
   it('exposes a default client instance', () => {
-    expect(apiClient.baseUrl).toBeTruthy();
+    expect(typeof apiClient.baseUrl).toBe('string');
     expect(typeof apiClient.request).toBe('function');
   });
 
@@ -16,8 +16,9 @@ describe('api client', () => {
     expect(client.baseUrl).toBe('http://example.test');
   });
 
-  it('resolves a non-empty base URL from the environment', () => {
-    expect(getApiBaseUrl()).toMatch(/^https?:\/\//);
+  it('defaults to a same-origin (relative) base URL', () => {
+    // No VITE_API_BASE_URL in tests → empty string, so requests are same-origin.
+    expect(getApiBaseUrl()).toBe('');
   });
 });
 

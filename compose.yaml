@@ -63,9 +63,11 @@ services:
     build:
       context: ./frontend
       args:
-        # The browser runs on the host, so it reaches the backend through the
-        # published port, not the compose service name.
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
+        # Empty = same-origin: the SPA calls relative `/api/...` and the
+        # frontend's nginx reverse-proxies it to the backend container. This
+        # works whether the app is reached on localhost or a public domain,
+        # so no fixed backend host is baked into the bundle.
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
     container_name: forma-frontend
     restart: unless-stopped
     depends_on:

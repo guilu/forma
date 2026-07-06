@@ -9,8 +9,11 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
-# The API base URL is baked in at build time (Vite inlines VITE_* vars).
-ARG VITE_API_BASE_URL=http://localhost:8080
+# API base URL is baked in at build time (Vite inlines VITE_* vars). Empty by
+# default so the SPA calls relative `/api/...` (same-origin) and nginx proxies it
+# to the backend — no fixed backend host is compiled into the bundle. Set this
+# only if the API lives on a genuinely different origin.
+ARG VITE_API_BASE_URL=
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
 COPY . .

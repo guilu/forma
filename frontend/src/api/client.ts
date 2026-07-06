@@ -9,9 +9,15 @@
  * models and commands exposed here.
  */
 
-const DEFAULT_BASE_URL = 'http://localhost:8080';
+// Same-origin by default: the app calls relative `/api/...` paths so the browser
+// hits whatever host served the SPA. In production the frontend's nginx reverse-
+// proxies `/api/` to the backend container; in dev the Vite server proxies it to
+// the local backend (see vite.config.ts). This avoids baking a fixed backend
+// host (e.g. localhost:8080) into the production bundle. Override only when the
+// API is genuinely on another origin, via VITE_API_BASE_URL.
+const DEFAULT_BASE_URL = '';
 
-/** Resolve the backend base URL from the Vite environment, with a dev fallback. */
+/** Resolve the backend base URL from the Vite environment; empty = same origin. */
 export function getApiBaseUrl(): string {
   return import.meta.env.VITE_API_BASE_URL ?? DEFAULT_BASE_URL;
 }

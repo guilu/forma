@@ -6,6 +6,15 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    // The app calls relative `/api/...` (same-origin). In dev, proxy those to the
+    // local backend so no absolute backend host is baked into the bundle. Change
+    // the target here if the backend runs on a different port/host.
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+    },
   },
   test: {
     globals: true,
