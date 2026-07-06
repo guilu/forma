@@ -1,0 +1,31 @@
+.chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* A calm, readable aspect on mobile and desktop (ui-guidelines: avoid noise). */
+  aspect-ratio: 320 / 120;
+}
+
+.line {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  /* Keep the stroke crisp despite non-uniform viewBox scaling. */
+  vector-effect: non-scaling-stroke;
+}
+
+.dot {
+  fill: var(--color-accent);
+  opacity: 0.55;
+}
+
+.dotLast {
+  fill: var(--color-accent);
+}
+
+.axis {
+  fill: var(--color-text-muted);
+  font-size: 9px;
+}
