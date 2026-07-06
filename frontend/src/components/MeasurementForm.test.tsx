@@ -34,6 +34,18 @@ describe('MeasurementForm', () => {
     expect(screen.getByLabelText('Notas (opcional)')).toBeInTheDocument();
   });
 
+  it('renders a Cancelar action only when onCancel is provided', async () => {
+    const onCancel = vi.fn();
+    const user = userEvent.setup();
+    const { rerender } = render(<MeasurementForm />);
+    expect(screen.queryByRole('button', { name: 'Cancelar' })).not.toBeInTheDocument();
+
+    rerender(<MeasurementForm onCancel={onCancel} />);
+    await user.click(screen.getByRole('button', { name: 'Cancelar' }));
+
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
   it('blocks submit and shows inline errors when required fields are empty', async () => {
     const user = userEvent.setup();
     render(<MeasurementForm />);

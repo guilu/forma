@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from 'react';
-import { Card } from './Card';
 import { ApiRequestError } from '../api/client';
 import { createBodyMeasurement, type BodyMeasurement } from '../api/bodyMeasurements';
 import styles from './MeasurementForm.module.css';
@@ -9,10 +8,15 @@ import styles from './MeasurementForm.module.css';
  * it to the FOR-17 API through the shared client. The frontend owns no domain
  * rules (ADR-006): it validates required fields for fast feedback, but derived
  * values and authoritative validation live in the backend.
+ *
+ * <p>Surface-agnostic: it renders just the form, so the caller provides the
+ * container (e.g. the Measurements page opens it inside a {@link Modal}).
  */
 interface MeasurementFormProps {
   /** Called after a successful save so a list/dashboard (FOR-19) can refresh. */
   readonly onCreated?: (measurement: BodyMeasurement) => void;
+  /** When provided, renders a "Cancelar" action that invokes this (e.g. close a modal). */
+  readonly onCancel?: () => void;
 }
 
 type FieldName = 'measuredAt' | 'weightKg' | 'bodyFatPercentage' | 'bmi';
@@ -49,7 +53,7 @@ function validate(values: typeof EMPTY_VALUES): FieldErrors {
   return errors;
 }
 
-export function MeasurementForm({ onCreated }: MeasurementFormProps) {
+export function MeasurementForm({ onCreated, onCancel }: MeasurementFormProps) {
   const [values, setValues] = useState(EMPTY_VALUES);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [status, setStatus] = useState<Status>('idle');
@@ -90,75 +94,80 @@ export function MeasurementForm({ onCreated }: MeasurementFormProps) {
   }
 
   return (
-    <Card title="Nueva medición">
-      <form className={styles.form} onSubmit={handleSubmit} noValidate>
-        <Field
-          id="measuredAt"
-          label="Fecha y hora"
-          type="datetime-local"
-          value={values.measuredAt}
-          error={errors.measuredAt}
-          disabled={pending}
-          onChange={(value) => update('measuredAt', value)}
-        />
-        <Field
-          id="weightKg"
-          label="Peso (kg)"
-          type="number"
-          value={values.weightKg}
-          error={errors.weightKg}
-          disabled={pending}
-          onChange={(value) => update('weightKg', value)}
-        />
-        <Field
-          id="bodyFatPercentage"
-          label="Grasa corporal (%)"
-          type="number"
-          value={values.bodyFatPercentage}
-          error={errors.bodyFatPercentage}
-          disabled={pending}
-          onChange={(value) => update('bodyFatPercentage', value)}
-        />
-        <Field
-          id="bmi"
-          label="IMC"
-          type="number"
-          value={values.bmi}
-          error={errors.bmi}
-          disabled={pending}
-          onChange={(value) => update('bmi', value)}
-        />
+    <form className={styles.form} onSubmit={handleSubmit} noValidate>
+      <Field
+        id="measuredAt"
+        label="Fecha y hora"
+        type="datetime-local"
+        value={values.measuredAt}
+        error={errors.measuredAt}
+        disabled={pending}
+        onChange={(value) => update('measuredAt', value)}
+      />
+      <Field
+        id="weightKg"
+        label="Peso (kg)"
+        type="number"
+        value={values.weightKg}
+        error={errors.weightKg}
+        disabled={pending}
+        onChange={(value) => update('weightKg', value)}
+      />
+      <Field
+        id="bodyFatPercentage"
+        label="Grasa corporal (%)"
+        type="number"
+        value={values.bodyFatPercentage}
+        error={errors.bodyFatPercentage}
+        disabled={pending}
+        onChange={(value) => update('bodyFatPercentage', value)}
+      />
+      <Field
+        id="bmi"
+        label="IMC"
+        type="number"
+        value={values.bmi}
+        error={errors.bmi}
+        disabled={pending}
+        onChange={(value) => update('bmi', value)}
+      />
 
-        <div className={styles.field}>
-          <label className={styles.label} htmlFor="notes">
-            Notas (opcional)
-          </label>
-          <textarea
-            id="notes"
-            className={styles.textarea}
-            value={values.notes}
-            disabled={pending}
-            rows={3}
-            onChange={(event) => update('notes', event.target.value)}
-          />
-        </div>
+      <div className={styles.field}>
+        <label className={styles.label} htmlFor="notes">
+          Notas (opcional)
+        </label>
+        <textarea
+          id="notes"
+          className={styles.textarea}
+          value={values.notes}
+          disabled={pending}
+          rows={3}
+          onChange={(event) => update('notes', event.target.value)}
+        />
+      </div>
 
-        {submitError && (
-          <p className={styles.formError} role="alert">
-            {submitError}
-          </p>
+      {submitError && (
+        <p className={styles.formError} role="alert">
+          {submitError}
+        </p>
+      )}
+      {status === 'success' && (
+        <p className={styles.success} role="status">
+          Medición guardada correctamente.
+        </p>
+      )}
+
+      <div className={styles.actions}>
+        {onCancel && (
+          <button className={styles.cancel} type="button" onClick={onCancel} disabled={pending}>
+            Cancelar
+          </button>
         )}
-        {status === 'success' && (
-          <p className={styles.success} role="status">
-            Medición guardada correctamente.
-          </p>
-        )}
-
         <button className={styles.submit} type="submit" disabled={pending}>
           {pending ? 'Guardando…' : 'Guardar medición'}
         </button>
-      </form>
-    </Card>
+      </div>
+    </form>
   );
 }
 
