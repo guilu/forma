@@ -16,6 +16,14 @@ spring:
     enabled: true
     locations: classpath:db/migration
 
+# Cross-origin access for the browser frontend (FOR-17/FOR-18/FOR-19). The SPA is
+# served from a different origin than the API, so the API must allow it explicitly
+# (no production wildcard — AGENTS.md). Defaults cover local dev (Vite :5173 and
+# the compose frontend :3000); real environments override with their exact origin.
+forma:
+  cors:
+    allowed-origins: ${FORMA_CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
+
 server:
   port: ${SERVER_PORT:8080}
   # API error safety baseline (FOR-88, ADR-005): never leak stack traces or raw
