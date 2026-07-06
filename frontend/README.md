@@ -30,15 +30,18 @@ npm run test:watch
 
 ## Configuration
 
-The backend base URL is read through the centralized API client
-(`src/api/client.ts`) from the `VITE_API_BASE_URL` environment variable and
-falls back to `http://localhost:8080` (the FOR-80 backend port).
+The app calls the API using **relative `/api/...` paths (same-origin)** through
+the centralized API client (`src/api/client.ts`), so no backend host is baked
+into the production bundle:
 
-Create a local `.env` to override it:
+- **Production (Docker):** the frontend's nginx reverse-proxies `/api/` to the
+  backend container (`frontend/nginx.conf`).
+- **Dev (`npm run dev`):** the Vite dev server proxies `/api` to the local
+  backend (`vite.config.ts`, `http://localhost:8080`). Change the target there
+  if the backend runs elsewhere.
 
-```bash
-VITE_API_BASE_URL=http://localhost:8080
-```
+Only set `VITE_API_BASE_URL` (an absolute URL) if the API is served from a
+genuinely different origin than the SPA; otherwise leave it empty.
 
 ## Structure
 
