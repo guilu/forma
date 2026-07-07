@@ -25,10 +25,13 @@ public record WeeklyTrainingSchedule(List<TrainingDay> days) {
   /**
    * A single planned session shown in the calendar.
    *
+   * @param id stable session id (e.g. {@code "SATURDAY:RUNNING"}); used to mark completion (FOR-27)
    * @param kind {@code "RUNNING"} or {@code "STRENGTH"}
    * @param title short human-readable title (e.g. "Tirada larga", "Fuerza · Empuje")
    * @param detail secondary line (e.g. "10.0 km", "4 ejercicios")
-   * @param status session status; {@code "PLANNED"} in this story (completion is FOR-27)
+   * @param status session status: {@code PLANNED}, {@code COMPLETED} or {@code SKIPPED} (FOR-27)
+   * @param notes optional completion note, or {@code null}
    */
-  public record TrainingEntry(String kind, String title, String detail, String status) {}
+  public record TrainingEntry(
+      String id, String kind, String title, String detail, String status, String notes) {}
 }

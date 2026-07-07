@@ -1,5 +1,6 @@
 package dev.diegobarrioh.forma.delivery.error;
 
+import dev.diegobarrioh.forma.application.NotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import org.slf4j.Logger;
@@ -40,6 +41,13 @@ public class GlobalExceptionHandler {
         "Request validation failed",
         correlationId(request),
         details);
+  }
+
+  /** Missing resources map to 404 with the safe, caller-provided message. */
+  @ExceptionHandler(NotFoundException.class)
+  @ResponseStatus(HttpStatus.NOT_FOUND)
+  public ApiError handleNotFound(NotFoundException ex, HttpServletRequest request) {
+    return ApiError.of(ApiErrorCode.NOT_FOUND, ex.getMessage(), correlationId(request), null);
   }
 
   /**
