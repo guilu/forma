@@ -23,14 +23,14 @@ sessions are `PLANNED` (completion is FOR-27).
       "dayOfWeek": "MONDAY",
       "rest": false,
       "sessions": [
-        { "kind": "STRENGTH", "title": "Fuerza · Empuje", "detail": "3 ejercicios", "status": "PLANNED" }
+        { "id": "MONDAY:STRENGTH", "kind": "STRENGTH", "title": "Fuerza · Empuje", "detail": "3 ejercicios", "status": "PLANNED" }
       ]
     },
     {
       "dayOfWeek": "SATURDAY",
       "rest": false,
       "sessions": [
-        { "kind": "RUNNING", "title": "Tirada larga", "detail": "4.0 km", "status": "PLANNED" }
+        { "id": "SATURDAY:RUNNING", "kind": "RUNNING", "title": "Tirada larga", "detail": "4.0 km", "status": "COMPLETED", "notes": "Buenas sensaciones" }
       ]
     },
     { "dayOfWeek": "SUNDAY", "rest": true, "sessions": [] }
@@ -38,15 +38,39 @@ sessions are `PLANNED` (completion is FOR-27).
 }
 ```
 
+- `id`: stable session id (`<DAY>:<KIND>`), used to mark completion.
 - `kind`: `RUNNING` or `STRENGTH`.
 - `rest`: `true` when the day has no sessions.
-- `status`: `PLANNED` in this version.
+- `status`: `PLANNED`, `COMPLETED` or `SKIPPED` (FOR-27).
+- `notes`: optional completion note; omitted when absent.
+
+## `PATCH /api/v1/training/sessions/{id}/status`
+
+Marks a session's completion status (FOR-27). Works for running and strength
+sessions.
+
+Request:
+
+```json
+{ "status": "COMPLETED", "notes": "Buenas sensaciones" }
+```
+
+`status` is required, one of `PLANNED` | `COMPLETED` | `SKIPPED`; `notes` is
+optional. Any status can be set (including reverting) in this version.
+
+`200 OK`:
+
+```json
+{ "id": "SATURDAY:RUNNING", "status": "COMPLETED", "notes": "Buenas sensaciones" }
+```
 
 ## Errors
 
-Standard [`ApiError`](../api-conventions.md#standard-error-response) shape for
-unexpected failures (`INTERNAL_ERROR`, 500). No request input, so no
-validation/not-found cases.
+Standard [`ApiError`](../api-conventions.md#standard-error-response) shape:
+
+- 400 Bad Request — `VALIDATION_ERROR`: missing/invalid `status`.
+- 404 Not Found — `NOT_FOUND`: no session with the given id in the current week.
+- 500 — `INTERNAL_ERROR`: unexpected failures only.
 
 ## Authorization
 

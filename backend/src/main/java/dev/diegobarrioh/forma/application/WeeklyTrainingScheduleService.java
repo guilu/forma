@@ -2,6 +2,7 @@ package dev.diegobarrioh.forma.application;
 
 import dev.diegobarrioh.forma.application.WeeklyTrainingSchedule.TrainingDay;
 import dev.diegobarrioh.forma.application.WeeklyTrainingSchedule.TrainingEntry;
+import dev.diegobarrioh.forma.domain.SessionStatus;
 import dev.diegobarrioh.forma.domain.SessionType;
 import dev.diegobarrioh.forma.domain.WorkoutType;
 import java.time.DayOfWeek;
@@ -14,7 +15,7 @@ import org.springframework.stereotype.Service;
 
 /**
  * Composes the weekly training calendar (FOR-26) from the FOR-23 running plan and FOR-25 workout
- * templates.
+ * templates, applying stored completion status (FOR-27).
  *
  * <p>The plan (FOR-22/FOR-23) and templates (FOR-25) are not scheduled to real dates yet, so this
  * service applies a simple, documented scheduling policy for the MVP:
@@ -26,16 +27,15 @@ import org.springframework.stereotype.Service;
  *   <li>Any remaining day (e.g. Sunday) is a rest day (no entries).
  * </ul>
  *
- * There is no week navigation and no date arithmetic in this slice (spec FOR-26 Open Questions); a
- * later story can schedule to real dates. All entries are {@code PLANNED}.
+ * <p>Each session has a stable id ({@code "<DAY>:<KIND>"}) that is stable because the schedule is
+ * deterministic; completion status (FOR-27) is stored against that id and applied here (default
+ * {@code PLANNED}). No week navigation or real dates yet (spec FOR-26 Open Questions).
  */
 @Service
 public class WeeklyTrainingScheduleService {
 
   /** The plan week shown by the MVP calendar. */
   static final int PLAN_WEEK = 1;
-
-  private static final String PLANNED = "PLANNED";
 
   private static final Map<DayOfWeek, WorkoutType> STRENGTH_DAYS =
       Map.of(
@@ -45,15 +45,25 @@ public class WeeklyTrainingScheduleService {
 
   private final RunningPlanService runningPlanService;
   private final WorkoutTemplateService workoutTemplateService;
+  private final TrainingSessionStatusRepository statusRepository;
 
   public WeeklyTrainingScheduleService(
-      RunningPlanService runningPlanService, WorkoutTemplateService workoutTemplateService) {
+      RunningPlanService runningPlanService,
+      WorkoutTemplateService workoutTemplateService,
+      TrainingSessionStatusRepository statusRepository) {
     this.runningPlanService = runningPlanService;
     this.workoutTemplateService = workoutTemplateService;
+    this.statusRepository = statusRepository;
   }
 
-  /** Builds the current week's calendar (Monday through Sunday). */
+  /** The stable session id for a day + kind (e.g. {@code "SATURDAY:RUNNING"}). */
+  public static String sessionId(DayOfWeek day, String kind) {
+    return day.name() + ":" + kind;
+  }
+
+  /** Builds the current week's calendar (Monday through Sunday), with stored status applied. */
   public WeeklyTrainingSchedule currentWeek() {
+    Map<String, StoredSessionStatus> stored = statusRepository.findAll();
     Map<DayOfWeek, List<TrainingEntry>> entriesByDay = new EnumMap<>(DayOfWeek.class);
     for (DayOfWeek day : DayOfWeek.values()) {
       entriesByDay.put(day, new ArrayList<>());
@@ -67,11 +77,12 @@ public class WeeklyTrainingScheduleService {
                 entriesByDay
                     .get(session.dayOfWeek())
                     .add(
-                        new TrainingEntry(
+                        entry(
+                            session.dayOfWeek(),
                             "RUNNING",
                             runningTitle(session.sessionType()),
                             String.format(Locale.ROOT, "%.1f km", session.targetDistanceKm()),
-                            PLANNED)));
+                            stored)));
 
     // Strength templates on their assigned days.
     STRENGTH_DAYS.forEach(
@@ -83,17 +94,31 @@ public class WeeklyTrainingScheduleService {
                         entriesByDay
                             .get(day)
                             .add(
-                                new TrainingEntry(
+                                entry(
+                                    day,
                                     "STRENGTH",
                                     strengthTitle(type),
                                     template.items().size() + " ejercicios",
-                                    PLANNED))));
+                                    stored))));
 
     List<TrainingDay> days = new ArrayList<>(DayOfWeek.values().length);
     for (DayOfWeek day : DayOfWeek.values()) {
       days.add(new TrainingDay(day, List.copyOf(entriesByDay.get(day))));
     }
     return new WeeklyTrainingSchedule(List.copyOf(days));
+  }
+
+  private static TrainingEntry entry(
+      DayOfWeek day,
+      String kind,
+      String title,
+      String detail,
+      Map<String, StoredSessionStatus> stored) {
+    String id = sessionId(day, kind);
+    StoredSessionStatus status = stored.get(id);
+    String statusName = (status == null) ? SessionStatus.PLANNED.name() : status.status().name();
+    String notes = (status == null) ? null : status.notes();
+    return new TrainingEntry(id, kind, title, detail, statusName, notes);
   }
 
   private static String runningTitle(SessionType type) {

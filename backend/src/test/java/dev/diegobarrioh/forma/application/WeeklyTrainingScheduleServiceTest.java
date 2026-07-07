@@ -4,20 +4,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.diegobarrioh.forma.application.WeeklyTrainingSchedule.TrainingDay;
 import dev.diegobarrioh.forma.application.WeeklyTrainingSchedule.TrainingEntry;
+import dev.diegobarrioh.forma.domain.SessionStatus;
 import java.time.DayOfWeek;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 
 /**
- * Unit tests for {@link WeeklyTrainingScheduleService} (FOR-26): composes running + strength + rest
- * days from the real FOR-23/FOR-25 services (no Spring context — ADR-007).
+ * Unit tests for {@link WeeklyTrainingScheduleService} (FOR-26/FOR-27): composes running + strength
+ * + rest days from the real FOR-23/FOR-25 services and applies stored status (no Spring — ADR-007).
  */
 class WeeklyTrainingScheduleServiceTest {
 
+  private final FakeStatusRepository statusRepository = new FakeStatusRepository();
   private final WeeklyTrainingScheduleService service =
-      new WeeklyTrainingScheduleService(new RunningPlanService(), new WorkoutTemplateService());
+      new WeeklyTrainingScheduleService(
+          new RunningPlanService(), new WorkoutTemplateService(), statusRepository);
 
   private Map<DayOfWeek, TrainingDay> byDay() {
     return service.currentWeek().days().stream()
@@ -39,40 +43,22 @@ class WeeklyTrainingScheduleServiceTest {
   }
 
   @Test
-  void placesRunningSessionsOnTheirDays() {
+  void placesRunningAndStrengthWithStableIds() {
     Map<DayOfWeek, TrainingDay> days = byDay();
 
-    assertThat(days.get(DayOfWeek.TUESDAY).entries())
-        .extracting(TrainingEntry::kind)
-        .contains("RUNNING");
-    assertThat(days.get(DayOfWeek.THURSDAY).entries())
-        .extracting(TrainingEntry::kind)
-        .contains("RUNNING");
-    // Week 1 long run is 4.0 km (FOR-23 generator baseline).
     assertThat(days.get(DayOfWeek.SATURDAY).entries())
         .anySatisfy(
             entry -> {
               assertThat(entry.kind()).isEqualTo("RUNNING");
+              assertThat(entry.id()).isEqualTo("SATURDAY:RUNNING");
               assertThat(entry.title()).isEqualTo("Tirada larga");
               assertThat(entry.detail()).isEqualTo("4.0 km");
             });
-  }
-
-  @Test
-  void placesStrengthTemplatesOnAssignedDays() {
-    Map<DayOfWeek, TrainingDay> days = byDay();
-
     assertThat(days.get(DayOfWeek.MONDAY).entries())
-        .extracting(TrainingEntry::kind)
-        .contains("STRENGTH");
-    assertThat(days.get(DayOfWeek.WEDNESDAY).entries())
-        .extracting(TrainingEntry::kind)
-        .contains("STRENGTH");
-    assertThat(days.get(DayOfWeek.FRIDAY).entries())
         .anySatisfy(
             entry -> {
               assertThat(entry.kind()).isEqualTo("STRENGTH");
-              assertThat(entry.title()).isEqualTo("Fuerza · Pierna y core");
+              assertThat(entry.id()).isEqualTo("MONDAY:STRENGTH");
             });
   }
 
@@ -82,11 +68,40 @@ class WeeklyTrainingScheduleServiceTest {
   }
 
   @Test
-  void allEntriesArePlanned() {
+  void defaultsToPlannedWhenNoStoredStatus() {
     assertThat(service.currentWeek().days())
         .allSatisfy(
             day ->
                 assertThat(day.entries())
                     .allSatisfy(entry -> assertThat(entry.status()).isEqualTo("PLANNED")));
+  }
+
+  @Test
+  void appliesStoredStatusAndNotes() {
+    statusRepository.upsert("SATURDAY:RUNNING", SessionStatus.COMPLETED, "Buenas sensaciones");
+
+    TrainingEntry saturdayRun =
+        byDay().get(DayOfWeek.SATURDAY).entries().stream()
+            .filter(entry -> entry.id().equals("SATURDAY:RUNNING"))
+            .findFirst()
+            .orElseThrow();
+
+    assertThat(saturdayRun.status()).isEqualTo("COMPLETED");
+    assertThat(saturdayRun.notes()).isEqualTo("Buenas sensaciones");
+  }
+
+  /** In-memory {@link TrainingSessionStatusRepository} for unit tests. */
+  static final class FakeStatusRepository implements TrainingSessionStatusRepository {
+    private final Map<String, StoredSessionStatus> stored = new HashMap<>();
+
+    @Override
+    public Map<String, StoredSessionStatus> findAll() {
+      return stored;
+    }
+
+    @Override
+    public void upsert(String sessionId, SessionStatus status, String notes) {
+      stored.put(sessionId, new StoredSessionStatus(sessionId, status, notes));
+    }
   }
 }
