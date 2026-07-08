@@ -60,7 +60,7 @@ public class JdbcShoppingProductRepository implements ShoppingProductRepository 
         "INSERT INTO shopping_products (id, name, url, package_size, estimated_price_eur,"
             + " price_per_unit_eur, linked_food_item_id, last_checked_at, notes)"
             + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        id,
+        UUID.fromString(id),
         product.name(),
         product.url(),
         product.packageSize(),
@@ -87,7 +87,7 @@ public class JdbcShoppingProductRepository implements ShoppingProductRepository 
             product.linkedFoodItemId(),
             toOffsetDateTime(product.lastCheckedAt()),
             product.notes(),
-            id);
+            UUID.fromString(id));
     return updated == 0 ? Optional.empty() : Optional.of(new StoredShoppingProduct(id, product));
   }
 
