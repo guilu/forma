@@ -3,10 +3,13 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { App } from './App';
 
-// The Dashboard (index route) fetches measurements on mount; keep this routing
-// smoke test hermetic by stubbing the API call.
+// Pages that fetch on mount (Dashboard, Nutrition) are stubbed so this routing
+// smoke test stays hermetic (no real network).
 vi.mock('./api/bodyMeasurements', () => ({
   listBodyMeasurements: vi.fn().mockResolvedValue([]),
+}));
+vi.mock('./api/nutrition', () => ({
+  getNutritionDay: vi.fn().mockResolvedValue({ type: 'RUNNING', targets: {}, meals: [] }),
 }));
 
 /**

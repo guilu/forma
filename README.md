@@ -49,6 +49,7 @@ MVP scope:
 - [API conventions](docs/api-conventions.md)
 - [Body measurements API](docs/api/body-measurements.md)
 - [Training week API](docs/api/training-week.md)
+- [Nutrition day API](docs/api/nutrition-day.md)
 - [Product vision](docs/vision.md)
 - [Roadmap](docs/roadmap.md)
 - [Architecture](docs/architecture.md)
