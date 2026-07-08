@@ -8,6 +8,7 @@ import dev.diegobarrioh.forma.domain.ShoppingListStatus;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -59,7 +60,7 @@ public class JdbcShoppingListRepository implements ShoppingListRepository {
             "SELECT id, product_id, quantity, estimated_cost_eur, checked FROM shopping_list_items"
                 + " WHERE shopping_list_id = ? ORDER BY id",
             ITEM_MAPPER,
-            list.id());
+            UUID.fromString(list.id()));
     return Optional.of(
         new ActiveShoppingList(
             list.id(), list.weekStartDate(), list.status(), list.notes(), items));
@@ -67,9 +68,10 @@ public class JdbcShoppingListRepository implements ShoppingListRepository {
 
   @Override
   public Optional<StoredShoppingListItem> setChecked(String itemId, boolean checked) {
+    UUID itemUuid = UUID.fromString(itemId);
     int updated =
         jdbcTemplate.update(
-            "UPDATE shopping_list_items SET checked = ? WHERE id = ?", checked, itemId);
+            "UPDATE shopping_list_items SET checked = ? WHERE id = ?", checked, itemUuid);
     if (updated == 0) {
       return Optional.empty();
     }
@@ -79,7 +81,7 @@ public class JdbcShoppingListRepository implements ShoppingListRepository {
               "SELECT id, product_id, quantity, estimated_cost_eur, checked FROM"
                   + " shopping_list_items WHERE id = ?",
               ITEM_MAPPER,
-              itemId));
+              itemUuid));
     } catch (EmptyResultDataAccessException ex) {
       return Optional.empty();
     }
