@@ -1,0 +1,91 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.title {
+  font-size: var(--font-size-xl);
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--space-4);
+}
+
+.tileValue {
+  margin: 0;
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+}
+
+.items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.item {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.itemLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  /* Comfortable touch target on mobile (ui-guidelines: shopping checklist). */
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.itemLabel input {
+  width: 20px;
+  height: 20px;
+}
+
+.checkedName {
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+}
+
+.quantity {
+  color: var(--color-text-muted);
+}
+
+.cost {
+  font-weight: 600;
+  min-width: 4rem;
+  text-align: right;
+}
+
+.actionError {
+  margin: 0;
+  padding: var(--space-3);
+  font-size: var(--font-size-sm);
+  color: var(--color-danger);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-md);
+}
+
+.message {
+  margin: 0;
+  color: var(--color-text-muted);
+}
