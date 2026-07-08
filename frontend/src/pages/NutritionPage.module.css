@@ -1,0 +1,74 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.title {
+  font-size: var(--font-size-xl);
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.explanation {
+  margin: 0;
+  color: var(--color-text);
+}
+
+.flow {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  /* Mobile-first: meals stack in order, readable, no horizontal scroll. */
+  max-width: 40rem;
+}
+
+.optional {
+  display: inline-block;
+  margin-bottom: var(--space-3);
+  padding: 2px var(--space-2);
+  font-size: var(--font-size-sm);
+  border-radius: var(--radius-sm);
+  color: var(--color-accent-contrast);
+  background-color: var(--color-warning);
+}
+
+.items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.item {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.food {
+  color: var(--color-text);
+}
+
+.quantity {
+  color: var(--color-text-muted);
+}
+
+.message {
+  margin: 0;
+  color: var(--color-text-muted);
+}

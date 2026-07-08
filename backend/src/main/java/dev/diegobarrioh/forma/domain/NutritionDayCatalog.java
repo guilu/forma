@@ -81,7 +81,7 @@ public final class NutritionDayCatalog {
             "Comida",
             LocalTime.of(14, 0),
             new MealItem("rice", 200),
-            new MealItem("chicken", 200),
+            new MealItem("chicken", 150),
             new MealItem("vegetables", 150)),
         meal(
             d,
@@ -90,6 +90,14 @@ public final class NutritionDayCatalog {
             LocalTime.of(18, 0),
             new MealItem("banana", 120),
             new MealItem("oats", 40)),
+        // Optional post-run recovery (late-run flow, FOR-34): skip if the daily protein target is
+        // already met. Presented as optional in the UI.
+        meal(
+            d,
+            MealType.POST_WORKOUT,
+            "Recuperación (opcional)",
+            LocalTime.of(20, 0),
+            new MealItem("whey-protein", 20)),
         meal(
             d,
             MealType.DINNER,
