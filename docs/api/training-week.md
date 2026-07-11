@@ -83,6 +83,45 @@ Empty week (nothing planned):
 - Completed running km includes only completed sessions.
 - No request body, no parameters (current week only).
 
+## `GET /api/v1/training/workouts`
+
+Returns all strength workout templates (FOR-25) with per-exercise details
+resolved from the FOR-24 exercise catalog. Read-only, in-code data, no
+persistence.
+
+## `GET /api/v1/training/workouts/{type}`
+
+Returns one strength workout template by `WorkoutType` (`PUSH`, `PULL`,
+`LEGS`). `404` when the type is unknown.
+
+`200 OK` (list):
+
+```json
+[
+  {
+    "workoutType": "PUSH",
+    "items": [
+      {
+        "exerciseId": "push-up",
+        "exerciseName": "Flexiones",
+        "order": 1,
+        "sets": 3,
+        "repsMin": 8,
+        "repsMax": 12,
+        "restSeconds": 90,
+        "rir": 2
+      }
+    ]
+  }
+]
+```
+
+- `exerciseName`: resolved from the FOR-24 catalog; falls back to
+  `exerciseId` if unresolved (should not happen — catalog integrity is
+  enforced at build).
+- `repsMin`/`repsMax`: the rep range; `restSeconds`: rest between sets;
+  `rir`: target reps in reserve.
+
 ## `PATCH /api/v1/training/sessions/{id}/status`
 
 Marks a session's completion status (FOR-27). Works for running and strength
