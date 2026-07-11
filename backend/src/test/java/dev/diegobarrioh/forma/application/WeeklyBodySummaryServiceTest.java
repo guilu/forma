@@ -27,6 +27,8 @@ class WeeklyBodySummaryServiceTest {
         weightKg,
         bodyFat,
         22.7,
+        null,
+        null,
         null);
   }
 

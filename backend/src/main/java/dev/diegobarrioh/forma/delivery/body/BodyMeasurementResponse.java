@@ -23,6 +23,8 @@ public record BodyMeasurementResponse(
     Double bmi,
     Double fatMassKg,
     Double leanMassKg,
+    Double muscleMassKg,
+    Double waterPercentage,
     String notes) {
 
   /** Maps a domain measurement to its API read model. */
@@ -35,6 +37,8 @@ public record BodyMeasurementResponse(
         measurement.bmi(),
         measurement.fatMassKg().orElse(null),
         measurement.leanMassKg().orElse(null),
+        measurement.muscleMassKg(),
+        measurement.waterPercentage(),
         measurement.notes());
   }
 }

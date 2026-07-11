@@ -29,13 +29,15 @@ public class JdbcBodyMeasurementRepository implements BodyMeasurementRepository 
   private static final String INSERT_SQL =
       """
       INSERT INTO body_measurements
-        (id, measured_at, source, weight_kg, body_fat_percentage, bmi, notes)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+        (id, measured_at, source, weight_kg, body_fat_percentage, bmi, muscle_mass_kg,
+         water_percentage, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       """;
 
   private static final String LIST_SQL =
       """
-      SELECT measured_at, source, weight_kg, body_fat_percentage, bmi, notes
+      SELECT measured_at, source, weight_kg, body_fat_percentage, bmi, muscle_mass_kg,
+        water_percentage, notes
       FROM body_measurements
       ORDER BY measured_at DESC
       """;
@@ -48,6 +50,8 @@ public class JdbcBodyMeasurementRepository implements BodyMeasurementRepository 
               rs.getBigDecimal("weight_kg").doubleValue(),
               toNullableDouble(rs.getBigDecimal("body_fat_percentage")),
               toNullableDouble(rs.getBigDecimal("bmi")),
+              toNullableDouble(rs.getBigDecimal("muscle_mass_kg")),
+              toNullableDouble(rs.getBigDecimal("water_percentage")),
               rs.getString("notes"));
 
   private final JdbcTemplate jdbcTemplate;
@@ -66,6 +70,8 @@ public class JdbcBodyMeasurementRepository implements BodyMeasurementRepository 
         BigDecimal.valueOf(measurement.weightKg()),
         toNullableBigDecimal(measurement.bodyFatPercentage()),
         toNullableBigDecimal(measurement.bmi()),
+        toNullableBigDecimal(measurement.muscleMassKg()),
+        toNullableBigDecimal(measurement.waterPercentage()),
         measurement.notes());
   }
 

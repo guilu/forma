@@ -52,6 +52,8 @@ public class BodyMeasurementController {
             request.weightKg(),
             request.bodyFatPercentage(),
             request.bmi(),
+            request.muscleMassKg(),
+            request.waterPercentage(),
             request.notes()));
   }
 }
