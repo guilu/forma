@@ -49,4 +49,14 @@ describe('StatusPill', () => {
 
     expect(screen.getByText(label)).toHaveAttribute('data-tone', tone);
   });
+
+  it.each([
+    ['PLANNED', 'Planificado', 'neutral'],
+    ['COMPLETED', 'Completado', 'accent'],
+    ['SKIPPED', 'Saltado', 'warning'],
+  ])('renders the %s training status as "%s" with the %s tone', (value, label, tone) => {
+    render(<StatusPill kind="training" value={value} />);
+
+    expect(screen.getByText(label)).toHaveAttribute('data-tone', tone);
+  });
 });
