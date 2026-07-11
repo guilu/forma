@@ -64,6 +64,48 @@ domain contract and are enforced at the API boundary via Bean Validation:
 | `bmi` | required, strictly positive |
 | `notes` | optional, free text |
 
+## `GET /api/v1/body/weekly-summary`
+
+Returns the current weekly body-composition summary (FOR-21/FOR-97): latest
+weight, body fat and lean mass, plus the change since the previous measurement.
+Computed on demand from the measurements above; no persistence.
+
+`200 OK` (two or more measurements):
+
+```json
+{
+  "latestWeightKg": 73.6,
+  "latestBodyFatPercentage": 14.7,
+  "latestLeanMassKg": 62.8,
+  "weeklyWeightChangeKg": -0.3,
+  "weeklyBodyFatChange": -0.6,
+  "comparisonDays": 7,
+  "message": "Peso 73.6 kg (-0.3 kg en 7 días). Grasa corporal 14.7% (-0.6%). Masa magra 62.8 kg."
+}
+```
+
+Fewer than two measurements (deltas unavailable) — `weeklyWeightChangeKg`,
+`weeklyBodyFatChange` and `comparisonDays` are **omitted** from the JSON rather
+than sent as `0`:
+
+```json
+{
+  "latestWeightKg": 73.6,
+  "latestBodyFatPercentage": 14.7,
+  "latestLeanMassKg": 62.8,
+  "message": "Última medición — Peso 73.6 kg, grasa 14.7%, masa magra 62.8 kg. Registra otra medición para ver el cambio."
+}
+```
+
+No measurements → all numeric fields omitted, with an informative message.
+
+- Delta fields and `comparisonDays` are never present as `0` when there is no
+  prior measurement to compare — following this API's `NON_NULL` convention
+  (see `fatMassKg`/`leanMassKg` above), they are omitted entirely rather than
+  sent as an explicit `null`.
+- `comparisonDays` is the actual number of days between the two most recent
+  measurements (no fake "one week").
+
 ## Errors
 
 Standard [`ApiError`](../api-conventions.md#standard-error-response) shape. A
