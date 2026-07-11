@@ -1,0 +1,63 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  font: inherit;
+  font-weight: 600;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  /* Comfortable touch target on mobile (ui-guidelines mobile priority #2). */
+  min-height: 44px;
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.primary {
+  color: var(--color-accent-contrast);
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.secondary {
+  color: var(--color-text);
+  background-color: transparent;
+  border-color: var(--color-border);
+}
+
+.ghost {
+  color: var(--color-text);
+  background-color: transparent;
+  border-color: transparent;
+}
+
+.destructive {
+  color: var(--color-danger);
+  background-color: transparent;
+  border-color: var(--color-danger);
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 1.4s;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

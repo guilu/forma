@@ -6,11 +6,18 @@
   box-shadow: var(--shadow-card);
 }
 
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
 .title {
   font-size: var(--font-size-sm);
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--color-text-muted);
-  margin-bottom: var(--space-3);
 }

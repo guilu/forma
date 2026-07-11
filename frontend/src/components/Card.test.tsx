@@ -29,4 +29,15 @@ describe('Card', () => {
 
     expect(screen.queryByRole('heading')).not.toBeInTheDocument();
   });
+
+  it('renders an optional header action next to the title', () => {
+    render(
+      <Card title="Evolución de peso" action={<button type="button">Ver todo</button>}>
+        content
+      </Card>,
+    );
+
+    expect(screen.getByRole('heading', { name: 'Evolución de peso' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ver todo' })).toBeInTheDocument();
+  });
 });
