@@ -30,6 +30,13 @@ export function Sidebar() {
           </NavLink>
         ))}
       </nav>
+      <div className={styles.integration}>
+        <Icon name="heart" size={18} />
+        <span className={styles.integrationText}>
+          Withings
+          <span className={styles.integrationStatus}>Conectado</span>
+        </span>
+      </div>
     </aside>
   );
 }
