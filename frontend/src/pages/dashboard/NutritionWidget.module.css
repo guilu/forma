@@ -1,0 +1,48 @@
+.card {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.calories {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.caloriesValue {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+}
+
+.caloriesUnit {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.macros {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.macro {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.message {
+  margin: 0;
+  color: var(--color-text-muted);
+}

@@ -1,92 +1,58 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { MetricCard } from '../components/MetricCard';
-import { listBodyMeasurements, type BodyMeasurement } from '../api/bodyMeasurements';
+import { BodyWidget } from './dashboard/BodyWidget';
+import { TrainingWidget } from './dashboard/TrainingWidget';
+import { NutritionWidget } from './dashboard/NutritionWidget';
+import { ShoppingWidget } from './dashboard/ShoppingWidget';
+import { InsightWidget } from './dashboard/InsightWidget';
+import { SyncWidget } from './dashboard/SyncWidget';
 import styles from './DashboardPage.module.css';
 
 /**
- * Dashboard page (FOR-19). Shows body-composition metric cards for the latest
- * measurement (weight, body fat %, fat mass, lean mass, BMI) from the FOR-17 API,
- * following the card style in docs/1-dashboard.png. Derived values are read from
- * the API, never recomputed (ADR-006). Handles loading, empty and error states.
+ * Dashboard page (FOR-19, built out to the mockup by FOR-51). The daily entry point:
+ * answers "what should I pay attention to today?" by composing widgets from existing
+ * feature read models — body (FOR-17), training (FOR-26/27), nutrition (FOR-33),
+ * shopping (FOR-39) and insights (FOR-45) — plus a static integration status chip. Each
+ * widget owns its own loading/empty/error state so one failing widget never breaks the
+ * others (spec `specs/FOR-51/spec.md` edge case). No domain calculations happen here or
+ * in the widgets (ADR-006) — every widget renders API values as returned.
+ *
+ * <p>The mockup (`docs/1-dashboard.png`) also shows a prev/next date navigator and a
+ * mobile Hoy/Semana/Mes tab switch. Neither is backed — every read model here only
+ * exposes "the current week"/"today", with no date parameter — so the header shows
+ * today's date as static text and the layout is a single ("Hoy") responsive view, per
+ * `specs/FOR-51/ui.md`'s own recommendation ("Hoy for MVP unless weekly/month data is
+ * available").
  */
-type State =
-  | { readonly status: 'loading' }
-  | { readonly status: 'error' }
-  | { readonly status: 'ready'; readonly latest: BodyMeasurement | undefined };
+const TODAY = new Intl.DateTimeFormat('es-ES', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+}).format(new Date());
 
-/** One decimal, avoiding fake precision; a missing value shows a clear marker. */
-function format(value: number | undefined): string {
-  return value === undefined ? '—' : value.toFixed(1);
+function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 export function DashboardPage() {
-  const [state, setState] = useState<State>({ status: 'loading' });
-
-  useEffect(() => {
-    let active = true;
-    listBodyMeasurements()
-      .then((measurements) => {
-        if (active) {
-          // The list is newest-first (FOR-16/FOR-17), so the first item is latest.
-          setState({ status: 'ready', latest: measurements[0] });
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setState({ status: 'error' });
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-
   return (
     <div className={styles.wrapper}>
       <header className={styles.header}>
-        <h1 className={styles.title}>Dashboard</h1>
-        <p className={styles.subtitle}>Este es tu resumen de hoy.</p>
+        <div className={styles.titles}>
+          <h1 className={styles.title}>Hola Diego 👋</h1>
+          <p className={styles.subtitle}>Este es tu resumen de hoy</p>
+        </div>
+        <p className={styles.date}>{capitalize(TODAY)}</p>
       </header>
-      {renderContent(state)}
+
+      <BodyWidget />
+
+      <div className={styles.grid}>
+        <TrainingWidget />
+        <NutritionWidget />
+        <ShoppingWidget />
+        <InsightWidget />
+        <SyncWidget />
+      </div>
     </div>
-  );
-}
-
-function renderContent(state: State) {
-  if (state.status === 'loading') {
-    return (
-      <p className={styles.message} role="status">
-        Cargando tus mediciones…
-      </p>
-    );
-  }
-
-  if (state.status === 'error') {
-    return (
-      <p className={styles.message} role="alert">
-        No se pudieron cargar tus mediciones. Inténtalo de nuevo más tarde.
-      </p>
-    );
-  }
-
-  if (!state.latest) {
-    return (
-      <p className={styles.message} role="status">
-        Aún no hay mediciones. <Link to="/mediciones">Registra tu primera medición</Link> para ver
-        tu resumen.
-      </p>
-    );
-  }
-
-  const latest = state.latest;
-  return (
-    <section className={styles.grid} aria-label="Composición corporal (última medición)">
-      <MetricCard label="Peso" value={format(latest.weightKg)} unit="kg" />
-      <MetricCard label="Grasa corporal" value={format(latest.bodyFatPercentage)} unit="%" />
-      <MetricCard label="Masa grasa" value={format(latest.fatMassKg)} unit="kg" />
-      <MetricCard label="Masa magra" value={format(latest.leanMassKg)} unit="kg" />
-      <MetricCard label="IMC" value={format(latest.bmi)} />
-    </section>
   );
 }

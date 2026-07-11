@@ -4,10 +4,29 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { App } from '../App';
 
-// The Dashboard (index route) fetches measurements on mount; stub the API so this
-// navigation test stays hermetic.
+// The Dashboard (index route, FOR-51) fetches from several feature APIs on mount;
+// stub them all so this navigation test stays hermetic.
 vi.mock('../api/bodyMeasurements', () => ({
   listBodyMeasurements: vi.fn().mockResolvedValue([]),
+}));
+vi.mock('../api/training', () => ({
+  getTrainingWeek: vi.fn().mockResolvedValue({ days: [] }),
+}));
+vi.mock('../api/nutrition', () => ({
+  getNutritionDay: vi.fn().mockResolvedValue({ type: 'RUNNING', targets: {}, meals: [] }),
+}));
+vi.mock('../api/shopping', () => ({
+  getShoppingList: vi
+    .fn()
+    .mockResolvedValue({ items: [], budget: { weeklyEur: 0, monthlyEur: 0 } }),
+}));
+vi.mock('../api/insights', () => ({
+  getWeeklyInsights: vi.fn().mockResolvedValue({
+    checkIn: { weekStartDate: '2026-07-06' },
+    main: { category: 'BODY', severity: 'INFO', message: 'm', reason: 'r', createdAt: 'now' },
+    secondary: [],
+    generatedAt: 'now',
+  }),
 }));
 
 /**
@@ -26,7 +45,7 @@ describe('sidebar navigation', () => {
     );
 
     // Starts on the Dashboard.
-    expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Hola Diego 👋' })).toBeInTheDocument();
 
     // "Objetivos" is a secondary section, so it appears once (sidebar only).
     const link = screen.getByRole('link', { name: 'Objetivos' });

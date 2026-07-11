@@ -1,16 +1,25 @@
 .wrapper {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
+  gap: var(--space-6);
 }
 
 .header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.titles {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
 }
 
 .title {
+  margin: 0;
   font-size: var(--font-size-xl);
 }
 
@@ -19,20 +28,17 @@
   color: var(--color-text-muted);
 }
 
-.grid {
-  display: grid;
-  /* Mobile-first: cards stack, then flow into a responsive multi-column row on
-   * wider screens (up to five across on desktop, per docs/1-dashboard.png). */
-  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
-  gap: var(--space-4);
-}
-
-.message {
+.date {
   margin: 0;
   color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
 }
 
-.message a {
-  color: var(--color-accent);
-  text-decoration: underline;
+.grid {
+  display: grid;
+  /* Mobile-first: widgets stack in a single ("Hoy") column, then flow into a
+   * responsive multi-column layout on wider screens (docs/1-dashboard.png). */
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: var(--space-5);
+  align-items: start;
 }
