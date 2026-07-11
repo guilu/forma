@@ -19,6 +19,48 @@
   color: var(--color-text-muted);
 }
 
+.selector {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.selectorButton {
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-card);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.selectorActive {
+  color: var(--color-accent-contrast);
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--space-4);
+}
+
+.calories {
+  margin: 0;
+}
+
+.caloriesValue {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+}
+
+.caloriesUnit {
+  color: var(--color-text-muted);
+}
+
 .explanation {
   margin: 0;
   color: var(--color-text);
@@ -26,23 +68,52 @@
 
 .flow {
   list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.flowStep {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+}
+
+.flowArrow {
+  color: var(--color-text-muted);
+}
+
+.meals {
+  list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  /* Mobile-first: meals stack in order, readable, no horizontal scroll. */
-  max-width: 40rem;
 }
 
-.optional {
-  display: inline-block;
+.mealHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
   margin-bottom: var(--space-3);
-  padding: 2px var(--space-2);
+}
+
+.mealTime {
+  margin: 0;
+  color: var(--color-text-muted);
   font-size: var(--font-size-sm);
-  border-radius: var(--radius-sm);
-  color: var(--color-accent-contrast);
-  background-color: var(--color-warning);
+}
+
+.mealName {
+  margin: 0;
+  font-size: var(--font-size-base);
 }
 
 .items {
@@ -66,6 +137,36 @@
 
 .quantity {
   color: var(--color-text-muted);
+}
+
+.shoppingRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.shoppingCount {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.shoppingLink {
+  color: var(--color-accent-contrast);
+  background-color: var(--color-accent);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  text-decoration: none;
+}
+
+.errorState {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
 }
 
 .message {
