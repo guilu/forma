@@ -2,6 +2,7 @@ package dev.diegobarrioh.forma.delivery.training;
 
 import dev.diegobarrioh.forma.application.TrainingSessionStatusService;
 import dev.diegobarrioh.forma.application.WeeklyTrainingScheduleService;
+import dev.diegobarrioh.forma.application.WeeklyTrainingSummaryService;
 import dev.diegobarrioh.forma.delivery.ApiPaths;
 import dev.diegobarrioh.forma.domain.SessionStatus;
 import jakarta.validation.Valid;
@@ -13,8 +14,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Training REST endpoints (FOR-26/FOR-27) under {@link ApiPaths#V1}{@code /training}: read the
- * weekly calendar and mark a session's completion status.
+ * Training REST endpoints (FOR-26/FOR-27/FOR-98) under {@link ApiPaths#V1}{@code /training}: read
+ * the weekly calendar, read the weekly adherence summary, and mark a session's completion status.
  *
  * <p>Thin controller (ADR-001, ADR-005): it maps to/from delivery DTOs and delegates to the
  * application services. Validation and not-found failures are turned into the standard {@code
@@ -26,17 +27,27 @@ public class TrainingController {
 
   private final WeeklyTrainingScheduleService scheduleService;
   private final TrainingSessionStatusService statusService;
+  private final WeeklyTrainingSummaryService summaryService;
 
   public TrainingController(
-      WeeklyTrainingScheduleService scheduleService, TrainingSessionStatusService statusService) {
+      WeeklyTrainingScheduleService scheduleService,
+      TrainingSessionStatusService statusService,
+      WeeklyTrainingSummaryService summaryService) {
     this.scheduleService = scheduleService;
     this.statusService = statusService;
+    this.summaryService = summaryService;
   }
 
   /** Returns the current week's training calendar (Monday through Sunday). */
   @GetMapping("/week")
   public TrainingWeekResponse week() {
     return TrainingWeekResponse.from(scheduleService.currentWeek());
+  }
+
+  /** Returns the current week's training adherence summary (FOR-28). */
+  @GetMapping("/weekly-summary")
+  public WeeklyTrainingSummaryResponse weeklySummary() {
+    return WeeklyTrainingSummaryResponse.from(summaryService.currentSummary());
   }
 
   /** Marks a session's completion status (running or strength). */

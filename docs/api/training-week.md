@@ -44,6 +44,45 @@ sessions are `PLANNED` (completion is FOR-27).
 - `status`: `PLANNED`, `COMPLETED` or `SKIPPED` (FOR-27).
 - `notes`: optional completion note; omitted when absent.
 
+## `GET /api/v1/training/weekly-summary`
+
+Returns the current week's training adherence summary (FOR-28/FOR-98): planned
+vs. completed running and strength sessions, and planned vs. completed running
+distance. Computed on demand from the FOR-26 schedule and FOR-27 completion
+status; no persistence.
+
+`200 OK`
+
+```json
+{
+  "plannedRunningSessions": 3,
+  "completedRunningSessions": 2,
+  "plannedStrengthSessions": 3,
+  "completedStrengthSessions": 1,
+  "totalPlannedRunningKm": 8.6,
+  "completedRunningKm": 5.0,
+  "message": "Carrera: 2/3 sesiones (5.0/8.6 km). Fuerza: 1/3 sesiones."
+}
+```
+
+Empty week (nothing planned):
+
+```json
+{
+  "plannedRunningSessions": 0,
+  "completedRunningSessions": 0,
+  "plannedStrengthSessions": 0,
+  "completedStrengthSessions": 0,
+  "totalPlannedRunningKm": 0.0,
+  "completedRunningKm": 0.0,
+  "message": "No hay entrenamientos planificados esta semana."
+}
+```
+
+- Counts are integers; km are one-decimal doubles (as FOR-28 rounds them).
+- Completed running km includes only completed sessions.
+- No request body, no parameters (current week only).
+
 ## `PATCH /api/v1/training/sessions/{id}/status`
 
 Marks a session's completion status (FOR-27). Works for running and strength

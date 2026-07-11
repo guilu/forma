@@ -15,6 +15,8 @@ import dev.diegobarrioh.forma.application.WeeklyTrainingSchedule;
 import dev.diegobarrioh.forma.application.WeeklyTrainingSchedule.TrainingDay;
 import dev.diegobarrioh.forma.application.WeeklyTrainingSchedule.TrainingEntry;
 import dev.diegobarrioh.forma.application.WeeklyTrainingScheduleService;
+import dev.diegobarrioh.forma.application.WeeklyTrainingSummary;
+import dev.diegobarrioh.forma.application.WeeklyTrainingSummaryService;
 import dev.diegobarrioh.forma.domain.SessionStatus;
 import java.time.DayOfWeek;
 import java.util.List;
@@ -35,6 +37,7 @@ class TrainingControllerTest {
   @Autowired private MockMvc mockMvc;
   @MockBean private WeeklyTrainingScheduleService scheduleService;
   @MockBean private TrainingSessionStatusService statusService;
+  @MockBean private WeeklyTrainingSummaryService summaryService;
 
   @Test
   void returnsTheWeekWithSessionIdsAndRestDays() throws Exception {
@@ -102,5 +105,45 @@ class TrainingControllerTest {
                 .content("{\"status\":\"COMPLETED\"}"))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+  }
+
+  @Test
+  void returnsTheWeeklySummaryForAPopulatedWeek() throws Exception {
+    WeeklyTrainingSummary summary =
+        new WeeklyTrainingSummary(
+            3, 2, 3, 1, 8.6, 5.0, "Carrera: 2/3 sesiones (5.0/8.6 km). Fuerza: 1/3 sesiones.");
+    when(summaryService.currentSummary()).thenReturn(summary);
+
+    mockMvc
+        .perform(get("/api/v1/training/weekly-summary"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.plannedRunningSessions").value(3))
+        .andExpect(jsonPath("$.completedRunningSessions").value(2))
+        .andExpect(jsonPath("$.plannedStrengthSessions").value(3))
+        .andExpect(jsonPath("$.completedStrengthSessions").value(1))
+        .andExpect(jsonPath("$.totalPlannedRunningKm").value(8.6))
+        .andExpect(jsonPath("$.completedRunningKm").value(5.0))
+        .andExpect(
+            jsonPath("$.message")
+                .value("Carrera: 2/3 sesiones (5.0/8.6 km). Fuerza: 1/3 sesiones."));
+  }
+
+  @Test
+  void returnsZeroedWeeklySummaryForAnEmptyWeek() throws Exception {
+    WeeklyTrainingSummary summary =
+        new WeeklyTrainingSummary(
+            0, 0, 0, 0, 0.0, 0.0, "No hay entrenamientos planificados esta semana.");
+    when(summaryService.currentSummary()).thenReturn(summary);
+
+    mockMvc
+        .perform(get("/api/v1/training/weekly-summary"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.plannedRunningSessions").value(0))
+        .andExpect(jsonPath("$.completedRunningSessions").value(0))
+        .andExpect(jsonPath("$.plannedStrengthSessions").value(0))
+        .andExpect(jsonPath("$.completedStrengthSessions").value(0))
+        .andExpect(jsonPath("$.totalPlannedRunningKm").value(0.0))
+        .andExpect(jsonPath("$.completedRunningKm").value(0.0))
+        .andExpect(jsonPath("$.message").value("No hay entrenamientos planificados esta semana."));
   }
 }
