@@ -11,3 +11,7 @@
   font-weight: 500;
   color: var(--color-text-muted);
 }
+
+.trend {
+  margin-top: var(--space-2);
+}

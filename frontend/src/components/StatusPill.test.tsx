@@ -39,4 +39,14 @@ describe('StatusPill', () => {
 
     expect(screen.getByText('Desconocido')).toHaveAttribute('data-tone', 'neutral');
   });
+
+  it.each([
+    ['MANUAL', 'Manual', 'neutral'],
+    ['WITHINGS', 'Withings', 'accent'],
+    ['UNKNOWN', 'Origen desconocido', 'neutral'],
+  ])('renders the %s source as "%s" with the %s tone', (value, label, tone) => {
+    render(<StatusPill kind="source" value={value} />);
+
+    expect(screen.getByText(label)).toHaveAttribute('data-tone', tone);
+  });
 });

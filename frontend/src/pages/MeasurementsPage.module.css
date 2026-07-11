@@ -27,12 +27,144 @@
   color: var(--color-text-muted);
 }
 
-.action {
-  padding: var(--space-3) var(--space-5);
+.message {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.emptyState,
+.errorState {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-6) 0;
+}
+
+/* Mobile-only section tabs (Resumen/Evolución/Historial, docs/2-mediciones.png).
+ * Desktop shows every section at once, so the tab bar is hidden there — same
+ * CSS-only visibility pattern as layout/MobileNav.module.css. */
+.tabs {
+  display: none;
+  gap: var(--space-2);
+}
+
+.tab {
+  padding: var(--space-2) var(--space-4);
   font-weight: 600;
-  color: var(--color-accent-contrast);
-  background-color: var(--color-accent);
-  border: none;
+  color: var(--color-text-muted);
+  background: none;
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   min-height: 44px;
+}
+
+.tab[aria-selected='true'] {
+  color: var(--color-accent-contrast);
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.cardsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--space-4);
+}
+
+.chartTableRow {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+}
+
+.panel {
+  min-width: 0;
+}
+
+.rangeSelector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.rangeButton {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  min-height: 32px;
+}
+
+.rangeButton[aria-pressed='true'] {
+  color: var(--color-accent-contrast);
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.latest {
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+}
+
+.latestDate {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.tableScroll {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  white-space: nowrap;
+}
+
+.table th,
+.table td {
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.table th {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+@media (min-width: 900px) {
+  .chartTableRow {
+    grid-template-columns: 2fr 1fr;
+    align-items: start;
+  }
+}
+
+/* Section tabs replace the always-visible layout on small screens: only the
+ * active panel renders (GOTCHA: jsdom's desktop viewport keeps this rule
+ * inactive, so tests query hidden panels with `{ hidden: true }`). */
+@media (max-width: 768px) {
+  .tabs {
+    display: flex;
+  }
+
+  .chartTableRow {
+    display: contents;
+  }
+
+  .panel {
+    display: none;
+  }
+
+  .panel[data-active='true'] {
+    display: block;
+  }
 }
