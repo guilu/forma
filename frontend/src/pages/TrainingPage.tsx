@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Badge } from '../components/Badge';
+import { Button } from '../components/Button';
 import { Card } from '../components/Card';
+import { MetricCard } from '../components/MetricCard';
+import { Modal } from '../components/Modal';
+import { StatusPill } from '../components/StatusPill';
 import { ApiRequestError } from '../api/client';
 import {
   getTrainingWeek,
@@ -12,15 +17,46 @@ import {
 import styles from './TrainingPage.module.css';
 
 /**
- * Training page (FOR-26/FOR-27). Shows the current week's calendar — running and strength sessions
- * on their days, with rest days — from the training API, and lets the user mark each session
- * completed or skipped (FOR-27). Renders the API read model directly (ADR-006); handles loading,
- * empty and error states.
+ * Training page (FOR-26/FOR-27, built out to the mockup by FOR-53):
+ * `docs/3-entrenamiento.png` — today's session, a Monday-Sunday calendar, a
+ * session detail view and a weekly summary, all read from the FOR-26 training
+ * week API (`GET /api/v1/training/week`); completion is the FOR-27
+ * `PATCH …/status` call. Renders the API read model directly (ADR-006); no
+ * training rule (scheduling, progression) lives here.
+ *
+ * <p>Mockup elements not backed by any endpoint today (documented gap, not
+ * invented — AGENTS.md "repository state has priority"):
+ * <ul>
+ *   <li>Per-exercise rows (series/reps/peso/descanso/estado) and per-exercise
+ *       completion — the FOR-25 {@code WorkoutTemplateService} exists in the
+ *       backend but is never wired to a controller, so the frontend only ever
+ *       sees each session's plain {@code detail} summary string (e.g. "3
+ *       ejercicios"). Shown as a labelled placeholder in the session detail
+ *       view instead of a fabricated table.
+ *   <li>"Calorías estimadas", "Volumen total" and "Duración total" tiles,
+ *       the muscle-worked heatmap, the weekly-history bars and "RACHA
+ *       ACTUAL" — no calories/volume/duration/streak field exists anywhere in
+ *       the training domain or API.
+ *   <li>Weekly summary counts (planned vs. completed sessions) are *not* the
+ *       FOR-28 {@code WeeklyTrainingSummary} — that calculation is
+ *       application-layer only and is not exposed over HTTP. This page tallies
+ *       the sessions already returned by {@code GET /training/week}, exactly
+ *       like the FOR-51 {@code TrainingWidget} does (see its doc comment).
+ *   <li>Date navigation (prev/next day arrows) — `docs/api/training-week.md`
+ *       states the composed week has "no dates, no week navigation"; only
+ *       today's real calendar date is shown, read-only.
+ *   <li>"Editar entrenamiento" — no endpoint mutates workout templates.
+ * </ul>
  */
 type State =
   | { readonly status: 'loading' }
   | { readonly status: 'error' }
   | { readonly status: 'ready'; readonly week: TrainingWeek };
+
+interface DetailTarget {
+  readonly dayOfWeek: string;
+  readonly session: TrainingSession;
+}
 
 const DAY_LABELS: Record<string, string> = {
   MONDAY: 'Lunes',
@@ -32,18 +68,48 @@ const DAY_LABELS: Record<string, string> = {
   SUNDAY: 'Domingo',
 };
 
-const STATUS_LABELS: Record<SessionStatus, string> = {
-  PLANNED: 'Planificado',
-  COMPLETED: 'Completado',
-  SKIPPED: 'Saltado',
+const KIND_LABELS: Record<TrainingSession['kind'], string> = {
+  RUNNING: 'Carrera',
+  STRENGTH: 'Fuerza',
 };
 
 const MARK_ERROR = 'No se pudo actualizar la sesión. Inténtalo de nuevo.';
+
+/** JS `Date#getDay()` (0 = Sunday) indexed to the backend's `dayOfWeek` names. */
+const JS_DAY_TO_ENUM = [
+  'SUNDAY',
+  'MONDAY',
+  'TUESDAY',
+  'WEDNESDAY',
+  'THURSDAY',
+  'FRIDAY',
+  'SATURDAY',
+] as const;
+
+function todayDayOfWeek(): string {
+  return JS_DAY_TO_ENUM[new Date().getDay()];
+}
+
+function formatToday(): string {
+  return new Date().toLocaleDateString('es-ES', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
+}
+
+function tally(sessions: readonly TrainingSession[]): { completed: number; planned: number } {
+  return {
+    completed: sessions.filter((s) => s.status === 'COMPLETED').length,
+    planned: sessions.length,
+  };
+}
 
 export function TrainingPage() {
   const [state, setState] = useState<State>({ status: 'loading' });
   const [actionError, setActionError] = useState<string | undefined>(undefined);
   const [pendingId, setPendingId] = useState<string | undefined>(undefined);
+  const [detailTarget, setDetailTarget] = useState<DetailTarget | undefined>(undefined);
 
   const load = useCallback(async () => {
     try {
@@ -64,6 +130,11 @@ export function TrainingPage() {
     try {
       await updateSessionStatus(sessionId, status);
       await load();
+      setDetailTarget((current) =>
+        current && current.session.id === sessionId
+          ? { ...current, session: { ...current.session, status } }
+          : current,
+      );
     } catch (error) {
       setActionError(error instanceof ApiRequestError ? error.message : MARK_ERROR);
     } finally {
@@ -74,15 +145,29 @@ export function TrainingPage() {
   return (
     <div className={styles.wrapper}>
       <header className={styles.header}>
-        <h1 className={styles.title}>Entrenamiento</h1>
-        <p className={styles.subtitle}>Tu semana de entrenamiento.</p>
+        <div className={styles.titles}>
+          <h1 className={styles.title}>Entrenamiento</h1>
+          <p className={styles.subtitle}>Sigue tu plan y mejora cada día.</p>
+        </div>
+        <p className={styles.dateLabel}>{formatToday()}</p>
       </header>
+
       {actionError && (
         <p className={styles.actionError} role="alert">
           {actionError}
         </p>
       )}
-      {renderContent(state, mark, pendingId)}
+
+      {renderContent(state, mark, pendingId, setDetailTarget, load)}
+
+      {detailTarget && (
+        <SessionDetailModal
+          target={detailTarget}
+          onClose={() => setDetailTarget(undefined)}
+          mark={mark}
+          pending={pendingId === detailTarget.session.id}
+        />
+      )}
     </div>
   );
 }
@@ -91,6 +176,8 @@ function renderContent(
   state: State,
   mark: (id: string, status: SessionStatus) => void,
   pendingId: string | undefined,
+  openDetail: (target: DetailTarget) => void,
+  reload: () => void,
 ) {
   if (state.status === 'loading') {
     return (
@@ -102,9 +189,14 @@ function renderContent(
 
   if (state.status === 'error') {
     return (
-      <p className={styles.message} role="alert">
-        No se pudo cargar tu semana de entrenamiento. Inténtalo de nuevo más tarde.
-      </p>
+      <div className={styles.errorState}>
+        <p className={styles.message} role="alert">
+          No se pudo cargar tu semana de entrenamiento. Inténtalo de nuevo más tarde.
+        </p>
+        <Button variant="secondary" type="button" onClick={reload}>
+          Reintentar
+        </Button>
+      </div>
     );
   }
 
@@ -117,85 +209,229 @@ function renderContent(
     );
   }
 
+  const today = state.week.days.find((day) => day.dayOfWeek === todayDayOfWeek());
+
   return (
-    <section className={styles.grid} aria-label="Calendario semanal de entrenamiento">
-      {state.week.days.map((day) => (
-        <DayCard key={day.dayOfWeek} day={day} mark={mark} pendingId={pendingId} />
-      ))}
-    </section>
+    <div className={styles.layout}>
+      <div className={styles.main}>
+        <TodaySessionCard day={today} mark={mark} pendingId={pendingId} openDetail={openDetail} />
+        <WeeklyCalendar days={state.week.days} openDetail={openDetail} />
+      </div>
+      <WeeklySummary days={state.week.days} />
+    </div>
   );
 }
 
-function DayCard({
+function TodaySessionCard({
   day,
   mark,
   pendingId,
+  openDetail,
 }: {
-  readonly day: TrainingDay;
+  readonly day: TrainingDay | undefined;
   readonly mark: (id: string, status: SessionStatus) => void;
   readonly pendingId: string | undefined;
+  readonly openDetail: (target: DetailTarget) => void;
 }) {
+  if (!day) {
+    return (
+      <Card title="Entrenamiento de hoy">
+        <p className={styles.message}>No hay datos de hoy en el plan de esta semana.</p>
+      </Card>
+    );
+  }
+
+  if (day.rest) {
+    return (
+      <Card title="Entrenamiento de hoy">
+        <p className={styles.rest}>Hoy es día de descanso.</p>
+      </Card>
+    );
+  }
+
+  const { completed, planned } = tally(day.sessions);
+  const percent = planned > 0 ? Math.round((completed / planned) * 100) : 0;
+
   return (
-    <Card title={DAY_LABELS[day.dayOfWeek] ?? day.dayOfWeek}>
-      {day.rest ? (
-        <p className={styles.rest}>Descanso</p>
-      ) : (
-        <ul className={styles.sessions}>
-          {day.sessions.map((session) => (
-            <SessionItem
-              key={session.id}
-              session={session}
-              mark={mark}
-              pending={pendingId === session.id}
-            />
-          ))}
-        </ul>
-      )}
+    <Card title="Entrenamiento de hoy">
+      <ul className={styles.todaySessions}>
+        {day.sessions.map((session) => (
+          <li key={session.id} className={styles.todaySession}>
+            <div className={styles.todaySessionHeader}>
+              <Badge tone={session.kind === 'RUNNING' ? 'accent' : 'neutral'}>
+                {KIND_LABELS[session.kind]}
+              </Badge>
+              <StatusPill kind="training" value={session.status} />
+            </div>
+            <p className={styles.todaySessionTitle}>{session.title}</p>
+            <p className={styles.sessionDetail}>{session.detail}</p>
+            <div className={styles.actions}>
+              {session.status !== 'COMPLETED' && (
+                <Button
+                  type="button"
+                  disabled={pendingId === session.id}
+                  loading={pendingId === session.id}
+                  onClick={() => mark(session.id, 'COMPLETED')}
+                >
+                  Iniciar entrenamiento
+                </Button>
+              )}
+              {session.status !== 'SKIPPED' && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={pendingId === session.id}
+                  onClick={() => mark(session.id, 'SKIPPED')}
+                >
+                  Saltar
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => openDetail({ dayOfWeek: day.dayOfWeek, session })}
+              >
+                Ver detalle
+              </Button>
+            </div>
+          </li>
+        ))}
+      </ul>
+      <div className={styles.progressWrap}>
+        <span className={styles.progressText}>
+          {completed} de {planned} sesiones completadas hoy
+        </span>
+        <div
+          className={styles.progressTrack}
+          role="progressbar"
+          aria-label="Progreso de hoy"
+          aria-valuenow={percent}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
+          <div className={styles.progressFill} style={{ width: `${percent}%` }} />
+        </div>
+      </div>
     </Card>
   );
 }
 
-function SessionItem({
-  session,
+function WeeklyCalendar({
+  days,
+  openDetail,
+}: {
+  readonly days: readonly TrainingDay[];
+  readonly openDetail: (target: DetailTarget) => void;
+}) {
+  return (
+    <Card title="Calendario semanal">
+      <ul className={styles.calendarGrid} aria-label="Calendario semanal de entrenamiento">
+        {days.map((day) => (
+          <li key={day.dayOfWeek} className={styles.calendarDay}>
+            <h3 className={styles.calendarDayTitle}>
+              {DAY_LABELS[day.dayOfWeek] ?? day.dayOfWeek}
+            </h3>
+            {day.rest ? (
+              <p className={styles.rest}>Descanso</p>
+            ) : (
+              <ul className={styles.calendarSessions}>
+                {day.sessions.map((session) => (
+                  <li key={session.id}>
+                    <button
+                      type="button"
+                      className={styles.calendarSessionButton}
+                      onClick={() => openDetail({ dayOfWeek: day.dayOfWeek, session })}
+                    >
+                      <Badge tone={session.kind === 'RUNNING' ? 'accent' : 'neutral'}>
+                        {KIND_LABELS[session.kind]}
+                      </Badge>
+                      <span className={styles.calendarSessionTitle}>{session.title}</span>
+                      <StatusPill kind="training" value={session.status} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
+function WeeklySummary({ days }: { readonly days: readonly TrainingDay[] }) {
+  const sessions = days.flatMap((day) => day.sessions);
+  const running = sessions.filter((s) => s.kind === 'RUNNING');
+  const strength = sessions.filter((s) => s.kind === 'STRENGTH');
+  const total = tally(sessions);
+  const runningTally = tally(running);
+  const strengthTally = tally(strength);
+
+  return (
+    <Card title="Resumen semanal" className={styles.summary}>
+      <div className={styles.summaryGrid}>
+        <MetricCard label="Sesiones totales" value={`${total.completed}/${total.planned}`} />
+        <MetricCard label="Carrera" value={`${runningTally.completed}/${runningTally.planned}`} />
+        <MetricCard label="Fuerza" value={`${strengthTally.completed}/${strengthTally.planned}`} />
+      </div>
+      <p className={styles.summaryNote}>
+        Duración y volumen totales no están disponibles todavía en la API.
+      </p>
+    </Card>
+  );
+}
+
+function SessionDetailModal({
+  target,
+  onClose,
   mark,
   pending,
 }: {
-  readonly session: TrainingSession;
+  readonly target: DetailTarget;
+  readonly onClose: () => void;
   readonly mark: (id: string, status: SessionStatus) => void;
   readonly pending: boolean;
 }) {
+  const { dayOfWeek, session } = target;
   return (
-    <li className={styles.session}>
-      <span className={styles.kind} data-kind={session.kind}>
-        {session.kind === 'RUNNING' ? 'Carrera' : 'Fuerza'}
-      </span>
-      <span className={styles.sessionTitle}>{session.title}</span>
-      <span className={styles.sessionDetail}>{session.detail}</span>
-      <span className={styles.status} data-status={session.status}>
-        {STATUS_LABELS[session.status]}
-      </span>
-      <div className={styles.actions}>
-        {session.status !== 'COMPLETED' && (
-          <button
-            type="button"
-            className={styles.mark}
-            disabled={pending}
-            onClick={() => mark(session.id, 'COMPLETED')}
-          >
-            Completar
-          </button>
+    <Modal
+      title={`${DAY_LABELS[dayOfWeek] ?? dayOfWeek} · ${KIND_LABELS[session.kind]}`}
+      onClose={onClose}
+    >
+      <div className={styles.detail}>
+        <p className={styles.detailTitle}>{session.title}</p>
+        <p className={styles.sessionDetail}>{session.detail}</p>
+        <StatusPill kind="training" value={session.status} />
+        {session.notes && <p className={styles.notes}>{session.notes}</p>}
+        {session.kind === 'STRENGTH' && (
+          <p className={styles.placeholder}>
+            El desglose por ejercicio (series, reps, peso, descanso) no está disponible todavía: la
+            API no expone las plantillas de fuerza por HTTP.
+          </p>
         )}
-        {session.status !== 'SKIPPED' && (
-          <button
-            type="button"
-            className={styles.markSecondary}
-            disabled={pending}
-            onClick={() => mark(session.id, 'SKIPPED')}
-          >
-            Saltar
-          </button>
-        )}
+        <div className={styles.actions}>
+          {session.status !== 'COMPLETED' && (
+            <Button
+              type="button"
+              disabled={pending}
+              loading={pending}
+              onClick={() => mark(session.id, 'COMPLETED')}
+            >
+              Completar
+            </Button>
+          )}
+          {session.status !== 'SKIPPED' && (
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={pending}
+              onClick={() => mark(session.id, 'SKIPPED')}
+            >
+              Saltar
+            </Button>
+          )}
+        </div>
       </div>
-    </li>
+    </Modal>
   );
 }

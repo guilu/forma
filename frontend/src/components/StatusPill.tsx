@@ -1,6 +1,6 @@
 import { Badge, type BadgeTone } from './Badge';
 
-export type StatusKind = 'severity' | 'connection' | 'plazo' | 'source';
+export type StatusKind = 'severity' | 'connection' | 'plazo' | 'source' | 'training';
 
 interface StatusMapping {
   readonly tone: BadgeTone;
@@ -48,11 +48,24 @@ const SOURCE_TONES: Record<string, StatusMapping> = {
   UNKNOWN: { tone: 'neutral', label: 'Origen desconocido' },
 };
 
+/**
+ * Training session completion status (`SessionStatus`, FOR-27): `PLANNED` is
+ * the neutral default, `COMPLETED` reads as a positive/accent state,
+ * `SKIPPED` gets the warning tone (not danger — skipping a session is not an
+ * error, mirrors ui-guidelines.md "no guilt language").
+ */
+const TRAINING_TONES: Record<string, StatusMapping> = {
+  PLANNED: { tone: 'neutral', label: 'Planificado' },
+  COMPLETED: { tone: 'accent', label: 'Completado' },
+  SKIPPED: { tone: 'warning', label: 'Saltado' },
+};
+
 const TABLES: Record<StatusKind, Record<string, StatusMapping>> = {
   severity: SEVERITY_TONES,
   connection: CONNECTION_TONES,
   plazo: PLAZO_TONES,
   source: SOURCE_TONES,
+  training: TRAINING_TONES,
 };
 
 interface StatusPillProps {
