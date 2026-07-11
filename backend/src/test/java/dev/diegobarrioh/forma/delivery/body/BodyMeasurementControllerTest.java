@@ -53,6 +53,12 @@ class BodyMeasurementControllerTest {
         null);
   }
 
+  private static BodyMeasurement measurementWithBmi(
+      Instant measuredAt, double weightKg, Double bmi) {
+    return new BodyMeasurement(
+        measuredAt, MeasurementSource.MANUAL, weightKg, 25.0, bmi, null, null, null);
+  }
+
   @Test
   void postWithValidBodyReturns201WithDerivedValues() throws Exception {
     when(service.createManual(any(), eq(80.0), eq(25.0), eq(24.0), any(), any(), any()))
@@ -226,5 +232,30 @@ class BodyMeasurementControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$[0].muscleMassKg").value(62.8))
         .andExpect(jsonPath("$[0].waterPercentage").value(58.0));
+  }
+
+  @Test
+  void getReturnsBmiCategoryForMeasurementWithBmi() throws Exception {
+    // 22.7 falls in the SALUDABLE band (18.5 <= bmi < 25.0), per FOR-101.
+    when(service.list())
+        .thenReturn(List.of(measurementWithBmi(Instant.parse("2026-07-05T08:00:00Z"), 73.6, 22.7)));
+
+    mockMvc
+        .perform(get(PATH))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].bmi").value(22.7))
+        .andExpect(jsonPath("$[0].bmiCategory").value("SALUDABLE"));
+  }
+
+  @Test
+  void getOmitsBmiCategoryWhenBmiIsNull() throws Exception {
+    when(service.list())
+        .thenReturn(List.of(measurementWithBmi(Instant.parse("2026-07-05T08:00:00Z"), 73.6, null)));
+
+    mockMvc
+        .perform(get(PATH))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].bmi").doesNotExist())
+        .andExpect(jsonPath("$[0].bmiCategory").doesNotExist());
   }
 }

@@ -1,6 +1,7 @@
 package dev.diegobarrioh.forma.delivery.body;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import dev.diegobarrioh.forma.domain.BmiCategory;
 import dev.diegobarrioh.forma.domain.BodyMeasurement;
 import java.time.Instant;
 
@@ -13,6 +14,12 @@ import java.time.Instant;
  * are never recomputed here. They are omitted from the JSON when absent (no {@code
  * bodyFatPercentage}); null fields are dropped like the {@link
  * dev.diegobarrioh.forma.delivery.error.ApiError} shape.
+ *
+ * <p>{@code bmiCategory} (FOR-101) is derived on read from {@code bmi} via the pure {@link
+ * BmiCategory#classify(Double)} domain classifier — never persisted, never recomputed from anything
+ * but the existing {@code bmi} — and serialized as its enum name (e.g. {@code "SALUDABLE"}),
+ * following the {@code category}/{@code severity} convention in {@code WeeklyInsightsResponse}.
+ * Omitted from the JSON when {@code bmi} is absent.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record BodyMeasurementResponse(
@@ -21,6 +28,7 @@ public record BodyMeasurementResponse(
     double weightKg,
     Double bodyFatPercentage,
     Double bmi,
+    String bmiCategory,
     Double fatMassKg,
     Double leanMassKg,
     Double muscleMassKg,
@@ -29,12 +37,14 @@ public record BodyMeasurementResponse(
 
   /** Maps a domain measurement to its API read model. */
   public static BodyMeasurementResponse from(BodyMeasurement measurement) {
+    BmiCategory category = BmiCategory.classify(measurement.bmi());
     return new BodyMeasurementResponse(
         measurement.measuredAt(),
         measurement.source().name(),
         measurement.weightKg(),
         measurement.bodyFatPercentage(),
         measurement.bmi(),
+        category == null ? null : category.name(),
         measurement.fatMassKg().orElse(null),
         measurement.leanMassKg().orElse(null),
         measurement.muscleMassKg(),
