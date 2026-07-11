@@ -19,6 +19,29 @@
   gap: var(--space-1);
 }
 
+/* Integration status pinned to the sidebar footer (present in every mockup). */
+.integration {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+}
+
+.integrationText {
+  display: flex;
+  flex-direction: column;
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+}
+
+.integrationStatus {
+  font-size: var(--font-size-sm);
+  color: var(--color-accent);
+}
+
 .link {
   display: flex;
   align-items: center;
