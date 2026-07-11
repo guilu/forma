@@ -1,6 +1,6 @@
 import { Badge, type BadgeTone } from './Badge';
 
-export type StatusKind = 'severity' | 'connection' | 'plazo';
+export type StatusKind = 'severity' | 'connection' | 'plazo' | 'source';
 
 interface StatusMapping {
   readonly tone: BadgeTone;
@@ -33,10 +33,26 @@ const PLAZO_TONES: Record<string, StatusMapping> = {
   'Largo plazo': { tone: 'neutral', label: 'Largo plazo' },
 };
 
+/**
+ * Measurement origin (FOR-52): distinguishes manually entered body
+ * measurements from ones imported from an external provider (`BodyMeasurement
+ * .source`, FOR-15). `UNKNOWN` is not a backend value — callers map a
+ * falsy/unrecognized `source` to it so a missing origin always renders a
+ * clearly-labelled neutral badge instead of a blank one (spec FOR-52 edge
+ * case: "Import source unknown/missing → default to a neutral source
+ * label").
+ */
+const SOURCE_TONES: Record<string, StatusMapping> = {
+  MANUAL: { tone: 'neutral', label: 'Manual' },
+  WITHINGS: { tone: 'accent', label: 'Withings' },
+  UNKNOWN: { tone: 'neutral', label: 'Origen desconocido' },
+};
+
 const TABLES: Record<StatusKind, Record<string, StatusMapping>> = {
   severity: SEVERITY_TONES,
   connection: CONNECTION_TONES,
   plazo: PLAZO_TONES,
+  source: SOURCE_TONES,
 };
 
 interface StatusPillProps {
