@@ -40,6 +40,8 @@ class JdbcBodyMeasurementRepositoryTest {
             73.456,
             18.34,
             22.71,
+            null,
+            null,
             "after run");
 
     repository.save(measurement);
@@ -60,6 +62,26 @@ class JdbcBodyMeasurementRepositoryTest {
   }
 
   @Test
+  void savesAndReadsBackMuscleMassAndWaterPercentage() {
+    BodyMeasurement measurement =
+        new BodyMeasurement(
+            Instant.parse("2026-07-11T08:00:00Z"),
+            MeasurementSource.MANUAL,
+            73.6,
+            14.7,
+            22.7,
+            62.8,
+            58.0,
+            "Báscula Withings");
+
+    repository.save(measurement);
+
+    BodyMeasurement read = repository.list().get(0);
+    assertThat(read.muscleMassKg()).isEqualTo(62.8);
+    assertThat(read.waterPercentage()).isEqualTo(58.0);
+  }
+
+  @Test
   void listReturnsMeasurementsMostRecentFirst() {
     BodyMeasurement older =
         new BodyMeasurement(
@@ -68,6 +90,8 @@ class JdbcBodyMeasurementRepositoryTest {
             80.0,
             25.0,
             null,
+            null,
+            null,
             null);
     BodyMeasurement newer =
         new BodyMeasurement(
@@ -75,6 +99,8 @@ class JdbcBodyMeasurementRepositoryTest {
             MeasurementSource.MANUAL,
             79.5,
             24.0,
+            null,
+            null,
             null,
             null);
 
@@ -97,6 +123,8 @@ class JdbcBodyMeasurementRepositoryTest {
             80.0,
             null,
             null,
+            null,
+            null,
             null);
 
     repository.save(minimal);
@@ -108,5 +136,8 @@ class JdbcBodyMeasurementRepositoryTest {
     // Without body fat, derived masses are absent (FOR-15 contract) rather than zero.
     assertThat(read.fatMassKg()).isEmpty();
     assertThat(read.leanMassKg()).isEmpty();
+    // New FOR-100 columns default to null for rows that never set them (backward compatible).
+    assertThat(read.muscleMassKg()).isNull();
+    assertThat(read.waterPercentage()).isNull();
   }
 }

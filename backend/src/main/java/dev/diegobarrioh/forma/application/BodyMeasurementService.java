@@ -28,12 +28,28 @@ public class BodyMeasurementService {
    * Records a manually entered measurement and returns it (with derived values).
    *
    * <p>{@code source} is fixed to {@link MeasurementSource#MANUAL}; callers cannot supply it.
+   *
+   * <p>{@code muscleMassKg} and {@code waterPercentage} are optional (FOR-100); {@code null} means
+   * "not provided", never a fabricated value.
    */
   public BodyMeasurement createManual(
-      Instant measuredAt, double weightKg, Double bodyFatPercentage, Double bmi, String notes) {
+      Instant measuredAt,
+      double weightKg,
+      Double bodyFatPercentage,
+      Double bmi,
+      Double muscleMassKg,
+      Double waterPercentage,
+      String notes) {
     BodyMeasurement measurement =
         new BodyMeasurement(
-            measuredAt, MeasurementSource.MANUAL, weightKg, bodyFatPercentage, bmi, notes);
+            measuredAt,
+            MeasurementSource.MANUAL,
+            weightKg,
+            bodyFatPercentage,
+            bmi,
+            muscleMassKg,
+            waterPercentage,
+            notes);
     repository.save(measurement);
     return measurement;
   }

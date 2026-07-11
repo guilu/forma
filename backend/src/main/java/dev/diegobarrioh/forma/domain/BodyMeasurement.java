@@ -32,6 +32,12 @@ import java.util.Optional;
  * @param weightKg body weight in kilograms; must be strictly positive
  * @param bodyFatPercentage body fat as a percentage in {@code [0, 100]}, or {@code null} if unknown
  * @param bmi body mass index if provided, or {@code null}; not derived here (no height input)
+ * @param muscleMassKg measured muscle mass in kilograms if provided, or {@code null}; must be
+ *     strictly positive when present. This is a directly <em>measured</em> value (e.g. from a smart
+ *     scale), distinct from the <em>derived</em> {@link #leanMassKg()} computed from weight and
+ *     body fat (FOR-100) — the two are never conflated.
+ * @param waterPercentage body water as a percentage in {@code [0, 100]} if provided, or {@code
+ *     null} (FOR-100)
  * @param notes optional free-text note; never affects calculation
  */
 public record BodyMeasurement(
@@ -40,6 +46,8 @@ public record BodyMeasurement(
     double weightKg,
     Double bodyFatPercentage,
     Double bmi,
+    Double muscleMassKg,
+    Double waterPercentage,
     String notes) {
 
   public BodyMeasurement {
@@ -51,6 +59,14 @@ public record BodyMeasurement(
     if (bodyFatPercentage != null && (bodyFatPercentage < 0 || bodyFatPercentage > 100)) {
       throw new IllegalArgumentException(
           "bodyFatPercentage must be within [0, 100], was: " + bodyFatPercentage);
+    }
+    if (muscleMassKg != null && muscleMassKg <= 0) {
+      throw new IllegalArgumentException(
+          "muscleMassKg must be strictly positive, was: " + muscleMassKg);
+    }
+    if (waterPercentage != null && (waterPercentage < 0 || waterPercentage > 100)) {
+      throw new IllegalArgumentException(
+          "waterPercentage must be within [0, 100], was: " + waterPercentage);
     }
   }
 

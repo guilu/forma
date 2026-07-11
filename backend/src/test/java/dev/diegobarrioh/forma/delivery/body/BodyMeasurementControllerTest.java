@@ -36,12 +36,26 @@ class BodyMeasurementControllerTest {
   @MockBean private BodyMeasurementService service;
 
   private static BodyMeasurement measurement(Instant measuredAt, double weightKg) {
-    return new BodyMeasurement(measuredAt, MeasurementSource.MANUAL, weightKg, 25.0, 24.0, null);
+    return new BodyMeasurement(
+        measuredAt, MeasurementSource.MANUAL, weightKg, 25.0, 24.0, null, null, null);
+  }
+
+  private static BodyMeasurement measurementWithMuscleAndWater(
+      Instant measuredAt, double weightKg, double muscleMassKg, double waterPercentage) {
+    return new BodyMeasurement(
+        measuredAt,
+        MeasurementSource.MANUAL,
+        weightKg,
+        25.0,
+        24.0,
+        muscleMassKg,
+        waterPercentage,
+        null);
   }
 
   @Test
   void postWithValidBodyReturns201WithDerivedValues() throws Exception {
-    when(service.createManual(any(), eq(80.0), eq(25.0), eq(24.0), any()))
+    when(service.createManual(any(), eq(80.0), eq(25.0), eq(24.0), any(), any(), any()))
         .thenReturn(measurement(Instant.parse("2026-07-05T08:00:00Z"), 80.0));
 
     mockMvc
@@ -58,12 +72,68 @@ class BodyMeasurementControllerTest {
         .andExpect(jsonPath("$.weightKg").value(80.0))
         // Derived values come from the domain type (80 * 25 / 100 = 20; 80 - 20 = 60).
         .andExpect(jsonPath("$.fatMassKg").value(20.0))
-        .andExpect(jsonPath("$.leanMassKg").value(60.0));
+        .andExpect(jsonPath("$.leanMassKg").value(60.0))
+        // New optional fields are absent from both request and response (NON_NULL).
+        .andExpect(jsonPath("$.muscleMassKg").doesNotExist())
+        .andExpect(jsonPath("$.waterPercentage").doesNotExist());
+  }
+
+  @Test
+  void postWithMuscleMassAndWaterPercentagePersistsAndReturnsThem() throws Exception {
+    when(service.createManual(any(), eq(80.0), eq(25.0), eq(24.0), eq(62.8), eq(58.0), any()))
+        .thenReturn(
+            measurementWithMuscleAndWater(Instant.parse("2026-07-05T08:00:00Z"), 80.0, 62.8, 58.0));
+
+    mockMvc
+        .perform(
+            post(PATH)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"measuredAt":"2026-07-05T08:00:00Z","weightKg":80.0,
+                     "bodyFatPercentage":25.0,"bmi":24.0,"muscleMassKg":62.8,
+                     "waterPercentage":58.0}
+                    """))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.muscleMassKg").value(62.8))
+        .andExpect(jsonPath("$.waterPercentage").value(58.0));
+  }
+
+  @Test
+  void postWaterPercentageOutOfRangeReturnsValidationError() throws Exception {
+    mockMvc
+        .perform(
+            post(PATH)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"measuredAt":"2026-07-05T08:00:00Z","weightKg":80.0,
+                     "bodyFatPercentage":25.0,"bmi":24.0,"waterPercentage":150.0}
+                    """))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.details[0].field").value("waterPercentage"));
+  }
+
+  @Test
+  void postNonPositiveMuscleMassReturnsValidationError() throws Exception {
+    mockMvc
+        .perform(
+            post(PATH)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"measuredAt":"2026-07-05T08:00:00Z","weightKg":80.0,
+                     "bodyFatPercentage":25.0,"bmi":24.0,"muscleMassKg":0.0}
+                    """))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.details[0].field").value("muscleMassKg"));
   }
 
   @Test
   void postIgnoresClientSuppliedSourceAndAlwaysRecordsManual() throws Exception {
-    when(service.createManual(any(), anyDouble(), any(), any(), any()))
+    when(service.createManual(any(), anyDouble(), any(), any(), any(), any(), any()))
         .thenReturn(measurement(Instant.parse("2026-07-05T08:00:00Z"), 80.0));
 
     // Extra/unknown "source" field is ignored (Spring Boot disables fail-on-unknown-properties);
@@ -141,5 +211,20 @@ class BodyMeasurementControllerTest {
         .andExpect(jsonPath("$[0].measuredAt").value("2026-07-05T08:00:00Z"))
         .andExpect(jsonPath("$[1].measuredAt").value("2026-07-01T08:00:00Z"))
         .andExpect(jsonPath("$[0].source").value("MANUAL"));
+  }
+
+  @Test
+  void getReturnsMuscleMassAndWaterPercentageWhenPresent() throws Exception {
+    when(service.list())
+        .thenReturn(
+            List.of(
+                measurementWithMuscleAndWater(
+                    Instant.parse("2026-07-05T08:00:00Z"), 79.5, 62.8, 58.0)));
+
+    mockMvc
+        .perform(get(PATH))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].muscleMassKg").value(62.8))
+        .andExpect(jsonPath("$[0].waterPercentage").value(58.0));
   }
 }

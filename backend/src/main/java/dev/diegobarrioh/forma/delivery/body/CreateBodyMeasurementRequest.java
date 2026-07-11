@@ -22,6 +22,9 @@ import java.time.Instant;
  * @param weightKg body weight in kilograms; required, strictly positive
  * @param bodyFatPercentage body fat percentage; required, within {@code [0, 100]}
  * @param bmi body mass index; required, strictly positive
+ * @param muscleMassKg measured muscle mass in kilograms; optional, strictly positive when present
+ *     (FOR-100)
+ * @param waterPercentage body water percentage; optional, within {@code [0, 100]} (FOR-100)
  * @param notes optional free-text note
  */
 public record CreateBodyMeasurementRequest(
@@ -29,4 +32,6 @@ public record CreateBodyMeasurementRequest(
     @NotNull @Positive Double weightKg,
     @NotNull @DecimalMin("0") @DecimalMax("100") Double bodyFatPercentage,
     @NotNull @Positive Double bmi,
+    @Positive Double muscleMassKg,
+    @DecimalMin("0") @DecimalMax("100") Double waterPercentage,
     String notes) {}

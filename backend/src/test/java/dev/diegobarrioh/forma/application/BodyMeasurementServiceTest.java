@@ -22,12 +22,23 @@ class BodyMeasurementServiceTest {
   void createManualBuildsManualMeasurementAndPersistsIt() {
     BodyMeasurement created =
         service.createManual(
-            Instant.parse("2026-07-05T08:00:00Z"), 78.4, 18.2, 23.9, "Morning, fasted");
+            Instant.parse("2026-07-05T08:00:00Z"), 78.4, 18.2, 23.9, null, null, "Morning, fasted");
 
     // The use case fixes the source to MANUAL regardless of caller input.
     assertThat(created.source()).isEqualTo(MeasurementSource.MANUAL);
     assertThat(created.fatMassKg()).isPresent();
     // It persists exactly what it returns.
+    assertThat(repository.saved).containsExactly(created);
+  }
+
+  @Test
+  void createManualPersistsMuscleMassAndWaterPercentageWhenProvided() {
+    BodyMeasurement created =
+        service.createManual(
+            Instant.parse("2026-07-11T08:00:00Z"), 73.6, 14.7, 22.7, 62.8, 58.0, null);
+
+    assertThat(created.muscleMassKg()).isEqualTo(62.8);
+    assertThat(created.waterPercentage()).isEqualTo(58.0);
     assertThat(repository.saved).containsExactly(created);
   }
 
@@ -40,6 +51,8 @@ class BodyMeasurementServiceTest {
             80.0,
             25.0,
             24.0,
+            null,
+            null,
             null);
     repository.saved.add(stored);
 
