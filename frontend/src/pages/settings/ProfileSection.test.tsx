@@ -1,11 +1,26 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { ThemeProvider } from '../../theme/ThemeContext';
 import { ProfileSection } from './ProfileSection';
 import { MOCK_PROFILE } from './profileData';
 
+function renderProfileSection() {
+  return render(
+    <ThemeProvider>
+      <ProfileSection />
+    </ThemeProvider>,
+  );
+}
+
 describe('ProfileSection', () => {
+  afterEach(() => {
+    window.localStorage.clear();
+    document.documentElement.removeAttribute('data-theme');
+  });
+
   it('shows the personal profile summary fields', () => {
-    render(<ProfileSection />);
+    renderProfileSection();
 
     expect(screen.getByText(MOCK_PROFILE.name)).toBeInTheDocument();
     expect(screen.getByText(MOCK_PROFILE.email)).toBeInTheDocument();
@@ -17,17 +32,29 @@ describe('ProfileSection', () => {
   });
 
   it('renders "Editar perfil" as a visible but disabled entry point', () => {
-    render(<ProfileSection />);
+    renderProfileSection();
 
     const editButton = screen.getByRole('button', { name: 'Editar perfil' });
     expect(editButton).toBeDisabled();
     expect(screen.getAllByText('Próximamente').length).toBeGreaterThan(0);
   });
 
-  it('marks the theme preference (FOR-62) as an inert entry point', () => {
-    render(<ProfileSection />);
+  it('wires the "Tema" row to a working theme toggle (FOR-62)', async () => {
+    const user = userEvent.setup();
+    renderProfileSection();
 
-    expect(screen.getByText('Tema')).toBeInTheDocument();
-    expect(screen.getByText('Oscuro (predeterminado)')).toBeInTheDocument();
+    const label = screen.getByText('Tema');
+    const description = label.nextElementSibling;
+    // No stored preference/no system signal -> "system" mode resolves to dark.
+    expect(description).toHaveTextContent('Sistema (Oscuro)');
+    expect(screen.getByRole('button', { name: 'Sistema' })).toHaveAttribute('aria-pressed', 'true');
+
+    await user.click(screen.getByRole('button', { name: 'Claro' }));
+
+    expect(description).toHaveTextContent('Claro');
+    expect(screen.getByRole('button', { name: 'Claro' })).toHaveAttribute('aria-pressed', 'true');
+    expect(document.documentElement.getAttribute('data-theme')).toBe('light');
+    // The row is a live control now, not FOR-58's inert placeholder.
+    expect(screen.queryByText('Oscuro (predeterminado)')).not.toBeInTheDocument();
   });
 });
