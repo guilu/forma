@@ -52,6 +52,7 @@ public class ShoppingProductService {
         product.pricePerUnitEur(),
         product.linkedFoodItemId(),
         Instant.now(),
-        product.notes());
+        product.notes(),
+        product.category());
   }
 }

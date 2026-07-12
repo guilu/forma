@@ -1,6 +1,7 @@
 package dev.diegobarrioh.forma.application;
 
 import dev.diegobarrioh.forma.domain.ShoppingBudget;
+import dev.diegobarrioh.forma.domain.ShoppingCategory;
 import dev.diegobarrioh.forma.domain.ShoppingListStatus;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -22,11 +23,20 @@ public record ShoppingListView(
    * One checklist entry.
    *
    * @param id the item id (used to toggle checked)
+   * @param productId the FOR-36 product id (FOR-106) — lets the UI resolve product edits by id
    * @param productName resolved product name
+   * @param category resolved product category (FOR-106); {@link ShoppingCategory#OTROS} when the
+   *     product id no longer resolves, mirroring the {@code productName} fallback
    * @param quantity units/packages
    * @param estimatedCostEur stored line cost
    * @param checked checked state
    */
   public record Entry(
-      String id, String productName, int quantity, BigDecimal estimatedCostEur, boolean checked) {}
+      String id,
+      String productId,
+      String productName,
+      ShoppingCategory category,
+      int quantity,
+      BigDecimal estimatedCostEur,
+      boolean checked) {}
 }

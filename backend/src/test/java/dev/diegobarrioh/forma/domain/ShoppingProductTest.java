@@ -21,7 +21,8 @@ class ShoppingProductTest {
         new BigDecimal("1.95"),
         linkedFoodItemId,
         null,
-        "Marca blanca");
+        "Marca blanca",
+        ShoppingCategory.CEREALES_Y_LEGUMBRES);
   }
 
   @Test
@@ -36,7 +37,8 @@ class ShoppingProductTest {
   @Test
   void createsAnUnlinkedProduct() {
     ShoppingProduct unlinked =
-        new ShoppingProduct("Bolsas", null, null, new BigDecimal("0.90"), null, null, null, null);
+        new ShoppingProduct(
+            "Bolsas", null, null, new BigDecimal("0.90"), null, null, null, null, null);
 
     assertThat(unlinked.linkedFoodItemId()).isNull();
     assertThat(unlinked.pricePerUnitEur()).isNull();
@@ -47,14 +49,15 @@ class ShoppingProductTest {
     assertThatThrownBy(
             () ->
                 new ShoppingProduct(
-                    " ", null, null, new BigDecimal("1.00"), null, null, null, null))
+                    " ", null, null, new BigDecimal("1.00"), null, null, null, null, null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("name");
   }
 
   @Test
   void rejectsMissingEstimatedPrice() {
-    assertThatThrownBy(() -> new ShoppingProduct("Avena", null, null, null, null, null, null, null))
+    assertThatThrownBy(
+            () -> new ShoppingProduct("Avena", null, null, null, null, null, null, null, null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("estimatedPriceEur");
   }
@@ -67,5 +70,21 @@ class ShoppingProductTest {
     assertThatThrownBy(() -> product("oats", new BigDecimal("-1.00")))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("estimatedPriceEur");
+  }
+
+  @Test
+  void acceptsAnExplicitCategory() {
+    ShoppingProduct linked = product("oats", new BigDecimal("1.95"));
+
+    assertThat(linked.category()).isEqualTo(ShoppingCategory.CEREALES_Y_LEGUMBRES);
+  }
+
+  @Test
+  void defaultsCategoryToOtrosWhenAbsent() {
+    ShoppingProduct noCategory =
+        new ShoppingProduct(
+            "Bolsas", null, null, new BigDecimal("0.90"), null, null, null, null, null);
+
+    assertThat(noCategory.category()).isEqualTo(ShoppingCategory.OTROS);
   }
 }
