@@ -54,4 +54,25 @@ describe('sidebar navigation', () => {
     expect(screen.getByRole('heading', { name: 'Objetivos' })).toBeInTheDocument();
     expect(link).toHaveAttribute('aria-current', 'page');
   });
+
+  // FOR-61: core navigation must be reachable and operable without a mouse —
+  // focusing a nav link and pressing Enter (native `<a>` semantics) must
+  // navigate exactly like a click does.
+  it('navigates to a section using only the keyboard', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    const link = screen.getByRole('link', { name: 'Mediciones' });
+    link.focus();
+    expect(link).toHaveFocus();
+
+    await user.keyboard('{Enter}');
+
+    expect(screen.getByRole('heading', { name: 'Mediciones' })).toBeInTheDocument();
+    expect(link).toHaveAttribute('aria-current', 'page');
+  });
 });
