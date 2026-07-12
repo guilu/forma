@@ -56,7 +56,7 @@ class ShoppingBudgetServiceTest {
     }
 
     private static ShoppingProduct product(BigDecimal price) {
-      return new ShoppingProduct("x", null, null, price, null, null, null, null);
+      return new ShoppingProduct("x", null, null, price, null, null, null, null, null);
     }
   }
 }

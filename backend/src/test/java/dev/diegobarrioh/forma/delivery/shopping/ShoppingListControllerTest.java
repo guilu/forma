@@ -12,6 +12,7 @@ import dev.diegobarrioh.forma.application.ShoppingListService;
 import dev.diegobarrioh.forma.application.ShoppingListView;
 import dev.diegobarrioh.forma.application.StoredShoppingListItem;
 import dev.diegobarrioh.forma.domain.ShoppingBudget;
+import dev.diegobarrioh.forma.domain.ShoppingCategory;
 import dev.diegobarrioh.forma.domain.ShoppingListItem;
 import dev.diegobarrioh.forma.domain.ShoppingListStatus;
 import java.math.BigDecimal;
@@ -38,7 +39,15 @@ class ShoppingListControllerTest {
     return new ShoppingListView(
         LocalDate.of(2026, 7, 6),
         ShoppingListStatus.ACTIVE,
-        List.of(new ShoppingListView.Entry("i1", "Avena", 2, new BigDecimal("3.90"), false)),
+        List.of(
+            new ShoppingListView.Entry(
+                "i1",
+                "p1",
+                "Avena",
+                ShoppingCategory.CEREALES_Y_LEGUMBRES,
+                2,
+                new BigDecimal("3.90"),
+                false)),
         new ShoppingBudget(new BigDecimal("24.60"), new BigDecimal("106.52")));
   }
 
@@ -51,7 +60,9 @@ class ShoppingListControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.status").value("ACTIVE"))
         .andExpect(jsonPath("$.items[0].id").value("i1"))
+        .andExpect(jsonPath("$.items[0].productId").value("p1"))
         .andExpect(jsonPath("$.items[0].productName").value("Avena"))
+        .andExpect(jsonPath("$.items[0].category").value("CEREALES_Y_LEGUMBRES"))
         .andExpect(jsonPath("$.budget.weeklyEur").value(24.60))
         .andExpect(jsonPath("$.budget.monthlyEur").value(106.52));
   }

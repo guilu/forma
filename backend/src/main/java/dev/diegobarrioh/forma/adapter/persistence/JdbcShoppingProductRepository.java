@@ -2,6 +2,7 @@ package dev.diegobarrioh.forma.adapter.persistence;
 
 import dev.diegobarrioh.forma.application.ShoppingProductRepository;
 import dev.diegobarrioh.forma.application.StoredShoppingProduct;
+import dev.diegobarrioh.forma.domain.ShoppingCategory;
 import dev.diegobarrioh.forma.domain.ShoppingProduct;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -26,6 +27,7 @@ public class JdbcShoppingProductRepository implements ShoppingProductRepository 
   private static final RowMapper<StoredShoppingProduct> ROW_MAPPER =
       (rs, rowNum) -> {
         OffsetDateTime lastChecked = rs.getObject("last_checked_at", OffsetDateTime.class);
+        String category = rs.getString("category");
         ShoppingProduct product =
             new ShoppingProduct(
                 rs.getString("name"),
@@ -35,7 +37,8 @@ public class JdbcShoppingProductRepository implements ShoppingProductRepository 
                 rs.getBigDecimal("price_per_unit_eur"),
                 rs.getString("linked_food_item_id"),
                 lastChecked == null ? null : lastChecked.toInstant(),
-                rs.getString("notes"));
+                rs.getString("notes"),
+                category == null ? null : ShoppingCategory.valueOf(category));
         return new StoredShoppingProduct(rs.getString("id"), product);
       };
 
@@ -49,7 +52,8 @@ public class JdbcShoppingProductRepository implements ShoppingProductRepository 
   public List<StoredShoppingProduct> findAll() {
     return jdbcTemplate.query(
         "SELECT id, name, url, package_size, estimated_price_eur, price_per_unit_eur,"
-            + " linked_food_item_id, last_checked_at, notes FROM shopping_products ORDER BY name",
+            + " linked_food_item_id, last_checked_at, notes, category FROM shopping_products"
+            + " ORDER BY name",
         ROW_MAPPER);
   }
 
@@ -58,8 +62,8 @@ public class JdbcShoppingProductRepository implements ShoppingProductRepository 
     String id = UUID.randomUUID().toString();
     jdbcTemplate.update(
         "INSERT INTO shopping_products (id, name, url, package_size, estimated_price_eur,"
-            + " price_per_unit_eur, linked_food_item_id, last_checked_at, notes)"
-            + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            + " price_per_unit_eur, linked_food_item_id, last_checked_at, notes, category)"
+            + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         UUID.fromString(id),
         product.name(),
         product.url(),
@@ -68,7 +72,8 @@ public class JdbcShoppingProductRepository implements ShoppingProductRepository 
         product.pricePerUnitEur(),
         product.linkedFoodItemId(),
         toOffsetDateTime(product.lastCheckedAt()),
-        product.notes());
+        product.notes(),
+        product.category().name());
     return new StoredShoppingProduct(id, product);
   }
 
@@ -78,7 +83,7 @@ public class JdbcShoppingProductRepository implements ShoppingProductRepository 
         jdbcTemplate.update(
             "UPDATE shopping_products SET name = ?, url = ?, package_size = ?,"
                 + " estimated_price_eur = ?, price_per_unit_eur = ?, linked_food_item_id = ?,"
-                + " last_checked_at = ?, notes = ? WHERE id = ?",
+                + " last_checked_at = ?, notes = ?, category = ? WHERE id = ?",
             product.name(),
             product.url(),
             product.packageSize(),
@@ -87,6 +92,7 @@ public class JdbcShoppingProductRepository implements ShoppingProductRepository 
             product.linkedFoodItemId(),
             toOffsetDateTime(product.lastCheckedAt()),
             product.notes(),
+            product.category().name(),
             UUID.fromString(id));
     return updated == 0 ? Optional.empty() : Optional.of(new StoredShoppingProduct(id, product));
   }

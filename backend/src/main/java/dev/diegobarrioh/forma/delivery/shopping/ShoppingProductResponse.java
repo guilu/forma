@@ -20,7 +20,8 @@ public record ShoppingProductResponse(
     BigDecimal pricePerUnitEur,
     String linkedFoodItemId,
     Instant lastCheckedAt,
-    String notes) {
+    String notes,
+    String category) {
 
   /** Maps a stored product to its API read model. */
   public static ShoppingProductResponse from(StoredShoppingProduct stored) {
@@ -34,6 +35,7 @@ public record ShoppingProductResponse(
         product.pricePerUnitEur(),
         product.linkedFoodItemId(),
         product.lastCheckedAt(),
-        product.notes());
+        product.notes(),
+        product.category().name());
   }
 }

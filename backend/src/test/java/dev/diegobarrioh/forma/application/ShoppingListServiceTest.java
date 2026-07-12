@@ -3,6 +3,7 @@ package dev.diegobarrioh.forma.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.diegobarrioh.forma.domain.ShoppingCategory;
 import dev.diegobarrioh.forma.domain.ShoppingListItem;
 import dev.diegobarrioh.forma.domain.ShoppingListStatus;
 import dev.diegobarrioh.forma.domain.ShoppingProduct;
@@ -33,11 +34,48 @@ class ShoppingListServiceTest {
         .satisfies(
             entry -> {
               assertThat(entry.id()).isEqualTo("i1");
+              assertThat(entry.productId()).isEqualTo("p1");
               assertThat(entry.productName()).isEqualTo("Avena");
+              assertThat(entry.category()).isEqualTo(ShoppingCategory.CEREALES_Y_LEGUMBRES);
               assertThat(entry.quantity()).isEqualTo(2);
             });
     // 1.95 * 2 = 3.90.
     assertThat(view.budget().weeklyEur()).isEqualByComparingTo("3.90");
+  }
+
+  @Test
+  void unresolvedProductIdFallsBackToIdAsNameAndOtrosCategory() {
+    ShoppingListService serviceWithNoProducts =
+        new ShoppingListService(
+            lists,
+            new ShoppingProductRepository() {
+              @Override
+              public List<StoredShoppingProduct> findAll() {
+                return List.of();
+              }
+
+              @Override
+              public StoredShoppingProduct create(ShoppingProduct product) {
+                throw new UnsupportedOperationException();
+              }
+
+              @Override
+              public Optional<StoredShoppingProduct> update(String id, ShoppingProduct product) {
+                throw new UnsupportedOperationException();
+              }
+            },
+            new ShoppingBudgetService(products));
+
+    ShoppingListView view = serviceWithNoProducts.currentView();
+
+    assertThat(view.items())
+        .singleElement()
+        .satisfies(
+            entry -> {
+              assertThat(entry.productId()).isEqualTo("p1");
+              assertThat(entry.productName()).isEqualTo("p1");
+              assertThat(entry.category()).isEqualTo(ShoppingCategory.OTROS);
+            });
   }
 
   @Test
@@ -81,7 +119,15 @@ class ShoppingListServiceTest {
           new StoredShoppingProduct(
               "p1",
               new ShoppingProduct(
-                  "Avena", null, null, new BigDecimal("1.95"), null, null, null, null)));
+                  "Avena",
+                  null,
+                  null,
+                  new BigDecimal("1.95"),
+                  null,
+                  null,
+                  null,
+                  null,
+                  ShoppingCategory.CEREALES_Y_LEGUMBRES)));
     }
 
     @Override

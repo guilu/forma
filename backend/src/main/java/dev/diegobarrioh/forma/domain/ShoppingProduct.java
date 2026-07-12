@@ -24,6 +24,8 @@ import java.time.Instant;
  * @param linkedFoodItemId optional soft link to a FOR-30 {@link FoodItem} id
  * @param lastCheckedAt when the price was last checked; optional
  * @param notes optional free-text note
+ * @param category grocery aisle classification (FOR-106); optional on construction — {@code null}
+ *     defaults to {@link ShoppingCategory#OTROS} so old rows/callers stay backward compatible
  */
 public record ShoppingProduct(
     String name,
@@ -33,7 +35,8 @@ public record ShoppingProduct(
     BigDecimal pricePerUnitEur,
     String linkedFoodItemId,
     Instant lastCheckedAt,
-    String notes) {
+    String notes,
+    ShoppingCategory category) {
 
   public ShoppingProduct {
     if (name == null || name.isBlank()) {
@@ -41,6 +44,9 @@ public record ShoppingProduct(
     }
     requirePositivePrice(estimatedPriceEur, "estimatedPriceEur", true);
     requirePositivePrice(pricePerUnitEur, "pricePerUnitEur", false);
+    if (category == null) {
+      category = ShoppingCategory.OTROS;
+    }
   }
 
   private static void requirePositivePrice(BigDecimal value, String field, boolean required) {
