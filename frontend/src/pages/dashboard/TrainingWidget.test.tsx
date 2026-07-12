@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { TrainingWidget } from './TrainingWidget';
 import { getTrainingWeek, type TrainingWeek } from '../../api/training';
@@ -75,9 +75,13 @@ describe('TrainingWidget', () => {
 
     renderWidget();
 
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      'No hay entrenamientos planificados esta semana',
-    );
+    // Loading and empty are both announced via role="status" (FOR-60 shared
+    // states), so wait for the terminal content instead of the first match.
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'No hay entrenamientos planificados esta semana',
+      );
+    });
   });
 
   it('shows an error state when the request fails', async () => {

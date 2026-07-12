@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Card } from '../../components/Card';
-import { Button } from '../../components/Button';
+import { ErrorState } from '../../components/ErrorState';
+import { LoadingState } from '../../components/LoadingState';
 import { StatusPill } from '../../components/StatusPill';
 import { getWeeklyInsights, type WeeklyCheckIn, type WeeklyInsights } from '../../api/insights';
 import styles from './InsightsSection.module.css';
@@ -82,23 +83,15 @@ export function InsightsSection() {
 
 function renderContent(state: State, onRetry: () => void) {
   if (state.status === 'loading') {
-    return (
-      <p className={styles.message} role="status">
-        Cargando tus recomendaciones…
-      </p>
-    );
+    return <LoadingState message="Cargando tus recomendaciones…" />;
   }
 
   if (state.status === 'error') {
     return (
-      <div className={styles.errorBox} role="alert">
-        <p className={styles.message}>
-          No se pudieron cargar tus recomendaciones. Inténtalo de nuevo.
-        </p>
-        <Button variant="secondary" onClick={onRetry}>
-          Reintentar
-        </Button>
-      </div>
+      <ErrorState
+        message="No se pudieron cargar tus recomendaciones. Inténtalo de nuevo."
+        onRetry={onRetry}
+      />
     );
   }
 

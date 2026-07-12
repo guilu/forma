@@ -1,7 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
+import { EmptyState } from '../components/EmptyState';
+import { ErrorState } from '../components/ErrorState';
 import { Icon } from '../components/Icon';
+import { LoadingState } from '../components/LoadingState';
 import { MetricCard } from '../components/MetricCard';
 import { Modal } from '../components/Modal';
 import { TextField } from '../components/FormField';
@@ -140,23 +143,15 @@ function renderContent(
   onEdit: (item: ShoppingItem) => void,
 ) {
   if (state.status === 'loading') {
-    return (
-      <p className={styles.message} role="status">
-        Cargando tu lista de compra…
-      </p>
-    );
+    return <LoadingState message="Cargando tu lista de compra…" />;
   }
 
   if (state.status === 'error') {
     return (
-      <div className={styles.errorState}>
-        <p className={styles.message} role="alert">
-          No se pudo cargar tu lista de compra. Inténtalo de nuevo más tarde.
-        </p>
-        <Button variant="secondary" type="button" onClick={retry}>
-          Reintentar
-        </Button>
-      </div>
+      <ErrorState
+        message="No se pudo cargar tu lista de compra. Inténtalo de nuevo más tarde."
+        onRetry={retry}
+      />
     );
   }
 
@@ -183,9 +178,7 @@ function renderContent(
       </div>
 
       {items.length === 0 ? (
-        <p className={styles.message} role="status">
-          No hay artículos en la lista de esta semana.
-        </p>
+        <EmptyState title="No hay artículos en la lista de esta semana." />
       ) : (
         <Card title="Todas">
           <ul className={styles.items}>
@@ -232,7 +225,19 @@ const PRODUCT_NOT_FOUND =
 const PRODUCT_LOAD_ERROR = 'No se pudo cargar el producto. Inténtalo de nuevo.';
 const PRODUCT_SAVE_ERROR = 'No se pudo guardar el producto. Inténtalo de nuevo.';
 
-/** Entry point to edit a product's price/URL (FOR-36), reached from a list item. */
+/**
+ * Entry point to edit a product's price/URL (FOR-36), reached from a list item.
+ *
+ * <p>FOR-60 note: this modal's own loading/error/not-found states are
+ * deliberately left on their pre-existing inline markup rather than migrated
+ * to the shared state components. It is a secondary, nested flow with a
+ * three-way state (`loading`/`not-found`/`error`) that doesn't map 1:1 onto
+ * the shared components without inventing new behavior, and the FOR-60
+ * migration discipline favors a documented deferral here over risking a
+ * regression in an already-tested modal for low additional value. Follow-up:
+ * a future story can fold this into {@link EmptyState}/{@link ErrorState} if
+ * the product-not-found case gets its own shared "not found" treatment.
+ */
 function ProductEditModal({
   item,
   onClose,

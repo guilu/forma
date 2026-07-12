@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Card } from '../../components/Card';
+import { EmptyState } from '../../components/EmptyState';
+import { ErrorState } from '../../components/ErrorState';
+import { WidgetLoading } from '../../components/WidgetLoading';
 import { getTrainingWeek, type TrainingSession, type TrainingWeek } from '../../api/training';
 import { WidgetSection } from './WidgetSection';
 import { ProgressBar } from './ProgressBar';
@@ -62,26 +65,18 @@ export function TrainingWidget() {
 
 function renderContent(state: State) {
   if (state.status === 'loading') {
-    return (
-      <p className={styles.message} role="status">
-        Cargando tu semana de entrenamiento…
-      </p>
-    );
+    return <WidgetLoading label="Cargando tu semana de entrenamiento…" rows={2} />;
   }
 
   if (state.status === 'error') {
     return (
-      <p className={styles.message} role="alert">
-        No se pudo cargar tu entrenamiento. Inténtalo de nuevo más tarde.
-      </p>
+      <ErrorState message="No se pudo cargar tu entrenamiento. Inténtalo de nuevo más tarde." />
     );
   }
 
   if (state.status === 'empty') {
     return (
-      <p className={styles.message} role="status">
-        No hay entrenamientos planificados esta semana.
-      </p>
+      <EmptyState variant="filtered" title="No hay entrenamientos planificados esta semana." />
     );
   }
 

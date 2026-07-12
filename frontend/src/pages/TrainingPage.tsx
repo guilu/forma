@@ -2,6 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
+import { EmptyState } from '../components/EmptyState';
+import { ErrorState } from '../components/ErrorState';
+import { LoadingState } from '../components/LoadingState';
 import { MetricCard } from '../components/MetricCard';
 import { Modal } from '../components/Modal';
 import { StatusPill } from '../components/StatusPill';
@@ -180,33 +183,21 @@ function renderContent(
   reload: () => void,
 ) {
   if (state.status === 'loading') {
-    return (
-      <p className={styles.message} role="status">
-        Cargando tu semana…
-      </p>
-    );
+    return <LoadingState message="Cargando tu semana…" />;
   }
 
   if (state.status === 'error') {
     return (
-      <div className={styles.errorState}>
-        <p className={styles.message} role="alert">
-          No se pudo cargar tu semana de entrenamiento. Inténtalo de nuevo más tarde.
-        </p>
-        <Button variant="secondary" type="button" onClick={reload}>
-          Reintentar
-        </Button>
-      </div>
+      <ErrorState
+        message="No se pudo cargar tu semana de entrenamiento. Inténtalo de nuevo más tarde."
+        onRetry={reload}
+      />
     );
   }
 
   const hasAnySession = state.week.days.some((day) => day.sessions.length > 0);
   if (!hasAnySession) {
-    return (
-      <p className={styles.message} role="status">
-        No hay entrenamientos planificados esta semana.
-      </p>
-    );
+    return <EmptyState title="No hay entrenamientos planificados esta semana." />;
   }
 
   const today = state.week.days.find((day) => day.dayOfWeek === todayDayOfWeek());

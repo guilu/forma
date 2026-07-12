@@ -11,8 +11,3 @@
   padding: var(--space-4) var(--space-5);
   box-shadow: var(--shadow-card);
 }
-
-.message {
-  margin: 0;
-  color: var(--color-text-muted);
-}

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { NutritionWidget } from './NutritionWidget';
 import { getNutritionDay, type NutritionDay } from '../../api/nutrition';
@@ -54,9 +54,11 @@ describe('NutritionWidget', () => {
 
     renderWidget();
 
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      'No hay un plan de comidas para hoy',
-    );
+    // Loading and empty are both announced via role="status" (FOR-60 shared
+    // states), so wait for the terminal content instead of the first match.
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent('No hay un plan de comidas para hoy');
+    });
   });
 
   it('shows an error state when the request fails', async () => {

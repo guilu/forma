@@ -2,7 +2,10 @@ import { useEffect, useState } from 'react';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { ChartContainer } from '../components/ChartContainer';
+import { EmptyState } from '../components/EmptyState';
+import { ErrorState } from '../components/ErrorState';
 import { LineChart, type ChartPoint } from '../components/LineChart';
+import { LoadingState } from '../components/LoadingState';
 import { MeasurementForm } from '../components/MeasurementForm';
 import { MetricCard } from '../components/MetricCard';
 import { Modal } from '../components/Modal';
@@ -191,36 +194,28 @@ function renderContent(
   reload: () => void,
 ) {
   if (state.status === 'loading') {
-    return (
-      <p className={styles.message} role="status">
-        Cargando tus mediciones…
-      </p>
-    );
+    return <LoadingState message="Cargando tus mediciones…" />;
   }
 
   if (state.status === 'error') {
     return (
-      <div className={styles.errorState}>
-        <p className={styles.message} role="alert">
-          No se pudieron cargar tus mediciones. Inténtalo de nuevo.
-        </p>
-        <Button variant="secondary" type="button" onClick={reload}>
-          Reintentar
-        </Button>
-      </div>
+      <ErrorState
+        message="No se pudieron cargar tus mediciones. Inténtalo de nuevo."
+        onRetry={reload}
+      />
     );
   }
 
   if (state.status === 'empty') {
     return (
-      <div className={styles.emptyState}>
-        <p className={styles.message} role="status">
-          Aún no hay mediciones.
-        </p>
-        <Button type="button" onClick={openForm}>
-          Registrar medición
-        </Button>
-      </div>
+      <EmptyState
+        title="Aún no hay mediciones."
+        action={
+          <Button type="button" onClick={openForm}>
+            Registrar medición
+          </Button>
+        }
+      />
     );
   }
 

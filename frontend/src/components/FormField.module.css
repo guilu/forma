@@ -32,9 +32,3 @@
 .select[aria-invalid='true'] {
   border-color: var(--color-danger);
 }
-
-.fieldError {
-  margin: 0;
-  font-size: var(--font-size-sm);
-  color: var(--color-danger);
-}

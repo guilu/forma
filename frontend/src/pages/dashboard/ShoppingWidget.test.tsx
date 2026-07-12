@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ShoppingWidget } from './ShoppingWidget';
 import { getShoppingList, type ShoppingList } from '../../api/shopping';
@@ -57,9 +57,13 @@ describe('ShoppingWidget', () => {
 
     renderWidget();
 
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      'Aún no hay una lista de compra generada',
-    );
+    // Loading and empty are both announced via role="status" (FOR-60 shared
+    // states), so wait for the terminal content instead of the first match.
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'Aún no hay una lista de compra generada',
+      );
+    });
   });
 
   it('shows an error state when the request fails', async () => {

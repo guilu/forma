@@ -15,18 +15,6 @@
   gap: var(--space-4);
 }
 
-.message {
-  margin: 0;
-  color: var(--color-text-muted);
-}
-
-.errorBox {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-3);
-}
-
 .topRow {
   display: grid;
   grid-template-columns: 1fr;

@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Badge } from '../components/Badge';
-import { Button } from '../components/Button';
 import { Card } from '../components/Card';
+import { EmptyState } from '../components/EmptyState';
+import { ErrorState } from '../components/ErrorState';
+import { LoadingState } from '../components/LoadingState';
 import { MacroRing } from '../components/MacroRing';
 import { getNutritionDay, type NutritionDay, type NutritionMeal } from '../api/nutrition';
 import { getShoppingList } from '../api/shopping';
@@ -144,32 +146,20 @@ function DayTypeSelector({
 
 function renderContent(state: State, dayType: DayType, retry: () => void) {
   if (state.status === 'loading') {
-    return (
-      <p className={styles.message} role="status">
-        Cargando tu día de nutrición…
-      </p>
-    );
+    return <LoadingState message="Cargando tu día de nutrición…" />;
   }
 
   if (state.status === 'error') {
     return (
-      <div className={styles.errorState}>
-        <p className={styles.message} role="alert">
-          No se pudo cargar tu día de nutrición. Inténtalo de nuevo más tarde.
-        </p>
-        <Button variant="secondary" type="button" onClick={retry}>
-          Reintentar
-        </Button>
-      </div>
+      <ErrorState
+        message="No se pudo cargar tu día de nutrición. Inténtalo de nuevo más tarde."
+        onRetry={retry}
+      />
     );
   }
 
   if (state.status === 'empty') {
-    return (
-      <p className={styles.message} role="status">
-        No hay un plan de comidas para este tipo de día.
-      </p>
-    );
+    return <EmptyState title="No hay un plan de comidas para este tipo de día." />;
   }
 
   const { day } = state;

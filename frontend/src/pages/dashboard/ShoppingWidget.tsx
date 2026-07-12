@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Card } from '../../components/Card';
+import { EmptyState } from '../../components/EmptyState';
+import { ErrorState } from '../../components/ErrorState';
+import { WidgetLoading } from '../../components/WidgetLoading';
 import { getShoppingList, type ShoppingList } from '../../api/shopping';
 import { WidgetSection } from './WidgetSection';
 import styles from './ShoppingWidget.module.css';
@@ -50,26 +53,18 @@ export function ShoppingWidget() {
 
 function renderContent(state: State) {
   if (state.status === 'loading') {
-    return (
-      <p className={styles.message} role="status">
-        Cargando tu presupuesto…
-      </p>
-    );
+    return <WidgetLoading label="Cargando tu presupuesto…" rows={2} />;
   }
 
   if (state.status === 'error') {
     return (
-      <p className={styles.message} role="alert">
-        No se pudo cargar tu lista de compra. Inténtalo de nuevo más tarde.
-      </p>
+      <ErrorState message="No se pudo cargar tu lista de compra. Inténtalo de nuevo más tarde." />
     );
   }
 
   if (state.status === 'empty') {
     return (
-      <p className={styles.message} role="status">
-        Aún no hay una lista de compra generada esta semana.
-      </p>
+      <EmptyState variant="filtered" title="Aún no hay una lista de compra generada esta semana." />
     );
   }
 

@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card } from '../components/Card';
+import { EmptyState } from '../components/EmptyState';
+import { ErrorState } from '../components/ErrorState';
 import { LineChart, type ChartPoint } from '../components/LineChart';
+import { LoadingState } from '../components/LoadingState';
 import { listBodyMeasurements, type BodyMeasurement } from '../api/bodyMeasurements';
 import { InsightsSection } from './progress/InsightsSection';
 import styles from './ProgressPage.module.css';
@@ -83,27 +86,22 @@ export function ProgressPage() {
 
 function renderContent(state: State) {
   if (state.status === 'loading') {
-    return (
-      <p className={styles.message} role="status">
-        Cargando tu evolución…
-      </p>
-    );
+    return <LoadingState message="Cargando tu evolución…" />;
   }
 
   if (state.status === 'error') {
-    return (
-      <p className={styles.message} role="alert">
-        No se pudo cargar tu evolución. Inténtalo de nuevo más tarde.
-      </p>
-    );
+    // No retry offered here — matches this page's pre-existing behavior
+    // (no reload callback is exposed from its load effect); FOR-60 only
+    // standardizes state rendering, not data-fetching behavior.
+    return <ErrorState message="No se pudo cargar tu evolución. Inténtalo de nuevo más tarde." />;
   }
 
   if (state.measurements.length === 0) {
     return (
-      <p className={styles.message} role="status">
-        Aún no hay mediciones. <Link to="/mediciones">Registra tu primera medición</Link> para ver
-        tu evolución.
-      </p>
+      <EmptyState
+        title="Aún no hay mediciones."
+        action={<Link to="/mediciones">Registra tu primera medición</Link>}
+      />
     );
   }
 
@@ -140,9 +138,10 @@ function MetricChart({
           {latest ? (
             <p className={styles.singleValue}>{formatValue(latest.y, metric.unit)}</p>
           ) : null}
-          <p className={styles.message} role="status">
-            Necesitas al menos dos mediciones para ver la evolución.
-          </p>
+          <EmptyState
+            variant="filtered"
+            title="Necesitas al menos dos mediciones para ver la evolución."
+          />
         </div>
       ) : (
         <>

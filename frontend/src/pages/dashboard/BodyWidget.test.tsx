@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { BodyWidget } from './BodyWidget';
 import { listBodyMeasurements, type BodyMeasurement } from '../../api/bodyMeasurements';
@@ -78,7 +78,11 @@ describe('BodyWidget', () => {
 
     renderWidget();
 
-    expect(await screen.findByRole('status')).toHaveTextContent('Aún no hay mediciones');
+    // Loading and empty are both announced via role="status" (FOR-60 shared
+    // states), so wait for the terminal content instead of the first match.
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent('Aún no hay mediciones');
+    });
     expect(screen.queryByRole('heading', { name: 'Peso' })).not.toBeInTheDocument();
   });
 
