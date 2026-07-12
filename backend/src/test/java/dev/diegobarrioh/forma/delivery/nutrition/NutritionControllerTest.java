@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import dev.diegobarrioh.forma.application.NutritionCalculationService;
 import dev.diegobarrioh.forma.application.NutritionDayCatalogService;
 import dev.diegobarrioh.forma.domain.MealItem;
 import dev.diegobarrioh.forma.domain.MealTemplate;
@@ -20,13 +21,20 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * Web-slice tests for {@link NutritionController} (FOR-34): the day response shape (targets,
- * ordered meals, optional post-run, resolved food names) and not-found handling.
+ * Web-slice tests for {@link NutritionController} (FOR-34, enriched by FOR-105): the day response
+ * shape (targets, ordered meals, optional post-run, resolved food names, macro totals, target
+ * comparison) and not-found handling.
+ *
+ * <p>The real {@link NutritionCalculationService} is loaded (not mocked, FOR-105) since it is a
+ * plain, dependency-free {@code @Service} — this exercises the FOR-32 calculation end-to-end
+ * through the controller rather than stubbing its output.
  */
 @WebMvcTest(NutritionController.class)
+@Import(NutritionCalculationService.class)
 class NutritionControllerTest {
 
   @Autowired private MockMvc mockMvc;
@@ -69,6 +77,35 @@ class NutritionControllerTest {
         .andExpect(jsonPath("$.meals[0].optional").value(false))
         .andExpect(jsonPath("$.meals[1].mealType").value("POST_WORKOUT"))
         .andExpect(jsonPath("$.meals[1].optional").value(true));
+  }
+
+  @Test
+  void returnsPerMealAndDayMacroTotalsAndTargetComparison() throws Exception {
+    when(service.findByType(eq(NutritionDayType.RUNNING))).thenReturn(Optional.of(runningDay()));
+
+    mockMvc
+        .perform(get("/api/v1/nutrition/days/running"))
+        .andExpect(status().isOk())
+        // Breakfast: 120g oats (389 kcal/16.9P/66.3C/6.9F per 100g) -> FOR-32 mealTotals.
+        .andExpect(jsonPath("$.meals[0].totals.calories").value(467))
+        .andExpect(jsonPath("$.meals[0].totals.proteinG").value(20.3))
+        .andExpect(jsonPath("$.meals[0].totals.carbsG").value(79.6))
+        .andExpect(jsonPath("$.meals[0].totals.fatG").value(8.3))
+        // Post-run: 20g whey protein (400 kcal/80P/8C/6F per 100g).
+        .andExpect(jsonPath("$.meals[1].totals.calories").value(80))
+        .andExpect(jsonPath("$.meals[1].totals.proteinG").value(16.0))
+        .andExpect(jsonPath("$.meals[1].totals.carbsG").value(1.6))
+        .andExpect(jsonPath("$.meals[1].totals.fatG").value(1.2))
+        // Day totals: sum of raw contributions, rounded once (FOR-32 dayTotals).
+        .andExpect(jsonPath("$.totals.calories").value(547))
+        .andExpect(jsonPath("$.totals.proteinG").value(36.3))
+        .andExpect(jsonPath("$.totals.carbsG").value(81.2))
+        .andExpect(jsonPath("$.totals.fatG").value(9.5))
+        // Day totals fall short of the 1940/162/271/25 targets on every macro.
+        .andExpect(jsonPath("$.targetComparison.caloriesReached").value(false))
+        .andExpect(jsonPath("$.targetComparison.proteinReached").value(false))
+        .andExpect(jsonPath("$.targetComparison.carbsReached").value(false))
+        .andExpect(jsonPath("$.targetComparison.fatReached").value(false));
   }
 
   @Test

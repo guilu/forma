@@ -1,6 +1,7 @@
 package dev.diegobarrioh.forma.delivery.nutrition;
 
 import dev.diegobarrioh.forma.application.NotFoundException;
+import dev.diegobarrioh.forma.application.NutritionCalculationService;
 import dev.diegobarrioh.forma.application.NutritionDayCatalogService;
 import dev.diegobarrioh.forma.delivery.ApiPaths;
 import dev.diegobarrioh.forma.domain.NutritionDayType;
@@ -12,10 +13,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Nutrition REST endpoint (FOR-34): {@code GET /api/v1/nutrition/days/{type}} returns a seeded
- * nutrition day (targets + ordered meals) for the given day type.
+ * nutrition day (targets + ordered meals) for the given day type, enriched (FOR-105) with per-meal
+ * and per-day macro totals and the target comparison.
  *
  * <p>Thin controller (ADR-001, ADR-005): maps the {@link NutritionDayCatalogService} result to the
- * delivery read model. An unknown day type yields {@code NOT_FOUND} (404) via the FOR-27 {@code
+ * delivery read model, delegating macro totals to the {@link NutritionCalculationService} (FOR-32,
+ * no math here). An unknown day type yields {@code NOT_FOUND} (404) via the FOR-27 {@code
  * GlobalExceptionHandler}. Mounted under {@link ApiPaths#V1}.
  */
 @RestController
@@ -23,9 +26,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class NutritionController {
 
   private final NutritionDayCatalogService service;
+  private final NutritionCalculationService calculationService;
 
-  public NutritionController(NutritionDayCatalogService service) {
+  public NutritionController(
+      NutritionDayCatalogService service, NutritionCalculationService calculationService) {
     this.service = service;
+    this.calculationService = calculationService;
   }
 
   /** Returns the seeded nutrition day for the given type (e.g. {@code running}). */
@@ -34,7 +40,7 @@ public class NutritionController {
     NutritionDayType dayType = parseType(type);
     return service
         .findByType(dayType)
-        .map(NutritionDayResponse::from)
+        .map(day -> NutritionDayResponse.from(day, calculationService))
         .orElseThrow(() -> new NotFoundException("No existe el día de nutrición: " + type));
   }
 
