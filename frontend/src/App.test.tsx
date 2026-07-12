@@ -80,6 +80,19 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: 'Integraciones' })).toBeInTheDocument();
   });
 
+  it('renders the FOR-59 onboarding flow at /onboarding, outside the AppShell', () => {
+    render(
+      <MemoryRouter initialEntries={['/onboarding']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('heading', { name: 'Perfil' })).toBeInTheDocument();
+    // Onboarding is not a nav section (app/navigation.ts) and is not wrapped in
+    // AppShell, so the persistent sidebar/mobile nav must not be present.
+    expect(screen.queryAllByRole('navigation')).toHaveLength(0);
+  });
+
   it('falls back to the not-found page for unknown routes', () => {
     render(
       <MemoryRouter initialEntries={['/does-not-exist']}>

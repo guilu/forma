@@ -9,14 +9,21 @@ import { ProgressPage } from '../pages/ProgressPage';
 import { GoalsPage } from '../pages/GoalsPage';
 import { SettingsPage } from '../pages/SettingsPage';
 import { IntegrationsPage } from '../pages/IntegrationsPage';
+import { OnboardingPage } from '../pages/onboarding/OnboardingPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 
 /**
  * Route table (FOR-81). Paths mirror the centralized NAV_ITEMS model and all
  * render inside the AppShell layout. Every element is a placeholder page; adding
  * a real screen later means swapping the element, not restructuring routing.
+ *
+ * `/onboarding` (FOR-59) is a deliberate exception: it is a sibling of the
+ * `AppShell` route, not a child. It is a first-run flow, not a navigation
+ * section (absent from `app/navigation.ts` on purpose), and rendering it
+ * outside the shell keeps a mid-flow user from wandering off via the sidebar.
  */
 export const routes: RouteObject[] = [
+  { path: '/onboarding', element: <OnboardingPage /> },
   {
     path: '/',
     element: <AppShell />,
