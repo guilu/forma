@@ -1,19 +1,58 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
+import { Button } from '../components/Button';
 import { Card } from '../components/Card';
+import { Icon } from '../components/Icon';
+import { MetricCard } from '../components/MetricCard';
+import { Modal } from '../components/Modal';
+import { TextField } from '../components/FormField';
 import { ApiRequestError } from '../api/client';
 import {
   getShoppingList,
+  listShoppingProducts,
   setItemChecked,
+  updateShoppingProduct,
   type ShoppingItem,
   type ShoppingList,
+  type ShoppingProduct,
 } from '../api/shopping';
 import styles from './ShoppingPage.module.css';
 
 /**
- * Shopping page (FOR-39). Shows the weekly shopping checklist and budget from the FOR-39 API:
- * per-item name, quantity, estimated cost and checked state, plus the weekly total and monthly
- * estimate. The user can check/uncheck items (persisted). Renders the API read model directly
- * (ADR-006); handles loading, empty and error states. Editing prices/quantities is a separate story.
+ * Shopping page (FOR-39 checklist + budget, built out to the mockup by FOR-55:
+ * `docs/5-lista-compra.png`). Reads the weekly list + budget from FOR-39/FOR-38
+ * and resolves product edits through FOR-36; renders the API read models
+ * directly (ADR-006/ADR-001 — no pricing/budget math here).
+ *
+ * <p>Mockup elements not backed by the API today (documented gap, repository
+ * priority per AGENTS.md — never invented):
+ * <ul>
+ *   <li><b>Category grouping/filters</b> — {@code ShoppingListResponse.Item}
+ *       (FOR-39) carries no category field (verified against the domain,
+ *       migration and DTO), so there is nothing to group or filter by. All
+ *       items render under a single, clearly-labelled "Todas" group/tab
+ *       instead of fabricating categories — the spec explicitly sanctions this
+ *       fallback when no category data exists at all (distinct from the
+ *       per-item "unknown category → Otros" case, which assumes some items
+ *       *do* carry a category).
+ *   <li><b>Quantity unit</b> ("unidades"/"kg"/"g") — {@code quantity} is a
+ *       plain integer with no unit field; shown as-is.
+ *   <li><b>"PORCIONES" and "GENERADA"</b> budget tiles — the list/budget read
+ *       models carry no servings count or generation timestamp
+ *       ({@code weekStartDate} is not "generated at"), so these tiles are
+ *       omitted rather than shown with invented data (same precedent as the
+ *       FOR-54 Nutrition page).
+ *   <li><b>"Generar nueva lista"</b>, per-item Mercadona link-out/add-to-cart
+ *       icons and +/- quantity editing — no regenerate, link-out or item-
+ *       quantity-update endpoint exists; omitted entirely rather than shown
+ *       inactive (same precedent as FOR-54).
+ *   <li><b>Product price/URL edit</b> — the FOR-39 list item has no
+ *       {@code productId} in its response, so the edit entry point resolves
+ *       the product by matching {@link ShoppingItem.productName} against the
+ *       FOR-36 products list. Editing a product's price does not retroactively
+ *       change this week's already-generated line cost (the list stores its
+ *       own {@code estimatedCostEur} — see {@code ShoppingListItem} javadoc);
+ *       this is a documented limitation, not a bug.
+ * </ul>
  */
 type State =
   | { readonly status: 'loading' }
@@ -25,11 +64,14 @@ const MARK_ERROR = 'No se pudo actualizar el artículo. Inténtalo de nuevo.';
 
 export function ShoppingPage() {
   const [state, setState] = useState<State>({ status: 'loading' });
+  const [retryToken, setRetryToken] = useState(0);
   const [actionError, setActionError] = useState<string | undefined>(undefined);
   const [pendingId, setPendingId] = useState<string | undefined>(undefined);
+  const [editingItem, setEditingItem] = useState<ShoppingItem | undefined>(undefined);
 
   useEffect(() => {
     let active = true;
+    setState({ status: 'loading' });
     getShoppingList()
       .then((list) => {
         if (active) {
@@ -44,7 +86,7 @@ export function ShoppingPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [retryToken]);
 
   async function toggle(item: ShoppingItem) {
     setActionError(undefined);
@@ -82,7 +124,10 @@ export function ShoppingPage() {
           {actionError}
         </p>
       )}
-      {renderContent(state, toggle, pendingId)}
+      {renderContent(state, toggle, pendingId, () => setRetryToken((t) => t + 1), setEditingItem)}
+      {editingItem && (
+        <ProductEditModal item={editingItem} onClose={() => setEditingItem(undefined)} />
+      )}
     </div>
   );
 }
@@ -91,6 +136,8 @@ function renderContent(
   state: State,
   toggle: (item: ShoppingItem) => void,
   pendingId: string | undefined,
+  retry: () => void,
+  onEdit: (item: ShoppingItem) => void,
 ) {
   if (state.status === 'loading') {
     return (
@@ -102,9 +149,14 @@ function renderContent(
 
   if (state.status === 'error') {
     return (
-      <p className={styles.message} role="alert">
-        No se pudo cargar tu lista de compra. Inténtalo de nuevo más tarde.
-      </p>
+      <div className={styles.errorState}>
+        <p className={styles.message} role="alert">
+          No se pudo cargar tu lista de compra. Inténtalo de nuevo más tarde.
+        </p>
+        <Button variant="secondary" type="button" onClick={retry}>
+          Reintentar
+        </Button>
+      </div>
     );
   }
 
@@ -113,20 +165,29 @@ function renderContent(
   return (
     <>
       <section className={styles.tiles} aria-label="Presupuesto">
-        <Card title="Total estimado (semana)">
-          <p className={styles.tileValue}>{EUR.format(budget.weeklyEur)}</p>
-        </Card>
-        <Card title="Estimado mensual">
-          <p className={styles.tileValue}>{EUR.format(budget.monthlyEur)}</p>
-        </Card>
+        <MetricCard label="Productos" value={String(items.length)} unit="productos únicos" />
+        <MetricCard
+          label="Total estimado"
+          value={EUR.format(budget.weeklyEur)}
+          unit="precio aproximado"
+        />
+        <MetricCard label="Estimado mensual" value={EUR.format(budget.monthlyEur)} />
       </section>
+
+      {/* Category filter tabs: the FOR-39 list carries no category, so "Todas" is
+          the only, documented group (see the page-level comment above). */}
+      <div className={styles.tabs} role="tablist" aria-label="Categorías">
+        <button type="button" role="tab" aria-selected="true" className={styles.tab}>
+          Todas ({items.length})
+        </button>
+      </div>
 
       {items.length === 0 ? (
         <p className={styles.message} role="status">
           No hay artículos en la lista de esta semana.
         </p>
       ) : (
-        <Card title="Artículos">
+        <Card title="Todas">
           <ul className={styles.items}>
             {items.map((item) => (
               <li key={item.id} className={styles.item}>
@@ -143,11 +204,162 @@ function renderContent(
                 </label>
                 <span className={styles.quantity}>{item.quantity}</span>
                 <span className={styles.cost}>{EUR.format(item.estimatedCostEur)}</span>
+                <button
+                  type="button"
+                  className={styles.editButton}
+                  onClick={() => onEdit(item)}
+                  aria-label={`Editar producto ${item.productName}`}
+                >
+                  <Icon name="edit" size={16} />
+                </button>
               </li>
             ))}
           </ul>
         </Card>
       )}
     </>
+  );
+}
+
+type ProductState =
+  | { readonly status: 'loading' }
+  | { readonly status: 'not-found' }
+  | { readonly status: 'error' }
+  | { readonly status: 'ready'; readonly product: ShoppingProduct };
+
+const PRODUCT_NOT_FOUND =
+  'No se pudo encontrar el producto asociado a este artículo para editarlo.';
+const PRODUCT_LOAD_ERROR = 'No se pudo cargar el producto. Inténtalo de nuevo.';
+const PRODUCT_SAVE_ERROR = 'No se pudo guardar el producto. Inténtalo de nuevo.';
+
+/** Entry point to edit a product's price/URL (FOR-36), reached from a list item. */
+function ProductEditModal({
+  item,
+  onClose,
+}: {
+  readonly item: ShoppingItem;
+  readonly onClose: () => void;
+}) {
+  const [state, setState] = useState<ProductState>({ status: 'loading' });
+  const [url, setUrl] = useState('');
+  const [price, setPrice] = useState('');
+  const [priceError, setPriceError] = useState<string | undefined>(undefined);
+  const [saveError, setSaveError] = useState<string | undefined>(undefined);
+  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    listShoppingProducts()
+      .then((products) => {
+        if (!active) return;
+        const match = products.find((product) => product.name === item.productName);
+        if (!match) {
+          setState({ status: 'not-found' });
+          return;
+        }
+        setState({ status: 'ready', product: match });
+        setUrl(match.url ?? '');
+        setPrice(String(match.estimatedPriceEur));
+      })
+      .catch(() => {
+        if (active) {
+          setState({ status: 'error' });
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [item.productName]);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (state.status !== 'ready') {
+      return;
+    }
+    const priceValue = Number(price);
+    if (!price || !Number.isFinite(priceValue) || priceValue <= 0) {
+      setPriceError('Introduce un precio válido.');
+      return;
+    }
+    setPriceError(undefined);
+    setSaveError(undefined);
+    setSaving(true);
+    try {
+      const updated = await updateShoppingProduct(state.product.id, {
+        name: state.product.name,
+        url: url.trim() ? url.trim() : undefined,
+        packageSize: state.product.packageSize,
+        estimatedPriceEur: priceValue,
+        pricePerUnitEur: state.product.pricePerUnitEur,
+        linkedFoodItemId: state.product.linkedFoodItemId,
+        notes: state.product.notes,
+      });
+      setState({ status: 'ready', product: updated });
+      setSaved(true);
+    } catch (error) {
+      setSaveError(error instanceof ApiRequestError ? error.message : PRODUCT_SAVE_ERROR);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Modal title="Editar producto" onClose={onClose}>
+      {state.status === 'loading' && (
+        <p className={styles.message} role="status">
+          Cargando producto…
+        </p>
+      )}
+      {state.status === 'error' && (
+        <p className={styles.message} role="alert">
+          {PRODUCT_LOAD_ERROR}
+        </p>
+      )}
+      {state.status === 'not-found' && (
+        <p className={styles.message} role="alert">
+          {PRODUCT_NOT_FOUND}
+        </p>
+      )}
+      {state.status === 'ready' && (
+        <form className={styles.editForm} onSubmit={handleSubmit} noValidate>
+          <p className={styles.editProductName}>{state.product.name}</p>
+          <TextField
+            id="product-url"
+            label="URL (opcional)"
+            type="text"
+            value={url}
+            disabled={saving}
+            onChange={(event) => setUrl(event.target.value)}
+          />
+          <TextField
+            id="product-price"
+            label="Precio estimado (€)"
+            type="number"
+            step="0.01"
+            value={price}
+            error={priceError}
+            disabled={saving}
+            onChange={(event) => setPrice(event.target.value)}
+          />
+          {saveError && (
+            <p className={styles.actionError} role="alert">
+              {saveError}
+            </p>
+          )}
+          {saved && !saveError && (
+            <output className={styles.editSuccess}>Producto actualizado.</output>
+          )}
+          <div className={styles.editActions}>
+            <Button variant="secondary" type="button" onClick={onClose}>
+              Cerrar
+            </Button>
+            <Button type="submit" loading={saving}>
+              Guardar
+            </Button>
+          </div>
+        </form>
+      )}
+    </Modal>
   );
 }

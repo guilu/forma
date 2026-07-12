@@ -31,6 +31,35 @@
   font-weight: 600;
 }
 
+.errorState {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.tab {
+  padding: var(--space-2) var(--space-4);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  min-height: 44px;
+}
+
+.tab[aria-selected='true'] {
+  color: var(--color-accent-contrast);
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
 .items {
   list-style: none;
   margin: 0;
@@ -42,8 +71,47 @@
 
 .item {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto auto auto;
   align-items: center;
+  gap: var(--space-3);
+}
+
+.editButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  color: var(--color-text-muted);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.editButton:hover {
+  color: var(--color-text);
+  border-color: var(--color-accent);
+}
+
+.editForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.editProductName {
+  margin: 0;
+  font-weight: 600;
+}
+
+.editSuccess {
+  font-size: var(--font-size-sm);
+  color: var(--color-accent);
+}
+
+.editActions {
+  display: flex;
+  justify-content: flex-end;
   gap: var(--space-3);
 }
 
@@ -88,4 +156,18 @@
 .message {
   margin: 0;
   color: var(--color-text-muted);
+}
+
+/* Below ~480px, wrap quantity/price/actions onto a second row instead of
+   shrinking the grid — avoids horizontal scroll (ui-guidelines: shopping
+   checklist is a mobile priority). */
+@media (max-width: 480px) {
+  .item {
+    grid-template-columns: 1fr auto;
+    row-gap: var(--space-2);
+  }
+
+  .itemLabel {
+    grid-column: 1 / -1;
+  }
 }

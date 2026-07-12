@@ -34,6 +34,34 @@ export interface CheckedResult {
   readonly checked: boolean;
 }
 
+/**
+ * A shopping product (FOR-36) — the price/URL reference the checklist items
+ * point to by name (the FOR-39 list read model does not expose the product
+ * id, so callers resolve it by matching {@link ShoppingItem.productName}).
+ */
+export interface ShoppingProduct {
+  readonly id: string;
+  readonly name: string;
+  readonly url?: string;
+  readonly packageSize?: string;
+  readonly estimatedPriceEur: number;
+  readonly pricePerUnitEur?: number;
+  readonly linkedFoodItemId?: string;
+  readonly lastCheckedAt?: string;
+  readonly notes?: string;
+}
+
+/** Fields accepted by create/update (FOR-36 `ShoppingProductRequest` mirror). */
+export interface ShoppingProductInput {
+  readonly name: string;
+  readonly url?: string;
+  readonly packageSize?: string;
+  readonly estimatedPriceEur: number;
+  readonly pricePerUnitEur?: number;
+  readonly linkedFoodItemId?: string;
+  readonly notes?: string;
+}
+
 /** Fetches the current week's shopping list + budget. */
 export function getShoppingList(client: ApiClient = apiClient): Promise<ShoppingList> {
   return client.request<ShoppingList>('/api/v1/shopping/list');
@@ -53,4 +81,22 @@ export function setItemChecked(
       body: JSON.stringify({ checked }),
     },
   );
+}
+
+/** Lists shopping products (FOR-36), ordered by name. */
+export function listShoppingProducts(client: ApiClient = apiClient): Promise<ShoppingProduct[]> {
+  return client.request<ShoppingProduct[]>('/api/v1/shopping/products');
+}
+
+/** Updates a shopping product's fields (FOR-36) — used for the price/URL edit entry point. */
+export function updateShoppingProduct(
+  id: string,
+  input: ShoppingProductInput,
+  client: ApiClient = apiClient,
+): Promise<ShoppingProduct> {
+  return client.request<ShoppingProduct>(`/api/v1/shopping/products/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
 }
