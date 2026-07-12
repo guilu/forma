@@ -194,9 +194,14 @@ describe('TrainingPage', () => {
 
     render(<TrainingPage />);
 
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      'No hay entrenamientos planificados esta semana',
-    );
+    // Loading and empty are both announced via role="status" (FOR-60 shared
+    // states), so wait for the terminal content instead of the first status
+    // match to avoid a race against the still-in-flight loading state.
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'No hay entrenamientos planificados esta semana',
+      );
+    });
   });
 
   it('renders a rest day today with no session actions', async () => {

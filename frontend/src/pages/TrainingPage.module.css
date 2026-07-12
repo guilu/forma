@@ -39,14 +39,6 @@
   color: var(--color-text-muted);
 }
 
-.errorState {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-4);
-  padding: var(--space-6) 0;
-}
-
 .actionError {
   margin: 0;
   padding: var(--space-3);

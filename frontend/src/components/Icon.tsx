@@ -21,7 +21,10 @@ export type IconName =
   | 'edit'
   | 'activity'
   | 'cross'
-  | 'chevron';
+  | 'chevron'
+  | 'inbox'
+  | 'alertTriangle'
+  | 'lock';
 
 const PATHS: Record<IconName, string> = {
   dashboard: 'M3 3h7v7H3zM14 3h7v4h-7zM14 10h7v11h-7zM3 13h7v8H3z',
@@ -49,6 +52,12 @@ const PATHS: Record<IconName, string> = {
   // Right-pointing chevron — decorative affordance for navigable/entry-point
   // rows (e.g. Ajustes, FOR-58).
   chevron: 'M9 6l6 6-6 6',
+  // Empty tray — shared empty-state component (FOR-60).
+  inbox: 'M3 12l2-7h14l2 7M3 12v6a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-6M3 12h5l1 2h6l1-2h5',
+  // Warning triangle — shared recoverable-error-state component (FOR-60).
+  alertTriangle: 'M12 4l9 16H3zM12 10v4M12 16.5v.01',
+  // Padlock — shared permission/access-error-state component (FOR-60).
+  lock: 'M6 11V8a6 6 0 0 1 12 0v3M5 11h14v9H5zM12 15v2',
 };
 
 interface IconProps {

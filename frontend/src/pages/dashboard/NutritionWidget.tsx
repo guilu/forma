@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react';
+import { EmptyState } from '../../components/EmptyState';
+import { ErrorState } from '../../components/ErrorState';
+import { WidgetLoading } from '../../components/WidgetLoading';
 import { getNutritionDay, type NutritionDay } from '../../api/nutrition';
 import { WidgetSection } from './WidgetSection';
 import styles from './NutritionWidget.module.css';
@@ -55,27 +58,17 @@ export function NutritionWidget() {
 
 function renderContent(state: State) {
   if (state.status === 'loading') {
-    return (
-      <p className={styles.message} role="status">
-        Cargando tu nutrición de hoy…
-      </p>
-    );
+    return <WidgetLoading label="Cargando tu nutrición de hoy…" rows={2} />;
   }
 
   if (state.status === 'error') {
     return (
-      <p className={styles.message} role="alert">
-        No se pudo cargar tu nutrición de hoy. Inténtalo de nuevo más tarde.
-      </p>
+      <ErrorState message="No se pudo cargar tu nutrición de hoy. Inténtalo de nuevo más tarde." />
     );
   }
 
   if (state.status === 'empty') {
-    return (
-      <p className={styles.message} role="status">
-        No hay un plan de comidas para hoy todavía.
-      </p>
-    );
+    return <EmptyState variant="filtered" title="No hay un plan de comidas para hoy todavía." />;
   }
 
   const { targets } = state.day;

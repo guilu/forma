@@ -31,13 +31,6 @@
   font-weight: 600;
 }
 
-.errorState {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-3);
-}
-
 .tabs {
   display: flex;
   flex-wrap: wrap;

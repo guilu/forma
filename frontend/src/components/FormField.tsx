@@ -1,4 +1,5 @@
 import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from 'react';
+import { ValidationError } from './ValidationError';
 import styles from './FormField.module.css';
 
 /**
@@ -9,6 +10,11 @@ import styles from './FormField.module.css';
  * `MeasurementForm` itself is left untouched — the styling is aligned via the
  * same tokens/classes shape, not a shared runtime dependency, to avoid touching
  * already-tested, unrelated code for this story.
+ *
+ * <p>The field-level error message itself now renders through the shared
+ * {@link ValidationError} component (FOR-60), so every current and future
+ * form gets the exact same inline-error element instead of each field owning
+ * its own `<p>`.
  */
 interface FieldChromeProps {
   readonly id: string;
@@ -37,11 +43,7 @@ export function TextField({ id, label, error, ...rest }: TextFieldProps) {
         aria-describedby={error ? errorId : undefined}
         {...rest}
       />
-      {error && (
-        <p id={errorId} className={styles.fieldError}>
-          {error}
-        </p>
-      )}
+      {error && <ValidationError id={errorId} message={error} />}
     </div>
   );
 }
@@ -67,11 +69,7 @@ export function SelectField({ id, label, error, children, ...rest }: SelectField
       >
         {children}
       </select>
-      {error && (
-        <p id={errorId} className={styles.fieldError}>
-          {error}
-        </p>
-      )}
+      {error && <ValidationError id={errorId} message={error} />}
     </div>
   );
 }

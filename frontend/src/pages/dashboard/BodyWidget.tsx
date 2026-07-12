@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
+import { EmptyState } from '../../components/EmptyState';
+import { ErrorState } from '../../components/ErrorState';
 import { MetricCard } from '../../components/MetricCard';
 import { LineChart, type ChartPoint } from '../../components/LineChart';
+import { WidgetLoading } from '../../components/WidgetLoading';
 import { listBodyMeasurements, type BodyMeasurement } from '../../api/bodyMeasurements';
 import { WidgetSection } from './WidgetSection';
 import styles from './BodyWidget.module.css';
@@ -71,26 +74,21 @@ export function BodyWidget() {
 
 function renderContent(state: State) {
   if (state.status === 'loading') {
-    return (
-      <p className={styles.message} role="status">
-        Cargando tu composición corporal…
-      </p>
-    );
+    return <WidgetLoading label="Cargando tu composición corporal…" rows={2} />;
   }
 
   if (state.status === 'error') {
     return (
-      <p className={styles.message} role="alert">
-        No se pudo cargar tu composición corporal. Inténtalo de nuevo más tarde.
-      </p>
+      <ErrorState message="No se pudo cargar tu composición corporal. Inténtalo de nuevo más tarde." />
     );
   }
 
   if (state.status === 'empty') {
     return (
-      <p className={styles.message} role="status">
-        Aún no hay mediciones. Registra tu primera medición para ver tu resumen.
-      </p>
+      <EmptyState
+        variant="filtered"
+        title="Aún no hay mediciones. Registra tu primera medición para ver tu resumen."
+      />
     );
   }
 

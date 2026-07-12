@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
+import { ErrorState } from '../../components/ErrorState';
 import { StatusPill } from '../../components/StatusPill';
+import { WidgetLoading } from '../../components/WidgetLoading';
 import { getWeeklyInsights, type WeeklyInsights } from '../../api/insights';
 import { WidgetSection } from './WidgetSection';
 import styles from './InsightWidget.module.css';
@@ -51,18 +53,12 @@ export function InsightWidget() {
 
 function renderContent(state: State) {
   if (state.status === 'loading') {
-    return (
-      <p className={styles.message} role="status">
-        Cargando tu recomendación…
-      </p>
-    );
+    return <WidgetLoading label="Cargando tu recomendación…" rows={2} />;
   }
 
   if (state.status === 'error') {
     return (
-      <p className={styles.message} role="alert">
-        No se pudo cargar tu recomendación. Inténtalo de nuevo más tarde.
-      </p>
+      <ErrorState message="No se pudo cargar tu recomendación. Inténtalo de nuevo más tarde." />
     );
   }
 

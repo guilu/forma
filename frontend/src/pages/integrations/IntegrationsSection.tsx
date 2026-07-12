@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
+import { EmptyState } from '../../components/EmptyState';
+import { ErrorState } from '../../components/ErrorState';
 import { Icon, type IconName } from '../../components/Icon';
+import { LoadingState } from '../../components/LoadingState';
 import { Modal } from '../../components/Modal';
 import { StatusPill } from '../../components/StatusPill';
 import { ApiRequestError } from '../../api/client';
@@ -191,24 +194,11 @@ function renderContent(
   onRetry: () => void,
 ) {
   if (state.status === 'loading') {
-    return (
-      <p className={styles.message} role="status">
-        Cargando tus integraciones…
-      </p>
-    );
+    return <LoadingState message="Cargando tus integraciones…" />;
   }
 
   if (state.status === 'error') {
-    return (
-      <div className={styles.errorState}>
-        <p className={styles.message} role="alert">
-          {LOAD_ERROR}
-        </p>
-        <Button variant="secondary" type="button" onClick={onRetry}>
-          Reintentar
-        </Button>
-      </div>
-    );
+    return <ErrorState message={LOAD_ERROR} onRetry={onRetry} />;
   }
 
   const connected = state.connections.filter((c) => c.status === 'CONNECTED');
@@ -218,9 +208,7 @@ function renderContent(
     <div className={styles.content}>
       <Card title="Conectadas">
         {connected.length === 0 ? (
-          <p className={styles.message} role="status">
-            Aún no tienes integraciones conectadas.
-          </p>
+          <EmptyState variant="filtered" title="Aún no tienes integraciones conectadas." />
         ) : (
           <ul className={styles.list}>
             {connected.map((provider) => (
@@ -262,9 +250,7 @@ function renderContent(
 
       <Card title="Disponibles">
         {available.length === 0 ? (
-          <p className={styles.message} role="status">
-            No hay más integraciones disponibles.
-          </p>
+          <EmptyState variant="filtered" title="No hay más integraciones disponibles." />
         ) : (
           <ul className={styles.list}>
             {available.map((provider) => (
