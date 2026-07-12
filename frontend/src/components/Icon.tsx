@@ -17,7 +17,8 @@ export type IconName =
   | 'menu'
   | 'more'
   | 'user'
-  | 'heart';
+  | 'heart'
+  | 'edit';
 
 const PATHS: Record<IconName, string> = {
   dashboard: 'M3 3h7v7H3zM14 3h7v4h-7zM14 10h7v11h-7zM3 13h7v8H3z',
@@ -35,6 +36,7 @@ const PATHS: Record<IconName, string> = {
   more: 'M5 12h.01M12 12h.01M19 12h.01',
   user: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM5 20a7 7 0 0 1 14 0',
   heart: 'M12 20s-7-4.35-9.5-8A5 5 0 0 1 12 6a5 5 0 0 1 9.5 6c-2.5 3.65-9.5 8-9.5 8z',
+  edit: 'M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z',
 };
 
 interface IconProps {
