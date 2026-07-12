@@ -19,6 +19,9 @@ describe('SyncWidget', () => {
     expect(screen.getByRole('heading', { name: 'Integraciones' })).toBeInTheDocument();
     expect(screen.getByText('Withings')).toBeInTheDocument();
     expect(screen.getByText('Conectado')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Ver más' })).toHaveAttribute('href', '/ajustes');
+    expect(screen.getByRole('link', { name: 'Ver más' })).toHaveAttribute(
+      'href',
+      '/ajustes/integraciones',
+    );
   });
 });
