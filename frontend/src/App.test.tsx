@@ -60,6 +60,16 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: 'Nutrición' })).toBeInTheDocument();
   });
 
+  it('renders the FOR-58 settings screen at /ajustes', () => {
+    render(
+      <MemoryRouter initialEntries={['/ajustes']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('heading', { name: 'Configuración' })).toBeInTheDocument();
+  });
+
   it('renders the FOR-57 integrations screen at its standalone sub-route', () => {
     render(
       <MemoryRouter initialEntries={['/ajustes/integraciones']}>
