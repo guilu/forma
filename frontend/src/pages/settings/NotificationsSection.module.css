@@ -1,0 +1,92 @@
+.hint {
+  margin: calc(var(--space-2) * -1) 0 var(--space-4);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.label {
+  font-weight: 600;
+}
+
+.description {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+/* Disabled toggle "look" — a real disabled checkbox styled as a track+thumb,
+   so it stays keyboard/screen-reader semantics-correct while visually reading
+   as inert (dimmed) rather than interactive. */
+.toggle {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  width: 40px;
+  height: 24px;
+}
+
+.toggle input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: default;
+}
+
+.track {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-lg);
+  background-color: var(--color-border);
+  opacity: 0.7;
+}
+
+.track::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: var(--color-text-muted);
+}
+
+.toggle input:checked + .track {
+  background-color: var(--color-accent);
+  opacity: 0.5;
+}
+
+.toggle input:checked + .track::after {
+  left: calc(100% - 21px);
+  background-color: var(--color-card);
+}
