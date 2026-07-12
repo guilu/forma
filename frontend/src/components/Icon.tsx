@@ -24,7 +24,9 @@ export type IconName =
   | 'chevron'
   | 'inbox'
   | 'alertTriangle'
-  | 'lock';
+  | 'lock'
+  | 'sun'
+  | 'moon';
 
 const PATHS: Record<IconName, string> = {
   dashboard: 'M3 3h7v7H3zM14 3h7v4h-7zM14 10h7v11h-7zM3 13h7v8H3z',
@@ -58,6 +60,10 @@ const PATHS: Record<IconName, string> = {
   alertTriangle: 'M12 4l9 16H3zM12 10v4M12 16.5v.01',
   // Padlock — shared permission/access-error-state component (FOR-60).
   lock: 'M6 11V8a6 6 0 0 1 12 0v3M5 11h14v9H5zM12 15v2',
+  // Sun — switch to / indicate light theme (topbar theme toggle, FOR-62).
+  sun: 'M12 4V2M12 22v-2M4 12H2M22 12h-2M5.6 5.6L4.2 4.2M19.8 19.8l-1.4-1.4M18.4 5.6l1.4-1.4M4.2 19.8l1.4-1.4M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z',
+  // Crescent moon — switch to / indicate dark theme (topbar theme toggle, FOR-62).
+  moon: 'M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z',
 };
 
 interface IconProps {
