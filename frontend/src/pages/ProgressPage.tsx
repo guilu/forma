@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Card } from '../components/Card';
 import { LineChart, type ChartPoint } from '../components/LineChart';
 import { listBodyMeasurements, type BodyMeasurement } from '../api/bodyMeasurements';
+import { InsightsSection } from './progress/InsightsSection';
 import styles from './ProgressPage.module.css';
 
 /**
@@ -10,6 +11,14 @@ import styles from './ProgressPage.module.css';
  * fat %, lean mass) from the FOR-17 API using in-house SVG charts (ADR-010 — no
  * chart library). Read-only, recent-window only; handles loading, empty and error
  * states. Values come straight from the API (ADR-006).
+ *
+ * <p>Also hosts the FOR-56 insights & recommendations surface ({@link
+ * InsightsSection}) below the measurement charts. This is where the fuller
+ * insights view lives for the MVP — the nav has no dedicated "Insights" route
+ * (`frontend/src/app/navigation.ts`), per the FOR-56 spec's Open Question, so
+ * no new nav item/route was added; the dashboard keeps its own compact summary
+ * (FOR-51 `InsightWidget`). `InsightsSection` fetches independently, so a
+ * measurements failure never blocks recommendations or vice versa.
  */
 type State =
   | { readonly status: 'loading' }
@@ -67,6 +76,7 @@ export function ProgressPage() {
         <p className={styles.subtitle}>Tu evolución, tus resultados.</p>
       </header>
       {renderContent(state)}
+      <InsightsSection />
     </div>
   );
 }
