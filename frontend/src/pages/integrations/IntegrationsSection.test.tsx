@@ -1,0 +1,203 @@
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { IntegrationsSection } from './IntegrationsSection';
+import { ApiRequestError } from '../../api/client';
+import {
+  connectIntegration,
+  disconnectIntegration,
+  listIntegrations,
+  syncIntegration,
+  type IntegrationConnection,
+} from '../../api/integrations';
+
+vi.mock('../../api/integrations', () => ({
+  listIntegrations: vi.fn(),
+  connectIntegration: vi.fn(),
+  disconnectIntegration: vi.fn(),
+  syncIntegration: vi.fn(),
+}));
+
+const listMock = vi.mocked(listIntegrations);
+const connectMock = vi.mocked(connectIntegration);
+const disconnectMock = vi.mocked(disconnectIntegration);
+const syncMock = vi.mocked(syncIntegration);
+
+const withings: IntegrationConnection = {
+  providerId: 'WITHINGS',
+  providerName: 'Withings',
+  description: 'Sincroniza automáticamente tus datos de salud y composición corporal.',
+  status: 'CONNECTED',
+  lastSyncAt: '2026-07-10T08:15:00Z',
+};
+
+const googleFit: IntegrationConnection = {
+  providerId: 'GOOGLE_FIT',
+  providerName: 'Google Fit',
+  description: 'Sincroniza tu actividad y entrenamientos.',
+  status: 'NOT_CONNECTED',
+};
+
+const appleHealth: IntegrationConnection = {
+  providerId: 'APPLE_HEALTH',
+  providerName: 'Apple Health',
+  description: 'Sincroniza tus datos de salud de Apple.',
+  status: 'NOT_CONNECTED',
+};
+
+describe('IntegrationsSection', () => {
+  beforeEach(() => {
+    listMock.mockReset();
+    connectMock.mockReset();
+    disconnectMock.mockReset();
+    syncMock.mockReset();
+  });
+
+  it('renders the connected provider with status pill and last-sync timestamp', async () => {
+    listMock.mockResolvedValue([withings, googleFit, appleHealth]);
+
+    render(<IntegrationsSection />);
+
+    expect(await screen.findByText('Withings')).toBeInTheDocument();
+    const connectedCard = screen.getByText('Withings').closest('li') as HTMLElement;
+    expect(connectedCard).toHaveTextContent('Conectado');
+    expect(connectedCard).toHaveTextContent('Última sincronización');
+  });
+
+  it('renders available providers with a connect action', async () => {
+    listMock.mockResolvedValue([withings, googleFit, appleHealth]);
+
+    render(<IntegrationsSection />);
+
+    expect(await screen.findByText('Google Fit')).toBeInTheDocument();
+    expect(screen.getByText('Apple Health')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Conectar' })).toHaveLength(2);
+    expect(screen.getAllByText('No conectado')).toHaveLength(2);
+  });
+
+  it('shows connect, disconnect and manual-sync entry points where supported', async () => {
+    listMock.mockResolvedValue([withings, googleFit, appleHealth]);
+
+    render(<IntegrationsSection />);
+    await screen.findByText('Withings');
+
+    // Connected provider: sync + disconnect entry points.
+    expect(screen.getByRole('button', { name: 'Sincronizar ahora' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Desconectar' })).toBeInTheDocument();
+    // Available providers: connect entry point.
+    expect(screen.getAllByRole('button', { name: 'Conectar' })).toHaveLength(2);
+  });
+
+  it('shows a sync error clearly with no token/PII when manual sync fails', async () => {
+    listMock.mockResolvedValue([withings]);
+    syncMock.mockRejectedValue(
+      new ApiRequestError(
+        501,
+        'No se pudo sincronizar Withings: la integración con proveedores externos todavía no está disponible.',
+        'NOT_IMPLEMENTED',
+      ),
+    );
+    const user = userEvent.setup();
+
+    render(<IntegrationsSection />);
+    await user.click(await screen.findByRole('button', { name: 'Sincronizar ahora' }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('No se pudo sincronizar Withings');
+    expect(alert.textContent).not.toMatch(/token|secret|password|bearer/i);
+  });
+
+  it('shows a connect error clearly without sensitive data', async () => {
+    listMock.mockResolvedValue([googleFit]);
+    connectMock.mockRejectedValue(
+      new ApiRequestError(
+        501,
+        'No se pudo conectar con Google Fit: la integración con proveedores externos todavía no está disponible.',
+        'NOT_IMPLEMENTED',
+      ),
+    );
+    const user = userEvent.setup();
+
+    render(<IntegrationsSection />);
+    await user.click(await screen.findByRole('button', { name: 'Conectar' }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('No se pudo conectar con Google Fit');
+    expect(alert.textContent).not.toMatch(/token|secret|password|bearer/i);
+  });
+
+  it('asks for explicit confirmation before disconnecting, and shows the resulting error', async () => {
+    listMock.mockResolvedValue([withings]);
+    disconnectMock.mockRejectedValue(
+      new ApiRequestError(
+        501,
+        'No se pudo desconectar Withings: la integración con proveedores externos todavía no está disponible.',
+        'NOT_IMPLEMENTED',
+      ),
+    );
+    const user = userEvent.setup();
+
+    render(<IntegrationsSection />);
+    await user.click(await screen.findByRole('button', { name: 'Desconectar' }));
+
+    // Explicit confirmation modal (FOR-63 destructive pattern, reusing Modal).
+    const modal = await screen.findByRole('dialog');
+    expect(
+      within(modal).getByRole('heading', { name: 'Desconectar Withings' }),
+    ).toBeInTheDocument();
+    expect(disconnectMock).not.toHaveBeenCalled();
+
+    await user.click(within(modal).getByRole('button', { name: 'Desconectar' }));
+
+    await waitFor(() => expect(disconnectMock).toHaveBeenCalledWith('WITHINGS'));
+    expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo desconectar Withings');
+  });
+
+  it('cancels disconnect without calling the API when the user backs out', async () => {
+    listMock.mockResolvedValue([withings]);
+    const user = userEvent.setup();
+
+    render(<IntegrationsSection />);
+    await user.click(await screen.findByRole('button', { name: 'Desconectar' }));
+    const modal = await screen.findByRole('dialog');
+    within(modal).getByRole('heading', { name: 'Desconectar Withings' });
+
+    await user.click(within(modal).getByRole('button', { name: 'Cancelar' }));
+
+    expect(screen.queryByRole('heading', { name: 'Desconectar Withings' })).not.toBeInTheDocument();
+    expect(disconnectMock).not.toHaveBeenCalled();
+  });
+
+  it('renders a clean empty connected state alongside the available list', async () => {
+    listMock.mockResolvedValue([googleFit, appleHealth]);
+
+    render(<IntegrationsSection />);
+
+    expect(await screen.findByText('Aún no tienes integraciones conectadas.')).toBeInTheDocument();
+    expect(screen.getByText('Google Fit')).toBeInTheDocument();
+    expect(screen.getByText('Apple Health')).toBeInTheDocument();
+  });
+
+  it('shows a loading state while providers load', () => {
+    listMock.mockReturnValue(new Promise(() => {}));
+
+    render(<IntegrationsSection />);
+
+    expect(screen.getByRole('status')).toHaveTextContent('Cargando tus integraciones');
+  });
+
+  it('shows an error state with retry when the provider list fails to load', async () => {
+    listMock.mockRejectedValueOnce(new Error('network'));
+    listMock.mockResolvedValueOnce([withings, googleFit, appleHealth]);
+    const user = userEvent.setup();
+
+    render(<IntegrationsSection />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('No se pudieron cargar');
+
+    await user.click(screen.getByRole('button', { name: 'Reintentar' }));
+
+    expect(await screen.findByText('Withings')).toBeInTheDocument();
+    expect(listMock).toHaveBeenCalledTimes(2);
+  });
+});

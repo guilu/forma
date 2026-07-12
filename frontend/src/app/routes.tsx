@@ -8,6 +8,7 @@ import { ShoppingPage } from '../pages/ShoppingPage';
 import { ProgressPage } from '../pages/ProgressPage';
 import { GoalsPage } from '../pages/GoalsPage';
 import { SettingsPage } from '../pages/SettingsPage';
+import { IntegrationsPage } from '../pages/IntegrationsPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 
 /**
@@ -28,6 +29,9 @@ export const routes: RouteObject[] = [
       { path: 'progreso', element: <ProgressPage /> },
       { path: 'objetivos', element: <GoalsPage /> },
       { path: 'ajustes', element: <SettingsPage /> },
+      // FOR-57: standalone sub-route (FOR-58's Ajustes shell isn't built yet —
+      // see IntegrationsPage.tsx doc comment).
+      { path: 'ajustes/integraciones', element: <IntegrationsPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

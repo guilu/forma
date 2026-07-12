@@ -28,6 +28,9 @@ vi.mock('./api/insights', () => ({
     generatedAt: 'now',
   }),
 }));
+vi.mock('./api/integrations', () => ({
+  listIntegrations: vi.fn().mockResolvedValue([]),
+}));
 
 /**
  * Router smoke tests (FOR-81, index-route content owned by FOR-51): the shell
@@ -55,6 +58,16 @@ describe('App', () => {
     );
 
     expect(screen.getByRole('heading', { name: 'Nutrición' })).toBeInTheDocument();
+  });
+
+  it('renders the FOR-57 integrations screen at its standalone sub-route', () => {
+    render(
+      <MemoryRouter initialEntries={['/ajustes/integraciones']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('heading', { name: 'Integraciones' })).toBeInTheDocument();
   });
 
   it('falls back to the not-found page for unknown routes', () => {

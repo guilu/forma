@@ -158,7 +158,7 @@ describe('DashboardPage', () => {
         '/entrenamiento',
         '/nutricion',
         '/lista-compra',
-        '/ajustes',
+        '/ajustes/integraciones',
       ]),
     );
   });
