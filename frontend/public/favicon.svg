@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- FORMA brand mark: the "F" from src/components/Brand.tsx, on the dark
+       card surface so it stays legible in both light and dark browser tabs. -->
+  <rect width="32" height="32" rx="7" fill="#161f1a" />
+  <path d="M8 4h18l-3 6H14v5h9l-3 6h-6v7l-6 3z" fill="#9dff57" />
+</svg>
