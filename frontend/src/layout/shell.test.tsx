@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { MobileNav } from './MobileNav';
+import { ThemeProvider } from '../theme/ThemeContext';
 
 /**
  * Shell hardening tests (FOR-49): the sidebar integration status, the topbar
@@ -24,10 +25,32 @@ describe('application shell', () => {
   });
 
   it('renders the account area and notifications in the topbar', () => {
-    render(<Topbar />);
+    render(
+      <ThemeProvider>
+        <Topbar />
+      </ThemeProvider>,
+    );
 
     expect(screen.getByText('Diego')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Notificaciones' })).toBeInTheDocument();
+  });
+
+  it('toggles the theme from the topbar next to the notifications bell', async () => {
+    const user = userEvent.setup();
+    document.documentElement.removeAttribute('data-theme');
+    render(
+      <ThemeProvider>
+        <Topbar />
+      </ThemeProvider>,
+    );
+
+    // Default resolves to dark → the button offers switching to light (sun).
+    const toggle = screen.getByRole('button', { name: 'Cambiar a tema claro' });
+    await user.click(toggle);
+
+    expect(document.documentElement.getAttribute('data-theme')).toBe('light');
+    // Now it offers switching back to dark (moon).
+    expect(screen.getByRole('button', { name: 'Cambiar a tema oscuro' })).toBeInTheDocument();
   });
 
   // The mobile bar is CSS-hidden at the jsdom desktop viewport (shown only

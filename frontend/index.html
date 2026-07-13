@@ -4,7 +4,34 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="dark light" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>FORMA</title>
+    <!--
+      FOR-62: apply the resolved theme before the app (and its stylesheet)
+      even loads, so the first paint never flashes the "wrong" theme while
+      React mounts. Mirrors the precedence in `src/theme/theme.ts` (explicit
+      stored preference > system `prefers-color-scheme` > dark default) but
+      is plain, synchronous JS because it must run before any module import.
+      `ThemeProvider` re-applies the same resolution on mount, so this stays
+      correct even if the two ever drift.
+    -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('forma.theme');
+          var theme = stored === 'light' || stored === 'dark' ? stored : null;
+          if (!theme) {
+            var prefersLight =
+              typeof window.matchMedia === 'function' &&
+              window.matchMedia('(prefers-color-scheme: light)').matches;
+            theme = prefersLight ? 'light' : 'dark';
+          }
+          document.documentElement.setAttribute('data-theme', theme);
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

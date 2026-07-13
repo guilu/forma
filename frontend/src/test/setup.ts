@@ -44,6 +44,34 @@ function ensureWorkingLocalStorage() {
 
 ensureWorkingLocalStorage();
 
+/**
+ * jsdom does not implement `window.matchMedia` (FOR-62, first story to read
+ * `prefers-color-scheme`) — calling it throws "not implemented" instead of
+ * returning a `MediaQueryList`. This default resolves to "no match" so any
+ * incidental call (and every test that doesn't care about theme) stays safe
+ * and consistent with the "no system signal → dark default" edge case.
+ * Theme tests that need a specific system preference replace
+ * `window.matchMedia` themselves and restore it afterwards.
+ */
+function ensureMatchMedia() {
+  if (typeof window.matchMedia === 'function') {
+    return;
+  }
+  window.matchMedia = (query: string) =>
+    ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    }) as MediaQueryList;
+}
+
+ensureMatchMedia();
+
 afterEach(() => {
   cleanup();
 });

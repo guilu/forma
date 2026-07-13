@@ -1,8 +1,22 @@
 import { Badge } from '../../components/Badge';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
+import { ThemeToggle } from '../../components/ThemeToggle';
+import { useTheme } from '../../theme/ThemeContext';
 import { MOCK_PROFILE } from './profileData';
 import styles from './ProfileSection.module.css';
+
+const THEME_LABELS = { light: 'Claro', dark: 'Oscuro' } as const;
+
+function themeDescription(
+  mode: 'light' | 'dark' | 'system',
+  resolvedTheme: 'light' | 'dark',
+): string {
+  if (mode === 'system') {
+    return `Sistema (${THEME_LABELS[resolvedTheme]})`;
+  }
+  return THEME_LABELS[mode];
+}
 
 /**
  * Personal profile summary (FOR-58 FR: "avatar, name, email, birthdate, sex,
@@ -17,9 +31,15 @@ import styles from './ProfileSection.module.css';
  * "Próximamente" badge, so it never looks like a working action (spec FOR-58
  * edge case).
  *
- * <p>The "Tema" row is FOR-62's placeholder entry point — also inert.
+ * <p>The "Tema" row was FOR-58's inert placeholder; FOR-62 wires it to the
+ * real {@link ThemeToggle}, backed by {@link useTheme} — no local state here,
+ * this section just renders the current preference and lets the toggle
+ * persist/apply the change (theme resolution/persistence lives entirely in
+ * `theme/ThemeContext`).
  */
 export function ProfileSection() {
+  const { mode, resolvedTheme } = useTheme();
+
   return (
     <Card
       title="Perfil y preferencias"
@@ -74,9 +94,9 @@ export function ProfileSection() {
       <div className={styles.themeRow}>
         <div>
           <span className={styles.label}>Tema</span>
-          <span className={styles.description}>Oscuro (predeterminado)</span>
+          <span className={styles.description}>{themeDescription(mode, resolvedTheme)}</span>
         </div>
-        <Badge tone="neutral">Próximamente</Badge>
+        <ThemeToggle />
       </div>
     </Card>
   );

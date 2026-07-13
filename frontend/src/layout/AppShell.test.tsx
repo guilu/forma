@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import { AppShell } from './AppShell';
+import { ThemeProvider } from '../theme/ThemeContext';
 
 /**
  * Application shell accessibility tests (FOR-61): the skip link, the
@@ -21,14 +22,16 @@ function RoutedPage({ label, to }: { readonly label: string; readonly to?: strin
 
 function renderShell(initialEntry: string) {
   return render(
-    <MemoryRouter initialEntries={[initialEntry]}>
-      <Routes>
-        <Route path="/" element={<AppShell />}>
-          <Route path="a" element={<RoutedPage label="Página A" to="/b" />} />
-          <Route path="b" element={<RoutedPage label="Página B" />} />
-        </Route>
-      </Routes>
-    </MemoryRouter>,
+    <ThemeProvider>
+      <MemoryRouter initialEntries={[initialEntry]}>
+        <Routes>
+          <Route path="/" element={<AppShell />}>
+            <Route path="a" element={<RoutedPage label="Página A" to="/b" />} />
+            <Route path="b" element={<RoutedPage label="Página B" />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>
+    </ThemeProvider>,
   );
 }
 

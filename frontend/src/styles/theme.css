@@ -67,7 +67,15 @@
   --color-text: #0f1a13;
   --color-text-muted: #5c6b62;
 
-  --color-accent: #2f8f4e;
+  /*
+   * FOR-61 flagged the original #2f8f4e on --color-bg (#f4f7f5) at ~3.77:1,
+   * failing WCAG AA for normal text (4.5:1). FOR-62 makes light theme actually
+   * reachable via the toggle, so this darkened green fixes that: #1c6e37 on
+   * --color-bg is ~5.84:1, and white text on this accent (e.g. Button
+   * `primary`) is ~6.3:1 — both comfortably above AA while keeping the same
+   * green brand hue, just deeper. Dark theme's accent (#9dff57) is unaffected.
+   */
+  --color-accent: #1c6e37;
   --color-accent-contrast: #ffffff;
   --color-warning: #b7791f;
   --color-danger: #c0392b;

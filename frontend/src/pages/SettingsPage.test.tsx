@@ -2,6 +2,18 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { SettingsPage } from './SettingsPage';
 import { listIntegrations } from '../api/integrations';
+import { ThemeProvider } from '../theme/ThemeContext';
+
+// The "Tema" row (FOR-62) reads `useTheme()`, so every render needs a
+// ThemeProvider ancestor — App.tsx provides one at the route-tree level, but
+// this file mounts SettingsPage standalone.
+function renderSettingsPage() {
+  return render(
+    <ThemeProvider>
+      <SettingsPage />
+    </ThemeProvider>,
+  );
+}
 
 // `vi.mock` factories are hoisted above top-level const declarations, so the
 // fixture is defined inline here rather than referenced from an outer const.
@@ -31,7 +43,7 @@ vi.mock('../api/integrations', () => ({
  */
 describe('SettingsPage', () => {
   it('renders every grouped section from the spec', () => {
-    render(<SettingsPage />);
+    renderSettingsPage();
 
     expect(screen.getByRole('heading', { name: 'Configuración' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Perfil y preferencias' })).toBeInTheDocument();
@@ -44,20 +56,20 @@ describe('SettingsPage', () => {
   });
 
   it('shows the profile summary with name and email', () => {
-    render(<SettingsPage />);
+    renderSettingsPage();
 
     expect(screen.getByText('Usuario FORMA')).toBeInTheDocument();
     expect(screen.getByText('usuario@forma.app')).toBeInTheDocument();
   });
 
   it('mounts the reused FOR-57 integrations section', () => {
-    render(<SettingsPage />);
+    renderSettingsPage();
 
     expect(vi.mocked(listIntegrations)).toHaveBeenCalled();
   });
 
   it('distinguishes editable content (Conexiones, real buttons) from read-only/inert content', async () => {
-    render(<SettingsPage />);
+    renderSettingsPage();
 
     // Editable: Conexiones renders real, enabled action buttons (FOR-57, already working).
     const withingsButton = await screen.findByRole('button', { name: 'Sincronizar ahora' });
@@ -72,7 +84,7 @@ describe('SettingsPage', () => {
   });
 
   it('marks unsupported security/data options as inert, not active', () => {
-    render(<SettingsPage />);
+    renderSettingsPage();
 
     expect(screen.getByText('Autenticación en dos pasos')).toBeInTheDocument();
     expect(screen.getByText('Exportar mis datos')).toBeInTheDocument();
