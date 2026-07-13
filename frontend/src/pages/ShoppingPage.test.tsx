@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ShoppingPage } from './ShoppingPage';
+import { NotificationProvider } from '../components/NotificationProvider';
 import {
   getShoppingList,
   listShoppingProducts,
@@ -10,6 +11,15 @@ import {
   type ShoppingList,
   type ShoppingProduct,
 } from '../api/shopping';
+
+/** ShoppingPage calls `useNotify()` (FOR-63), which requires a provider. */
+function renderPage() {
+  return render(
+    <NotificationProvider>
+      <ShoppingPage />
+    </NotificationProvider>,
+  );
+}
 
 vi.mock('../api/shopping', () => ({
   getShoppingList: vi.fn(),
@@ -51,7 +61,7 @@ describe('ShoppingPage', () => {
   it('renders the checklist grouped under a single "Todas" tab, with items and the budget', async () => {
     getListMock.mockResolvedValue(list);
 
-    render(<ShoppingPage />);
+    renderPage();
 
     const avenaCheckbox = await screen.findByRole('checkbox', { name: /Avena 1 kg/ });
     expect(screen.getByRole('checkbox', { name: /Pollo 1 kg/ })).toBeChecked();
@@ -78,7 +88,7 @@ describe('ShoppingPage', () => {
     setCheckedMock.mockResolvedValue({ id: 'i1', checked: true });
     const user = userEvent.setup();
 
-    render(<ShoppingPage />);
+    renderPage();
     const checkbox = await screen.findByRole('checkbox', { name: /Avena 1 kg/ });
 
     await user.click(checkbox);
@@ -87,12 +97,40 @@ describe('ShoppingPage', () => {
     expect(await screen.findByRole('checkbox', { name: /Avena 1 kg/ })).toBeChecked();
   });
 
+  it('shows a success notification after toggling an item (FOR-63)', async () => {
+    getListMock.mockResolvedValue(list);
+    setCheckedMock.mockResolvedValue({ id: 'i1', checked: true });
+    const user = userEvent.setup();
+
+    renderPage();
+    await user.click(await screen.findByRole('checkbox', { name: /Avena 1 kg/ }));
+
+    const region = screen.getByRole('log');
+    expect(await within(region).findByText(/actualizado/i)).toBeInTheDocument();
+  });
+
+  it('de-duplicates the toast on rapid repeated toggles of the same item (edge case)', async () => {
+    getListMock.mockResolvedValue(list);
+    setCheckedMock.mockResolvedValue({ id: 'i1', checked: true });
+    const user = userEvent.setup();
+
+    renderPage();
+    const checkbox = await screen.findByRole('checkbox', { name: /Avena 1 kg/ });
+    await user.click(checkbox);
+    await waitFor(() => expect(setCheckedMock).toHaveBeenCalledTimes(1));
+    await user.click(checkbox);
+    await waitFor(() => expect(setCheckedMock).toHaveBeenCalledTimes(2));
+
+    const region = screen.getByRole('log');
+    expect(within(region).getAllByText(/actualizado/i)).toHaveLength(1);
+  });
+
   it('shows an error and preserves the list when a toggle fails', async () => {
     getListMock.mockResolvedValue(list);
     setCheckedMock.mockRejectedValue(new Error('network'));
     const user = userEvent.setup();
 
-    render(<ShoppingPage />);
+    renderPage();
     await user.click(await screen.findByRole('checkbox', { name: /Avena 1 kg/ }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo actualizar');
@@ -105,7 +143,7 @@ describe('ShoppingPage', () => {
     getListMock.mockResolvedValueOnce(list);
     const user = userEvent.setup();
 
-    render(<ShoppingPage />);
+    renderPage();
 
     expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo cargar');
 
@@ -123,7 +161,7 @@ describe('ShoppingPage', () => {
       budget: { weeklyEur: 0, monthlyEur: 0 },
     });
 
-    render(<ShoppingPage />);
+    renderPage();
 
     expect(await screen.findByText(/No hay artículos en la lista/)).toBeInTheDocument();
     expect(screen.getAllByText(/0,00/).length).toBeGreaterThan(0);
@@ -135,7 +173,7 @@ describe('ShoppingPage', () => {
     updateProductMock.mockResolvedValue({ ...avenaProduct, estimatedPriceEur: 2.1 });
     const user = userEvent.setup();
 
-    render(<ShoppingPage />);
+    renderPage();
     await screen.findByRole('checkbox', { name: /Avena 1 kg/ });
 
     await user.click(screen.getByRole('button', { name: /Editar producto Avena 1 kg/ }));
@@ -166,7 +204,7 @@ describe('ShoppingPage', () => {
     listProductsMock.mockResolvedValue([]);
     const user = userEvent.setup();
 
-    render(<ShoppingPage />);
+    renderPage();
     await screen.findByRole('checkbox', { name: /Avena 1 kg/ });
 
     await user.click(screen.getByRole('button', { name: /Editar producto Avena 1 kg/ }));

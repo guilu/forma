@@ -73,16 +73,6 @@
   border-radius: var(--radius-md);
 }
 
-.confirmText {
-  margin: 0 0 var(--space-4);
-}
-
-.confirmActions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-3);
-}
-
 /* Below ~640px, stack each row so actions never get squeezed into a
    horizontal-scroll layout (ui-guidelines: mobile usability). */
 @media (max-width: 640px) {

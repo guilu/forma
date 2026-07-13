@@ -2,7 +2,17 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TrainingPage } from './TrainingPage';
+import { NotificationProvider } from '../components/NotificationProvider';
 import { getTrainingWeek, updateSessionStatus, type TrainingWeek } from '../api/training';
+
+/** TrainingPage calls `useNotify()` (FOR-63), which requires a provider. */
+function renderPage() {
+  return render(
+    <NotificationProvider>
+      <TrainingPage />
+    </NotificationProvider>,
+  );
+}
 
 vi.mock('../api/training', () => ({
   getTrainingWeek: vi.fn(),
@@ -65,7 +75,7 @@ describe('TrainingPage', () => {
   it('shows a loading state while the request resolves', () => {
     getWeekMock.mockReturnValue(new Promise(() => {}));
 
-    render(<TrainingPage />);
+    renderPage();
 
     expect(screen.getByRole('status')).toHaveTextContent('Cargando tu semana');
   });
@@ -73,7 +83,7 @@ describe('TrainingPage', () => {
   it("renders today's session card for the current day of week", async () => {
     getWeekMock.mockResolvedValue(week);
 
-    render(<TrainingPage />);
+    renderPage();
 
     const todayHeading = await screen.findByRole('heading', { name: 'Entrenamiento de hoy' });
     const todayCard = todayHeading.closest('section') as HTMLElement;
@@ -88,7 +98,7 @@ describe('TrainingPage', () => {
   it('renders the weekly calendar with running, strength and rest days', async () => {
     getWeekMock.mockResolvedValue(week);
 
-    render(<TrainingPage />);
+    renderPage();
     await screen.findByRole('heading', { name: 'Calendario semanal' });
 
     expect(screen.getByText('Tirada larga')).toBeInTheDocument();
@@ -104,7 +114,7 @@ describe('TrainingPage', () => {
     getWeekMock.mockResolvedValue(week);
     const user = userEvent.setup();
 
-    render(<TrainingPage />);
+    renderPage();
     await screen.findByRole('heading', { name: 'Calendario semanal' });
 
     await user.click(screen.getByRole('button', { name: 'Ver detalle' }));
@@ -118,7 +128,7 @@ describe('TrainingPage', () => {
     getWeekMock.mockResolvedValue(week);
     const user = userEvent.setup();
 
-    render(<TrainingPage />);
+    renderPage();
     await screen.findByText('Tirada larga');
 
     await user.click(screen.getByRole('button', { name: /Carrera.*Tirada larga/s }));
@@ -138,7 +148,7 @@ describe('TrainingPage', () => {
     updateMock.mockResolvedValue({ id: 'TUESDAY:RUNNING', status: 'COMPLETED' });
     const user = userEvent.setup();
 
-    render(<TrainingPage />);
+    renderPage();
     await screen.findByText('Tirada larga');
 
     const runningTile = screen.getByRole('heading', { name: 'Carrera' }).closest('section');
@@ -154,10 +164,25 @@ describe('TrainingPage', () => {
     );
   });
 
+  it('shows a success notification after marking a session completed (FOR-63)', async () => {
+    getWeekMock.mockResolvedValue(week);
+    updateMock.mockResolvedValue({ id: 'TUESDAY:RUNNING', status: 'COMPLETED' });
+    const user = userEvent.setup();
+
+    renderPage();
+    await screen.findByRole('heading', { name: 'Calendario semanal' });
+
+    await user.click(screen.getByRole('button', { name: /Carrera.*Tirada larga/s }));
+    await user.click(screen.getByRole('button', { name: 'Completar' }));
+
+    const region = screen.getByRole('log');
+    expect(await within(region).findByText(/marcado como completado/i)).toBeInTheDocument();
+  });
+
   it('shows the weekly summary with planned vs completed counts', async () => {
     getWeekMock.mockResolvedValue(week);
 
-    render(<TrainingPage />);
+    renderPage();
     await screen.findByRole('heading', { name: 'Calendario semanal' });
 
     expect(screen.getByRole('heading', { name: 'Resumen semanal' })).toBeInTheDocument();
@@ -170,7 +195,7 @@ describe('TrainingPage', () => {
     updateMock.mockRejectedValue(new Error('network'));
     const user = userEvent.setup();
 
-    render(<TrainingPage />);
+    renderPage();
     await screen.findByRole('heading', { name: 'Calendario semanal' });
 
     await user.click(screen.getByRole('button', { name: 'Iniciar entrenamiento' }));
@@ -183,7 +208,7 @@ describe('TrainingPage', () => {
   it('shows an error state with retry when the week fails to load', async () => {
     getWeekMock.mockRejectedValue(new Error('network'));
 
-    render(<TrainingPage />);
+    renderPage();
 
     expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo cargar tu semana');
     expect(screen.getByRole('button', { name: 'Reintentar' })).toBeInTheDocument();
@@ -192,7 +217,7 @@ describe('TrainingPage', () => {
   it('shows an empty state when the week has no sessions', async () => {
     getWeekMock.mockResolvedValue({ days: [{ dayOfWeek: 'MONDAY', rest: true, sessions: [] }] });
 
-    render(<TrainingPage />);
+    renderPage();
 
     // Loading and empty are both announced via role="status" (FOR-60 shared
     // states), so wait for the terminal content instead of the first status
@@ -208,7 +233,7 @@ describe('TrainingPage', () => {
     vi.setSystemTime(new Date('2026-07-12T09:00:00')); // Sunday
     getWeekMock.mockResolvedValue(week);
 
-    render(<TrainingPage />);
+    renderPage();
 
     expect(await screen.findByText('Hoy es día de descanso.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Iniciar entrenamiento' })).toBeNull();

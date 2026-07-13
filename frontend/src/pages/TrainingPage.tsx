@@ -7,6 +7,7 @@ import { ErrorState } from '../components/ErrorState';
 import { LoadingState } from '../components/LoadingState';
 import { MetricCard } from '../components/MetricCard';
 import { Modal } from '../components/Modal';
+import { useNotify } from '../components/NotificationProvider';
 import { StatusPill } from '../components/StatusPill';
 import { ApiRequestError } from '../api/client';
 import {
@@ -109,6 +110,7 @@ function tally(sessions: readonly TrainingSession[]): { completed: number; plann
 }
 
 export function TrainingPage() {
+  const notify = useNotify();
   const [state, setState] = useState<State>({ status: 'loading' });
   const [actionError, setActionError] = useState<string | undefined>(undefined);
   const [pendingId, setPendingId] = useState<string | undefined>(undefined);
@@ -138,6 +140,13 @@ export function TrainingPage() {
           ? { ...current, session: { ...current.session, status } }
           : current,
       );
+      // Success feedback for the "complete training" key action (FOR-63:
+      // "Success feedback: toast or inline confirmation after key actions").
+      // Skipping a session is not a "success" moment, so it stays silent
+      // (ui-guidelines.md: "no guilt language" cuts both ways here).
+      if (status === 'COMPLETED') {
+        notify.success('Entrenamiento marcado como completado.');
+      }
     } catch (error) {
       setActionError(error instanceof ApiRequestError ? error.message : MARK_ERROR);
     } finally {
