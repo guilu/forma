@@ -7,6 +7,7 @@ import { getTrainingWeek, type TrainingWeek } from '../api/training';
 import { getNutritionDay, type NutritionDay } from '../api/nutrition';
 import { getShoppingList, type ShoppingList } from '../api/shopping';
 import { getWeeklyInsights, type WeeklyInsights } from '../api/insights';
+import { axe } from '../test/axe';
 
 /**
  * Dashboard composition tests (FOR-51). Verifies the page composes all six MVP
@@ -216,5 +217,19 @@ describe('DashboardPage', () => {
     // The other widgets still render their data.
     expect(await screen.findByText('Running - Intervalos')).toBeInTheDocument();
     expect(screen.getByText('2300', { exact: false })).toBeInTheDocument();
+  });
+
+  it('has no accessibility violations once all six widgets have settled (FOR-114)', async () => {
+    mockAllSuccess();
+
+    const { container } = renderDashboard();
+    // Wait for every widget to leave its loading state before scanning: the
+    // full-page fixture is also this suite's representative multi-heading-level
+    // screen (page <h1>, section <h2>s, card <h3>s), so the axe "heading-order"
+    // rule here covers the FOR-112 heading-hierarchy fix.
+    await screen.findByRole('heading', { name: 'Composición corporal', level: 2 });
+    await screen.findByText('El peso baja rápido; considera aumentar un poco las calorías.');
+
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

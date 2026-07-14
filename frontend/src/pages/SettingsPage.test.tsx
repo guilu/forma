@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { SettingsPage } from './SettingsPage';
 import { listIntegrations } from '../api/integrations';
 import { ThemeProvider } from '../theme/ThemeContext';
+import { axe } from '../test/axe';
 
 // The "Tema" row (FOR-62) reads `useTheme()`, so every render needs a
 // ThemeProvider ancestor — App.tsx provides one at the route-tree level, but
@@ -104,5 +105,15 @@ describe('SettingsPage', () => {
     expect(
       screen.queryByRole('button', { name: 'Autenticación en dos pasos' }),
     ).not.toBeInTheDocument();
+  });
+
+  it('has no accessibility violations across all grouped sections (FOR-114)', async () => {
+    const { container } = renderSettingsPage();
+    // Includes SecuritySection's inert "Próximamente" rows -- confirms the
+    // visible-but-non-interactive pattern doesn't trip an axe violation
+    // (FOR-114 edge case).
+    await screen.findByRole('button', { name: 'Sincronizar ahora' });
+
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

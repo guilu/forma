@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { OnboardingPage } from './OnboardingPage';
 import { saveOnboardingProgress, INITIAL_PROGRESS } from './onboardingStorage';
+import { axe } from '../../test/axe';
 
 /**
  * Covers `specs/FOR-59/tests.md` UI Tests: ordered steps with progress,
@@ -202,5 +203,23 @@ describe('OnboardingPage', () => {
 
     expect(screen.getByRole('heading', { name: 'Perfil' })).toBeInTheDocument();
     expect(screen.getByText('Paso 1 de 7')).toBeInTheDocument();
+  });
+
+  it('has no accessibility violations on the first step (FOR-114)', async () => {
+    const { container } = renderOnboarding();
+
+    expect(screen.getByRole('heading', { name: 'Perfil' })).toBeInTheDocument();
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('has no accessibility violations after advancing to a later step (FOR-114)', async () => {
+    const user = userEvent.setup();
+    const { container } = renderOnboarding();
+
+    await fillName(user, 'Diego');
+    await user.click(screen.getByRole('button', { name: 'Siguiente' }));
+    expect(screen.getByRole('heading', { name: 'Métricas actuales' })).toBeInTheDocument();
+
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

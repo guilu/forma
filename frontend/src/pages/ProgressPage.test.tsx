@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { ProgressPage } from './ProgressPage';
 import { listBodyMeasurements, type BodyMeasurement } from '../api/bodyMeasurements';
 import { getWeeklyInsights, type WeeklyInsights } from '../api/insights';
+import { axe } from '../test/axe';
 
 vi.mock('../api/bodyMeasurements', () => ({
   listBodyMeasurements: vi.fn(),
@@ -145,5 +146,14 @@ describe('ProgressPage', () => {
     expect(
       screen.getByText('Aún no hay suficientes datos para una recomendación.'),
     ).toBeInTheDocument();
+  });
+
+  it('has no accessibility violations with three rendered charts (FOR-114)', async () => {
+    listMock.mockResolvedValue(measurements(4));
+
+    const { container } = renderProgress();
+    await screen.findByRole('img', { name: /Evolución de peso/ });
+
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

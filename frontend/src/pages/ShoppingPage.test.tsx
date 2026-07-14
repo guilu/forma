@@ -14,6 +14,7 @@ import {
   type ShoppingList,
   type ShoppingProduct,
 } from '../api/shopping';
+import { axe } from '../test/axe';
 
 /** ShoppingPage calls `useNotify()` (FOR-63), which requires a provider. */
 function renderPage() {
@@ -468,6 +469,44 @@ describe('ShoppingPage', () => {
 
     const notFound = await screen.findByText(/No se pudo encontrar el producto/);
     expect(notFound.closest('[role="status"]')).toBeInTheDocument();
+  });
+
+  it('has no accessibility violations in the default tabs + list state (FOR-114)', async () => {
+    getListMock.mockResolvedValue(list);
+
+    const { container } = renderPage();
+    await screen.findByRole('checkbox', { name: /Avena 1 kg/ });
+
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('has no accessibility violations with the product-edit modal open (FOR-114)', async () => {
+    getListMock.mockResolvedValue(list);
+    listProductsMock.mockResolvedValue([avenaProduct]);
+    const user = userEvent.setup();
+
+    const { container } = renderPage();
+    await screen.findByRole('checkbox', { name: /Avena 1 kg/ });
+    await user.click(screen.getByRole('button', { name: /Editar producto Avena 1 kg/ }));
+    await screen.findByLabelText('Precio estimado (€)');
+
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('has no accessibility violations once the toggle success toast has settled (FOR-63 aria-live, FOR-114)', async () => {
+    getListMock.mockResolvedValue(list);
+    setCheckedMock.mockResolvedValue({ id: 'i1', checked: true });
+    const user = userEvent.setup();
+
+    const { container } = renderPage();
+    await user.click(await screen.findByRole('checkbox', { name: /Avena 1 kg/ }));
+    // Scan only after the toast has actually rendered into the `aria-live`
+    // region -- scanning immediately after the click would race the async
+    // notification and scan a stale snapshot mid-update (FOR-114 edge case).
+    const region = screen.getByRole('log');
+    await within(region).findByText(/actualizado/i);
+
+    expect(await axe(container)).toHaveNoViolations();
   });
 });
 
