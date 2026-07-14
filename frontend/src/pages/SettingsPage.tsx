@@ -5,6 +5,7 @@ import { UnitsSection } from './settings/UnitsSection';
 import { ObjectivesSection } from './settings/ObjectivesSection';
 import { NotificationsSection } from './settings/NotificationsSection';
 import { SecuritySection } from './settings/SecuritySection';
+import { SupportSection } from './settings/SupportSection';
 import { AboutSection } from './settings/AboutSection';
 import styles from './SettingsPage.module.css';
 
@@ -14,7 +15,10 @@ import styles from './SettingsPage.module.css';
  * into the section-based layout the spec asks for, grouped in the same order
  * as the spec's User/System Flow: Perfil y preferencias, Unidades, Conexiones
  * (FOR-57), Objetivos por defecto, Notificaciones (FOR-63 preview), Seguridad
- * y datos, Acerca de.
+ * y datos, Acerca de. Soporte y ayuda (FOR-115) fills the one section FOR-58's
+ * own spec named but did not build, mounted right before Acerca de to match
+ * `docs/8-configuracion.png`'s relative order in both its desktop and mobile
+ * layouts.
  *
  * <p><b>No user/profile/preferences backend exists yet</b> (ADR-002,
  * single-user MVP — verified against `backend/src/main/java/.../delivery/**`).
@@ -51,6 +55,7 @@ export function SettingsPage() {
         <ObjectivesSection />
         <NotificationsSection />
         <SecuritySection />
+        <SupportSection />
         <AboutSection />
       </div>
     </div>
