@@ -260,7 +260,7 @@ function renderContent(
 type ProductState =
   | { readonly status: 'loading' }
   | { readonly status: 'not-found' }
-  | { readonly status: 'error' }
+  | { readonly status: 'error'; readonly detail?: string }
   | { readonly status: 'ready'; readonly product: ShoppingProduct };
 
 const PRODUCT_NOT_FOUND =
@@ -271,15 +271,21 @@ const PRODUCT_SAVE_ERROR = 'No se pudo guardar el producto. Inténtalo de nuevo.
 /**
  * Entry point to edit a product's price/URL (FOR-36), reached from a list item.
  *
- * <p>FOR-60 note: this modal's own loading/error/not-found states are
- * deliberately left on their pre-existing inline markup rather than migrated
- * to the shared state components. It is a secondary, nested flow with a
- * three-way state (`loading`/`not-found`/`error`) that doesn't map 1:1 onto
- * the shared components without inventing new behavior, and the FOR-60
- * migration discipline favors a documented deferral here over risking a
- * regression in an already-tested modal for low additional value. Follow-up:
- * a future story can fold this into {@link EmptyState}/{@link ErrorState} if
- * the product-not-found case gets its own shared "not found" treatment.
+ * <p>FOR-113: this modal's loading/error/not-found states now render the
+ * FOR-60 shared components ({@link LoadingState}, {@link ErrorState},
+ * {@link EmptyState}) instead of the ad hoc paragraphs this modal originally
+ * shipped with, closing the deferral this doc comment used to document.
+ * Not-found uses {@link EmptyState} rather than {@link ErrorState} — a
+ * product id that no longer resolves is not a retry-recoverable failure, so
+ * it stays {@code role="status"} instead of {@code role="alert"} (per the
+ * Open Question recommendation in `specs/FOR-113/spec.md`), which also keeps
+ * it visually/semantically distinct from the error case. No {@code onRetry}
+ * is passed to the error state either: closing and reopening the modal
+ * (which re-fetches) is the retry path for a nested flow like this one, not
+ * a button. The error state also wires {@link ErrorState}'s dev-only
+ * {@code detail}/{@code showDetail} props to the caught error's message,
+ * gated by {@code import.meta.env.DEV} — the first real caller of that
+ * escape hatch (FOR-113).
  */
 function ProductEditModal({
   item,
@@ -312,9 +318,12 @@ function ProductEditModal({
         setUrl(match.url ?? '');
         setPrice(String(match.estimatedPriceEur));
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         if (active) {
-          setState({ status: 'error' });
+          setState({
+            status: 'error',
+            detail: error instanceof ApiRequestError ? error.message : undefined,
+          });
         }
       });
     return () => {
@@ -356,21 +365,15 @@ function ProductEditModal({
 
   return (
     <Modal title="Editar producto" onClose={onClose}>
-      {state.status === 'loading' && (
-        <p className={styles.message} role="status">
-          Cargando producto…
-        </p>
-      )}
+      {state.status === 'loading' && <LoadingState message="Cargando producto…" />}
       {state.status === 'error' && (
-        <p className={styles.message} role="alert">
-          {PRODUCT_LOAD_ERROR}
-        </p>
+        <ErrorState
+          message={PRODUCT_LOAD_ERROR}
+          detail={state.detail}
+          showDetail={import.meta.env.DEV}
+        />
       )}
-      {state.status === 'not-found' && (
-        <p className={styles.message} role="alert">
-          {PRODUCT_NOT_FOUND}
-        </p>
-      )}
+      {state.status === 'not-found' && <EmptyState title={PRODUCT_NOT_FOUND} />}
       {state.status === 'ready' && (
         <form className={styles.editForm} onSubmit={handleSubmit} noValidate>
           <p className={styles.editProductName}>{state.product.name}</p>

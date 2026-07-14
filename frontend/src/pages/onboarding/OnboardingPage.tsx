@@ -257,10 +257,21 @@ export function OnboardingPage() {
   );
 }
 
+/**
+ * FOR-113: page-level heading for `/onboarding`, matching the
+ * `<h1 className={styles.title}>` pattern every other page already uses
+ * (`DashboardPage`, `MeasurementsPage`, `TrainingPage`, `NutritionPage`,
+ * `ShoppingPage`, `ProgressPage`, `SettingsPage`, `IntegrationsPage`) — this
+ * was the one page missing it (WCAG 2.4.6). Rendered once, outside the
+ * per-step content, so it stays identical across every step instead of
+ * resetting alongside {@link OnboardingStepShell}'s step `<h2>` (which keeps
+ * receiving focus on step change, unaffected by this addition — FOR-61).
+ */
 function OnboardingHeader() {
   return (
     <div className={styles.header}>
       <Brand />
+      <h1 className={styles.title}>Configuración inicial</h1>
       <p className={styles.subtitle}>Configuremos tu experiencia en unos pocos pasos.</p>
     </div>
   );
