@@ -10,6 +10,7 @@ import {
   syncIntegration,
   type IntegrationConnection,
 } from '../../api/integrations';
+import { axe } from '../../test/axe';
 
 function renderSection() {
   return render(<IntegrationsSection />);
@@ -203,5 +204,26 @@ describe('IntegrationsSection', () => {
 
     expect(await screen.findByText('Withings')).toBeInTheDocument();
     expect(listMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('has no accessibility violations in the primary connected/available state (FOR-114)', async () => {
+    listMock.mockResolvedValue([withings, googleFit, appleHealth]);
+
+    const { container } = renderSection();
+    await screen.findByText('Withings');
+
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('has no accessibility violations with the destructive disconnect confirmation dialog open (FOR-114)', async () => {
+    listMock.mockResolvedValue([withings]);
+    const user = userEvent.setup();
+
+    const { container } = renderSection();
+    await user.click(await screen.findByRole('button', { name: 'Desconectar' }));
+    const modal = await screen.findByRole('dialog');
+    within(modal).getByRole('heading', { name: 'Desconectar Withings' });
+
+    expect(await axe(container)).toHaveNoViolations();
   });
 });
