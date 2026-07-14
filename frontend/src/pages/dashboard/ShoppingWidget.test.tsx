@@ -19,7 +19,17 @@ function renderWidget() {
 const list: ShoppingList = {
   weekStartDate: '2026-07-06',
   status: 'ACTIVE',
-  items: [{ id: 'i1', productName: 'Avena', quantity: 1, estimatedCostEur: 3.5, checked: false }],
+  items: [
+    {
+      id: 'i1',
+      productId: 'p1',
+      productName: 'Avena',
+      category: 'CEREALES_Y_LEGUMBRES',
+      quantity: 1,
+      estimatedCostEur: 3.5,
+      checked: false,
+    },
+  ],
   budget: { weeklyEur: 103.8, monthlyEur: 451.2 },
 };
 
