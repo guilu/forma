@@ -12,7 +12,7 @@ import { SECURITY_ACTIONS } from './profileData';
  */
 export function SecuritySection() {
   return (
-    <Card title="Seguridad y datos">
+    <Card title="Seguridad y datos" headingLevel={2}>
       {SECURITY_ACTIONS.map((action) => (
         <SettingsRow
           key={action.label}

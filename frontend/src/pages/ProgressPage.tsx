@@ -132,7 +132,7 @@ function MetricChart({
   const latest = points[points.length - 1];
 
   return (
-    <Card title={metric.label}>
+    <Card title={metric.label} headingLevel={2}>
       {points.length < 2 ? (
         <div className={styles.single}>
           {latest ? (

@@ -43,6 +43,7 @@ export function ProfileSection() {
   return (
     <Card
       title="Perfil y preferencias"
+      headingLevel={2}
       action={
         <div className={styles.editAction}>
           <Badge tone="neutral">Próximamente</Badge>

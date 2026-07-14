@@ -270,6 +270,7 @@ function MeasurementsDashboard({ measurements, activeTab, setActiveTab }: Dashbo
               <MetricCard
                 key={metric.key}
                 label={metric.label}
+                headingLevel={2}
                 value={formatValue(metric.value(latest))}
                 unit={metric.unit}
                 trend={
@@ -323,6 +324,7 @@ function WeightEvolutionChart({ measurements }: { readonly measurements: BodyMea
   return (
     <ChartContainer
       title="Evolución de peso"
+      headingLevel={2}
       state={points.length >= 2 ? 'ready' : 'empty'}
       emptyMessage="Necesitas al menos dos mediciones para ver la evolución."
       action={
@@ -365,7 +367,7 @@ function HistoryTable({ measurements }: { readonly measurements: BodyMeasurement
   const rows = expanded ? measurements : measurements.slice(0, HISTORY_PREVIEW_ROWS);
 
   return (
-    <Card title="Últimas mediciones">
+    <Card title="Últimas mediciones" headingLevel={2}>
       <div className={styles.tableScroll}>
         <table className={styles.table}>
           <thead>

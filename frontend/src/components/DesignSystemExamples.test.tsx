@@ -32,4 +32,20 @@ describe('DesignSystemExamples', () => {
     expect(screen.getAllByRole('img', { name: 'Peso' })).toHaveLength(1);
     expect(screen.getByRole('status')).toBeInTheDocument();
   });
+
+  it('renders every example card title as <h2>, one level below the page <h1> (FOR-112)', () => {
+    render(<DesignSystemExamples />);
+
+    expect(screen.getByRole('heading', { name: 'Design system', level: 1 })).toBeInTheDocument();
+    // Every card here is a direct sibling of the page <h1>, so per FOR-112
+    // each must render as <h2> to avoid skipping a level.
+    expect(screen.getByRole('heading', { name: 'Buttons', level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Badges y estados', level: 2 })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Campos de formulario', level: 2 }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Evolución de peso', level: 2 }),
+    ).toBeInTheDocument();
+  });
 });

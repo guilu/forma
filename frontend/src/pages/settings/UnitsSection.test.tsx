@@ -6,7 +6,9 @@ describe('UnitsSection', () => {
   it('shows units & locale as read-only display values', () => {
     render(<UnitsSection />);
 
-    expect(screen.getByRole('heading', { name: 'Unidades' })).toBeInTheDocument();
+    // Rendered as <h2> (FOR-112): inside SettingsPage this card is a direct
+    // sibling of the page <h1>, with no intervening <h2>.
+    expect(screen.getByRole('heading', { name: 'Unidades', level: 2 })).toBeInTheDocument();
     expect(screen.getByText('Peso')).toBeInTheDocument();
     expect(screen.getByText('Kilogramos (kg)')).toBeInTheDocument();
     expect(screen.getByText('Altura')).toBeInTheDocument();

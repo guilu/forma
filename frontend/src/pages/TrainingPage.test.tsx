@@ -85,7 +85,12 @@ describe('TrainingPage', () => {
 
     renderPage();
 
-    const todayHeading = await screen.findByRole('heading', { name: 'Entrenamiento de hoy' });
+    // Direct sibling of the page <h1> (no intervening <h2>), so per FOR-112
+    // it must render as <h2>.
+    const todayHeading = await screen.findByRole('heading', {
+      name: 'Entrenamiento de hoy',
+      level: 2,
+    });
     const todayCard = todayHeading.closest('section') as HTMLElement;
 
     expect(within(todayCard).getByText('Fuerza · Empuje')).toBeInTheDocument();
@@ -99,9 +104,13 @@ describe('TrainingPage', () => {
     getWeekMock.mockResolvedValue(week);
 
     renderPage();
-    await screen.findByRole('heading', { name: 'Calendario semanal' });
+    // Direct sibling of the page <h1>, so it must render as <h2> (FOR-112).
+    await screen.findByRole('heading', { name: 'Calendario semanal', level: 2 });
 
     expect(screen.getByText('Tirada larga')).toBeInTheDocument();
+    // Each day title nested inside the calendar card stays an <h3> — one
+    // level below its now-<h2> "Calendario semanal" container.
+    expect(screen.getByRole('heading', { name: 'Lunes', level: 3 })).toBeInTheDocument();
     // Sunday is a rest day: shown, with no session controls for it.
     const sundayHeading = screen.getByText('Domingo');
     const sundayDay = sundayHeading.closest('li');
@@ -185,9 +194,13 @@ describe('TrainingPage', () => {
     renderPage();
     await screen.findByRole('heading', { name: 'Calendario semanal' });
 
-    expect(screen.getByRole('heading', { name: 'Resumen semanal' })).toBeInTheDocument();
+    // Direct sibling of the page <h1>, so it must render as <h2> (FOR-112).
+    expect(screen.getByRole('heading', { name: 'Resumen semanal', level: 2 })).toBeInTheDocument();
     expect(screen.getByText('0/2')).toBeInTheDocument(); // Sesiones totales
     expect(screen.getAllByText('0/1')).toHaveLength(2); // Carrera + Fuerza tiles
+    // The MetricCards nested inside "Resumen semanal" stay at the default
+    // <h3> — one level below their now-<h2> container, not re-audited.
+    expect(screen.getByRole('heading', { name: 'Sesiones totales', level: 3 })).toBeInTheDocument();
   });
 
   it('shows an error when marking fails and preserves the prior status', async () => {

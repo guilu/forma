@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Card } from './Card';
+import { Card, type HeadingLevel } from './Card';
 import styles from './MetricCard.module.css';
 
 /**
@@ -13,17 +13,22 @@ import styles from './MetricCard.module.css';
  * <p>`trend` is typically a small {@link LineChart} sparkline rendered below
  * the value (docs/2-mediciones.png shows one per card); omitted entirely when
  * there isn't enough history to plot, so callers control that decision.
+ *
+ * <p>`headingLevel` (FOR-112) forwards straight to {@link Card} so the label
+ * can match the page's actual heading order; defaults to Card's own default
+ * (`3`) when omitted.
  */
 interface MetricCardProps {
   readonly label: string;
   readonly value: string;
   readonly unit?: string;
   readonly trend?: ReactNode;
+  readonly headingLevel?: HeadingLevel;
 }
 
-export function MetricCard({ label, value, unit, trend }: MetricCardProps) {
+export function MetricCard({ label, value, unit, trend, headingLevel }: MetricCardProps) {
   return (
-    <Card title={label}>
+    <Card title={label} headingLevel={headingLevel}>
       <p className={styles.value}>
         {value}
         {unit && <span className={styles.unit}> {unit}</span>}

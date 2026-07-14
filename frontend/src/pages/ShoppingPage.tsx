@@ -182,13 +182,23 @@ function renderContent(
   return (
     <>
       <section className={styles.tiles} aria-label="Presupuesto">
-        <MetricCard label="Productos" value={String(items.length)} unit="productos únicos" />
+        <MetricCard
+          label="Productos"
+          headingLevel={2}
+          value={String(items.length)}
+          unit="productos únicos"
+        />
         <MetricCard
           label="Total estimado"
+          headingLevel={2}
           value={EUR.format(budget.weeklyEur)}
           unit="precio aproximado"
         />
-        <MetricCard label="Estimado mensual" value={EUR.format(budget.monthlyEur)} />
+        <MetricCard
+          label="Estimado mensual"
+          headingLevel={2}
+          value={EUR.format(budget.monthlyEur)}
+        />
       </section>
 
       {/* Category filter tabs (FOR-111): one tab per distinct category present
@@ -213,7 +223,7 @@ function renderContent(
       ) : filteredItems.length === 0 ? (
         <EmptyState variant="filtered" title="No hay artículos en esta categoría." />
       ) : (
-        <Card title={categoryLabel(selectedCategory)}>
+        <Card title={categoryLabel(selectedCategory)} headingLevel={2}>
           <ul className={styles.items}>
             {filteredItems.map((item) => (
               <li key={item.id} className={styles.item}>

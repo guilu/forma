@@ -14,7 +14,7 @@ import { UNIT_PREFERENCES } from './profileData';
  */
 export function UnitsSection() {
   return (
-    <Card title="Unidades">
+    <Card title="Unidades" headingLevel={2}>
       {UNIT_PREFERENCES.map((unit) => (
         <SettingsRow key={unit.label} label={unit.label} value={unit.value} />
       ))}
