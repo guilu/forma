@@ -100,13 +100,23 @@ describe('NutritionPage', () => {
 
     renderPage();
 
-    expect(await screen.findByRole('heading', { name: 'Nutrición' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Nutrición', level: 1 })).toBeInTheDocument();
     // Macro summary: calories target + macro ring grams (no per-meal macros/kcal — not
     // returned by the API, see NutritionPage.tsx doc comment).
+    // Every card here is a direct sibling of the page <h1> (no intervening
+    // <h2>), so per FOR-112 each must render as <h2>.
+    expect(screen.getByRole('heading', { name: 'Calorías', level: 2 })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Distribución de macros', level: 2 }),
+    ).toBeInTheDocument();
     expect(screen.getByText('1940')).toBeInTheDocument();
     expect(screen.getByText('162 g')).toBeInTheDocument();
-    // Meal list: name, time and items.
-    expect(screen.getByRole('heading', { name: 'Desayuno' })).toBeInTheDocument();
+    // Meal list: name, time and items. "Comidas del día" becomes <h2>
+    // (FOR-112); the nested meal name was a hardcoded <h4> that would have
+    // skipped a level under the new <h2> — fixed to <h3> as part of this
+    // audit (NutritionPage.tsx MealCard).
+    expect(screen.getByRole('heading', { name: 'Comidas del día', level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Desayuno', level: 3 })).toBeInTheDocument();
     expect(screen.getByText('08:00')).toBeInTheDocument();
     expect(screen.getByText('Avena')).toBeInTheDocument();
     expect(screen.getByText('150 g')).toBeInTheDocument();
@@ -138,6 +148,10 @@ describe('NutritionPage', () => {
       screen.getByRole('list', { name: 'Flujo de comidas del día de carrera' }),
     ).toBeInTheDocument();
     expect(screen.getByText('Correr')).toBeInTheDocument();
+    // Direct sibling of the page <h1>, so it must render as <h2> (FOR-112).
+    expect(
+      screen.getByRole('heading', { name: 'Estrategia de día de carrera', level: 2 }),
+    ).toBeInTheDocument();
   });
 
   it('hides the running-day guidance for a strength day', async () => {
@@ -160,8 +174,9 @@ describe('NutritionPage', () => {
 
     renderPage();
 
+    // Direct sibling of the page <h1>, so it must render as <h2> (FOR-112).
     expect(
-      await screen.findByRole('heading', { name: 'Recomendación de recuperación' }),
+      await screen.findByRole('heading', { name: 'Recomendación de recuperación', level: 2 }),
     ).toBeInTheDocument();
     expect(screen.getByText(/Proteína whey \(20 g\)/)).toBeInTheDocument();
   });
@@ -201,6 +216,10 @@ describe('NutritionPage', () => {
     const link = await screen.findByRole('link', { name: 'Ver lista de la compra' });
     expect(link).toHaveAttribute('href', '/lista-compra');
     await waitFor(() => expect(screen.getByText('1 producto')).toBeInTheDocument());
+    // Direct sibling of the page <h1>, so it must render as <h2> (FOR-112).
+    expect(
+      screen.getByRole('heading', { name: 'Lista de la compra', level: 2 }),
+    ).toBeInTheDocument();
   });
 
   it('shows an empty state when there is no plan for the day', async () => {

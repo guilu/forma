@@ -129,12 +129,15 @@ describe('MeasurementsPage', () => {
     listMock.mockResolvedValue(SINGLE);
     render(<MeasurementsPage />);
 
-    expect(await screen.findByRole('heading', { name: 'Peso' })).toBeInTheDocument();
+    // Metric cards are direct siblings of the page's <h1> (no intervening <h2>
+    // section heading), so per FOR-112 they must render as <h2> to avoid
+    // skipping a level.
+    expect(await screen.findByRole('heading', { name: 'Peso', level: 2 })).toBeInTheDocument();
     expect(screen.getByText('78.4')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Grasa corporal' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Grasa corporal', level: 2 })).toBeInTheDocument();
     expect(screen.getByText('18.2')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Masa muscular' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'IMC' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Masa muscular', level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'IMC', level: 2 })).toBeInTheDocument();
     // "vs semana pasada" is not backed by the API (documented gap) — never rendered.
     expect(screen.queryByText(/semana pasada/i)).not.toBeInTheDocument();
   });
@@ -176,7 +179,11 @@ describe('MeasurementsPage', () => {
     listMock.mockResolvedValue(MULTI);
     render(<MeasurementsPage />);
 
-    expect(await screen.findByRole('heading', { name: 'Evolución de peso' })).toBeInTheDocument();
+    // Same reasoning as the metric cards above: no <h2> section heading sits
+    // between the page <h1> and this chart's title (FOR-112).
+    expect(
+      await screen.findByRole('heading', { name: 'Evolución de peso', level: 2 }),
+    ).toBeInTheDocument();
     const rangeGroup = screen.getByRole('group', { name: 'Rango del gráfico' });
     expect(within(rangeGroup).getByRole('button', { name: '1M' })).toBeInTheDocument();
     expect(within(rangeGroup).getByRole('button', { name: 'Todo' })).toBeInTheDocument();
@@ -188,7 +195,10 @@ describe('MeasurementsPage', () => {
     listMock.mockResolvedValue(MULTI);
     render(<MeasurementsPage />);
 
-    expect(await screen.findByRole('heading', { name: 'Últimas mediciones' })).toBeInTheDocument();
+    // No <h2> section heading between the page <h1> and this card (FOR-112).
+    expect(
+      await screen.findByRole('heading', { name: 'Últimas mediciones', level: 2 }),
+    ).toBeInTheDocument();
     const table = screen.getByRole('table');
     for (const header of ['Fecha', 'Peso', 'Grasa corporal', 'Masa muscular', 'IMC', 'Fuente']) {
       expect(within(table).getByRole('columnheader', { name: header })).toBeInTheDocument();

@@ -45,14 +45,24 @@ describe('SettingsPage', () => {
   it('renders every grouped section from the spec', () => {
     renderSettingsPage();
 
-    expect(screen.getByRole('heading', { name: 'Configuración' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Perfil y preferencias' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Unidades' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Conexiones e integraciones' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Objetivos por defecto' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Notificaciones' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Seguridad y datos' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Acerca de FORMA' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Configuración', level: 1 })).toBeInTheDocument();
+    // Every section card is a direct sibling of the page <h1> (no intervening
+    // <h2>), so per FOR-112 each section title must render as <h2>.
+    expect(
+      screen.getByRole('heading', { name: 'Perfil y preferencias', level: 2 }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Unidades', level: 2 })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Conexiones e integraciones', level: 2 }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Objetivos por defecto', level: 2 }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Notificaciones', level: 2 })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Seguridad y datos', level: 2 }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Acerca de FORMA', level: 2 })).toBeInTheDocument();
   });
 
   it('shows the profile summary with name and email', () => {

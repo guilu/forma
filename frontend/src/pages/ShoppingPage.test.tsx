@@ -149,6 +149,10 @@ describe('ShoppingPage', () => {
     expect(screen.getByText(/productos únicos/)).toBeInTheDocument();
     expect(screen.getByText(/24,60/)).toBeInTheDocument();
     expect(screen.getByText(/106,52/)).toBeInTheDocument();
+
+    // The budget tiles are direct siblings of the page <h1> (no intervening
+    // <h2>), so per FOR-112 they must render as <h2>.
+    expect(screen.getByRole('heading', { name: 'Productos', level: 2 })).toBeInTheDocument();
   });
 
   it('filters the rendered items when a category tab is selected; aria-selected updates accordingly', async () => {
@@ -289,6 +293,11 @@ describe('ShoppingPage', () => {
 
     await user.click(screen.getByRole('button', { name: /Editar producto Avena 1 kg/ }));
 
+    // The item-list Card (titled after the selected category, "Todas" by
+    // default) is also a direct sibling of the page <h1>, so it must render
+    // as <h2> too (FOR-112). "Editar producto" is the unrelated Modal dialog
+    // title, left untouched by this story.
+    expect(screen.getByRole('heading', { name: 'Todas', level: 2 })).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: 'Editar producto' })).toBeInTheDocument();
     const priceInput = await screen.findByLabelText('Precio estimado (€)');
     expect(priceInput).toHaveValue(1.95);

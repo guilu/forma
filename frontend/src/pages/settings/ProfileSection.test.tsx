@@ -22,6 +22,10 @@ describe('ProfileSection', () => {
   it('shows the personal profile summary fields', () => {
     renderProfileSection();
 
+    // Rendered as <h2> (FOR-112): direct sibling of SettingsPage's <h1>.
+    expect(
+      screen.getByRole('heading', { name: 'Perfil y preferencias', level: 2 }),
+    ).toBeInTheDocument();
     expect(screen.getByText(MOCK_PROFILE.name)).toBeInTheDocument();
     expect(screen.getByText(MOCK_PROFILE.email)).toBeInTheDocument();
     expect(screen.getByText(MOCK_PROFILE.birthDate)).toBeInTheDocument();

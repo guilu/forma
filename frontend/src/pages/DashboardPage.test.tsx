@@ -128,17 +128,29 @@ describe('DashboardPage', () => {
 
     renderDashboard();
 
-    expect(screen.getByRole('heading', { name: 'Hola Diego 👋' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Hola Diego 👋', level: 1 })).toBeInTheDocument();
     expect(screen.getByText('Este es tu resumen de hoy')).toBeInTheDocument();
 
+    // FOR-112 full-page fixture: every WidgetSection heading is a <h2>
+    // (unchanged by this story — dashboard widgets already sit under a <h2>
+    // section heading, so their Card/MetricCard titles correctly stay at the
+    // default <h3>, verified below for one widget).
     expect(
-      await screen.findByRole('heading', { name: 'Composición corporal' }),
+      await screen.findByRole('heading', { name: 'Composición corporal', level: 2 }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Entrenamiento' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Nutrición de hoy' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Presupuesto de la compra' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Recomendación de la semana' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Integraciones' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Entrenamiento', level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Nutrición de hoy', level: 2 })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Presupuesto de la compra', level: 2 }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Recomendación de la semana', level: 2 }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Integraciones', level: 2 })).toBeInTheDocument();
+
+    // The metric cards inside "Composición corporal" (<h2>) correctly stay at
+    // the default <h3> — no skipped level, no headingLevel override needed.
+    expect(screen.getByRole('heading', { name: 'Peso', level: 3 })).toBeInTheDocument();
   });
 
   it('renders the insight main recommendation (message + reason)', async () => {

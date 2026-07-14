@@ -14,7 +14,7 @@ import styles from './NotificationsSection.module.css';
  */
 export function NotificationsSection() {
   return (
-    <Card title="Notificaciones">
+    <Card title="Notificaciones" headingLevel={2}>
       <p className={styles.hint}>Próximamente podrás personalizar tus notificaciones aquí.</p>
       <ul className={styles.list}>
         {NOTIFICATION_PREFERENCES.map((preference) => (

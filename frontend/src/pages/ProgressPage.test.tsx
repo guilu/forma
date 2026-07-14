@@ -76,6 +76,18 @@ describe('ProgressPage', () => {
     expect(screen.getByRole('img', { name: /Evolución de grasa corporal/ })).toBeInTheDocument();
     expect(screen.getByRole('img', { name: /Evolución de masa magra/ })).toBeInTheDocument();
     expect(screen.getAllByRole('img')).toHaveLength(3);
+
+    // Each metric card title is a direct sibling of the page <h1> (no
+    // intervening <h2>), so per FOR-112 it must render as <h2>.
+    expect(
+      screen.getByRole('heading', { name: 'Evolución de peso', level: 2 }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Evolución de grasa corporal', level: 2 }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Evolución de masa magra', level: 2 }),
+    ).toBeInTheDocument();
   });
 
   it('plots only the recent window (last 12 points)', async () => {

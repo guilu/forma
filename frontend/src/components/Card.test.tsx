@@ -14,6 +14,22 @@ describe('Card', () => {
     expect(screen.getByRole('heading', { name: 'Peso' })).toBeInTheDocument();
   });
 
+  it('defaults to an <h3> when headingLevel is not passed (FOR-112 regression guard)', () => {
+    render(<Card title="Peso">content</Card>);
+
+    expect(screen.getByRole('heading', { name: 'Peso', level: 3 })).toBeInTheDocument();
+  });
+
+  it.each([2, 4, 5, 6] as const)('renders an <h%s> when headingLevel is %s', (level) => {
+    render(
+      <Card title="Peso" headingLevel={level}>
+        content
+      </Card>,
+    );
+
+    expect(screen.getByRole('heading', { name: 'Peso', level })).toBeInTheDocument();
+  });
+
   it('renders its children', () => {
     render(
       <Card>
@@ -26,6 +42,12 @@ describe('Card', () => {
 
   it('omits the heading when no title is provided', () => {
     render(<Card>only content</Card>);
+
+    expect(screen.queryByRole('heading')).not.toBeInTheDocument();
+  });
+
+  it('omits the heading when no title is provided even if headingLevel is set', () => {
+    render(<Card headingLevel={2}>only content</Card>);
 
     expect(screen.queryByRole('heading')).not.toBeInTheDocument();
   });

@@ -30,7 +30,7 @@ export function DesignSystemExamples() {
     <div>
       <h1>Design system</h1>
 
-      <Card title="Buttons">
+      <Card title="Buttons" headingLevel={2}>
         {BUTTON_VARIANTS.map((variant) => (
           <Button key={variant} variant={variant}>
             {variant}
@@ -40,7 +40,7 @@ export function DesignSystemExamples() {
         <Button disabled>Deshabilitado</Button>
       </Card>
 
-      <Card title="Badges y estados">
+      <Card title="Badges y estados" headingLevel={2}>
         <Badge tone="accent">Saludable</Badge>
         <StatusPill kind="severity" value="INFO" />
         <StatusPill kind="severity" value="WARNING" />
@@ -52,7 +52,7 @@ export function DesignSystemExamples() {
         <StatusPill kind="plazo" value="Largo plazo" />
       </Card>
 
-      <Card title="Campos de formulario">
+      <Card title="Campos de formulario" headingLevel={2}>
         <TextField id="example-weight" label="Peso (kg)" value="" onChange={() => {}} />
         <TextField
           id="example-weight-error"
@@ -67,13 +67,13 @@ export function DesignSystemExamples() {
         </SelectField>
       </Card>
 
-      <ChartContainer title="Evolución de peso">
+      <ChartContainer title="Evolución de peso" headingLevel={2}>
         <LineChart points={SAMPLE_POINTS} formatValue={(v) => v.toFixed(1)} ariaLabel="Peso" />
       </ChartContainer>
-      <ChartContainer title="Cargando" state="loading">
+      <ChartContainer title="Cargando" headingLevel={2} state="loading">
         <LineChart points={SAMPLE_POINTS} formatValue={(v) => v.toFixed(1)} ariaLabel="Peso" />
       </ChartContainer>
-      <ChartContainer title="Sin datos" state="empty">
+      <ChartContainer title="Sin datos" headingLevel={2} state="empty">
         <LineChart points={SAMPLE_POINTS} formatValue={(v) => v.toFixed(1)} ariaLabel="Peso" />
       </ChartContainer>
     </div>

@@ -11,7 +11,7 @@ import { APP_VERSION } from './profileData';
  */
 export function AboutSection() {
   return (
-    <Card title="Acerca de FORMA">
+    <Card title="Acerca de FORMA" headingLevel={2}>
       <SettingsRow label="Versión" value={APP_VERSION} />
       <SettingsRow label="Términos y condiciones" inert />
       <SettingsRow label="Política de privacidad" inert />

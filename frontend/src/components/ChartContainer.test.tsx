@@ -20,6 +20,30 @@ describe('ChartContainer', () => {
     expect(screen.getByRole('img', { name: 'Peso' })).toBeInTheDocument();
   });
 
+  it('forwards headingLevel to the underlying Card (FOR-112)', () => {
+    render(
+      <ChartContainer title="Evolución de peso" headingLevel={2}>
+        <LineChart points={points} formatValue={(v) => v.toFixed(1)} ariaLabel="Peso" />
+      </ChartContainer>,
+    );
+
+    expect(
+      screen.getByRole('heading', { name: 'Evolución de peso', level: 2 }),
+    ).toBeInTheDocument();
+  });
+
+  it('defaults to an <h3> title when headingLevel is not passed', () => {
+    render(
+      <ChartContainer title="Evolución de peso">
+        <LineChart points={points} formatValue={(v) => v.toFixed(1)} ariaLabel="Peso" />
+      </ChartContainer>,
+    );
+
+    expect(
+      screen.getByRole('heading', { name: 'Evolución de peso', level: 3 }),
+    ).toBeInTheDocument();
+  });
+
   it('renders an optional header action', () => {
     render(
       <ChartContainer title="Evolución de peso" action={<button type="button">Ver todo</button>}>

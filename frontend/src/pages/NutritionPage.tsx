@@ -167,13 +167,13 @@ function renderContent(state: State, dayType: DayType, retry: () => void) {
   return (
     <>
       <section className={styles.summary} aria-label="Resumen de macronutrientes">
-        <Card title="Calorías">
+        <Card title="Calorías" headingLevel={2}>
           <p className={styles.calories}>
             <span className={styles.caloriesValue}>{day.targets.calories}</span>
             <span className={styles.caloriesUnit}> kcal objetivo</span>
           </p>
         </Card>
-        <Card title="Distribución de macros">
+        <Card title="Distribución de macros" headingLevel={2}>
           <MacroRing
             proteinG={day.targets.proteinG}
             carbsG={day.targets.carbsG}
@@ -184,7 +184,7 @@ function renderContent(state: State, dayType: DayType, retry: () => void) {
 
       {dayType === 'running' && <RunningGuidance meals={day.meals} />}
 
-      <Card title="Comidas del día">
+      <Card title="Comidas del día" headingLevel={2}>
         <ol className={styles.meals}>
           {day.meals.map((meal) => (
             <li key={`${meal.mealType}-${meal.preferredTime}`}>
@@ -205,7 +205,9 @@ function MealCard({ meal }: { readonly meal: NutritionMeal }) {
       <div className={styles.mealHeader}>
         <div>
           <p className={styles.mealTime}>{meal.preferredTime}</p>
-          <h4 className={styles.mealName}>{meal.name}</h4>
+          {/* FOR-112: was a hardcoded <h4>; "Comidas del día" above is now an
+              <h2>, so this must be an <h3> to avoid skipping a level. */}
+          <h3 className={styles.mealName}>{meal.name}</h3>
         </div>
         {meal.optional && <Badge tone="warning">Opcional</Badge>}
       </div>
@@ -241,7 +243,7 @@ function runningFlowLabels(meals: readonly NutritionMeal[]): string[] {
 
 function RunningGuidance({ meals }: { readonly meals: readonly NutritionMeal[] }) {
   return (
-    <Card title="Estrategia de día de carrera">
+    <Card title="Estrategia de día de carrera" headingLevel={2}>
       <p className={styles.explanation}>
         Los carbohidratos se concentran temprano; la cena es más ligera tras correr por la noche. La
         recuperación post-carrera es opcional: sáltala si ya has alcanzado tu proteína diaria.
@@ -269,7 +271,7 @@ function RecoveryRecommendation({ meals }: { readonly meals: readonly NutritionM
   }
   const items = recovery.items.map((item) => `${item.food} (${item.quantityG} g)`).join(', ');
   return (
-    <Card title="Recomendación de recuperación">
+    <Card title="Recomendación de recuperación" headingLevel={2}>
       <p className={styles.explanation}>
         {recovery.name} · {recovery.preferredTime}: {items}. Es opcional — sáltala si ya has
         alcanzado tu proteína diaria.
@@ -280,7 +282,7 @@ function RecoveryRecommendation({ meals }: { readonly meals: readonly NutritionM
 
 function ShoppingShortcut({ count }: { readonly count: number | undefined }) {
   return (
-    <Card title="Lista de la compra">
+    <Card title="Lista de la compra" headingLevel={2}>
       <div className={styles.shoppingRow}>
         <p className={styles.shoppingCount}>
           {count === undefined

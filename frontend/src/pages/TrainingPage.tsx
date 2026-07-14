@@ -235,7 +235,7 @@ function TodaySessionCard({
 }) {
   if (!day) {
     return (
-      <Card title="Entrenamiento de hoy">
+      <Card title="Entrenamiento de hoy" headingLevel={2}>
         <p className={styles.message}>No hay datos de hoy en el plan de esta semana.</p>
       </Card>
     );
@@ -243,7 +243,7 @@ function TodaySessionCard({
 
   if (day.rest) {
     return (
-      <Card title="Entrenamiento de hoy">
+      <Card title="Entrenamiento de hoy" headingLevel={2}>
         <p className={styles.rest}>Hoy es día de descanso.</p>
       </Card>
     );
@@ -253,7 +253,7 @@ function TodaySessionCard({
   const percent = planned > 0 ? Math.round((completed / planned) * 100) : 0;
 
   return (
-    <Card title="Entrenamiento de hoy">
+    <Card title="Entrenamiento de hoy" headingLevel={2}>
       <ul className={styles.todaySessions}>
         {day.sessions.map((session) => (
           <li key={session.id} className={styles.todaySession}>
@@ -324,7 +324,7 @@ function WeeklyCalendar({
   readonly openDetail: (target: DetailTarget) => void;
 }) {
   return (
-    <Card title="Calendario semanal">
+    <Card title="Calendario semanal" headingLevel={2}>
       <ul className={styles.calendarGrid} aria-label="Calendario semanal de entrenamiento">
         {days.map((day) => (
           <li key={day.dayOfWeek} className={styles.calendarDay}>
@@ -368,7 +368,7 @@ function WeeklySummary({ days }: { readonly days: readonly TrainingDay[] }) {
   const strengthTally = tally(strength);
 
   return (
-    <Card title="Resumen semanal" className={styles.summary}>
+    <Card title="Resumen semanal" headingLevel={2} className={styles.summary}>
       <div className={styles.summaryGrid}>
         <MetricCard label="Sesiones totales" value={`${total.completed}/${total.planned}`} />
         <MetricCard label="Carrera" value={`${runningTally.completed}/${runningTally.planned}`} />

@@ -7,6 +7,8 @@ describe('AboutSection', () => {
   it('shows the static version as read-only and legal links as inert', () => {
     render(<AboutSection />);
 
+    // Rendered as <h2> (FOR-112): direct sibling of SettingsPage's <h1>.
+    expect(screen.getByRole('heading', { name: 'Acerca de FORMA', level: 2 })).toBeInTheDocument();
     expect(screen.getByText('Versión')).toBeInTheDocument();
     expect(screen.getByText(APP_VERSION)).toBeInTheDocument();
     expect(screen.getByText('Términos y condiciones')).toBeInTheDocument();

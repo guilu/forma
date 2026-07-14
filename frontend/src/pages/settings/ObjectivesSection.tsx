@@ -15,7 +15,7 @@ import { DEFAULT_OBJECTIVES } from './profileData';
  */
 export function ObjectivesSection() {
   return (
-    <Card title="Objetivos por defecto">
+    <Card title="Objetivos por defecto" headingLevel={2}>
       {DEFAULT_OBJECTIVES.map((objective) => (
         <SettingsRow key={objective.label} label={objective.label} value={objective.value} inert />
       ))}
