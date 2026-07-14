@@ -7,6 +7,8 @@ import { Icon } from '../components/Icon';
 import { LoadingState } from '../components/LoadingState';
 import { MetricCard } from '../components/MetricCard';
 import { Modal } from '../components/Modal';
+import { useNotify } from '../components/NotificationProvider';
+import { SavedIndicator } from '../components/SavedIndicator';
 import { TextField } from '../components/FormField';
 import { ApiRequestError } from '../api/client';
 import {
@@ -66,6 +68,7 @@ const EUR = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' 
 const MARK_ERROR = 'No se pudo actualizar el artículo. Inténtalo de nuevo.';
 
 export function ShoppingPage() {
+  const notify = useNotify();
   const [state, setState] = useState<State>({ status: 'loading' });
   const [retryToken, setRetryToken] = useState(0);
   const [actionError, setActionError] = useState<string | undefined>(undefined);
@@ -109,6 +112,10 @@ export function ShoppingPage() {
             }
           : current,
       );
+      // Success feedback for the "toggle shopping item" key action (FOR-63).
+      // Rapid repeated toggles collapse into a single toast (NotificationProvider
+      // dedupe), matching the spec edge case "avoid stacking excessive notifications".
+      notify.success('Artículo actualizado.');
     } catch (error) {
       setActionError(error instanceof ApiRequestError ? error.message : MARK_ERROR);
     } finally {
@@ -352,9 +359,7 @@ function ProductEditModal({
               {saveError}
             </p>
           )}
-          {saved && !saveError && (
-            <output className={styles.editSuccess}>Producto actualizado.</output>
-          )}
+          {saved && !saveError && <SavedIndicator message="Producto actualizado." />}
           <div className={styles.editActions}>
             <Button variant="secondary" type="button" onClick={onClose}>
               Cerrar

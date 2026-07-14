@@ -97,11 +97,6 @@
   font-weight: 600;
 }
 
-.editSuccess {
-  font-size: var(--font-size-sm);
-  color: var(--color-accent);
-}
-
 .editActions {
   display: flex;
   justify-content: flex-end;

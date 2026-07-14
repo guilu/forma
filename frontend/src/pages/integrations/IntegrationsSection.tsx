@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
 import { Icon, type IconName } from '../../components/Icon';
 import { LoadingState } from '../../components/LoadingState';
-import { Modal } from '../../components/Modal';
 import { StatusPill } from '../../components/StatusPill';
 import { ApiRequestError } from '../../api/client';
 import {
@@ -34,6 +34,20 @@ import styles from './IntegrationsSection.module.css';
  * reused from FOR-50; this is a self-contained section so it does not depend
  * on FOR-58's (not-yet-built) Ajustes shell — it is mounted from its own
  * route, `/ajustes/integraciones`.
+ *
+ * <p>FOR-63 adds a shared {@link ConfirmDialog} for the disconnect
+ * confirmation, replacing the ad-hoc modal markup this section used to build
+ * directly on `Modal`. It deliberately does <b>not</b> add a
+ * success-toast branch for connect/sync/disconnect: `connectIntegration`,
+ * `syncIntegration` and `disconnectIntegration` (`frontend/src/api/
+ * integrations.ts`) are typed `Promise&lt;never&gt;` and always reject by
+ * design until FOR-103 ships a backend, so a success path here would be
+ * unreachable dead code today (AGENTS.md: "document as planned instead of
+ * creating it early"). The FOR-63 success-notification pattern is instead
+ * demonstrated on flows with a real, currently-succeeding API — see
+ * `TrainingPage` (mark completed) and `ShoppingPage` (toggle item). Wiring
+ * `useNotify()` success feedback here is follow-up work for whenever
+ * FOR-103 lands.
  *
  * <p>Never renders a token, secret or other credential field — the read model
  * itself ({@link IntegrationConnection}) carries none (ADR-004).
@@ -154,32 +168,15 @@ export function IntegrationsSection() {
       )}
 
       {disconnectTarget && (
-        <Modal
+        // Shared destructive-confirmation pattern (FOR-63), built on Modal.
+        <ConfirmDialog
           title={`Desconectar ${disconnectTarget.providerName}`}
-          onClose={() => setDisconnectTarget(undefined)}
-        >
-          <p className={styles.confirmText}>
-            ¿Seguro que quieres desconectar {disconnectTarget.providerName}? Podrás volver a
-            conectarlo cuando quieras.
-          </p>
-          <div className={styles.confirmActions}>
-            <Button
-              variant="secondary"
-              type="button"
-              onClick={() => setDisconnectTarget(undefined)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              variant="destructive"
-              type="button"
-              loading={pendingProviderId === disconnectTarget.providerId}
-              onClick={handleDisconnectConfirm}
-            >
-              Desconectar
-            </Button>
-          </div>
-        </Modal>
+          message={`¿Seguro que quieres desconectar ${disconnectTarget.providerName}? Podrás volver a conectarlo cuando quieras.`}
+          confirmLabel="Desconectar"
+          pending={pendingProviderId === disconnectTarget.providerId}
+          onConfirm={handleDisconnectConfirm}
+          onCancel={() => setDisconnectTarget(undefined)}
+        />
       )}
     </section>
   );

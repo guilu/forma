@@ -1,5 +1,6 @@
 import { useRoutes } from 'react-router-dom';
 import { routes } from './app/routes';
+import { NotificationProvider } from './components/NotificationProvider';
 import { ThemeProvider } from './theme/ThemeContext';
 
 /**
@@ -10,9 +11,15 @@ import { ThemeProvider } from './theme/ThemeContext';
  * <p>Wrapped in {@link ThemeProvider} (FOR-62) here — rather than in
  * `main.tsx` — so every test that renders `<App>` inside its own router
  * automatically gets a working `useTheme()` context too, with no extra test
- * setup.
+ * setup. {@link NotificationProvider} (FOR-63) is wired the same way, so
+ * every page can call `useNotify()` for feedback toasts with no extra
+ * per-test setup either.
  */
 export function App() {
   const element = useRoutes(routes);
-  return <ThemeProvider>{element}</ThemeProvider>;
+  return (
+    <ThemeProvider>
+      <NotificationProvider>{element}</NotificationProvider>
+    </ThemeProvider>
+  );
 }

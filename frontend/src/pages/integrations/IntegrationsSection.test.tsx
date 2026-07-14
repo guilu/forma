@@ -11,6 +11,10 @@ import {
   type IntegrationConnection,
 } from '../../api/integrations';
 
+function renderSection() {
+  return render(<IntegrationsSection />);
+}
+
 vi.mock('../../api/integrations', () => ({
   listIntegrations: vi.fn(),
   connectIntegration: vi.fn(),
@@ -56,7 +60,7 @@ describe('IntegrationsSection', () => {
   it('renders the connected provider with status pill and last-sync timestamp', async () => {
     listMock.mockResolvedValue([withings, googleFit, appleHealth]);
 
-    render(<IntegrationsSection />);
+    renderSection();
 
     expect(await screen.findByText('Withings')).toBeInTheDocument();
     const connectedCard = screen.getByText('Withings').closest('li') as HTMLElement;
@@ -67,7 +71,7 @@ describe('IntegrationsSection', () => {
   it('renders available providers with a connect action', async () => {
     listMock.mockResolvedValue([withings, googleFit, appleHealth]);
 
-    render(<IntegrationsSection />);
+    renderSection();
 
     expect(await screen.findByText('Google Fit')).toBeInTheDocument();
     expect(screen.getByText('Apple Health')).toBeInTheDocument();
@@ -78,7 +82,7 @@ describe('IntegrationsSection', () => {
   it('shows connect, disconnect and manual-sync entry points where supported', async () => {
     listMock.mockResolvedValue([withings, googleFit, appleHealth]);
 
-    render(<IntegrationsSection />);
+    renderSection();
     await screen.findByText('Withings');
 
     // Connected provider: sync + disconnect entry points.
@@ -99,7 +103,7 @@ describe('IntegrationsSection', () => {
     );
     const user = userEvent.setup();
 
-    render(<IntegrationsSection />);
+    renderSection();
     await user.click(await screen.findByRole('button', { name: 'Sincronizar ahora' }));
 
     const alert = await screen.findByRole('alert');
@@ -118,7 +122,7 @@ describe('IntegrationsSection', () => {
     );
     const user = userEvent.setup();
 
-    render(<IntegrationsSection />);
+    renderSection();
     await user.click(await screen.findByRole('button', { name: 'Conectar' }));
 
     const alert = await screen.findByRole('alert');
@@ -137,7 +141,7 @@ describe('IntegrationsSection', () => {
     );
     const user = userEvent.setup();
 
-    render(<IntegrationsSection />);
+    renderSection();
     await user.click(await screen.findByRole('button', { name: 'Desconectar' }));
 
     // Explicit confirmation modal (FOR-63 destructive pattern, reusing Modal).
@@ -157,7 +161,7 @@ describe('IntegrationsSection', () => {
     listMock.mockResolvedValue([withings]);
     const user = userEvent.setup();
 
-    render(<IntegrationsSection />);
+    renderSection();
     await user.click(await screen.findByRole('button', { name: 'Desconectar' }));
     const modal = await screen.findByRole('dialog');
     within(modal).getByRole('heading', { name: 'Desconectar Withings' });
@@ -171,7 +175,7 @@ describe('IntegrationsSection', () => {
   it('renders a clean empty connected state alongside the available list', async () => {
     listMock.mockResolvedValue([googleFit, appleHealth]);
 
-    render(<IntegrationsSection />);
+    renderSection();
 
     expect(await screen.findByText('Aún no tienes integraciones conectadas.')).toBeInTheDocument();
     expect(screen.getByText('Google Fit')).toBeInTheDocument();
@@ -181,7 +185,7 @@ describe('IntegrationsSection', () => {
   it('shows a loading state while providers load', () => {
     listMock.mockReturnValue(new Promise(() => {}));
 
-    render(<IntegrationsSection />);
+    renderSection();
 
     expect(screen.getByRole('status')).toHaveTextContent('Cargando tus integraciones');
   });
@@ -191,7 +195,7 @@ describe('IntegrationsSection', () => {
     listMock.mockResolvedValueOnce([withings, googleFit, appleHealth]);
     const user = userEvent.setup();
 
-    render(<IntegrationsSection />);
+    renderSection();
 
     expect(await screen.findByRole('alert')).toHaveTextContent('No se pudieron cargar');
 
