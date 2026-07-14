@@ -182,7 +182,17 @@ describe('NutritionPage', () => {
     getShoppingListMock.mockResolvedValue({
       weekStartDate: '2026-07-06',
       status: 'ACTIVE',
-      items: [{ id: '1', productName: 'Avena', quantity: 1, estimatedCostEur: 2, checked: false }],
+      items: [
+        {
+          id: '1',
+          productId: 'p1',
+          productName: 'Avena',
+          category: 'CEREALES_Y_LEGUMBRES',
+          quantity: 1,
+          estimatedCostEur: 2,
+          checked: false,
+        },
+      ],
       budget: { weeklyEur: 10, monthlyEur: 40 },
     });
 

@@ -20,6 +20,12 @@ import {
   type ShoppingList,
   type ShoppingProduct,
 } from '../api/shopping';
+import {
+  ALL_CATEGORIES,
+  buildCategoryTabs,
+  categoryLabel,
+  filterItemsByCategory,
+} from './shoppingCategories';
 import styles from './ShoppingPage.module.css';
 
 /**
@@ -31,14 +37,6 @@ import styles from './ShoppingPage.module.css';
  * <p>Mockup elements not backed by the API today (documented gap, repository
  * priority per AGENTS.md — never invented):
  * <ul>
- *   <li><b>Category grouping/filters</b> — {@code ShoppingListResponse.Item}
- *       (FOR-39) carries no category field (verified against the domain,
- *       migration and DTO), so there is nothing to group or filter by. All
- *       items render under a single, clearly-labelled "Todas" group/tab
- *       instead of fabricating categories — the spec explicitly sanctions this
- *       fallback when no category data exists at all (distinct from the
- *       per-item "unknown category → Otros" case, which assumes some items
- *       *do* carry a category).
  *   <li><b>Quantity unit</b> ("unidades"/"kg"/"g") — {@code quantity} is a
  *       plain integer with no unit field; shown as-is.
  *   <li><b>"PORCIONES" and "GENERADA"</b> budget tiles — the list/budget read
@@ -50,14 +48,18 @@ import styles from './ShoppingPage.module.css';
  *       icons and +/- quantity editing — no regenerate, link-out or item-
  *       quantity-update endpoint exists; omitted entirely rather than shown
  *       inactive (same precedent as FOR-54).
- *   <li><b>Product price/URL edit</b> — the FOR-39 list item has no
- *       {@code productId} in its response, so the edit entry point resolves
- *       the product by matching {@link ShoppingItem.productName} against the
- *       FOR-36 products list. Editing a product's price does not retroactively
- *       change this week's already-generated line cost (the list stores its
- *       own {@code estimatedCostEur} — see {@code ShoppingListItem} javadoc);
- *       this is a documented limitation, not a bug.
  * </ul>
+ *
+ * <p><b>Category filter tabs and id-based product edit (FOR-111)</b>:
+ * {@code ShoppingListResponse.Item} (FOR-106) now carries {@code productId}
+ * and {@code category}, so the list is grouped/filtered by
+ * {@link ShoppingItem.category} exactly as returned (no UI-side category
+ * inference, ADR-006) and the edit entry point resolves the product by
+ * {@link ShoppingItem.productId} instead of matching {@code productName}.
+ * Editing a product's price does not retroactively change this week's
+ * already-generated line cost (the list stores its own
+ * {@code estimatedCostEur} — see {@code ShoppingListItem} javadoc); this is a
+ * documented limitation, not a bug.
  */
 type State =
   | { readonly status: 'loading' }
@@ -74,6 +76,7 @@ export function ShoppingPage() {
   const [actionError, setActionError] = useState<string | undefined>(undefined);
   const [pendingId, setPendingId] = useState<string | undefined>(undefined);
   const [editingItem, setEditingItem] = useState<ShoppingItem | undefined>(undefined);
+  const [selectedCategory, setSelectedCategory] = useState<string>(ALL_CATEGORIES);
 
   useEffect(() => {
     let active = true;
@@ -134,7 +137,15 @@ export function ShoppingPage() {
           {actionError}
         </p>
       )}
-      {renderContent(state, toggle, pendingId, () => setRetryToken((t) => t + 1), setEditingItem)}
+      {renderContent(
+        state,
+        toggle,
+        pendingId,
+        () => setRetryToken((t) => t + 1),
+        setEditingItem,
+        selectedCategory,
+        setSelectedCategory,
+      )}
       {editingItem && (
         <ProductEditModal item={editingItem} onClose={() => setEditingItem(undefined)} />
       )}
@@ -148,6 +159,8 @@ function renderContent(
   pendingId: string | undefined,
   retry: () => void,
   onEdit: (item: ShoppingItem) => void,
+  selectedCategory: string,
+  onSelectCategory: (category: string) => void,
 ) {
   if (state.status === 'loading') {
     return <LoadingState message="Cargando tu lista de compra…" />;
@@ -163,6 +176,8 @@ function renderContent(
   }
 
   const { items, budget } = state.list;
+  const tabs = buildCategoryTabs(items);
+  const filteredItems = filterItemsByCategory(items, selectedCategory);
 
   return (
     <>
@@ -176,20 +191,31 @@ function renderContent(
         <MetricCard label="Estimado mensual" value={EUR.format(budget.monthlyEur)} />
       </section>
 
-      {/* Category filter tabs: the FOR-39 list carries no category, so "Todas" is
-          the only, documented group (see the page-level comment above). */}
+      {/* Category filter tabs (FOR-111): one tab per distinct category present
+          in the list (FOR-106), plus "Todas" first. */}
       <div className={styles.tabs} role="tablist" aria-label="Categorías">
-        <button type="button" role="tab" aria-selected="true" className={styles.tab}>
-          Todas ({items.length})
-        </button>
+        {tabs.map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            role="tab"
+            aria-selected={tab.key === selectedCategory}
+            className={styles.tab}
+            onClick={() => onSelectCategory(tab.key)}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {items.length === 0 ? (
         <EmptyState title="No hay artículos en la lista de esta semana." />
+      ) : filteredItems.length === 0 ? (
+        <EmptyState variant="filtered" title="No hay artículos en esta categoría." />
       ) : (
-        <Card title="Todas">
+        <Card title={categoryLabel(selectedCategory)}>
           <ul className={styles.items}>
-            {items.map((item) => (
+            {filteredItems.map((item) => (
               <li key={item.id} className={styles.item}>
                 <label className={styles.itemLabel}>
                   <input
@@ -265,7 +291,9 @@ function ProductEditModal({
     listShoppingProducts()
       .then((products) => {
         if (!active) return;
-        const match = products.find((product) => product.name === item.productName);
+        // Match by id (FOR-106/FOR-111) — not by name, which broke when two
+        // products shared a display name.
+        const match = products.find((product) => product.id === item.productId);
         if (!match) {
           setState({ status: 'not-found' });
           return;
@@ -282,7 +310,7 @@ function ProductEditModal({
     return () => {
       active = false;
     };
-  }, [item.productName]);
+  }, [item.productId]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

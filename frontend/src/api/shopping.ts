@@ -8,7 +8,11 @@ import { apiClient, type ApiClient } from './client';
 /** One checklist item. */
 export interface ShoppingItem {
   readonly id: string;
+  /** The FOR-36 product id (FOR-106) — resolves product edits by id, not by name. */
+  readonly productId: string;
   readonly productName: string;
+  /** Resolved product category (FOR-106); `OTROS` when the product has none. */
+  readonly category: string;
   readonly quantity: number;
   readonly estimatedCostEur: number;
   readonly checked: boolean;
@@ -36,8 +40,8 @@ export interface CheckedResult {
 
 /**
  * A shopping product (FOR-36) — the price/URL reference the checklist items
- * point to by name (the FOR-39 list read model does not expose the product
- * id, so callers resolve it by matching {@link ShoppingItem.productName}).
+ * point to. `GET /api/v1/shopping/list` items carry {@link ShoppingItem.productId}
+ * directly (FOR-106), so callers resolve the product by id, not by name.
  */
 export interface ShoppingProduct {
   readonly id: string;
