@@ -141,11 +141,6 @@
   border-radius: var(--radius-md);
 }
 
-.message {
-  margin: 0;
-  color: var(--color-text-muted);
-}
-
 /* Below ~480px, wrap quantity/price/actions onto a second row instead of
    shrinking the grid — avoids horizontal scroll (ui-guidelines: shopping
    checklist is a mobile priority). */

@@ -150,6 +150,26 @@ describe('OnboardingPage', () => {
     expect(await screen.findByText('Panel principal')).toBeInTheDocument();
   });
 
+  it('renders exactly one page-level <h1> that persists across step navigation (FOR-113)', async () => {
+    const user = userEvent.setup();
+    renderOnboarding();
+
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Configuración inicial' }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+
+    await fillName(user, 'Diego');
+    await user.click(screen.getByRole('button', { name: 'Siguiente' }));
+
+    // The page-level <h1> must not reset/duplicate when the step-level <h2>
+    // changes and receives focus (FOR-61 focus management).
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Configuración inicial' }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+  });
+
   it('resumes mid-flow progress from local storage', () => {
     saveOnboardingProgress({
       stepIndex: 3,

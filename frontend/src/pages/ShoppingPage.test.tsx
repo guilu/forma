@@ -1,9 +1,10 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ShoppingPage } from './ShoppingPage';
 import { buildCategoryTabs, filterItemsByCategory } from './shoppingCategories';
 import { NotificationProvider } from '../components/NotificationProvider';
+import { ApiRequestError } from '../api/client';
 import {
   getShoppingList,
   listShoppingProducts,
@@ -119,6 +120,10 @@ describe('ShoppingPage', () => {
     setCheckedMock.mockReset();
     listProductsMock.mockReset();
     updateProductMock.mockReset();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it('renders category tabs (Todas + distinct categories) with items grouped under "Todas" by default', async () => {
@@ -319,6 +324,83 @@ describe('ShoppingPage', () => {
     expect(await screen.findByText('Producto actualizado.')).toBeInTheDocument();
   });
 
+  it('shows the shared LoadingState while the product loads in the edit modal (FOR-113)', async () => {
+    getListMock.mockResolvedValue(list);
+    let resolveProducts: (products: ShoppingProduct[]) => void = () => {};
+    listProductsMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolveProducts = resolve;
+      }),
+    );
+    const user = userEvent.setup();
+
+    renderPage();
+    await screen.findByRole('checkbox', { name: /Avena 1 kg/ });
+
+    await user.click(screen.getByRole('button', { name: /Editar producto Avena 1 kg/ }));
+
+    // The shared LoadingState wraps role="status" in a <div> (with a spinner
+    // span alongside the message); the old inline markup put role="status"
+    // directly on a bare <p>. Asserting the tag name proves the shared
+    // component rendered, not just matching copy (FOR-113).
+    const status = screen.getByRole('status');
+    expect(status.tagName).toBe('DIV');
+    expect(status).toHaveTextContent('Cargando producto…');
+
+    resolveProducts([avenaProduct]);
+    expect(await screen.findByLabelText('Precio estimado (€)')).toBeInTheDocument();
+  });
+
+  it('shows the shared ErrorState with the existing message when the product fails to load, without a retry action (FOR-113)', async () => {
+    getListMock.mockResolvedValue(list);
+    listProductsMock.mockRejectedValueOnce(new Error('network'));
+    const user = userEvent.setup();
+
+    renderPage();
+    await screen.findByRole('checkbox', { name: /Avena 1 kg/ });
+
+    await user.click(screen.getByRole('button', { name: /Editar producto Avena 1 kg/ }));
+
+    const alert = await screen.findByRole('alert');
+    // The shared ErrorState wraps role="alert" in a <div> with an icon; the
+    // old inline markup put role="alert" directly on a bare <p>. Asserting
+    // the tag name proves the shared component rendered (FOR-113).
+    expect(alert.tagName).toBe('DIV');
+    expect(alert).toHaveTextContent('No se pudo cargar el producto. Inténtalo de nuevo.');
+    // No retry inside the modal — closing and reopening it is the retry path.
+    expect(within(alert).queryByRole('button', { name: 'Reintentar' })).not.toBeInTheDocument();
+  });
+
+  it('shows the dev-only error detail in the edit modal when showDetail is on (FOR-113)', async () => {
+    vi.stubEnv('DEV', true);
+    getListMock.mockResolvedValue(list);
+    listProductsMock.mockRejectedValueOnce(new ApiRequestError(500, 'Backend unavailable'));
+    const user = userEvent.setup();
+
+    renderPage();
+    await screen.findByRole('checkbox', { name: /Avena 1 kg/ });
+
+    await user.click(screen.getByRole('button', { name: /Editar producto Avena 1 kg/ }));
+
+    await screen.findByRole('alert');
+    expect(screen.getByText('Backend unavailable')).toBeInTheDocument();
+  });
+
+  it('never shows the error detail in the edit modal when showDetail is off — production guard (FOR-113)', async () => {
+    vi.stubEnv('DEV', false);
+    getListMock.mockResolvedValue(list);
+    listProductsMock.mockRejectedValueOnce(new ApiRequestError(500, 'Backend unavailable'));
+    const user = userEvent.setup();
+
+    renderPage();
+    await screen.findByRole('checkbox', { name: /Avena 1 kg/ });
+
+    await user.click(screen.getByRole('button', { name: /Editar producto Avena 1 kg/ }));
+
+    await screen.findByRole('alert');
+    expect(screen.queryByText('Backend unavailable')).not.toBeInTheDocument();
+  });
+
   it('shows a not-found message when no product matches the item id', async () => {
     getListMock.mockResolvedValue(list);
     listProductsMock.mockResolvedValue([]);
@@ -329,7 +411,11 @@ describe('ShoppingPage', () => {
 
     await user.click(screen.getByRole('button', { name: /Editar producto Avena 1 kg/ }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo encontrar el producto');
+    // Not-found renders the shared EmptyState (role="status"), distinct from
+    // the error state's role="alert" — "not found" isn't retry-recoverable
+    // (FOR-113 spec Open Question).
+    const notFound = await screen.findByText(/No se pudo encontrar el producto/);
+    expect(notFound.closest('[role="status"]')).toBeInTheDocument();
   });
 
   it('resolves distinct products by id even when two items share the same product name (regression guard)', async () => {
@@ -380,7 +466,8 @@ describe('ShoppingPage', () => {
 
     await user.click(screen.getByRole('button', { name: /Editar producto Producto fantasma/ }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo encontrar el producto');
+    const notFound = await screen.findByText(/No se pudo encontrar el producto/);
+    expect(notFound.closest('[role="status"]')).toBeInTheDocument();
   });
 });
 
