@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Card } from '../../components/Card';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
-import { StatusPill } from '../../components/StatusPill';
-import { getWeeklyInsights, type WeeklyCheckIn, type WeeklyInsights } from '../../api/insights';
+import { getWeeklyInsights, type WeeklyInsights } from '../../api/insights';
+import { WeeklyInsightsDetail } from './WeeklyInsightsDetail';
 import styles from './InsightsSection.module.css';
 
 /**
@@ -16,37 +15,32 @@ import styles from './InsightsSection.module.css';
  * main message/reason. This documents the FOR-56 spec's Open Question: no new
  * nav item/route is added for the MVP.
  *
- * <p>Reuses {@link StatusPill} (FOR-50) for severity so the badge copy/tone
- * matches the dashboard widget exactly (docs/api/weekly-insights.md,
+ * <p>The actual "main/secondary/signals/disclaimer" rendering lives in the
+ * shared {@link WeeklyInsightsDetail} (FOR-124), reused as-is by
+ * `InsightsHistorySection` for a selected historical period. Reuses {@link
+ * StatusPill} (FOR-50) for severity via that shared component so the badge
+ * copy/tone matches the dashboard widget exactly (docs/api/weekly-insights.md,
  * ui-guidelines.md "always explain recommendations" / "no fake AI oracle
  * energy"). Reason/explanation text is always the backend's `reason` field —
  * never synthesized here (ADR-006: frontend renders read models, not domain
  * rules).
  *
  * <p>"Related signals" render the check-in's latest absolute values (weight,
- * body fat %, lean mass) and training completion counts — there is no
- * week-over-week "delta" field on `WeeklyCheckIn`
- * (docs/api/weekly-insights.md), so this shows the signals the recommendation
- * was computed from, not a trend. Mirrors the FOR-51 `BodyWidget` precedent of
- * rendering only what the API actually returns instead of recomputing a
- * comparison in the UI.
+ * body fat %, lean mass) and training completion counts, plus FOR-110's
+ * week-over-week deltas alongside each when the backend provides one — a
+ * gap this section's original doc comment explicitly named and FOR-124
+ * closes. Mirrors the FOR-51 `BodyWidget` precedent of rendering only what
+ * the API actually returns instead of recomputing a comparison in the UI.
  *
- * <p>No persisted insight history exists — FOR-45 is computed on demand with
- * no history endpoint (spec `specs/FOR-56/spec.md` Data Model Notes) — so a
- * "historical insights list" is deferred entirely rather than built against
- * nothing. This section always shows the current week only.
+ * <p>The historical insights list this section's original doc comment
+ * deferred ("FOR-45 is computed on demand with no history endpoint") is now
+ * `InsightsHistorySection` (FOR-124), rendered as a sibling below this one on
+ * the Progreso page — this section itself still shows the current week only.
  */
 type State =
   | { readonly status: 'loading' }
   | { readonly status: 'error' }
   | { readonly status: 'ready'; readonly insights: WeeklyInsights };
-
-const DISCLAIMER =
-  'Estas recomendaciones son orientativas y se generan a partir de tus datos. No sustituyen el diagnóstico ni el consejo de un profesional sanitario.';
-
-function formatBody(value: number | undefined, unit: string): string | undefined {
-  return value === undefined ? undefined : `${value.toFixed(1)} ${unit}`;
-}
 
 export function InsightsSection() {
   const [state, setState] = useState<State>({ status: 'loading' });
@@ -95,70 +89,9 @@ function renderContent(state: State, onRetry: () => void) {
     );
   }
 
-  const { checkIn, main, secondary } = state.insights;
-
   return (
     <div className={styles.content}>
-      <div className={styles.topRow}>
-        <Card title="Recomendación principal">
-          <StatusPill kind="severity" value={main.severity} />
-          <p className={styles.mainMessage}>{main.message}</p>
-          <p className={styles.reason}>{main.reason}</p>
-        </Card>
-
-        <RelatedSignals checkIn={checkIn} />
-      </div>
-
-      {secondary.length > 0 && (
-        <Card title="Otras recomendaciones">
-          <ul className={styles.secondaryList}>
-            {secondary.map((rec, index) => (
-              <li key={`${rec.category}-${index}`} className={styles.secondaryItem}>
-                <StatusPill kind="severity" value={rec.severity} />
-                <div>
-                  <p className={styles.secondaryMessage}>{rec.message}</p>
-                  <p className={styles.reason}>{rec.reason}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </Card>
-      )}
-
-      <p className={styles.disclaimer}>{DISCLAIMER}</p>
+      <WeeklyInsightsDetail insights={state.insights} />
     </div>
-  );
-}
-
-function RelatedSignals({ checkIn }: { readonly checkIn: WeeklyCheckIn }) {
-  const bodySignals = [
-    { label: 'Peso', value: formatBody(checkIn.latestWeightKg, 'kg') },
-    { label: 'Grasa corporal', value: formatBody(checkIn.latestBodyFatPercentage, '%') },
-    { label: 'Masa magra', value: formatBody(checkIn.latestLeanMassKg, 'kg') },
-  ].filter((signal): signal is { label: string; value: string } => signal.value !== undefined);
-
-  return (
-    <Card title="Señales de esta semana">
-      <ul className={styles.signalsList}>
-        {bodySignals.map((signal) => (
-          <li key={signal.label} className={styles.signalItem}>
-            <span className={styles.signalLabel}>{signal.label}</span>
-            <span className={styles.signalValue}>{signal.value}</span>
-          </li>
-        ))}
-        <li className={styles.signalItem}>
-          <span className={styles.signalLabel}>Entrenamiento running</span>
-          <span className={styles.signalValue}>
-            {checkIn.completedRunningSessions} de {checkIn.plannedRunningSessions} sesiones
-          </span>
-        </li>
-        <li className={styles.signalItem}>
-          <span className={styles.signalLabel}>Entrenamiento de fuerza</span>
-          <span className={styles.signalValue}>
-            {checkIn.completedStrengthSessions} de {checkIn.plannedStrengthSessions} sesiones
-          </span>
-        </li>
-      </ul>
-    </Card>
   );
 }
