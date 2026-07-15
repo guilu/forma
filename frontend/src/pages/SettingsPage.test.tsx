@@ -63,6 +63,7 @@ describe('SettingsPage', () => {
     expect(
       screen.getByRole('heading', { name: 'Seguridad y datos', level: 2 }),
     ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Soporte y ayuda', level: 2 })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Acerca de FORMA', level: 2 })).toBeInTheDocument();
   });
 
