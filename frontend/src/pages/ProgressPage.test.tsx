@@ -3,23 +3,26 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ProgressPage } from './ProgressPage';
 import { listBodyMeasurements, type BodyMeasurement } from '../api/bodyMeasurements';
-import { getWeeklyInsights, type WeeklyInsights } from '../api/insights';
+import { getInsightsHistory, getWeeklyInsights, type WeeklyInsights } from '../api/insights';
 import { axe } from '../test/axe';
 
 vi.mock('../api/bodyMeasurements', () => ({
   listBodyMeasurements: vi.fn(),
 }));
 
-// ProgressPage also hosts the FOR-56 InsightsSection, which calls the FOR-45
-// endpoint independently — mock it so these measurement-focused tests aren't
+// ProgressPage also hosts the FOR-56 InsightsSection and the FOR-124
+// InsightsHistorySection, which call the FOR-45/FOR-110 endpoints
+// independently — mock them so these measurement-focused tests aren't
 // coupled to insights data (dedicated insights tests live in
-// ./progress/InsightsSection.test.tsx).
+// ./progress/InsightsSection.test.tsx and ./progress/InsightsHistorySection.test.tsx).
 vi.mock('../api/insights', () => ({
   getWeeklyInsights: vi.fn(),
+  getInsightsHistory: vi.fn(),
 }));
 
 const listMock = vi.mocked(listBodyMeasurements);
 const insightsMock = vi.mocked(getWeeklyInsights);
+const historyMock = vi.mocked(getInsightsHistory);
 
 const insights: WeeklyInsights = {
   checkIn: {
@@ -65,6 +68,8 @@ describe('ProgressPage', () => {
     listMock.mockReset();
     insightsMock.mockReset();
     insightsMock.mockResolvedValue(insights);
+    historyMock.mockReset();
+    historyMock.mockResolvedValue([]);
   });
 
   it('renders a graph per metric from the measurements', async () => {
@@ -107,7 +112,7 @@ describe('ProgressPage', () => {
 
     renderProgress();
 
-    expect(await screen.findByRole('status')).toHaveTextContent('Aún no hay mediciones');
+    expect(await screen.findByText('Aún no hay mediciones.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Registra tu primera medición' })).toHaveAttribute(
       'href',
       '/mediciones',

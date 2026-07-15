@@ -6,6 +6,7 @@ import { ErrorState } from '../components/ErrorState';
 import { LineChart, type ChartPoint } from '../components/LineChart';
 import { LoadingState } from '../components/LoadingState';
 import { listBodyMeasurements, type BodyMeasurement } from '../api/bodyMeasurements';
+import { InsightsHistorySection } from './progress/InsightsHistorySection';
 import { InsightsSection } from './progress/InsightsSection';
 import styles from './ProgressPage.module.css';
 
@@ -16,12 +17,14 @@ import styles from './ProgressPage.module.css';
  * states. Values come straight from the API (ADR-006).
  *
  * <p>Also hosts the FOR-56 insights & recommendations surface ({@link
- * InsightsSection}) below the measurement charts. This is where the fuller
- * insights view lives for the MVP — the nav has no dedicated "Insights" route
- * (`frontend/src/app/navigation.ts`), per the FOR-56 spec's Open Question, so
- * no new nav item/route was added; the dashboard keeps its own compact summary
- * (FOR-51 `InsightWidget`). `InsightsSection` fetches independently, so a
- * measurements failure never blocks recommendations or vice versa.
+ * InsightsSection}) and the FOR-124 past-weeks history ({@link
+ * InsightsHistorySection}) below the measurement charts. This is where the
+ * fuller insights view lives for the MVP — the nav has no dedicated "Insights"
+ * route (`frontend/src/app/navigation.ts`), per the FOR-56 spec's Open
+ * Question (preserved by FOR-124), so no new nav item/route was added; the
+ * dashboard keeps its own compact summary (FOR-51 `InsightWidget`). Each
+ * section fetches independently, so a measurements, current-week or history
+ * failure never blocks the others.
  */
 type State =
   | { readonly status: 'loading' }
@@ -80,6 +83,7 @@ export function ProgressPage() {
       </header>
       {renderContent(state)}
       <InsightsSection />
+      <InsightsHistorySection />
     </div>
   );
 }

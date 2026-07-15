@@ -41,6 +41,7 @@ const baseInsights: WeeklyInsights = {
     },
   ],
   generatedAt: '2026-07-10T08:00:00Z',
+  deltas: {},
 };
 
 describe('InsightsSection', () => {
@@ -159,6 +160,27 @@ describe('InsightsSection', () => {
       await screen.findByText('Aún no hay suficientes datos para una recomendación.'),
     ).toBeInTheDocument();
     expect(screen.getByText('Info')).toBeInTheDocument();
+  });
+
+  it('shows a week-over-week delta alongside the absolute value when the backend provides one', async () => {
+    insightsMock.mockResolvedValue({
+      ...baseInsights,
+      deltas: { weightDeltaKg: -0.4 },
+    });
+
+    renderSection();
+
+    expect(await screen.findByText('70.2 kg')).toBeInTheDocument();
+    expect(screen.getByText(/−0\.4 kg vs\. semana anterior/)).toBeInTheDocument();
+  });
+
+  it('shows only the absolute value, no fabricated delta, for the first-ever week', async () => {
+    insightsMock.mockResolvedValue(baseInsights);
+
+    renderSection();
+
+    expect(await screen.findByText('70.2 kg')).toBeInTheDocument();
+    expect(screen.queryByText(/vs\. semana anterior/i)).not.toBeInTheDocument();
   });
 
   it('shows an error state with a retry action when the request fails', async () => {
