@@ -1,7 +1,9 @@
 package dev.diegobarrioh.forma.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import dev.diegobarrioh.forma.domain.Recommendation;
@@ -32,6 +34,7 @@ class WeeklyInsightsServiceTest {
       mock(TrainingAdherenceRecommendationService.class);
   private final RecoveryWarningRecommendationService recoveryWarningService =
       mock(RecoveryWarningRecommendationService.class);
+  private final InsightHistoryRepository historyRepository = mock(InsightHistoryRepository.class);
 
   private final WeeklyInsightsService service =
       new WeeklyInsightsService(
@@ -39,6 +42,7 @@ class WeeklyInsightsServiceTest {
           bodyTrendService,
           trainingAdherenceService,
           recoveryWarningService,
+          historyRepository,
           FIXED);
 
   private static Recommendation rec(
@@ -108,5 +112,37 @@ class WeeklyInsightsServiceTest {
 
     assertThat(insights.main().message()).contains("Registra otra medición");
     assertThat(insights.secondary()).hasSize(1);
+  }
+
+  @Test
+  void persistsTheGeneratedInsightsViaTheHistoryRepository() {
+    checkIn();
+    when(bodyTrendService.currentRecommendations())
+        .thenReturn(List.of(rec(RecommendationCategory.BODY, RecommendationSeverity.ACTION)));
+    when(trainingAdherenceService.currentRecommendations()).thenReturn(List.of());
+    when(recoveryWarningService.currentRecommendations()).thenReturn(List.of());
+
+    WeeklyInsights insights = service.currentInsights();
+
+    verify(historyRepository).save(insights);
+  }
+
+  /** Regression check per spec FOR-110 tests.md: checkIn/main/secondary/generatedAt unchanged. */
+  @Test
+  void currentInsightsRegressionKeepsTheSameCoreFieldsAsBeforeFor110() {
+    checkIn();
+    when(bodyTrendService.currentRecommendations())
+        .thenReturn(List.of(rec(RecommendationCategory.BODY, RecommendationSeverity.ACTION)));
+    when(trainingAdherenceService.currentRecommendations())
+        .thenReturn(List.of(rec(RecommendationCategory.TRAINING, RecommendationSeverity.INFO)));
+    when(recoveryWarningService.currentRecommendations()).thenReturn(List.of());
+
+    WeeklyInsights insights = service.currentInsights();
+
+    assertThat(insights.checkIn()).isNotNull();
+    assertThat(insights.main()).isNotNull();
+    assertThat(insights.secondary()).isNotNull();
+    assertThat(insights.generatedAt()).isEqualTo(NOW);
+    verify(historyRepository).save(any(WeeklyInsights.class));
   }
 }

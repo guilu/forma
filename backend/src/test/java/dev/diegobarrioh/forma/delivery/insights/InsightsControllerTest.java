@@ -5,12 +5,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import dev.diegobarrioh.forma.application.InsightHistoryService;
 import dev.diegobarrioh.forma.application.WeeklyInsights;
 import dev.diegobarrioh.forma.application.WeeklyInsightsService;
 import dev.diegobarrioh.forma.domain.Recommendation;
 import dev.diegobarrioh.forma.domain.RecommendationCategory;
 import dev.diegobarrioh.forma.domain.RecommendationSeverity;
 import dev.diegobarrioh.forma.domain.WeeklyCheckIn;
+import dev.diegobarrioh.forma.domain.WeeklyCheckInDeltas;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -21,17 +23,20 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * Web-slice tests for {@link InsightsController} (FOR-45): the weekly response shape and the
- * empty-data path (still {@code 200} with an insufficient-data main recommendation).
+ * Web-slice tests for {@link InsightsController}: the weekly response shape (FOR-45), the
+ * empty-data path (still {@code 200} with an insufficient-data main recommendation), and the
+ * FOR-110 week-over-week deltas + history endpoint.
  */
 @WebMvcTest(InsightsController.class)
 class InsightsControllerTest {
 
   private static final Instant NOW = Instant.parse("2026-07-10T08:00:00Z");
   private static final LocalDate WEEK = LocalDate.of(2026, 7, 6);
+  private static final LocalDate PRIOR_WEEK = LocalDate.of(2026, 6, 29);
 
   @Autowired private MockMvc mockMvc;
   @MockBean private WeeklyInsightsService insightsService;
+  @MockBean private InsightHistoryService historyService;
 
   @Test
   void returnsCheckInMainAndSecondaryRecommendations() throws Exception {
@@ -54,6 +59,7 @@ class InsightsControllerTest {
             null);
     when(insightsService.currentInsights())
         .thenReturn(new WeeklyInsights(checkIn, main, List.of(secondary), NOW));
+    when(historyService.deltasFor(checkIn)).thenReturn(new WeeklyCheckInDeltas(-1.5, -0.5, 0.5, 2));
 
     mockMvc
         .perform(get("/api/v1/insights/weekly"))
@@ -67,7 +73,11 @@ class InsightsControllerTest {
         .andExpect(jsonPath("$.main.relatedMetric").value("weeklyWeightChangeKg"))
         .andExpect(jsonPath("$.secondary[0].severity").value("INFO"))
         .andExpect(jsonPath("$.secondary[0].relatedMetric").doesNotExist())
-        .andExpect(jsonPath("$.generatedAt").exists());
+        .andExpect(jsonPath("$.generatedAt").exists())
+        .andExpect(jsonPath("$.deltas.weightDeltaKg").value(-1.5))
+        .andExpect(jsonPath("$.deltas.bodyFatPercentageDelta").value(-0.5))
+        .andExpect(jsonPath("$.deltas.leanMassDeltaKg").value(0.5))
+        .andExpect(jsonPath("$.deltas.trainingCompletionDelta").value(2));
   }
 
   @Test
@@ -83,6 +93,7 @@ class InsightsControllerTest {
             null);
     when(insightsService.currentInsights())
         .thenReturn(new WeeklyInsights(checkIn, main, List.of(), NOW));
+    when(historyService.deltasFor(checkIn)).thenReturn(WeeklyCheckInDeltas.NONE);
 
     mockMvc
         .perform(get("/api/v1/insights/weekly"))
@@ -92,6 +103,60 @@ class InsightsControllerTest {
             jsonPath("$.main.message")
                 .value("Registra otra medición para analizar tu tendencia corporal."))
         .andExpect(jsonPath("$.checkIn.latestWeightKg").doesNotExist())
-        .andExpect(jsonPath("$.secondary").isEmpty());
+        .andExpect(jsonPath("$.secondary").isEmpty())
+        .andExpect(jsonPath("$.deltas.weightDeltaKg").doesNotExist())
+        .andExpect(jsonPath("$.deltas.bodyFatPercentageDelta").doesNotExist())
+        .andExpect(jsonPath("$.deltas.leanMassDeltaKg").doesNotExist())
+        .andExpect(jsonPath("$.deltas.trainingCompletionDelta").doesNotExist());
+  }
+
+  @Test
+  void historyReturnsEmptyListBeforeAnyInsightsHaveBeenGenerated() throws Exception {
+    when(historyService.history()).thenReturn(List.of());
+
+    mockMvc
+        .perform(get("/api/v1/insights/history"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$").isArray())
+        .andExpect(jsonPath("$").isEmpty());
+  }
+
+  @Test
+  void historyReturnsPersistedPeriodsMostRecentFirst() throws Exception {
+    WeeklyCheckIn priorCheckIn = new WeeklyCheckIn(PRIOR_WEEK, 72.5, 18.0, 55.0, 3, 2, 3, 1, null);
+    WeeklyCheckIn currentCheckIn = new WeeklyCheckIn(WEEK, 71.0, 17.5, 55.5, 3, 3, 3, 2, null);
+    Recommendation priorMain =
+        new Recommendation(
+            NOW,
+            RecommendationCategory.TRAINING,
+            RecommendationSeverity.INFO,
+            "prior message",
+            "prior reason",
+            null);
+    Recommendation currentMain =
+        new Recommendation(
+            NOW,
+            RecommendationCategory.BODY,
+            RecommendationSeverity.ACTION,
+            "current message",
+            "current reason",
+            null);
+    WeeklyInsights currentInsights =
+        new WeeklyInsights(currentCheckIn, currentMain, List.of(), NOW);
+    WeeklyInsights priorInsights = new WeeklyInsights(priorCheckIn, priorMain, List.of(), NOW);
+    when(historyService.history()).thenReturn(List.of(currentInsights, priorInsights));
+    when(historyService.deltasFor(currentCheckIn))
+        .thenReturn(new WeeklyCheckInDeltas(-1.5, -0.5, 0.5, 2));
+    when(historyService.deltasFor(priorCheckIn)).thenReturn(WeeklyCheckInDeltas.NONE);
+
+    mockMvc
+        .perform(get("/api/v1/insights/history"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].checkIn.weekStartDate").value("2026-07-06"))
+        .andExpect(jsonPath("$[0].main.message").value("current message"))
+        .andExpect(jsonPath("$[0].deltas.weightDeltaKg").value(-1.5))
+        .andExpect(jsonPath("$[1].checkIn.weekStartDate").value("2026-06-29"))
+        .andExpect(jsonPath("$[1].main.message").value("prior message"))
+        .andExpect(jsonPath("$[1].deltas.weightDeltaKg").doesNotExist());
   }
 }

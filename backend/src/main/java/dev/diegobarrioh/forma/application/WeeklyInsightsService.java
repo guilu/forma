@@ -13,8 +13,7 @@ import org.springframework.stereotype.Service;
 /**
  * Application use case that assembles the weekly insights (FOR-45): builds the FOR-40 {@link
  * WeeklyCheckIn}, runs the FOR-42/43/44 rule sets, selects a prioritized main recommendation and
- * returns them with a generated timestamp. Computed on demand — no persisted insights, consistent
- * with the FOR-21/FOR-28 services.
+ * returns them with a generated timestamp.
  *
  * <h2>Main-recommendation selection (documented per spec FOR-45 Open Questions)</h2>
  *
@@ -24,6 +23,15 @@ import org.springframework.stereotype.Service;
  * Empty data still yields recommendations (each of the body/training rules always emits one, e.g.
  * an insufficient-data {@code INFO}), so {@code main} is never null and the endpoint never errors
  * on absent data.
+ *
+ * <h2>Persistence (FOR-110)</h2>
+ *
+ * Every call to {@link #currentInsights()} persists the assembled result via {@link
+ * InsightHistoryRepository#save(WeeklyInsights)}, keyed by the check-in's {@code weekStartDate}.
+ * This wraps the existing on-demand generation path — it does not change how insights are computed,
+ * it only stores the output going forward (spec FOR-110: "wrap/store its output", do not rewrite
+ * generation). The returned {@link WeeklyInsights} shape is unchanged from FOR-45/FOR-56
+ * (regression requirement, tests.md).
  */
 @Service
 public class WeeklyInsightsService {
@@ -32,6 +40,7 @@ public class WeeklyInsightsService {
   private final BodyTrendRecommendationService bodyTrendService;
   private final TrainingAdherenceRecommendationService trainingAdherenceService;
   private final RecoveryWarningRecommendationService recoveryWarningService;
+  private final InsightHistoryRepository historyRepository;
   private final Clock clock;
 
   public WeeklyInsightsService(
@@ -39,15 +48,20 @@ public class WeeklyInsightsService {
       BodyTrendRecommendationService bodyTrendService,
       TrainingAdherenceRecommendationService trainingAdherenceService,
       RecoveryWarningRecommendationService recoveryWarningService,
+      InsightHistoryRepository historyRepository,
       Clock clock) {
     this.checkInService = checkInService;
     this.bodyTrendService = bodyTrendService;
     this.trainingAdherenceService = trainingAdherenceService;
     this.recoveryWarningService = recoveryWarningService;
+    this.historyRepository = historyRepository;
     this.clock = clock;
   }
 
-  /** Assembles the current week's insights: check-in + prioritized recommendations + timestamp. */
+  /**
+   * Assembles the current week's insights: check-in + prioritized recommendations + timestamp, and
+   * persists the result keyed by its period (FOR-110).
+   */
   public WeeklyInsights currentInsights() {
     WeeklyCheckIn checkIn = checkInService.currentCheckIn();
 
@@ -62,7 +76,9 @@ public class WeeklyInsightsService {
     Recommendation main = ranked.get(0);
     List<Recommendation> secondary = List.copyOf(ranked.subList(1, ranked.size()));
 
-    return new WeeklyInsights(checkIn, main, secondary, Instant.now(clock));
+    WeeklyInsights insights = new WeeklyInsights(checkIn, main, secondary, Instant.now(clock));
+    historyRepository.save(insights);
+    return insights;
   }
 
   /** Lower rank = higher priority: {@code ACTION < WARNING < INFO}. */
