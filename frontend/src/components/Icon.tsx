@@ -27,7 +27,8 @@ export type IconName =
   | 'lock'
   | 'sun'
   | 'moon'
-  | 'check';
+  | 'check'
+  | 'externalLink';
 
 const PATHS: Record<IconName, string> = {
   dashboard: 'M3 3h7v7H3zM14 3h7v4h-7zM14 10h7v11h-7zM3 13h7v8H3z',
@@ -67,6 +68,9 @@ const PATHS: Record<IconName, string> = {
   moon: 'M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z',
   // Checkmark — success feedback (notification toasts, FOR-63).
   check: 'M4 12l5 5 11-11',
+  // External-link box + outward arrow — provider link-out/add-to-cart entry
+  // point (shopping list item rows, FOR-118).
+  externalLink: 'M14 4h6v6M20 4l-9 9M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5',
 };
 
 interface IconProps {

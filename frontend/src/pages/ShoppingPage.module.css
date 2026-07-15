@@ -6,6 +6,14 @@
 
 .header {
   display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.headerText {
+  display: flex;
   flex-direction: column;
   gap: var(--space-1);
 }
@@ -69,7 +77,14 @@
   gap: var(--space-3);
 }
 
-.editButton {
+.itemActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.editButton,
+.linkOut {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -81,9 +96,42 @@
   border-radius: var(--radius-md);
 }
 
-.editButton:hover {
+.editButton:hover,
+.linkOut:hover {
   color: var(--color-text);
   border-color: var(--color-accent);
+}
+
+/* Quantity +/- controls (FOR-118): compact stepper alongside the existing
+   quantity/unit text, comfortable touch target on mobile. */
+.quantityStepper {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.stepperButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--color-text-muted);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.stepperButton:hover:not(:disabled) {
+  color: var(--color-text);
+  border-color: var(--color-accent);
+}
+
+.stepperButton:disabled {
+  opacity: 0.5;
 }
 
 .editForm {

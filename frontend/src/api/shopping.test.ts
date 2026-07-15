@@ -2,7 +2,9 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   getShoppingList,
   listShoppingProducts,
+  regenerateShoppingList,
   setItemChecked,
+  updateItemQuantity,
   updateShoppingProduct,
 } from './shopping';
 import { type ApiClient } from './client';
@@ -62,6 +64,32 @@ describe('shopping API', () => {
         estimatedPriceEur: 2.1,
         url: 'https://tienda.example/avena',
       }),
+    });
+    expect(result).toBe(updated);
+  });
+
+  it('POSTs a regenerate request and returns the rebuilt list (FOR-109/FOR-118)', async () => {
+    const rebuilt = { items: [], budget: {}, generatedAt: '2026-07-13T08:00:00Z' };
+    const request = vi.fn().mockResolvedValue(rebuilt);
+    const client: ApiClient = { baseUrl: 'http://test', request };
+
+    const result = await regenerateShoppingList(client);
+
+    expect(request).toHaveBeenCalledWith('/api/v1/shopping/list/regenerate', { method: 'POST' });
+    expect(result).toBe(rebuilt);
+  });
+
+  it('PATCHes an item quantity and returns the recalculated result (FOR-109/FOR-118)', async () => {
+    const updated = { id: 'i1', quantity: 3, estimatedCostEur: 5.85, unit: 'KG' };
+    const request = vi.fn().mockResolvedValue(updated);
+    const client: ApiClient = { baseUrl: 'http://test', request };
+
+    const result = await updateItemQuantity('i1', 3, client);
+
+    expect(request).toHaveBeenCalledWith('/api/v1/shopping/list/items/i1', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ quantity: 3 }),
     });
     expect(result).toBe(updated);
   });

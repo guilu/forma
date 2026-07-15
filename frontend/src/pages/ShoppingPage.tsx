@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
 import { Icon } from '../components/Icon';
@@ -14,7 +15,9 @@ import { ApiRequestError } from '../api/client';
 import {
   getShoppingList,
   listShoppingProducts,
+  regenerateShoppingList,
   setItemChecked,
+  updateItemQuantity,
   updateShoppingProduct,
   type ShoppingItem,
   type ShoppingList,
@@ -45,14 +48,19 @@ import styles from './ShoppingPage.module.css';
  * so servings render per item only (see the item row below), never as a
  * list-level aggregate (spec.md Open Questions).
  *
- * <p>Mockup elements still not backed by the API (documented gap, repository
- * priority per AGENTS.md — never invented):
- * <ul>
- *   <li><b>"Generar nueva lista"</b>, per-item Mercadona link-out/add-to-cart
- *       icons and +/- quantity editing — no regenerate, link-out or item-
- *       quantity-update endpoint exists; omitted entirely rather than shown
- *       inactive (same precedent as FOR-54; FOR-118 adds these).
- * </ul>
+ * <p><b>Regenerate, quantity +/- and link-out (FOR-118)</b>: this doc comment
+ * used to document these as an omitted gap (no backing endpoint). FOR-109
+ * shipped the three commands and this story wires them up: "Generar nueva
+ * lista" rebuilds the list behind a {@link ConfirmDialog} (FOR-63 destructive-
+ * confirmation pattern, since it discards checked state); per-item +/-
+ * controls call the quantity-edit command and render the backend's
+ * recalculated {@code estimatedCostEur} (never computed client-side, ADR-006);
+ * the per-item link-out control renders {@link ShoppingItem.productUrl} when
+ * present, omitted (not disabled) otherwise — same "omit, don't show
+ * inactive" precedent as FOR-54. Regenerate and any single item's pending
+ * action mutually exclude each other (regenerate disables while any item
+ * action is in flight) to avoid a race between a full-list rebuild and a
+ * per-item update targeting a since-replaced item id.
  *
  * <p><b>Category filter tabs and id-based product edit (FOR-111)</b>:
  * {@code ShoppingListResponse.Item} (FOR-106) now carries {@code productId}
@@ -72,6 +80,10 @@ type State =
 
 const EUR = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' });
 const MARK_ERROR = 'No se pudo actualizar el artículo. Inténtalo de nuevo.';
+const QUANTITY_ERROR = 'No se pudo actualizar la cantidad. Inténtalo de nuevo.';
+const REGENERATE_ERROR = 'No se pudo regenerar la lista. Inténtalo de nuevo.';
+const REGENERATE_CONFIRM_MESSAGE =
+  'Se generará una nueva lista de la compra a partir de tu plan actual. Se perderá el estado marcado de los artículos.';
 
 export function ShoppingPage() {
   const notify = useNotify();
@@ -81,6 +93,8 @@ export function ShoppingPage() {
   const [pendingId, setPendingId] = useState<string | undefined>(undefined);
   const [editingItem, setEditingItem] = useState<ShoppingItem | undefined>(undefined);
   const [selectedCategory, setSelectedCategory] = useState<string>(ALL_CATEGORIES);
+  const [confirmRegenerate, setConfirmRegenerate] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -130,11 +144,87 @@ export function ShoppingPage() {
     }
   }
 
+  /**
+   * Quantity +/- handler (FOR-118): mirrors {@link toggle}'s `pendingId`/
+   * try-catch/`ApiRequestError` pattern. Waits for the response rather than
+   * updating optimistically (spec.md Open Questions: MVP simplicity, matches
+   * `toggle`); on failure nothing was changed yet, so the displayed quantity
+   * is already "reverted" — no separate rollback state needed.
+   */
+  async function changeQuantity(item: ShoppingItem, delta: 1 | -1) {
+    const nextQuantity = item.quantity + delta;
+    if (nextQuantity < 1) {
+      return;
+    }
+    setActionError(undefined);
+    setPendingId(item.id);
+    try {
+      const result = await updateItemQuantity(item.id, nextQuantity);
+      setState((current) =>
+        current.status === 'ready'
+          ? {
+              status: 'ready',
+              list: {
+                ...current.list,
+                items: current.list.items.map((it) =>
+                  it.id === result.id
+                    ? {
+                        ...it,
+                        quantity: result.quantity,
+                        estimatedCostEur: result.estimatedCostEur,
+                      }
+                    : it,
+                ),
+              },
+            }
+          : current,
+      );
+      notify.success('Cantidad actualizada.');
+    } catch (error) {
+      setActionError(error instanceof ApiRequestError ? error.message : QUANTITY_ERROR);
+    } finally {
+      setPendingId(undefined);
+    }
+  }
+
+  /**
+   * Regenerate confirm handler (FOR-118/FOR-109): mirrors
+   * `IntegrationsSection`'s disconnect-confirm flow (FOR-63) — the dialog
+   * closes on both success and failure (a failed regenerate is not
+   * retry-recoverable from a stuck-open dialog; the page-level `actionError`
+   * carries the message instead).
+   */
+  async function handleRegenerateConfirm() {
+    setActionError(undefined);
+    setRegenerating(true);
+    try {
+      const regenerated = await regenerateShoppingList();
+      setState({ status: 'ready', list: regenerated });
+      notify.success('Lista regenerada correctamente.');
+    } catch (error) {
+      setActionError(error instanceof ApiRequestError ? error.message : REGENERATE_ERROR);
+    } finally {
+      setRegenerating(false);
+      setConfirmRegenerate(false);
+    }
+  }
+
   return (
     <div className={styles.wrapper}>
       <header className={styles.header}>
-        <h1 className={styles.title}>Lista de compra</h1>
-        <p className={styles.subtitle}>Generada para tu plan nutricional semanal.</p>
+        <div className={styles.headerText}>
+          <h1 className={styles.title}>Lista de compra</h1>
+          <p className={styles.subtitle}>Generada para tu plan nutricional semanal.</p>
+        </div>
+        {state.status === 'ready' && (
+          <Button
+            variant="secondary"
+            onClick={() => setConfirmRegenerate(true)}
+            disabled={pendingId !== undefined || regenerating}
+          >
+            Generar nueva lista
+          </Button>
+        )}
       </header>
       {actionError && (
         <p className={styles.actionError} role="alert">
@@ -145,13 +235,29 @@ export function ShoppingPage() {
         state,
         toggle,
         pendingId,
+        regenerating,
         () => setRetryToken((t) => t + 1),
         setEditingItem,
         selectedCategory,
         setSelectedCategory,
+        changeQuantity,
       )}
       {editingItem && (
         <ProductEditModal item={editingItem} onClose={() => setEditingItem(undefined)} />
+      )}
+      {confirmRegenerate && (
+        // Destructive-confirmation pattern (FOR-63): regenerating discards
+        // the current checked state, so it requires explicit confirmation;
+        // cancel has no side effect (Modal's close/Escape/backdrop all route
+        // through onCancel only).
+        <ConfirmDialog
+          title="Generar nueva lista"
+          message={REGENERATE_CONFIRM_MESSAGE}
+          confirmLabel="Generar nueva lista"
+          pending={regenerating}
+          onConfirm={handleRegenerateConfirm}
+          onCancel={() => setConfirmRegenerate(false)}
+        />
       )}
     </div>
   );
@@ -161,10 +267,12 @@ function renderContent(
   state: State,
   toggle: (item: ShoppingItem) => void,
   pendingId: string | undefined,
+  regenerating: boolean,
   retry: () => void,
   onEdit: (item: ShoppingItem) => void,
   selectedCategory: string,
   onSelectCategory: (category: string) => void,
+  onChangeQuantity: (item: ShoppingItem, delta: 1 | -1) => void,
 ) {
   if (state.status === 'loading') {
     return <LoadingState message="Cargando tu lista de compra…" />;
@@ -238,7 +346,7 @@ function renderContent(
                   <input
                     type="checkbox"
                     checked={item.checked}
-                    disabled={pendingId === item.id}
+                    disabled={pendingId === item.id || regenerating}
                     onChange={() => toggle(item)}
                   />
                   <span className={item.checked ? styles.checkedName : undefined}>
@@ -246,8 +354,36 @@ function renderContent(
                   </span>
                 </label>
                 <span className={styles.quantity}>
-                  <span>
-                    {item.quantity} {unitLabel(item.unit)}
+                  {/* Quantity +/- controls (FOR-109/FOR-118): disabled during
+                      this item's own in-flight request (mirrors the checkbox
+                      pattern above) or while a regenerate is in flight, to
+                      avoid racing a per-item edit against a full-list
+                      rebuild. The decrement button is additionally disabled
+                      at quantity 1 (client-side guard mirroring the backend's
+                      `quantity >= 1` invariant) rather than sending a request
+                      that would fail. */}
+                  <span className={styles.quantityStepper}>
+                    <button
+                      type="button"
+                      className={styles.stepperButton}
+                      aria-label={`Disminuir cantidad de ${item.productName}`}
+                      disabled={item.quantity <= 1 || pendingId === item.id || regenerating}
+                      onClick={() => onChangeQuantity(item, -1)}
+                    >
+                      −
+                    </button>
+                    <span>
+                      {item.quantity} {unitLabel(item.unit)}
+                    </span>
+                    <button
+                      type="button"
+                      className={styles.stepperButton}
+                      aria-label={`Aumentar cantidad de ${item.productName}`}
+                      disabled={pendingId === item.id || regenerating}
+                      onClick={() => onChangeQuantity(item, 1)}
+                    >
+                      +
+                    </button>
                   </span>
                   {/* Servings detail (FOR-108/FOR-117): omitted for non-food
                       items (`servings: null`), never fabricated. Renders
@@ -258,14 +394,33 @@ function renderContent(
                   )}
                 </span>
                 <span className={styles.cost}>{EUR.format(item.estimatedCostEur)}</span>
-                <button
-                  type="button"
-                  className={styles.editButton}
-                  onClick={() => onEdit(item)}
-                  aria-label={`Editar producto ${item.productName}`}
-                >
-                  <Icon name="edit" size={16} />
-                </button>
+                <span className={styles.itemActions}>
+                  {/* Provider link-out (FOR-108/FOR-109/FOR-118): a real link,
+                      not a button, so it's a native navigable control; opens
+                      in a new tab with an accessible "opens in a new tab"
+                      indication baked into the label. Omitted (not disabled)
+                      when the item has no productUrl — same precedent as the
+                      rest of this page (file doc comment). */}
+                  {item.productUrl && (
+                    <a
+                      href={item.productUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.linkOut}
+                      aria-label={`${item.productName} (se abre en una nueva pestaña)`}
+                    >
+                      <Icon name="externalLink" size={16} />
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    className={styles.editButton}
+                    onClick={() => onEdit(item)}
+                    aria-label={`Editar producto ${item.productName}`}
+                  >
+                    <Icon name="edit" size={16} />
+                  </button>
+                </span>
               </li>
             ))}
           </ul>
