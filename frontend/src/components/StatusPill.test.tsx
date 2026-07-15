@@ -59,4 +59,14 @@ describe('StatusPill', () => {
 
     expect(screen.getByText(label)).toHaveAttribute('data-tone', tone);
   });
+
+  it.each([
+    ['ACTIVE', 'Activo', 'neutral'],
+    ['ACHIEVED', 'Conseguido', 'accent'],
+    ['ARCHIVED', 'Archivado', 'neutral'],
+  ])('renders the %s goal status as "%s" with the %s tone (FOR-122)', (value, label, tone) => {
+    render(<StatusPill kind="goalStatus" value={value} />);
+
+    expect(screen.getByText(label)).toHaveAttribute('data-tone', tone);
+  });
 });
