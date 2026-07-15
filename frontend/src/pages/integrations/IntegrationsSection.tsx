@@ -7,6 +7,7 @@ import { ErrorState } from '../../components/ErrorState';
 import { Icon, type IconName } from '../../components/Icon';
 import { LoadingState } from '../../components/LoadingState';
 import { StatusPill } from '../../components/StatusPill';
+import { useNotify } from '../../components/NotificationProvider';
 import { ApiRequestError } from '../../api/client';
 import {
   connectIntegration,
@@ -37,17 +38,18 @@ import styles from './IntegrationsSection.module.css';
  *
  * <p>FOR-63 adds a shared {@link ConfirmDialog} for the disconnect
  * confirmation, replacing the ad-hoc modal markup this section used to build
- * directly on `Modal`. It deliberately does <b>not</b> add a
- * success-toast branch for connect/sync/disconnect: `connectIntegration`,
- * `syncIntegration` and `disconnectIntegration` (`frontend/src/api/
- * integrations.ts`) are typed `Promise&lt;never&gt;` and always reject by
- * design until FOR-103 ships a backend, so a success path here would be
- * unreachable dead code today (AGENTS.md: "document as planned instead of
- * creating it early"). The FOR-63 success-notification pattern is instead
- * demonstrated on flows with a real, currently-succeeding API — see
- * `TrainingPage` (mark completed) and `ShoppingPage` (toggle item). Wiring
- * `useNotify()` success feedback here is follow-up work for whenever
- * FOR-103 lands.
+ * directly on `Modal`.
+ *
+ * <p>FOR-123: now that FOR-126 shipped a real, resolving backend for
+ * connect/sync/disconnect, each handler's try branch calls {@link
+ * useNotify}'s `success()` — mirroring `ShoppingPage.toggle()`'s
+ * `notify.success('Artículo actualizado.')` precedent. The error branches and
+ * `pendingProviderId` loading-state pattern are unchanged. Manual sync is a
+ * documented stub this slice (FOR-126: `importedCount` is always `0`, real
+ * Withings sync is FOR-103 slice 3) and can resolve with a readable
+ * `result: 'NOT_CONNECTED'` outcome instead of importing anything — that case
+ * renders the existing `actionError` message rather than a fabricated
+ * success toast.
  *
  * <p>Never renders a token, secret or other credential field — the read model
  * itself ({@link IntegrationConnection}) carries none (ADR-004).
@@ -120,6 +122,7 @@ function messageFromError(error: unknown, fallback: string): string {
 }
 
 export function IntegrationsSection() {
+  const notify = useNotify();
   const [state, setState] = useState<State>({ status: 'loading' });
   const [retryToken, setRetryToken] = useState(0);
   const [actionError, setActionError] = useState<string | undefined>(undefined);
@@ -154,6 +157,7 @@ export function IntegrationsSection() {
     setPendingProviderId(provider.providerId);
     try {
       await connectIntegration(provider.providerId);
+      notify.success(`Conectado con ${provider.providerName}.`);
     } catch (error) {
       setActionError(messageFromError(error, `No se pudo conectar con ${provider.providerName}.`));
     } finally {
@@ -165,7 +169,16 @@ export function IntegrationsSection() {
     setActionError(undefined);
     setPendingProviderId(provider.providerId);
     try {
-      await syncIntegration(provider.providerId);
+      const outcome = await syncIntegration(provider.providerId);
+      // FOR-126: syncing a disconnected provider resolves (200) with a
+      // readable NOT_CONNECTED outcome rather than throwing — this is not a
+      // successful sync, so it must not produce a success toast (FOR-123:
+      // never fabricate success feedback for a call that didn't actually sync).
+      if (outcome.result === 'NOT_CONNECTED') {
+        setActionError(`No se pudo sincronizar ${provider.providerName}: ya no está conectado.`);
+      } else {
+        notify.success(`Sincronizado con ${provider.providerName}.`);
+      }
     } catch (error) {
       setActionError(messageFromError(error, `No se pudo sincronizar ${provider.providerName}.`));
     } finally {
@@ -179,6 +192,7 @@ export function IntegrationsSection() {
     setPendingProviderId(disconnectTarget.providerId);
     try {
       await disconnectIntegration(disconnectTarget.providerId);
+      notify.success(`Desconectado de ${disconnectTarget.providerName}.`);
     } catch (error) {
       setActionError(
         messageFromError(error, `No se pudo desconectar ${disconnectTarget.providerName}.`),
