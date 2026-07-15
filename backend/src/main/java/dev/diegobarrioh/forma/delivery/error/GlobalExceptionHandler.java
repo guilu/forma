@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -41,6 +42,21 @@ public class GlobalExceptionHandler {
         "Request validation failed",
         correlationId(request),
         details);
+  }
+
+  /**
+   * Malformed JSON, or a value that doesn't match its target type (e.g. a non-numeric string for a
+   * numeric field), maps to 400 {@code VALIDATION_ERROR} instead of leaking as a 500 (ADR-005:
+   * predictable, safe errors; needed for FOR-125's "non-numeric target" edge case, and generically
+   * correct for every endpoint since a malformed body is always a caller input error, never a
+   * server fault).
+   */
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  public ApiError handleMalformedRequestBody(
+      HttpMessageNotReadableException ex, HttpServletRequest request) {
+    return ApiError.of(
+        ApiErrorCode.VALIDATION_ERROR, "Malformed request body", correlationId(request), null);
   }
 
   /** Missing resources map to 404 with the safe, caller-provided message. */
