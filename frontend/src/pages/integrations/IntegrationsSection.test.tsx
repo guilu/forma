@@ -226,4 +226,67 @@ describe('IntegrationsSection', () => {
 
     expect(await axe(container)).toHaveNoViolations();
   });
+
+  // FOR-116: brand-logo replacement was researched and found not safely
+  // embeddable for any of the three providers today (no verified partnership
+  // or functioning technical integration with Google, Apple or Withings — see
+  // IntegrationsSection.tsx doc comment on PROVIDER_ICON_FALLBACK). The
+  // documented generic-icon fallback therefore remains the shipped behavior;
+  // these tests lock in the two invariants the story still requires: the
+  // fallback icon is consistent across both render sites (ai-context.md
+  // Common Pitfalls: "updating only one of the two render sites"), and the
+  // accessible name never depends on the (decorative) icon.
+  it('renders the same documented fallback icon per provider in both the connected and available lists (FOR-116)', async () => {
+    const allConnected: IntegrationConnection[] = [
+      { ...withings, status: 'CONNECTED', lastSyncAt: '2026-07-10T08:15:00Z' },
+      { ...googleFit, status: 'CONNECTED', lastSyncAt: '2026-07-10T08:15:00Z' },
+      { ...appleHealth, status: 'CONNECTED', lastSyncAt: '2026-07-10T08:15:00Z' },
+    ];
+    listMock.mockResolvedValueOnce(allConnected);
+    const connectedRender = render(<IntegrationsSection />);
+    await within(connectedRender.container).findByText('Withings');
+
+    const allAvailable: IntegrationConnection[] = [
+      { ...withings, status: 'NOT_CONNECTED', lastSyncAt: undefined },
+      googleFit,
+      appleHealth,
+    ];
+    listMock.mockResolvedValueOnce(allAvailable);
+    const availableRender = render(<IntegrationsSection />);
+    await within(availableRender.container).findByText('Withings');
+
+    const expectedIcon: Record<string, string> = {
+      Withings: 'heart',
+      'Google Fit': 'activity',
+      'Apple Health': 'cross',
+    };
+
+    for (const [providerName, iconName] of Object.entries(expectedIcon)) {
+      const connectedIcon = within(connectedRender.container)
+        .getByText(providerName)
+        .closest('li')
+        ?.querySelector('svg');
+      const availableIcon = within(availableRender.container)
+        .getByText(providerName)
+        .closest('li')
+        ?.querySelector('svg');
+
+      expect(connectedIcon).toHaveAttribute('data-icon', iconName);
+      expect(availableIcon).toHaveAttribute('data-icon', iconName);
+    }
+  });
+
+  it("keeps each provider row's accessible name in visible text, independent of the decorative icon (FOR-116)", async () => {
+    listMock.mockResolvedValue([withings, googleFit, appleHealth]);
+
+    renderSection();
+    await screen.findByText('Withings');
+
+    for (const name of ['Withings', 'Google Fit', 'Apple Health']) {
+      const row = screen.getByText(name).closest('li') as HTMLElement;
+      const icon = row.querySelector('svg');
+      expect(icon).toHaveAttribute('aria-hidden', 'true');
+      expect(within(row).getByText(name)).toBeInTheDocument();
+    }
+  });
 });

@@ -5,7 +5,11 @@
 }
 
 .mark {
-  color: var(--color-accent);
+  /* Portrait asset (78x110, docs/logo.svg): size by height and let width
+     scale to the intrinsic aspect ratio, matching the previous 28px-tall
+     square mark's footprint without distorting the new artwork. */
+  height: 1.75rem;
+  width: auto;
   flex-shrink: 0;
 }
 
