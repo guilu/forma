@@ -3,6 +3,7 @@ import { IntegrationsSection } from './integrations/IntegrationsSection';
 import { ProfileSection } from './settings/ProfileSection';
 import { UnitsSection } from './settings/UnitsSection';
 import { ObjectivesSection } from './settings/ObjectivesSection';
+import { TrainingNutritionSection } from './settings/TrainingNutritionSection';
 import { NotificationsSection } from './settings/NotificationsSection';
 import { SecuritySection } from './settings/SecuritySection';
 import { SupportSection } from './settings/SupportSection';
@@ -14,21 +15,21 @@ import styles from './SettingsPage.module.css';
  * `docs/8-configuracion.png`. Builds out the previously bare `PagePlaceholder`
  * into the section-based layout the spec asks for, grouped in the same order
  * as the spec's User/System Flow: Perfil y preferencias, Unidades, Conexiones
- * (FOR-57), Objetivos por defecto, Notificaciones (FOR-63 preview), Seguridad
- * y datos, Acerca de. Soporte y ayuda (FOR-115) fills the one section FOR-58's
- * own spec named but did not build, mounted right before Acerca de to match
+ * (FOR-57), Objetivos por defecto, Preferencias de entrenamiento y nutrición
+ * (FOR-119), Notificaciones (FOR-63 preview), Seguridad y datos, Acerca de.
+ * Soporte y ayuda (FOR-115) fills the one section FOR-58's own spec named but
+ * did not build, mounted right before Acerca de to match
  * `docs/8-configuracion.png`'s relative order in both its desktop and mobile
  * layouts.
  *
- * <p><b>No user/profile/preferences backend exists yet</b> (ADR-002,
- * single-user MVP — verified against `backend/src/main/java/.../delivery/**`).
- * Every section here is either (a) a real, working feature already backed by
- * its own story — only {@link IntegrationsSection} (FOR-57) qualifies, reused
- * unmodified and composed directly since it "takes no route-specific props"
- * — or (b) read-only display / an inert "Próximamente" entry point. Nothing
- * in this screen invents profile persistence, password changes, 2FA, or
- * data export/import; see each section's own doc comment for the specific
- * backend gap it is standing in for.
+ * <p>FOR-119: {@link ProfileSection} and {@link UnitsSection} now read/write
+ * the real FOR-107 profile & preferences backend instead of the mock
+ * fixtures FOR-58 shipped with; {@link TrainingNutritionSection} is a new,
+ * distinct entry point resolving FOR-58's "folded into ObjectivesSection"
+ * deferral. Every other section is either (a) a real, working feature already
+ * backed by its own story — {@link IntegrationsSection} (FOR-57) — or (b)
+ * read-only display / an inert "Próximamente" entry point; see each section's
+ * own doc comment for the specific backend gap it is standing in for.
  *
  * <p>Responsive behavior follows the same CSS-grid, mobile-first pattern as
  * `DashboardPage`/`ProgressPage`: sections stack into a single scrollable
@@ -53,6 +54,7 @@ export function SettingsPage() {
           <IntegrationsSection />
         </Card>
         <ObjectivesSection />
+        <TrainingNutritionSection />
         <NotificationsSection />
         <SecuritySection />
         <SupportSection />
