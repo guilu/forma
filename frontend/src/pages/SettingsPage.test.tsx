@@ -44,6 +44,10 @@ vi.mock('../api/integrations', () => ({
 // endpoint instead of a static mock; `sex` is left unset here on purpose so
 // the existing "No especificado" assertion below still exercises the
 // first-run-default display path.
+// FOR-120: ThemeProvider (wrapping SettingsPage above) also reads/persists
+// through this module now, so `themeMode` and `updateThemeMode` are included
+// too -- 'SYSTEM' matches ThemeProvider's own default local mode, so its
+// mount-time reconciliation is a no-op here.
 vi.mock('../api/profile', () => ({
   getProfile: vi.fn().mockResolvedValue({
     name: 'Usuario FORMA',
@@ -52,8 +56,10 @@ vi.mock('../api/profile', () => ({
     activityLevel: 'MODERATE',
     mainGoal: 'COMPOSICION',
     unitPreferences: { weightUnit: 'KG', heightUnit: 'CM', distanceUnit: 'KM', energyUnit: 'KCAL' },
+    themeMode: 'SYSTEM',
   }),
   updateProfileFields: vi.fn(),
+  updateThemeMode: vi.fn().mockResolvedValue(undefined),
 }));
 
 /**

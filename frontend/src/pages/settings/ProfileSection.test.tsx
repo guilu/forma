@@ -7,9 +7,13 @@ import { ApiRequestError } from '../../api/client';
 import { getProfile, updateProfileFields, type UserProfile } from '../../api/profile';
 import { ProfileSection } from './ProfileSection';
 
+// FOR-120: ThemeProvider (wrapping ProfileSection below) also reads/persists
+// through this module now, so both `updateThemeMode` and a resolved default
+// `getProfile()` value are mocked here too.
 vi.mock('../../api/profile', () => ({
   getProfile: vi.fn(),
   updateProfileFields: vi.fn(),
+  updateThemeMode: vi.fn().mockResolvedValue(undefined),
 }));
 
 const getProfileMock = vi.mocked(getProfile);
@@ -23,11 +27,16 @@ const PROFILE: UserProfile = {
   activityLevel: 'MODERATE',
   mainGoal: 'COMPOSICION',
   unitPreferences: { weightUnit: 'KG', heightUnit: 'CM', distanceUnit: 'KM', energyUnit: 'KCAL' },
+  // 'SYSTEM' matches ThemeProvider's own default local mode, so its FOR-120
+  // mount-time reconciliation against this fixture is a no-op here -- this
+  // file's tests are about profile fields, not theme.
+  themeMode: 'SYSTEM',
 };
 
 /** First-run default profile (FOR-107 Edge Cases): no profile fields saved yet. */
 const DEFAULT_PROFILE: UserProfile = {
   unitPreferences: { weightUnit: 'KG', heightUnit: 'CM', distanceUnit: 'KM', energyUnit: 'KCAL' },
+  themeMode: 'DARK',
 };
 
 function renderProfileSection() {
@@ -88,6 +97,11 @@ describe('ProfileSection', () => {
   });
 
   it('renders ErrorState with a working retry when the profile fetch fails', async () => {
+    // Base fallback for any call beyond the two queued below -- FOR-120's
+    // ThemeProvider (wrapping ProfileSection here) also calls `getProfile()`
+    // on mount and shares this same mocked queue, so the exact call that
+    // consumes each "Once" value is not solely under this test's control.
+    getProfileMock.mockResolvedValue(PROFILE);
     getProfileMock.mockRejectedValueOnce(new ApiRequestError(500, 'Backend unavailable'));
     getProfileMock.mockResolvedValueOnce(PROFILE);
     renderProfileSection();
@@ -98,7 +112,9 @@ describe('ProfileSection', () => {
     await userEvent.click(retryButton);
 
     expect(await screen.findByText('Usuario FORMA')).toBeInTheDocument();
-    expect(getProfileMock).toHaveBeenCalledTimes(2);
+    // 2 from ProfileSection (initial + retry) + 1 from ThemeProvider's own
+    // FOR-120 mount-time reconciliation fetch, sharing this mock.
+    expect(getProfileMock).toHaveBeenCalledTimes(3);
   });
 
   it('opens an editable form pre-filled with the current values, saves, and re-renders with the new values plus feedback', async () => {

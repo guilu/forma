@@ -13,6 +13,7 @@ const getProfileMock = vi.mocked(getProfile);
 
 const PROFILE: UserProfile = {
   unitPreferences: { weightUnit: 'KG', heightUnit: 'CM', distanceUnit: 'KM', energyUnit: 'KCAL' },
+  themeMode: 'DARK',
 };
 
 describe('UnitsSection', () => {
