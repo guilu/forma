@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { IntegrationsSection } from './IntegrationsSection';
+import { NotificationProvider } from '../../components/NotificationProvider';
 import { ApiRequestError } from '../../api/client';
 import {
   connectIntegration,
@@ -12,8 +13,13 @@ import {
 } from '../../api/integrations';
 import { axe } from '../../test/axe';
 
+/** FOR-123: IntegrationsSection now calls `useNotify()`, which requires a provider. */
 function renderSection() {
-  return render(<IntegrationsSection />);
+  return render(
+    <NotificationProvider>
+      <IntegrationsSection />
+    </NotificationProvider>,
+  );
 }
 
 vi.mock('../../api/integrations', () => ({
@@ -243,7 +249,7 @@ describe('IntegrationsSection', () => {
       { ...appleHealth, status: 'CONNECTED', lastSyncAt: '2026-07-10T08:15:00Z' },
     ];
     listMock.mockResolvedValueOnce(allConnected);
-    const connectedRender = render(<IntegrationsSection />);
+    const connectedRender = renderSection();
     await within(connectedRender.container).findByText('Withings');
 
     const allAvailable: IntegrationConnection[] = [
@@ -252,7 +258,7 @@ describe('IntegrationsSection', () => {
       appleHealth,
     ];
     listMock.mockResolvedValueOnce(allAvailable);
-    const availableRender = render(<IntegrationsSection />);
+    const availableRender = renderSection();
     await within(availableRender.container).findByText('Withings');
 
     const expectedIcon: Record<string, string> = {
@@ -288,5 +294,122 @@ describe('IntegrationsSection', () => {
       expect(icon).toHaveAttribute('aria-hidden', 'true');
       expect(within(row).getByText(name)).toBeInTheDocument();
     }
+  });
+
+  // FOR-123: FOR-126 replaced the always-rejecting mock with a real backend,
+  // so the success branch (previously unreachable dead code, see this
+  // component's own doc comment) is now testable.
+  describe('success feedback (FOR-123, FOR-63)', () => {
+    it('shows a success toast naming the provider after a successful connect', async () => {
+      listMock.mockResolvedValue([googleFit]);
+      connectMock.mockResolvedValue({
+        provider: 'GOOGLE_FIT',
+        status: 'CONNECTED',
+        connectedAt: '2026-07-15T08:00:00Z',
+      });
+      const user = userEvent.setup();
+
+      renderSection();
+      await user.click(await screen.findByRole('button', { name: 'Conectar' }));
+
+      const region = await screen.findByRole('log');
+      expect(await within(region).findByText('Conectado con Google Fit.')).toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    it('shows a success toast naming the provider after a successful sync', async () => {
+      listMock.mockResolvedValue([withings]);
+      syncMock.mockResolvedValue({
+        result: 'OK',
+        importedCount: 0,
+        lastSyncAt: '2026-07-15T09:00:00Z',
+        message: null,
+      });
+      const user = userEvent.setup();
+
+      renderSection();
+      await user.click(await screen.findByRole('button', { name: 'Sincronizar ahora' }));
+
+      const region = await screen.findByRole('log');
+      expect(await within(region).findByText('Sincronizado con Withings.')).toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    it('shows a success toast naming the provider after a successful disconnect, once confirmed', async () => {
+      listMock.mockResolvedValue([withings]);
+      disconnectMock.mockResolvedValue({
+        provider: 'WITHINGS',
+        status: 'DISCONNECTED',
+        connectedAt: null,
+      });
+      const user = userEvent.setup();
+
+      renderSection();
+      await user.click(await screen.findByRole('button', { name: 'Desconectar' }));
+      const modal = await screen.findByRole('dialog');
+      await user.click(within(modal).getByRole('button', { name: 'Desconectar' }));
+
+      await waitFor(() => expect(disconnectMock).toHaveBeenCalledWith('WITHINGS'));
+      // Dialog closes (setDisconnectTarget(undefined) happens in `finally`,
+      // same ordering as the success toast — ai-context.md edge case).
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      const region = await screen.findByRole('log');
+      expect(await within(region).findByText('Desconectado de Withings.')).toBeInTheDocument();
+    });
+
+    it('does not show a success toast when a call fails — only the existing actionError', async () => {
+      listMock.mockResolvedValue([googleFit]);
+      connectMock.mockRejectedValue(
+        new ApiRequestError(500, 'No se pudo conectar con Google Fit.', 'INTERNAL_ERROR'),
+      );
+      const user = userEvent.setup();
+
+      renderSection();
+      await user.click(await screen.findByRole('button', { name: 'Conectar' }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'No se pudo conectar con Google Fit',
+      );
+      expect(screen.queryByText('Conectado con Google Fit.')).not.toBeInTheDocument();
+    });
+
+    it('does not fabricate a success toast when sync resolves NOT_CONNECTED — shows the honest error instead', async () => {
+      listMock.mockResolvedValue([withings]);
+      syncMock.mockResolvedValue({
+        result: 'NOT_CONNECTED',
+        importedCount: 0,
+        lastSyncAt: null,
+        message: 'El proveedor no está conectado.',
+      });
+      const user = userEvent.setup();
+
+      renderSection();
+      await user.click(await screen.findByRole('button', { name: 'Sincronizar ahora' }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('Withings');
+      expect(screen.queryByText('Sincronizado con Withings.')).not.toBeInTheDocument();
+      expect(screen.queryByRole('log')).not.toHaveTextContent('Sincronizado');
+    });
+
+    it('de-duplicates the toast on rapid repeated sync clicks of the same provider (edge case)', async () => {
+      listMock.mockResolvedValue([withings]);
+      syncMock.mockResolvedValue({
+        result: 'OK',
+        importedCount: 0,
+        lastSyncAt: '2026-07-15T09:00:00Z',
+        message: null,
+      });
+      const user = userEvent.setup();
+
+      renderSection();
+      const syncButton = await screen.findByRole('button', { name: 'Sincronizar ahora' });
+      await user.click(syncButton);
+      await waitFor(() => expect(syncMock).toHaveBeenCalledTimes(1));
+      await user.click(syncButton);
+      await waitFor(() => expect(syncMock).toHaveBeenCalledTimes(2));
+
+      const region = screen.getByRole('log');
+      expect(within(region).getAllByText('Sincronizado con Withings.')).toHaveLength(1);
+    });
   });
 });
