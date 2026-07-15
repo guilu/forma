@@ -14,6 +14,16 @@ const getProfileMock = vi.mocked(getProfile);
 const PROFILE: UserProfile = {
   unitPreferences: { weightUnit: 'KG', heightUnit: 'CM', distanceUnit: 'KM', energyUnit: 'KCAL' },
   themeMode: 'DARK',
+  // FOR-121 fields: irrelevant to this file's unit-preference tests.
+  onboardingAnswers: {
+    profile: { name: '', birthDate: '', sex: '', heightCm: '' },
+    metrics: { measurementSaved: false },
+    goal: {},
+    training: { days: [] },
+    equipment: { items: [] },
+    nutrition: { preference: '', restrictions: '' },
+  },
+  firstRunCompleted: false,
 };
 
 describe('UnitsSection', () => {

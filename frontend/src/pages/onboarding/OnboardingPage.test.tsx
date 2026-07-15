@@ -1,24 +1,53 @@
-import { describe, expect, it, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { OnboardingPage } from './OnboardingPage';
 import { saveOnboardingProgress, INITIAL_PROGRESS } from './onboardingStorage';
+import { NotificationProvider } from '../../components/NotificationProvider';
+import { getProfile, submitOnboardingAnswers, type UserProfile } from '../../api/profile';
 import { axe } from '../../test/axe';
 
 /**
  * Covers `specs/FOR-59/tests.md` UI Tests: ordered steps with progress,
  * next/back navigation, skip past non-critical steps, validation blocking
  * advance, completion routing to the dashboard, and resume restoring saved
- * progress.
+ * progress. FOR-121 (`specs/FOR-121/tests.md`) extends this with backend
+ * persistence + the backend-sourced first-run gate — see the dedicated
+ * describe block below.
  */
+vi.mock('../../api/profile', async () => {
+  const actual = await vi.importActual<typeof import('../../api/profile')>('../../api/profile');
+  return { ...actual, getProfile: vi.fn(), submitOnboardingAnswers: vi.fn() };
+});
+
+const getProfileMock = vi.mocked(getProfile);
+const submitOnboardingAnswersMock = vi.mocked(submitOnboardingAnswers);
+
+/** Default fixture: fresh/first-run profile (FOR-107 Edge Cases default), never completed. */
+const FRESH_PROFILE: UserProfile = {
+  unitPreferences: { weightUnit: 'KG', heightUnit: 'CM', distanceUnit: 'KM', energyUnit: 'KCAL' },
+  themeMode: 'DARK',
+  onboardingAnswers: {
+    profile: { name: '', birthDate: '', sex: '', heightCm: '' },
+    metrics: { measurementSaved: false },
+    goal: {},
+    training: { days: [] },
+    equipment: { items: [] },
+    nutrition: { preference: '', restrictions: '' },
+  },
+  firstRunCompleted: false,
+};
+
 function renderOnboarding() {
   return render(
     <MemoryRouter initialEntries={['/onboarding']}>
-      <Routes>
-        <Route path="/onboarding" element={<OnboardingPage />} />
-        <Route path="/" element={<div>Panel principal</div>} />
-      </Routes>
+      <NotificationProvider>
+        <Routes>
+          <Route path="/onboarding" element={<OnboardingPage />} />
+          <Route path="/" element={<div>Panel principal</div>} />
+        </Routes>
+      </NotificationProvider>
     </MemoryRouter>,
   );
 }
@@ -30,6 +59,9 @@ async function fillName(user: ReturnType<typeof userEvent.setup>, name: string) 
 describe('OnboardingPage', () => {
   beforeEach(() => {
     window.localStorage.clear();
+    vi.clearAllMocks();
+    getProfileMock.mockResolvedValue(FRESH_PROFILE);
+    submitOnboardingAnswersMock.mockResolvedValue(FRESH_PROFILE);
   });
 
   it('renders steps in order with progress indication as the user advances', async () => {
@@ -81,8 +113,9 @@ describe('OnboardingPage', () => {
     expect(screen.getByLabelText('Nombre')).toHaveValue('Diego');
   });
 
-  it('does not offer a skip action on the critical profile step', () => {
+  it('does not offer a skip action on the critical profile step', async () => {
     renderOnboarding();
+    await waitFor(() => expect(getProfileMock).toHaveBeenCalled());
 
     expect(screen.queryByRole('button', { name: 'Omitir este paso' })).not.toBeInTheDocument();
   });
@@ -171,7 +204,7 @@ describe('OnboardingPage', () => {
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
   });
 
-  it('resumes mid-flow progress from local storage', () => {
+  it('resumes mid-flow progress from local storage', async () => {
     saveOnboardingProgress({
       stepIndex: 3,
       completed: false,
@@ -182,6 +215,7 @@ describe('OnboardingPage', () => {
     });
 
     renderOnboarding();
+    await waitFor(() => expect(getProfileMock).toHaveBeenCalled());
 
     expect(
       screen.getByRole('heading', { name: 'Disponibilidad de entrenamiento' }),
@@ -207,6 +241,7 @@ describe('OnboardingPage', () => {
 
   it('has no accessibility violations on the first step (FOR-114)', async () => {
     const { container } = renderOnboarding();
+    await waitFor(() => expect(getProfileMock).toHaveBeenCalled());
 
     expect(screen.getByRole('heading', { name: 'Perfil' })).toBeInTheDocument();
     expect(await axe(container)).toHaveNoViolations();
@@ -221,5 +256,146 @@ describe('OnboardingPage', () => {
     expect(screen.getByRole('heading', { name: 'Métricas actuales' })).toBeInTheDocument();
 
     expect(await axe(container)).toHaveNoViolations();
+  });
+});
+
+/** Covers `specs/FOR-121/tests.md` UI Tests + Edge Cases. */
+describe('OnboardingPage — backend persistence (FOR-121)', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    vi.clearAllMocks();
+    getProfileMock.mockResolvedValue(FRESH_PROFILE);
+    submitOnboardingAnswersMock.mockResolvedValue(FRESH_PROFILE);
+  });
+
+  it("persists that step's answers to the backend at each step boundary", async () => {
+    const user = userEvent.setup();
+    renderOnboarding();
+    await waitFor(() => expect(getProfileMock).toHaveBeenCalled());
+
+    await fillName(user, 'Diego');
+    await user.click(screen.getByRole('button', { name: 'Siguiente' }));
+
+    await waitFor(() => expect(submitOnboardingAnswersMock).toHaveBeenCalled());
+    const [input] = submitOnboardingAnswersMock.mock.calls[0];
+    expect(input).toMatchObject({
+      profile: { name: 'Diego' },
+      completed: false,
+    });
+  });
+
+  it('sets the backend firstRunCompleted flag when the flow is completed', async () => {
+    const user = userEvent.setup();
+    renderOnboarding();
+    await waitFor(() => expect(getProfileMock).toHaveBeenCalled());
+
+    await fillName(user, 'Diego');
+    await user.click(screen.getByRole('button', { name: 'Siguiente' })); // -> metrics
+    for (let i = 0; i < 6; i += 1) {
+      await user.click(screen.getByRole('button', { name: 'Omitir este paso' }));
+    }
+    expect(screen.getByRole('heading', { name: 'Todo listo' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Ir al panel' }));
+
+    await waitFor(() => {
+      const lastCall = submitOnboardingAnswersMock.mock.calls.at(-1);
+      expect(lastCall?.[0]).toMatchObject({ completed: true });
+    });
+  });
+
+  it('shows the already-completed gate sourced from the backend flag, overriding a stale local flag', async () => {
+    getProfileMock.mockResolvedValue({ ...FRESH_PROFILE, firstRunCompleted: true });
+    renderOnboarding();
+
+    // No flash: the local flag (fresh/false) drives the very first paint.
+    expect(screen.getByRole('heading', { name: 'Perfil' })).toBeInTheDocument();
+
+    expect(
+      await screen.findByRole('heading', { name: 'Ya completaste la configuración inicial' }),
+    ).toBeInTheDocument();
+  });
+
+  it('does not block navigation when a backend save fails mid-flow, and shows a non-blocking message', async () => {
+    submitOnboardingAnswersMock.mockRejectedValue(new Error('network down'));
+    const user = userEvent.setup();
+    renderOnboarding();
+    await waitFor(() => expect(getProfileMock).toHaveBeenCalled());
+
+    await fillName(user, 'Diego');
+    await user.click(screen.getByRole('button', { name: 'Siguiente' }));
+
+    expect(screen.getByRole('heading', { name: 'Métricas actuales' })).toBeInTheDocument();
+    expect(await screen.findByText(/no se pudieron guardar/i)).toBeInTheDocument();
+  });
+
+  it('recovers answers from the backend when local storage is empty but the backend already has prior progress', async () => {
+    getProfileMock.mockResolvedValue({
+      ...FRESH_PROFILE,
+      onboardingAnswers: {
+        ...FRESH_PROFILE.onboardingAnswers,
+        profile: { name: 'Diego', birthDate: '', sex: '', heightCm: '' },
+      },
+    });
+    renderOnboarding();
+
+    expect(await screen.findByLabelText('Nombre')).toHaveValue('Diego');
+  });
+
+  it('lets the user complete onboarding locally when the backend is unreachable for the whole flow', async () => {
+    getProfileMock.mockRejectedValue(new Error('network down'));
+    submitOnboardingAnswersMock.mockRejectedValue(new Error('network down'));
+    const user = userEvent.setup();
+    renderOnboarding();
+
+    await fillName(user, 'Diego');
+    await user.click(screen.getByRole('button', { name: 'Siguiente' })); // -> metrics
+    expect(await screen.findByText(/no se pudieron guardar/i)).toBeInTheDocument();
+
+    for (let i = 0; i < 6; i += 1) {
+      await user.click(screen.getByRole('button', { name: 'Omitir este paso' }));
+    }
+    expect(screen.getByRole('heading', { name: 'Todo listo' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Ir al panel' }));
+    expect(await screen.findByText('Panel principal')).toBeInTheDocument();
+  });
+
+  it('does not trap a returning user out of the already-completed gate when the backend fetch fails (graceful fallback to local)', async () => {
+    getProfileMock.mockRejectedValue(new Error('network down'));
+    saveOnboardingProgress({ ...INITIAL_PROGRESS, stepIndex: 7, completed: true });
+
+    renderOnboarding();
+
+    expect(
+      screen.getByRole('heading', { name: 'Ya completaste la configuración inicial' }),
+    ).toBeInTheDocument();
+  });
+
+  it('does not trap a new user into the already-completed gate when the backend fetch fails (graceful fallback to local)', async () => {
+    getProfileMock.mockRejectedValue(new Error('network down'));
+
+    renderOnboarding();
+
+    expect(screen.getByRole('heading', { name: 'Perfil' })).toBeInTheDocument();
+  });
+
+  it('allows re-submitting onboarding after a restart (mirrors the backend’s allowed re-submission)', async () => {
+    saveOnboardingProgress({ ...INITIAL_PROGRESS, stepIndex: 7, completed: true });
+    const user = userEvent.setup();
+    renderOnboarding();
+
+    expect(
+      screen.getByRole('heading', { name: 'Ya completaste la configuración inicial' }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Volver a empezar' }));
+    expect(screen.getByRole('heading', { name: 'Perfil' })).toBeInTheDocument();
+
+    await fillName(user, 'Diego');
+    await user.click(screen.getByRole('button', { name: 'Siguiente' }));
+
+    await waitFor(() => expect(submitOnboardingAnswersMock).toHaveBeenCalled());
+    expect(screen.getByRole('heading', { name: 'Métricas actuales' })).toBeInTheDocument();
   });
 });

@@ -31,12 +31,32 @@ const PROFILE: UserProfile = {
   // mount-time reconciliation against this fixture is a no-op here -- this
   // file's tests are about profile fields, not theme.
   themeMode: 'SYSTEM',
+  // FOR-121 fields: irrelevant to this file's profile-fields tests, so kept
+  // at their "nothing saved yet" defaults.
+  onboardingAnswers: {
+    profile: { name: '', birthDate: '', sex: '', heightCm: '' },
+    metrics: { measurementSaved: false },
+    goal: {},
+    training: { days: [] },
+    equipment: { items: [] },
+    nutrition: { preference: '', restrictions: '' },
+  },
+  firstRunCompleted: false,
 };
 
 /** First-run default profile (FOR-107 Edge Cases): no profile fields saved yet. */
 const DEFAULT_PROFILE: UserProfile = {
   unitPreferences: { weightUnit: 'KG', heightUnit: 'CM', distanceUnit: 'KM', energyUnit: 'KCAL' },
   themeMode: 'DARK',
+  onboardingAnswers: {
+    profile: { name: '', birthDate: '', sex: '', heightCm: '' },
+    metrics: { measurementSaved: false },
+    goal: {},
+    training: { days: [] },
+    equipment: { items: [] },
+    nutrition: { preference: '', restrictions: '' },
+  },
+  firstRunCompleted: false,
 };
 
 function renderProfileSection() {
