@@ -1,6 +1,6 @@
 import { Badge, type BadgeTone } from './Badge';
 
-export type StatusKind = 'severity' | 'connection' | 'plazo' | 'source' | 'training';
+export type StatusKind = 'severity' | 'connection' | 'plazo' | 'source' | 'training' | 'goalStatus';
 
 interface StatusMapping {
   readonly tone: BadgeTone;
@@ -60,12 +60,25 @@ const TRAINING_TONES: Record<string, StatusMapping> = {
   SKIPPED: { tone: 'warning', label: 'Saltado' },
 };
 
+/**
+ * Goal lifecycle status (backend `GoalStatus`, FOR-125/FOR-122): `ACTIVE` is
+ * the neutral default (being tracked), `ACHIEVED` reads as a positive/accent
+ * state (mirrors `TRAINING_TONES.COMPLETED`), `ARCHIVED` is neutral — the
+ * user gave up on it without it being an error or a failure state.
+ */
+const GOAL_STATUS_TONES: Record<string, StatusMapping> = {
+  ACTIVE: { tone: 'neutral', label: 'Activo' },
+  ACHIEVED: { tone: 'accent', label: 'Conseguido' },
+  ARCHIVED: { tone: 'neutral', label: 'Archivado' },
+};
+
 const TABLES: Record<StatusKind, Record<string, StatusMapping>> = {
   severity: SEVERITY_TONES,
   connection: CONNECTION_TONES,
   plazo: PLAZO_TONES,
   source: SOURCE_TONES,
   training: TRAINING_TONES,
+  goalStatus: GOAL_STATUS_TONES,
 };
 
 interface StatusPillProps {
