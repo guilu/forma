@@ -1,6 +1,7 @@
 package dev.diegobarrioh.forma.delivery.error;
 
 import dev.diegobarrioh.forma.application.NotFoundException;
+import dev.diegobarrioh.forma.application.ValidationException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import org.slf4j.Logger;
@@ -57,6 +58,18 @@ public class GlobalExceptionHandler {
       HttpMessageNotReadableException ex, HttpServletRequest request) {
     return ApiError.of(
         ApiErrorCode.VALIDATION_ERROR, "Malformed request body", correlationId(request), null);
+  }
+
+  /**
+   * Application-layer validation failures outside {@code @Valid} request bodies — e.g. an unknown
+   * path-variable enum value such as an integration {@code provider} (FOR-126) — map to 400 {@code
+   * VALIDATION_ERROR} with the safe, caller-provided message, mirroring {@link #handleNotFound}.
+   */
+  @ExceptionHandler(ValidationException.class)
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  public ApiError handleValidationException(ValidationException ex, HttpServletRequest request) {
+    return ApiError.of(
+        ApiErrorCode.VALIDATION_ERROR, ex.getMessage(), correlationId(request), null);
   }
 
   /** Missing resources map to 404 with the safe, caller-provided message. */
