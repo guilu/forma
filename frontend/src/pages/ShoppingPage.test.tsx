@@ -9,7 +9,9 @@ import { ApiRequestError } from '../api/client';
 import {
   getShoppingList,
   listShoppingProducts,
+  regenerateShoppingList,
   setItemChecked,
+  updateItemQuantity,
   updateShoppingProduct,
   type ShoppingItem,
   type ShoppingList,
@@ -31,12 +33,16 @@ vi.mock('../api/shopping', () => ({
   setItemChecked: vi.fn(),
   listShoppingProducts: vi.fn(),
   updateShoppingProduct: vi.fn(),
+  regenerateShoppingList: vi.fn(),
+  updateItemQuantity: vi.fn(),
 }));
 
 const getListMock = vi.mocked(getShoppingList);
 const setCheckedMock = vi.mocked(setItemChecked);
 const listProductsMock = vi.mocked(listShoppingProducts);
 const updateProductMock = vi.mocked(updateShoppingProduct);
+const regenerateListMock = vi.mocked(regenerateShoppingList);
+const updateQuantityMock = vi.mocked(updateItemQuantity);
 
 /**
  * Fixture spans four categories (>= three required by tests.md), one `OTROS`
@@ -62,6 +68,8 @@ const list: ShoppingList = {
       servings: 4,
       estimatedCostEur: 3.9,
       checked: false,
+      // FOR-118: has a provider URL -> the row must render a link-out control.
+      productUrl: 'https://tienda.example/avena',
     },
     {
       id: 'i2',
@@ -73,17 +81,21 @@ const list: ShoppingList = {
       servings: 6,
       estimatedCostEur: 16.5,
       checked: true,
+      // FOR-118: no provider URL -> no link-out control for this row.
+      productUrl: null,
     },
     {
       id: 'i3',
       productId: 'p3',
       productName: 'Detergente',
       category: 'OTROS',
+      // FOR-118: quantity 1 -> the decrement button must be disabled.
       quantity: 1,
       unit: 'UD',
       servings: null,
       estimatedCostEur: 4.2,
       checked: false,
+      productUrl: null,
     },
     {
       id: 'i4',
@@ -95,6 +107,7 @@ const list: ShoppingList = {
       servings: 8,
       estimatedCostEur: 1.2,
       checked: false,
+      productUrl: null,
     },
     {
       id: 'i5',
@@ -106,6 +119,7 @@ const list: ShoppingList = {
       servings: null,
       estimatedCostEur: 1.85,
       checked: false,
+      productUrl: null,
     },
   ],
   budget: { weeklyEur: 24.6, monthlyEur: 106.52 },
@@ -136,6 +150,8 @@ describe('ShoppingPage', () => {
     setCheckedMock.mockReset();
     listProductsMock.mockReset();
     updateProductMock.mockReset();
+    regenerateListMock.mockReset();
+    updateQuantityMock.mockReset();
   });
 
   afterEach(() => {
@@ -303,6 +319,191 @@ describe('ShoppingPage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo actualizar');
     // List preserved.
     expect(screen.getByRole('checkbox', { name: /Pollo 1 kg/ })).toBeInTheDocument();
+  });
+
+  it('opens a confirm dialog on "Generar nueva lista"; cancelling sends no request and leaves the list unchanged (FOR-118)', async () => {
+    getListMock.mockResolvedValue(list);
+    const user = userEvent.setup();
+
+    renderPage();
+    await screen.findByRole('checkbox', { name: /Avena 1 kg/ });
+
+    await user.click(screen.getByRole('button', { name: 'Generar nueva lista' }));
+
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
+
+    expect(regenerateListMock).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: /Avena 1 kg/ })).toBeInTheDocument();
+  });
+
+  it('confirming regenerate calls the command, shows a success toast and refreshes the list (FOR-118)', async () => {
+    getListMock.mockResolvedValue(list);
+    const regenerated: ShoppingList = {
+      ...list,
+      generatedAt: '2026-07-13T09:00:00Z',
+      items: list.items.map((item) => ({ ...item, checked: false })),
+    };
+    regenerateListMock.mockResolvedValue(regenerated);
+    const user = userEvent.setup();
+
+    renderPage();
+    await screen.findByRole('checkbox', { name: /Avena 1 kg/ });
+
+    await user.click(screen.getByRole('button', { name: 'Generar nueva lista' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'Generar nueva lista' }));
+
+    await waitFor(() => expect(regenerateListMock).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    const region = screen.getByRole('log');
+    expect(await within(region).findByText(/regenerad/i)).toBeInTheDocument();
+    expect(screen.getByText(formatGeneratedAt('2026-07-13T09:00:00Z'))).toBeInTheDocument();
+  });
+
+  it('shows a clear error and leaves the list unchanged when regenerate fails (FOR-118)', async () => {
+    getListMock.mockResolvedValue(list);
+    regenerateListMock.mockRejectedValue(new Error('network'));
+    const user = userEvent.setup();
+
+    renderPage();
+    await screen.findByRole('checkbox', { name: /Avena 1 kg/ });
+
+    await user.click(screen.getByRole('button', { name: 'Generar nueva lista' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'Generar nueva lista' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/No se pudo regenerar/);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    // List state unchanged (FOR-63 edge case: failed action -> no side effect).
+    expect(screen.getByRole('checkbox', { name: /Pollo 1 kg/ })).toBeChecked();
+  });
+
+  it('clicking "+" updates both quantity and estimated cost from the response (FOR-118)', async () => {
+    getListMock.mockResolvedValue(list);
+    updateQuantityMock.mockResolvedValue({
+      id: 'i1',
+      quantity: 3,
+      estimatedCostEur: 5.85,
+      unit: 'KG',
+    });
+    const user = userEvent.setup();
+
+    renderPage();
+    const avenaCheckbox = await screen.findByRole('checkbox', { name: /Avena 1 kg/ });
+    const avenaRow = avenaCheckbox.closest('li') as HTMLElement;
+
+    await user.click(
+      within(avenaRow).getByRole('button', { name: /Aumentar cantidad de Avena 1 kg/ }),
+    );
+
+    await waitFor(() => expect(updateQuantityMock).toHaveBeenCalledWith('i1', 3));
+    expect(await within(avenaRow).findByText('3 kg')).toBeInTheDocument();
+    expect(within(avenaRow).getByText(/5,85/)).toBeInTheDocument();
+  });
+
+  it('disables "-" at quantity 1, sending no request (FOR-118)', async () => {
+    getListMock.mockResolvedValue(list);
+    const user = userEvent.setup();
+
+    renderPage();
+    const detergenteCheckbox = await screen.findByRole('checkbox', { name: /Detergente/ });
+    const detergenteRow = detergenteCheckbox.closest('li') as HTMLElement;
+
+    const decrement = within(detergenteRow).getByRole('button', {
+      name: /Disminuir cantidad de Detergente/,
+    });
+    expect(decrement).toBeDisabled();
+
+    await user.click(decrement);
+    expect(updateQuantityMock).not.toHaveBeenCalled();
+  });
+
+  it('reverts to the last known quantity and shows an error when a quantity edit fails, without a stuck pending state (FOR-118)', async () => {
+    getListMock.mockResolvedValue(list);
+    updateQuantityMock.mockRejectedValue(new Error('network'));
+    const user = userEvent.setup();
+
+    renderPage();
+    const avenaCheckbox = await screen.findByRole('checkbox', { name: /Avena 1 kg/ });
+    const avenaRow = avenaCheckbox.closest('li') as HTMLElement;
+    const increment = within(avenaRow).getByRole('button', {
+      name: /Aumentar cantidad de Avena 1 kg/,
+    });
+
+    await user.click(increment);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/No se pudo actualizar/);
+    // Reverted (never changed): still shows the original quantity.
+    expect(within(avenaRow).getByText('2 kg')).toBeInTheDocument();
+    // Not stuck pending: the control is usable again.
+    expect(increment).not.toBeDisabled();
+  });
+
+  it('serializes rapid repeated +/- clicks on the same item, disabling the row during flight (FOR-118 edge case)', async () => {
+    getListMock.mockResolvedValue(list);
+    let resolveUpdate: (value: {
+      id: string;
+      quantity: number;
+      estimatedCostEur: number;
+      unit: string;
+    }) => void = () => {};
+    updateQuantityMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolveUpdate = resolve;
+      }),
+    );
+    const user = userEvent.setup();
+
+    renderPage();
+    const avenaCheckbox = await screen.findByRole('checkbox', { name: /Avena 1 kg/ });
+    const avenaRow = avenaCheckbox.closest('li') as HTMLElement;
+    const increment = within(avenaRow).getByRole('button', {
+      name: /Aumentar cantidad de Avena 1 kg/,
+    });
+
+    await user.click(increment);
+    expect(increment).toBeDisabled();
+    await user.click(increment);
+    expect(updateQuantityMock).toHaveBeenCalledTimes(1);
+
+    resolveUpdate({ id: 'i1', quantity: 3, estimatedCostEur: 5.85, unit: 'KG' });
+    await waitFor(() => expect(increment).not.toBeDisabled());
+  });
+
+  it('disables the regenerate button while an item quantity edit is in flight (FOR-118 edge case)', async () => {
+    getListMock.mockResolvedValue(list);
+    updateQuantityMock.mockReturnValue(new Promise(() => {}));
+    const user = userEvent.setup();
+
+    renderPage();
+    const avenaCheckbox = await screen.findByRole('checkbox', { name: /Avena 1 kg/ });
+    const avenaRow = avenaCheckbox.closest('li') as HTMLElement;
+
+    await user.click(
+      within(avenaRow).getByRole('button', { name: /Aumentar cantidad de Avena 1 kg/ }),
+    );
+
+    expect(screen.getByRole('button', { name: 'Generar nueva lista' })).toBeDisabled();
+  });
+
+  it('renders a link-out control opening productUrl in a new tab; omits it when there is no productUrl (FOR-118)', async () => {
+    getListMock.mockResolvedValue(list);
+
+    renderPage();
+    const avenaCheckbox = await screen.findByRole('checkbox', { name: /Avena 1 kg/ });
+    const avenaRow = avenaCheckbox.closest('li') as HTMLElement;
+    const polloRow = screen
+      .getByRole('checkbox', { name: /Pollo 1 kg/ })
+      .closest('li') as HTMLElement;
+
+    const link = within(avenaRow).getByRole('link', { name: /Avena 1 kg/ });
+    expect(link).toHaveAttribute('href', 'https://tienda.example/avena');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
+
+    expect(within(polloRow).queryByRole('link')).not.toBeInTheDocument();
   });
 
   it('shows an error state with a retry action when the list fails to load', async () => {

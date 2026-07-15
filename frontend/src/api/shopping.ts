@@ -23,6 +23,13 @@ export interface ShoppingItem {
   readonly servings: number | null;
   readonly estimatedCostEur: number;
   readonly checked: boolean;
+  /**
+   * Provider link-out/add-to-cart URL (FOR-108/FOR-109); absent/`null` when
+   * the resolved product has none — the link-out control is omitted for
+   * that row, never shown disabled (FOR-118). Optional (not required) so
+   * fixtures predating this field across the app don't need updating.
+   */
+  readonly productUrl?: string | null;
 }
 
 /** Weekly + monthly budget. */
@@ -45,6 +52,18 @@ export interface ShoppingList {
 export interface CheckedResult {
   readonly id: string;
   readonly checked: boolean;
+}
+
+/**
+ * The updated item returned by a quantity edit (FOR-109): the backend
+ * recalculates {@link QuantityResult.estimatedCostEur} — the frontend never
+ * computes it client-side (ADR-006).
+ */
+export interface QuantityResult {
+  readonly id: string;
+  readonly quantity: number;
+  readonly estimatedCostEur: number;
+  readonly unit: string;
 }
 
 /**
@@ -92,6 +111,31 @@ export function setItemChecked(
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ checked }),
+    },
+  );
+}
+
+/**
+ * Rebuilds the active list from the current product catalog (FOR-109);
+ * resets checked state and stamps a new {@link ShoppingList.generatedAt}.
+ * Returns the full rebuilt list, since every item may change.
+ */
+export function regenerateShoppingList(client: ApiClient = apiClient): Promise<ShoppingList> {
+  return client.request<ShoppingList>('/api/v1/shopping/list/regenerate', { method: 'POST' });
+}
+
+/** Edits an item's quantity (FOR-109); the backend recalculates {@link QuantityResult.estimatedCostEur}. */
+export function updateItemQuantity(
+  itemId: string,
+  quantity: number,
+  client: ApiClient = apiClient,
+): Promise<QuantityResult> {
+  return client.request<QuantityResult>(
+    `/api/v1/shopping/list/items/${encodeURIComponent(itemId)}`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ quantity }),
     },
   );
 }
