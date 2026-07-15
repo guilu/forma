@@ -3,6 +3,7 @@ package dev.diegobarrioh.forma.domain;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -14,13 +15,16 @@ import org.junit.jupiter.api.Test;
  */
 class ShoppingBudgetCalculatorTest {
 
+  private static final Instant GENERATED_AT = Instant.parse("2026-07-06T08:00:00Z");
+
   private static ShoppingListItem item(String productId, int quantity) {
-    return new ShoppingListItem(productId, quantity, new BigDecimal("0.00"), false);
+    return new ShoppingListItem(
+        productId, quantity, new BigDecimal("0.00"), false, ShoppingUnit.UD, null);
   }
 
   private static ShoppingList list(ShoppingListItem... items) {
     return new ShoppingList(
-        LocalDate.of(2026, 7, 6), ShoppingListStatus.ACTIVE, List.of(items), null);
+        LocalDate.of(2026, 7, 6), ShoppingListStatus.ACTIVE, List.of(items), null, GENERATED_AT);
   }
 
   @Test

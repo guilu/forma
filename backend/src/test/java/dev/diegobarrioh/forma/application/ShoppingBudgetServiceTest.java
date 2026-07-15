@@ -6,7 +6,9 @@ import dev.diegobarrioh.forma.domain.ShoppingList;
 import dev.diegobarrioh.forma.domain.ShoppingListItem;
 import dev.diegobarrioh.forma.domain.ShoppingListStatus;
 import dev.diegobarrioh.forma.domain.ShoppingProduct;
+import dev.diegobarrioh.forma.domain.ShoppingUnit;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -28,9 +30,11 @@ class ShoppingBudgetServiceTest {
             LocalDate.of(2026, 7, 6),
             ShoppingListStatus.ACTIVE,
             List.of(
-                new ShoppingListItem("p1", 2, new BigDecimal("0.00"), false),
-                new ShoppingListItem("p2", 1, new BigDecimal("0.00"), false)),
-            null);
+                new ShoppingListItem("p1", 2, new BigDecimal("0.00"), false, ShoppingUnit.UD, null),
+                new ShoppingListItem(
+                    "p2", 1, new BigDecimal("0.00"), false, ShoppingUnit.UD, null)),
+            null,
+            Instant.parse("2026-07-06T08:00:00Z"));
 
     // p1 1.95 * 2 + p2 3.90 * 1 = 7.80.
     assertThat(service.budgetFor(list).weeklyEur()).isEqualByComparingTo("7.80");
