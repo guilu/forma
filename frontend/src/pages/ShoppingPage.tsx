@@ -26,6 +26,7 @@ import {
   categoryLabel,
   filterItemsByCategory,
 } from './shoppingCategories';
+import { formatGeneratedAt, unitLabel } from './shoppingDisplay';
 import styles from './ShoppingPage.module.css';
 
 /**
@@ -34,20 +35,23 @@ import styles from './ShoppingPage.module.css';
  * and resolves product edits through FOR-36; renders the API read models
  * directly (ADR-006/ADR-001 — no pricing/budget math here).
  *
- * <p>Mockup elements not backed by the API today (documented gap, repository
+ * <p><b>Quantity unit and "Generada" tile (FOR-117)</b>: {@code quantity} now
+ * renders together with its {@link ShoppingItem.unit} (FOR-108, e.g. "2 kg"),
+ * and the list's {@link ShoppingList.generatedAt} is shown as a restored
+ * "Generada" tile — closing the two gaps this doc comment used to document
+ * as omitted. The mockup's "PORCIONES" aggregate tile stays omitted, though:
+ * summing per-item {@link ShoppingItem.servings} across unrelated products
+ * (e.g. chicken servings + milk servings) would not be a meaningful number,
+ * so servings render per item only (see the item row below), never as a
+ * list-level aggregate (spec.md Open Questions).
+ *
+ * <p>Mockup elements still not backed by the API (documented gap, repository
  * priority per AGENTS.md — never invented):
  * <ul>
- *   <li><b>Quantity unit</b> ("unidades"/"kg"/"g") — {@code quantity} is a
- *       plain integer with no unit field; shown as-is.
- *   <li><b>"PORCIONES" and "GENERADA"</b> budget tiles — the list/budget read
- *       models carry no servings count or generation timestamp
- *       ({@code weekStartDate} is not "generated at"), so these tiles are
- *       omitted rather than shown with invented data (same precedent as the
- *       FOR-54 Nutrition page).
  *   <li><b>"Generar nueva lista"</b>, per-item Mercadona link-out/add-to-cart
  *       icons and +/- quantity editing — no regenerate, link-out or item-
  *       quantity-update endpoint exists; omitted entirely rather than shown
- *       inactive (same precedent as FOR-54).
+ *       inactive (same precedent as FOR-54; FOR-118 adds these).
  * </ul>
  *
  * <p><b>Category filter tabs and id-based product edit (FOR-111)</b>:
@@ -175,7 +179,7 @@ function renderContent(
     );
   }
 
-  const { items, budget } = state.list;
+  const { items, budget, generatedAt } = state.list;
   const tabs = buildCategoryTabs(items);
   const filteredItems = filterItemsByCategory(items, selectedCategory);
 
@@ -199,6 +203,9 @@ function renderContent(
           headingLevel={2}
           value={EUR.format(budget.monthlyEur)}
         />
+        {/* Restored mockup tile (FOR-117): list-level generation timestamp.
+            No "Porciones" aggregate tile — see the file doc comment. */}
+        <MetricCard label="Generada" headingLevel={2} value={formatGeneratedAt(generatedAt)} />
       </section>
 
       {/* Category filter tabs (FOR-111): one tab per distinct category present
@@ -238,7 +245,18 @@ function renderContent(
                     {item.productName}
                   </span>
                 </label>
-                <span className={styles.quantity}>{item.quantity}</span>
+                <span className={styles.quantity}>
+                  <span>
+                    {item.quantity} {unitLabel(item.unit)}
+                  </span>
+                  {/* Servings detail (FOR-108/FOR-117): omitted for non-food
+                      items (`servings: null`), never fabricated. Renders
+                      inside this item's own row/label, not a separate
+                      unlabeled element (ui.md accessibility note). */}
+                  {item.servings != null && (
+                    <span className={styles.servings}>{item.servings} raciones</span>
+                  )}
+                </span>
                 <span className={styles.cost}>{EUR.format(item.estimatedCostEur)}</span>
                 <button
                   type="button"

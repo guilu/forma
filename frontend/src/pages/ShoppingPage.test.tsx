@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ShoppingPage } from './ShoppingPage';
 import { buildCategoryTabs, filterItemsByCategory } from './shoppingCategories';
+import { formatGeneratedAt, unitLabel } from './shoppingDisplay';
 import { NotificationProvider } from '../components/NotificationProvider';
 import { ApiRequestError } from '../api/client';
 import {
@@ -41,11 +42,15 @@ const updateProductMock = vi.mocked(updateShoppingProduct);
  * Fixture spans four categories (>= three required by tests.md), one `OTROS`
  * item ("Detergente") and two same-name/different-id products ("Leche
  * entera", `p4`/`p5`) — the FOR-111 regression guard for the old
- * name-matching bug.
+ * name-matching bug. FOR-117: also spans a unit+servings item (Avena,
+ * Pollo), a unit with no servings (Detergente — non-food, `servings: null`)
+ * and an unrecognized unit value (`i5`'s `BOLSA`, not in the backend's
+ * `ShoppingUnit` enum — tests.md's "unrecognized unit" edge case).
  */
 const list: ShoppingList = {
   weekStartDate: '2026-07-06',
   status: 'ACTIVE',
+  generatedAt: '2026-07-06T08:00:00Z',
   items: [
     {
       id: 'i1',
@@ -53,6 +58,8 @@ const list: ShoppingList = {
       productName: 'Avena 1 kg',
       category: 'CEREALES_Y_LEGUMBRES',
       quantity: 2,
+      unit: 'KG',
+      servings: 4,
       estimatedCostEur: 3.9,
       checked: false,
     },
@@ -62,6 +69,8 @@ const list: ShoppingList = {
       productName: 'Pollo 1 kg',
       category: 'PROTEINAS',
       quantity: 3,
+      unit: 'KG',
+      servings: 6,
       estimatedCostEur: 16.5,
       checked: true,
     },
@@ -71,6 +80,8 @@ const list: ShoppingList = {
       productName: 'Detergente',
       category: 'OTROS',
       quantity: 1,
+      unit: 'UD',
+      servings: null,
       estimatedCostEur: 4.2,
       checked: false,
     },
@@ -80,6 +91,8 @@ const list: ShoppingList = {
       productName: 'Leche entera',
       category: 'LACTEOS_Y_HUEVOS',
       quantity: 2,
+      unit: 'L',
+      servings: 8,
       estimatedCostEur: 1.2,
       checked: false,
     },
@@ -89,6 +102,8 @@ const list: ShoppingList = {
       productName: 'Leche entera',
       category: 'LACTEOS_Y_HUEVOS',
       quantity: 1,
+      unit: 'BOLSA',
+      servings: null,
       estimatedCostEur: 1.85,
       checked: false,
     },
@@ -145,10 +160,30 @@ describe('ShoppingPage', () => {
     expect(screen.getByRole('tab', { name: /Lácteos y huevos/ })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /Otros/ })).toBeInTheDocument();
 
-    // Per-item row: quantity + price, scoped to the Avena row.
+    // Per-item row: quantity + unit + servings + price, scoped to the Avena
+    // row (FOR-117: quantity now renders with its unit, plus a servings
+    // detail when present).
     const avenaRow = avenaCheckbox.closest('li') as HTMLElement;
-    expect(within(avenaRow).getByText('2')).toBeInTheDocument();
+    expect(within(avenaRow).getByText('2 kg')).toBeInTheDocument();
+    expect(within(avenaRow).getByText('4 raciones')).toBeInTheDocument();
     expect(within(avenaRow).getByText(/3,90/)).toBeInTheDocument();
+
+    // Detergente (non-food, servings: null) shows quantity+unit only, no
+    // servings detail (tests.md edge case).
+    const detergenteCheckbox = screen.getByRole('checkbox', { name: /Detergente/ });
+    const detergenteRow = detergenteCheckbox.closest('li') as HTMLElement;
+    expect(within(detergenteRow).getByText('1 ud')).toBeInTheDocument();
+    expect(within(detergenteRow).queryByText(/raciones/)).not.toBeInTheDocument();
+
+    // Unrecognized unit value ("BOLSA") renders as raw text instead of
+    // crashing or being hidden (tests.md edge case). Two "Leche entera" rows
+    // exist (FOR-111 regression fixture); find the one carrying it.
+    const lecheRows = screen
+      .getAllByRole('checkbox', { name: /Leche entera/ })
+      .map((checkbox) => checkbox.closest('li') as HTMLElement);
+    const lechePackRow = lecheRows.find((row) => within(row).queryByText(/BOLSA/));
+    expect(lechePackRow).toBeDefined();
+    expect(within(lechePackRow as HTMLElement).getByText(/BOLSA/)).toBeInTheDocument();
 
     // Budget summary: product count, weekly total, monthly estimate (EUR, es-ES comma).
     expect(screen.getByText('Productos')).toBeInTheDocument();
@@ -159,6 +194,17 @@ describe('ShoppingPage', () => {
     // The budget tiles are direct siblings of the page <h1> (no intervening
     // <h2>), so per FOR-112 they must render as <h2>.
     expect(screen.getByRole('heading', { name: 'Productos', level: 2 })).toBeInTheDocument();
+
+    // "Generada" tile shows the list's generatedAt, formatted consistently
+    // with the app's other date displays (FOR-117).
+    expect(screen.getByRole('heading', { name: 'Generada', level: 2 })).toBeInTheDocument();
+    expect(screen.getByText(formatGeneratedAt(list.generatedAt))).toBeInTheDocument();
+
+    // No list-level "Porciones" aggregate tile: this fixture mixes food
+    // items (with servings) and a non-food item (Detergente, servings:
+    // null), so a summed aggregate would not be meaningful — documented
+    // decision (spec.md Open Questions), servings render per item only.
+    expect(screen.queryByRole('heading', { name: 'Porciones' })).not.toBeInTheDocument();
   });
 
   it('filters the rendered items when a category tab is selected; aria-selected updates accordingly', async () => {
@@ -278,6 +324,10 @@ describe('ShoppingPage', () => {
     getListMock.mockResolvedValue({
       weekStartDate: '2026-07-06',
       status: 'ACTIVE',
+      // Backfilled generatedAt (FOR-108 migration sentinel: weekStartDate at
+      // midnight) — tests.md edge case: still renders a valid date on an
+      // empty list, no crash from an empty servings aggregate.
+      generatedAt: '2026-07-06T00:00:00Z',
       items: [],
       budget: { weeklyEur: 0, monthlyEur: 0 },
     });
@@ -286,6 +336,8 @@ describe('ShoppingPage', () => {
 
     expect(await screen.findByText(/No hay artículos en la lista/)).toBeInTheDocument();
     expect(screen.getAllByText(/0,00/).length).toBeGreaterThan(0);
+    expect(screen.getByRole('heading', { name: 'Generada', level: 2 })).toBeInTheDocument();
+    expect(screen.getByText(formatGeneratedAt('2026-07-06T00:00:00Z'))).toBeInTheDocument();
   });
 
   it('reaches the product price/URL edit entry point and saves changes', async () => {
@@ -444,6 +496,7 @@ describe('ShoppingPage', () => {
     getListMock.mockResolvedValue({
       weekStartDate: '2026-07-06',
       status: 'ACTIVE',
+      generatedAt: '2026-07-06T08:00:00Z',
       items: [
         {
           id: 'ig',
@@ -451,6 +504,8 @@ describe('ShoppingPage', () => {
           productName: 'Producto fantasma',
           category: 'OTROS',
           quantity: 1,
+          unit: 'UD',
+          servings: null,
           estimatedCostEur: 2.5,
           checked: false,
         },
@@ -518,6 +573,8 @@ describe('category filtering helpers (FOR-111)', () => {
       productName: 'Avena',
       category: 'CEREALES_Y_LEGUMBRES',
       quantity: 1,
+      unit: 'UD',
+      servings: null,
       estimatedCostEur: 1,
       checked: false,
     },
@@ -537,6 +594,8 @@ describe('category filtering helpers (FOR-111)', () => {
         productName: 'Producto sin categoría',
         category: '',
         quantity: 1,
+        unit: 'UD',
+        servings: null,
         estimatedCostEur: 1,
         checked: false,
       },
@@ -553,5 +612,31 @@ describe('category filtering helpers (FOR-111)', () => {
 
   it('"ALL" returns every item unfiltered', () => {
     expect(filterItemsByCategory(items, 'ALL')).toEqual(items);
+  });
+});
+
+describe('item display helpers (FOR-117)', () => {
+  it('maps known ShoppingUnit values to their display label', () => {
+    expect(unitLabel('UD')).toBe('ud');
+    expect(unitLabel('G')).toBe('g');
+    expect(unitLabel('KG')).toBe('kg');
+    expect(unitLabel('L')).toBe('l');
+    expect(unitLabel('PAQUETE')).toBe('paquete');
+  });
+
+  it('falls back to the raw value for an unrecognized unit instead of crashing or hiding it', () => {
+    expect(unitLabel('BOLSA')).toBe('BOLSA');
+  });
+
+  it('formats generatedAt consistently with the app-wide day/month/hour/minute date pattern', () => {
+    const formatted = formatGeneratedAt('2026-07-06T08:00:00Z');
+    // Same shape as IntegrationsSection's lastSyncFormatter output: day,
+    // short month, hour:minute — not asserting an exact string to stay
+    // independent of the test runner's timezone.
+    expect(formatted).toMatch(/\d{1,2}\s\D+\s\d{1,2}:\d{2}/);
+  });
+
+  it('formats a pre-migration/backfilled generatedAt as a valid date, not blank text', () => {
+    expect(formatGeneratedAt('2026-07-06T00:00:00Z')).not.toBe('');
   });
 });

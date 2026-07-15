@@ -66,6 +66,7 @@ const nutritionDay: NutritionDay = {
 const shoppingList: ShoppingList = {
   weekStartDate: '2026-07-06',
   status: 'ACTIVE',
+  generatedAt: '2026-07-06T08:00:00Z',
   items: [
     {
       id: 'i1',
@@ -73,6 +74,8 @@ const shoppingList: ShoppingList = {
       productName: 'Avena',
       category: 'CEREALES_Y_LEGUMBRES',
       quantity: 1,
+      unit: 'UD',
+      servings: null,
       estimatedCostEur: 3.5,
       checked: false,
     },
