@@ -14,6 +14,13 @@ export interface ShoppingItem {
   /** Resolved product category (FOR-106); `OTROS` when the product has none. */
   readonly category: string;
   readonly quantity: number;
+  /** Unit of measure for {@link quantity} (FOR-108, e.g. `UD`, `G`, `KG`, `L`, `PAQUETE`). */
+  readonly unit: string;
+  /**
+   * Number of servings this line represents (FOR-108); `null` when the resolved product isn't
+   * linked to a nutrition food — never fabricated for non-food items.
+   */
+  readonly servings: number | null;
   readonly estimatedCostEur: number;
   readonly checked: boolean;
 }
@@ -30,6 +37,8 @@ export interface ShoppingList {
   readonly status: string;
   readonly items: ShoppingItem[];
   readonly budget: ShoppingBudget;
+  /** When this list was generated/created (FOR-108); backfilled for pre-migration lists. */
+  readonly generatedAt: string;
 }
 
 /** The updated item returned by the check toggle. */

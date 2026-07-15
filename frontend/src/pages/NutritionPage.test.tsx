@@ -90,6 +90,7 @@ describe('NutritionPage', () => {
     getShoppingListMock.mockResolvedValue({
       weekStartDate: '2026-07-06',
       status: 'ACTIVE',
+      generatedAt: '2026-07-06T08:00:00Z',
       items: [],
       budget: { weeklyEur: 0, monthlyEur: 0 },
     });
@@ -197,6 +198,7 @@ describe('NutritionPage', () => {
     getShoppingListMock.mockResolvedValue({
       weekStartDate: '2026-07-06',
       status: 'ACTIVE',
+      generatedAt: '2026-07-06T08:00:00Z',
       items: [
         {
           id: '1',
@@ -204,6 +206,8 @@ describe('NutritionPage', () => {
           productName: 'Avena',
           category: 'CEREALES_Y_LEGUMBRES',
           quantity: 1,
+          unit: 'UD',
+          servings: null,
           estimatedCostEur: 2,
           checked: false,
         },
