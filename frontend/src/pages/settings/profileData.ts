@@ -1,59 +1,24 @@
 /**
- * Static profile fixture for the Ajustes screen (FOR-58).
+ * Static display fixtures for the parts of the Ajustes screen not yet backed
+ * by their own API (FOR-58).
  *
- * <p><b>No user/profile/preferences backend exists</b> (verified: no controller
- * under `backend/src/main/java/.../delivery/**`, ADR-002 single-user MVP). This
- * is display-only fixture data, not a read model from an API — every field is
- * clearly a placeholder until a profile backend story lands. Deliberately uses
- * generic values rather than a real person's name/email (AGENTS.md forbidden
- * shortcut: "hardcoding user-specific data outside fixtures or seed data").
- *
- * <p>`mainGoal` intentionally overlaps with the Objetivos screen
- * (`docs/7-objetivos.png`, no dedicated FOR-47 child story) — spec FOR-58 Data
- * Model Notes says to treat it as a read-only summary here and flag the
- * ownership gap (see PR description / FOR-58 Assumptions).
+ * <p>FOR-119: the profile summary and units preference fixtures
+ * (`MOCK_PROFILE`/`UNIT_PREFERENCES`) that used to live here were removed —
+ * `ProfileSection`/`UnitsSection` now read the real FOR-107
+ * {@code GET /api/v1/profile} response through `frontend/src/api/profile.ts`
+ * instead. The remaining fixtures below (`DEFAULT_OBJECTIVES`,
+ * `NOTIFICATION_PREFERENCES`, `SECURITY_ACTIONS`, `APP_VERSION`) are still
+ * genuinely backend-less/out of this story's scope, so they stay static
+ * fixtures, clearly documented as such.
  */
-export interface ProfileFixture {
-  readonly name: string;
-  readonly email: string;
-  readonly initials: string;
-  readonly birthDate: string;
-  readonly sex: string;
-  readonly heightCm: number;
-  readonly activityLevel: string;
-  readonly mainGoal: string;
-}
-
-export const MOCK_PROFILE: ProfileFixture = {
-  name: 'Usuario FORMA',
-  email: 'usuario@forma.app',
-  initials: 'UF',
-  birthDate: '12 mayo 1990',
-  sex: 'No especificado',
-  heightCm: 178,
-  activityLevel: 'Moderado',
-  mainGoal: 'Recomposición',
-};
-
-/** Units & locale preferences (spec FOR-58: "Units preference may drive display formatting locally"). */
-export interface UnitPreference {
-  readonly label: string;
-  readonly value: string;
-}
-
-export const UNIT_PREFERENCES: readonly UnitPreference[] = [
-  { label: 'Peso', value: 'Kilogramos (kg)' },
-  { label: 'Altura', value: 'Centímetros (cm)' },
-  { label: 'Distancia', value: 'Kilómetros (km)' },
-  { label: 'Energía', value: 'Kilocalorías (kcal)' },
-];
 
 /**
  * Default objectives (spec FOR-58 FR: "déficit calórico, proteínas, agua
- * diaria — entry points"). Also stands in for the spec's separate "Training /
- * nutrition preference entry points" bullet — `ui.md`'s Components list has no
- * dedicated component for that bullet, so these nutrition defaults are the
- * closest existing grouping (documented assumption, FOR-58).
+ * diaria — entry points"). Out of FOR-119's scope (spec's Data Model Notes:
+ * "`DEFAULT_OBJECTIVES` stays with `ObjectivesSection` unless that section is
+ * also touched here for the training/nutrition entry points" — FOR-119
+ * resolved the training/nutrition bullet with its own distinct
+ * `TrainingNutritionSection` instead of touching this one).
  */
 export interface DefaultObjective {
   readonly label: string;
