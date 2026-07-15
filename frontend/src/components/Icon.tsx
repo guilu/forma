@@ -89,6 +89,11 @@ export function Icon({ name, size = 20, className }: IconProps) {
       strokeLinejoin="round"
       aria-hidden="true"
       focusable="false"
+      // Exposes which icon rendered for tests (e.g. IntegrationsSection's
+      // FOR-116 fallback-consistency regression guard) without affecting
+      // layout/paint. Icons are decorative (aria-hidden); this is not an
+      // accessibility attribute.
+      data-icon={name}
     >
       <path d={PATHS[name]} />
     </svg>

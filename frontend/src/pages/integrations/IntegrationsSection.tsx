@@ -57,7 +57,45 @@ type State =
   | { readonly status: 'error' }
   | { readonly status: 'ready'; readonly connections: IntegrationConnection[] };
 
-const PROVIDER_ICONS: Record<IntegrationProviderId, IconName> = {
+/**
+ * FOR-116: researched replacing this generic-icon mapping with each
+ * provider's actual brand mark. Finding — none of the three can be
+ * responsibly embedded today, per each provider's own published trademark
+ * terms:
+ *
+ * <ul>
+ *   <li><b>Google (Google Fit)</b>: Google's Brand Resource Center states the
+ *       Google logo "can only be used if you have an existing partnership or
+ *       sponsorship" with formal approval from Google's brand team
+ *       (about.google/brand-resource-center/guidance/). FORMA has neither.
+ *   <li><b>Apple (Apple Health)</b>: Apple's trademark guidelines require an
+ *       express written license for the Apple logo/icon generally
+ *       (apple.com/legal/intellectual-property/guidelinesfor3rdparties.html).
+ *       The narrower "Works with Apple Health" badge and Health app icon are
+ *       licensed only to apps with a genuine, shipped HealthKit integration
+ *       (developer.apple.com/licensing-trademarks/works-with-apple-health/),
+ *       and Apple explicitly says not to "create graphics, logotypes, or
+ *       graphic renderings to represent the Apple Health app" — so a
+ *       hand-approximated mark is out, not just the exact logo file.
+ *   <li><b>Withings</b>: brand assets are distributed through their
+ *       press/newsroom kit for media and partners
+ *       (withings.com/us/en/health-solutions/press); no generic license for
+ *       unaffiliated third-party apps was found.
+ * </ul>
+ *
+ * All three programs above are conditioned on a real, verified integration
+ * or partnership. FORMA has neither — there is no integrations backend yet
+ * (see `frontend/src/api/integrations.ts` doc comment: every connection is a
+ * static mock, and connect/sync/disconnect always reject until the External
+ * Integrations epic, FOR-103, ships). So per this story's own explicit
+ * fallback clause, the generic `Icon` mapping below is kept — deliberately,
+ * not by oversight. Revisit once FORMA has a shipped integration with a
+ * given provider and can request/verify that provider's actual brand assets.
+ *
+ * <p>Both render sites below (connected list, available list) must read this
+ * same mapping — `IntegrationsSection.test.tsx`'s FOR-116 test locks that in.
+ */
+const PROVIDER_ICON_FALLBACK: Record<IntegrationProviderId, IconName> = {
   WITHINGS: 'heart',
   GOOGLE_FIT: 'activity',
   APPLE_HEALTH: 'cross',
@@ -210,7 +248,7 @@ function renderContent(
           <ul className={styles.list}>
             {connected.map((provider) => (
               <li key={provider.providerId} className={styles.row}>
-                <Icon name={PROVIDER_ICONS[provider.providerId]} />
+                <Icon name={PROVIDER_ICON_FALLBACK[provider.providerId]} />
                 <div className={styles.info}>
                   <span className={styles.name}>{provider.providerName}</span>
                   <span className={styles.description}>{provider.description}</span>
@@ -252,7 +290,7 @@ function renderContent(
           <ul className={styles.list}>
             {available.map((provider) => (
               <li key={provider.providerId} className={styles.row}>
-                <Icon name={PROVIDER_ICONS[provider.providerId]} />
+                <Icon name={PROVIDER_ICON_FALLBACK[provider.providerId]} />
                 <div className={styles.info}>
                   <span className={styles.name}>{provider.providerName}</span>
                   <span className={styles.description}>{provider.description}</span>
