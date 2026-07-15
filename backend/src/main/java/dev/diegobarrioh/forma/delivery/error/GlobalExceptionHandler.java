@@ -10,9 +10,11 @@ import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 /**
  * Baseline API exception handling (FOR-88, ADR-005). Maps exceptions to the consistent {@link
@@ -58,6 +60,38 @@ public class GlobalExceptionHandler {
       HttpMessageNotReadableException ex, HttpServletRequest request) {
     return ApiError.of(
         ApiErrorCode.VALIDATION_ERROR, "Malformed request body", correlationId(request), null);
+  }
+
+  /**
+   * A required {@code @RequestParam} is missing (FOR-127, e.g. {@code ?date=} on {@code
+   * /nutrition/consumption}) — maps to 400 {@code VALIDATION_ERROR} rather than the framework's
+   * default problem-detail body, keeping every endpoint's error shape consistent (ADR-005).
+   */
+  @ExceptionHandler(MissingServletRequestParameterException.class)
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  public ApiError handleMissingParameter(
+      MissingServletRequestParameterException ex, HttpServletRequest request) {
+    return ApiError.of(
+        ApiErrorCode.VALIDATION_ERROR,
+        "Missing required parameter: " + ex.getParameterName(),
+        correlationId(request),
+        null);
+  }
+
+  /**
+   * A {@code @RequestParam} or {@code @PathVariable} value doesn't match its target type (FOR-127,
+   * e.g. a malformed {@code date}) — maps to 400 {@code VALIDATION_ERROR}, mirroring {@link
+   * #handleMalformedRequestBody}'s reasoning for the request-body case.
+   */
+  @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  public ApiError handleTypeMismatch(
+      MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+    return ApiError.of(
+        ApiErrorCode.VALIDATION_ERROR,
+        "Invalid value for parameter: " + ex.getName(),
+        correlationId(request),
+        null);
   }
 
   /**
