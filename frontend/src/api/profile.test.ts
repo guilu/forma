@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { getProfile, updateProfileFields } from './profile';
+import { getProfile, updateProfileFields, updateThemeMode } from './profile';
 import { type ApiClient } from './client';
 
 describe('profile API', () => {
@@ -52,5 +52,20 @@ describe('profile API', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: 'Ada Lovelace' }),
     });
+  });
+
+  it('PATCHes the theme preference (FOR-120)', async () => {
+    const updated = { themeMode: 'LIGHT' };
+    const request = vi.fn().mockResolvedValue(updated);
+    const client: ApiClient = { baseUrl: 'http://test', request };
+
+    const result = await updateThemeMode({ themeMode: 'LIGHT' }, client);
+
+    expect(request).toHaveBeenCalledWith('/api/v1/profile/theme', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ themeMode: 'LIGHT' }),
+    });
+    expect(result).toBe(updated);
   });
 });

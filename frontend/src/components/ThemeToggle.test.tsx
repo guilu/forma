@@ -1,8 +1,20 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ThemeProvider } from '../theme/ThemeContext';
 import { ThemeToggle } from './ThemeToggle';
+
+// FOR-120: ThemeProvider reads/persists the theme preference through this
+// module on mount and on toggle. Mocked so this FOR-62 test stays network-free
+// and deterministic; 'SYSTEM' matches the default local mode so the mount-time
+// reconciliation is a no-op here.
+vi.mock('../api/profile', () => ({
+  getProfile: vi.fn().mockResolvedValue({
+    unitPreferences: { weightUnit: 'KG', heightUnit: 'CM', distanceUnit: 'KM', energyUnit: 'KCAL' },
+    themeMode: 'SYSTEM',
+  }),
+  updateThemeMode: vi.fn().mockResolvedValue(undefined),
+}));
 
 function renderToggle() {
   return render(

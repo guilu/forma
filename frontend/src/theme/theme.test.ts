@@ -2,10 +2,12 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   DEFAULT_THEME_MODE,
   applyResolvedTheme,
+  fromApiThemeMode,
   readStoredThemeMode,
   resolveTheme,
   storeThemeMode,
   systemPrefersLight,
+  toApiThemeMode,
   THEME_STORAGE_KEY,
 } from './theme';
 
@@ -82,5 +84,28 @@ describe('theme resolution + persistence (FOR-62)', () => {
 
     applyResolvedTheme('dark');
     expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+  });
+});
+
+describe('backend theme-mode mapping (FOR-120)', () => {
+  it('maps a frontend mode to the backend uppercase vocabulary', () => {
+    expect(toApiThemeMode('light')).toBe('LIGHT');
+    expect(toApiThemeMode('dark')).toBe('DARK');
+    expect(toApiThemeMode('system')).toBe('SYSTEM');
+  });
+
+  it('maps a backend value back to the matching frontend mode', () => {
+    expect(fromApiThemeMode('LIGHT')).toBe('light');
+    expect(fromApiThemeMode('DARK')).toBe('dark');
+    expect(fromApiThemeMode('SYSTEM')).toBe('system');
+  });
+
+  it('returns null for an unrecognized backend value instead of throwing', () => {
+    expect(fromApiThemeMode('SEPIA')).toBeNull();
+  });
+
+  it('returns null when the backend value is missing', () => {
+    expect(fromApiThemeMode(null)).toBeNull();
+    expect(fromApiThemeMode(undefined)).toBeNull();
   });
 });

@@ -77,3 +77,31 @@ export function applyResolvedTheme(theme: ResolvedTheme): void {
 
 /** The mode to start from when nothing has been explicitly chosen yet. */
 export const DEFAULT_THEME_MODE: ThemeMode = 'system';
+
+/**
+ * The FOR-107 backend's theme vocabulary — uppercase, unlike this module's
+ * lowercase {@link ThemeMode} (a documented FOR-107 gotcha, see
+ * `frontend/src/api/profile.ts`'s "Enum casing" doc comment). FOR-120 is the
+ * only place that needs to cross this boundary, so the mapping lives here
+ * next to the type it maps to/from rather than in the API layer.
+ */
+export type BackendThemeMode = 'LIGHT' | 'DARK' | 'SYSTEM';
+
+/** Maps a frontend {@link ThemeMode} to the backend's uppercase vocabulary. */
+export function toApiThemeMode(mode: ThemeMode): BackendThemeMode {
+  return mode.toUpperCase() as BackendThemeMode;
+}
+
+/**
+ * Maps a backend theme value to a frontend {@link ThemeMode}, or `null` when
+ * the value is missing/unrecognized -- defensive, so an unexpected backend
+ * payload falls back to the local resolution chain instead of throwing
+ * (FOR-120 edge case: backend preference not yet created/invalid).
+ */
+export function fromApiThemeMode(value: string | null | undefined): ThemeMode | null {
+  if (value == null) {
+    return null;
+  }
+  const lower = value.toLowerCase();
+  return isThemeMode(lower) ? lower : null;
+}

@@ -1,9 +1,20 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import { AppShell } from './AppShell';
 import { ThemeProvider } from '../theme/ThemeContext';
+
+// FOR-120: ThemeProvider reads/persists the theme preference through this
+// module on mount. Mocked so these shell tests stay network-free; 'SYSTEM'
+// matches the default local mode so the mount-time reconciliation is a no-op.
+vi.mock('../api/profile', () => ({
+  getProfile: vi.fn().mockResolvedValue({
+    unitPreferences: { weightUnit: 'KG', heightUnit: 'CM', distanceUnit: 'KM', energyUnit: 'KCAL' },
+    themeMode: 'SYSTEM',
+  }),
+  updateThemeMode: vi.fn().mockResolvedValue(undefined),
+}));
 
 /**
  * Application shell accessibility tests (FOR-61): the skip link, the
