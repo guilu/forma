@@ -27,6 +27,16 @@ public final class NutritionCalculator {
     return totals(meals.stream().flatMap(meal -> meal.items().stream()).toList());
   }
 
+  /**
+   * Totals for a single {@link MealItem} (FOR-127): a food resolved from the FOR-30 {@link
+   * FoodCatalog} plus a quantity. Reuses the same per-100g formula as {@link #mealTotals} and
+   * {@link #dayTotals} — no duplicated math — so a consumption-log entry built from a catalog food
+   * is computed identically to a plan-side meal item.
+   */
+  public static NutritionTotals itemTotals(MealItem item) {
+    return totals(List.of(item));
+  }
+
   private static NutritionTotals totals(List<MealItem> items) {
     double calories = 0;
     double protein = 0;
