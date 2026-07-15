@@ -1,15 +1,15 @@
 /**
- * User profile & preferences API calls (FOR-119, extended by FOR-120), built
- * on the shared {@link apiClient} boundary (ADR-006 — no ad-hoc `fetch`).
- * Consumes the FOR-107 backend (`UserProfileController`,
+ * User profile & preferences API calls (FOR-119, extended by FOR-120 and
+ * FOR-121), built on the shared {@link apiClient} boundary (ADR-006 — no
+ * ad-hoc `fetch`). Consumes the FOR-107 backend (`UserProfileController`,
  * `UserProfileResponse`, `UpdateProfileFieldsRequest`,
- * `UpdateThemeModeRequest` — verified directly against the backend source,
- * not just its spec): {@code GET /api/v1/profile}, {@code PATCH
- * /api/v1/profile} and {@code PATCH /api/v1/profile/theme}. The `/units`,
- * `/objectives` and `/onboarding` scoped update endpoints belong to their own
+ * `UpdateThemeModeRequest`, `SubmitOnboardingAnswersRequest` — verified
+ * directly against the backend source, not just its spec): {@code GET
+ * /api/v1/profile}, {@code PATCH /api/v1/profile}, {@code PATCH
+ * /api/v1/profile/theme} and {@code PATCH /api/v1/profile/onboarding}. The
+ * `/units` and `/objectives` scoped update endpoints belong to their own
  * owning stories (units stay read-only for the MVP per FOR-107's
- * single-supported-value enums; onboarding is FOR-121) and are intentionally
- * not called here.
+ * single-supported-value enums) and are intentionally not called here.
  *
  * <p><b>Enum casing (verified, not assumed):</b> unlike {@link Sex}, {@link
  * ActivityLevel} and {@link MainGoal} (which mirror the backend's uppercase
@@ -19,6 +19,13 @@
  * uppercase `LIGHT|DARK|SYSTEM` on the API — a documented FOR-107 gotcha.
  * {@link theme.ts}'s `toApiThemeMode`/`fromApiThemeMode` do the explicit case
  * mapping at this boundary; this module never invents its own conversion.
+ * {@code /onboarding}'s fields (verified against
+ * `SubmitOnboardingAnswersRequest.toDomain()` and the domain
+ * `OnboardingAnswers`) have **no such gotcha**: `profile.sex`,
+ * `metrics.choice`, `goal.selected`, `training.days`, `equipment.items` and
+ * `nutrition.preference` are all passed straight through as unvalidated raw
+ * strings (never coerced through a Java enum), so `onboardingStorage.ts` can
+ * send its draft answers verbatim.
  */
 import { apiClient, type ApiClient } from './client';
 import type { BackendThemeMode } from '../theme/theme';
@@ -46,16 +53,38 @@ export interface UnitPreferences {
 }
 
 /**
+ * Per-step onboarding draft answers as returned by the profile read model
+ * (FOR-121, mirrors `UserProfileResponse.OnboardingAnswersResponse`). Every
+ * group is always present (the domain `OnboardingAnswers` record defaults a
+ * missing group to its blank form rather than `null`), but `metrics.choice`
+ * and `goal.selected` are individually omitted when unset (backend
+ * `@JsonInclude(NON_NULL)` on those two nested records only).
+ */
+export interface OnboardingAnswersOutput {
+  readonly profile: {
+    readonly name: string;
+    readonly birthDate: string;
+    readonly sex: string;
+    readonly heightCm: string;
+  };
+  readonly metrics: { readonly choice?: string; readonly measurementSaved: boolean };
+  readonly goal: { readonly selected?: string };
+  readonly training: { readonly days: readonly string[] };
+  readonly equipment: { readonly items: readonly string[] };
+  readonly nutrition: { readonly preference: string; readonly restrictions: string };
+}
+
+/**
  * The profile & preferences read model (`GET /api/v1/profile`). The
- * "Profile fields" + `unitPreferences` sections (FOR-119) and `themeMode`
- * (FOR-120) are typed here — the response also carries `defaultObjectives`
- * and `onboardingAnswers`, owned by other stories (ObjectivesSection,
- * FOR-121) and intentionally left untyped/unused by this client to avoid
- * speculative coupling (AGENTS.md: no speculative abstractions). Profile
- * fields are all optional: a fresh, never-saved profile returns them omitted
- * (backend `@JsonInclude(NON_NULL)`), never fabricated placeholders.
- * `themeMode` (like `unitPreferences`) is never omitted — the domain
- * aggregate always defaults it (FOR-107).
+ * "Profile fields" + `unitPreferences` sections (FOR-119), `themeMode`
+ * (FOR-120) and `onboardingAnswers`/`firstRunCompleted` (FOR-121) are typed
+ * here — `defaultObjectives`, owned by `ObjectivesSection`, is intentionally
+ * left untyped/unused by this client to avoid speculative coupling
+ * (AGENTS.md: no speculative abstractions). Profile fields are all optional:
+ * a fresh, never-saved profile returns them omitted (backend
+ * `@JsonInclude(NON_NULL)`), never fabricated placeholders. `themeMode`,
+ * `unitPreferences`, `onboardingAnswers` and `firstRunCompleted` are never
+ * omitted — the domain aggregate always defaults them (FOR-107).
  */
 export interface UserProfile {
   readonly name?: string;
@@ -69,6 +98,10 @@ export interface UserProfile {
   readonly unitPreferences: UnitPreferences;
   /** Theme preference (FOR-120), backend vocabulary — map via `theme.ts`'s helpers. */
   readonly themeMode: BackendThemeMode;
+  /** Onboarding draft answers (FOR-121) — see {@link OnboardingAnswersOutput}. */
+  readonly onboardingAnswers: OnboardingAnswersOutput;
+  /** First-run completion flag (FOR-121) — the onboarding gate's source of truth. */
+  readonly firstRunCompleted: boolean;
 }
 
 /** Fields accepted by `PATCH /api/v1/profile` — every field optional/partial (FOR-107). */
@@ -120,6 +153,59 @@ export function updateThemeMode(
   client: ApiClient = apiClient,
 ): Promise<UserProfile> {
   return client.request<UserProfile>('/api/v1/profile/theme', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+}
+
+/**
+ * Body accepted by `PATCH /api/v1/profile/onboarding` (FOR-121, mirrors
+ * `SubmitOnboardingAnswersRequest`). Unlike the other profile PATCH
+ * endpoints, this is a full replace of the stored onboarding draft, not a
+ * per-field merge — an omitted group resets to blank on the backend, so
+ * callers (`onboardingStorage.ts`) send the whole current draft every time.
+ */
+export interface OnboardingAnswersInput {
+  readonly profile?: {
+    readonly name?: string;
+    readonly birthDate?: string;
+    readonly sex?: string;
+    readonly heightCm?: string;
+  };
+  readonly metrics?: {
+    readonly choice?: string;
+    readonly measurementSaved?: boolean;
+  };
+  readonly goal?: {
+    readonly selected?: string;
+  };
+  readonly training?: {
+    readonly days?: readonly string[];
+  };
+  readonly equipment?: {
+    readonly items?: readonly string[];
+  };
+  readonly nutrition?: {
+    readonly preference?: string;
+    readonly restrictions?: string;
+  };
+  readonly completed: boolean;
+}
+
+/**
+ * Submits the onboarding draft + completion flag (FOR-121) — the exact swap
+ * `onboardingStorage.ts`'s original design comment anticipated ("swapping it
+ * for a real `PATCH /api/v1/onboarding` call later touches one file").
+ * Re-submitting after `completed: true` is allowed (FOR-107 Edge Cases:
+ * treated as a profile edit, never locked) — this client enforces no
+ * state-machine transition, same as the backend.
+ */
+export function submitOnboardingAnswers(
+  input: OnboardingAnswersInput,
+  client: ApiClient = apiClient,
+): Promise<UserProfile> {
+  return client.request<UserProfile>('/api/v1/profile/onboarding', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),

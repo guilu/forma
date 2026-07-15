@@ -20,6 +20,16 @@ const updateThemeModeMock = vi.mocked(updateThemeMode);
 const BASE_PROFILE: UserProfile = {
   unitPreferences: { weightUnit: 'KG', heightUnit: 'CM', distanceUnit: 'KM', energyUnit: 'KCAL' },
   themeMode: 'SYSTEM',
+  // FOR-121 fields: irrelevant to this file's theme tests.
+  onboardingAnswers: {
+    profile: { name: '', birthDate: '', sex: '', heightCm: '' },
+    metrics: { measurementSaved: false },
+    goal: {},
+    training: { days: [] },
+    equipment: { items: [] },
+    nutrition: { preference: '', restrictions: '' },
+  },
+  firstRunCompleted: false,
 };
 
 /**

@@ -1,6 +1,7 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Brand } from '../../components/Brand';
+import { useNotify } from '../../components/NotificationProvider';
 import { OnboardingStepShell } from './OnboardingStepShell';
 import { CompletionStep } from './CompletionStep';
 import { ProfileStep } from './steps/ProfileStep';
@@ -12,13 +13,19 @@ import { NutritionBasicsStep } from './steps/NutritionBasicsStep';
 import { IntegrationStep } from './steps/IntegrationStep';
 import {
   clearOnboardingProgress,
+  fetchOnboardingBackendState,
+  hasOnboardingProgress,
   loadOnboardingProgress,
   saveOnboardingProgress,
+  syncOnboardingProgress,
   INITIAL_PROGRESS,
   type OnboardingAnswers,
   type OnboardingProgress,
 } from './onboardingStorage';
 import styles from './OnboardingPage.module.css';
+
+const SYNC_FAILED_MESSAGE =
+  'No se pudieron guardar tus respuestas en el servidor. Se han guardado localmente y lo intentaremos más tarde.';
 
 /**
  * First-run onboarding flow (FOR-59). A multi-step flow — profile
@@ -33,24 +40,35 @@ import styles from './OnboardingPage.module.css';
  * user from being one sidebar click away from abandoning it (spec `ui.md`:
  * "new route/overlay").
  *
- * <p><b>First-run detection</b>: there is no auth/user/profile backend yet
- * (ADR-002, single-user MVP), so there is nothing server-side to key a
- * redirect on. This story deliberately does not force-redirect existing
- * users from `/` into `/onboarding` — `AGENTS.md`/story guidance is explicit
- * that a manual route plus a local flag is enough for the MVP, and a
- * destructive automatic redirect could trap a returning user with no way
- * out. `/onboarding` is reachable directly; completion is tracked with a
- * `localStorage` flag ({@link loadOnboardingProgress}) purely so a returning
- * visitor to this URL sees "already completed" instead of restarting blind.
- * Wiring an automatic first-run redirect is future work once a real
- * session/user story exists (see PR "Backend gaps").
+ * <p><b>First-run detection (FOR-121)</b>: the "already completed" gate now
+ * also reads the backend's `firstRunCompleted` flag ({@link
+ * fetchOnboardingBackendState}, FOR-107), merged with the local
+ * `localStorage` flag ({@link loadOnboardingProgress}) as `local ||
+ * backend === true` — the backend can only *confirm* completion (recovering
+ * a cleared/never-written local flag) and never *revoke* a local one, so a
+ * slow/stale/failed backend read can never kick a returning user who already
+ * finished back into onboarding. The local flag also drives the very first
+ * paint, so there is no flash of the wrong screen while the fetch resolves,
+ * and it is the fallback if the backend is unreachable — a fetch failure
+ * must never trap a user in or out of onboarding either way. This story
+ * deliberately does not add a forced redirect from `/` into `/onboarding` —
+ * `AGENTS.md`/story guidance is explicit that a manual route is enough for
+ * the MVP, and a destructive automatic redirect could trap a returning user
+ * with no way out; that decision is unchanged, only where the "already
+ * completed" signal comes from. Once the user interacts (advances/restarts),
+ * the backend gate stops being consulted for the rest of the session so a
+ * late-resolving fetch never yanks the screen out from under an in-progress
+ * or just-restarted flow.
  *
- * <p><b>Persistence</b>: every answer is a local draft (`onboardingStorage.ts`)
- * designed for future persistence — except the body-metrics step, which
- * reuses `MeasurementForm` (via {@link BodyMetricsStep}) to write a real
- * measurement through the existing FOR-17 API. Goals, training availability,
- * equipment and nutrition preferences have no owning backend yet (documented
- * gap, tracked for a future enabler story).
+ * <p><b>Persistence (FOR-121)</b>: every answer is written to the local
+ * draft (`onboardingStorage.ts`) immediately (fast, synchronous, never
+ * loses in-progress input) and synced to the backend in the background at
+ * each step boundary ({@link syncOnboardingProgress}) — fire-and-forget, so
+ * a slow/failed backend call never blocks navigation; a failed sync shows a
+ * non-blocking `useNotify` warning instead. The body-metrics step is
+ * unaffected — it still reuses `MeasurementForm` (via {@link
+ * BodyMetricsStep}) to write a real measurement through the FOR-17 API,
+ * independent of this draft sync.
  */
 type StepId =
   'profile' | 'metrics' | 'goal' | 'training' | 'equipment' | 'nutrition' | 'integration';
@@ -163,15 +181,52 @@ function renderStepContent(
 
 export function OnboardingPage() {
   const navigate = useNavigate();
+  const notify = useNotify();
   const [progress, setProgress] = useState<OnboardingProgress>(() => loadOnboardingProgress());
   const [error, setError] = useState<string | undefined>(undefined);
+  // Backend-sourced first-run gate (FOR-121): `undefined` means "not resolved
+  // yet, or the fetch failed" — the render falls back to the local flag in
+  // that case, per the graceful-fallback requirement (never trap the user in
+  // or out of onboarding on a fetch failure).
+  const [backendCompleted, setBackendCompleted] = useState<boolean | undefined>(undefined);
+  // Once the user drives the flow themselves (advances a step or restarts),
+  // a late-resolving backend fetch must stop overriding the gate — otherwise
+  // it could yank the screen mid-interaction or undo an explicit restart.
+  const interactedRef = useRef(false);
 
   useEffect(() => {
     saveOnboardingProgress(progress);
   }, [progress]);
 
+  useEffect(() => {
+    let active = true;
+    fetchOnboardingBackendState().then((state) => {
+      if (!active || !state || interactedRef.current) {
+        return;
+      }
+      setBackendCompleted(state.firstRunCompleted);
+      // Recovery (spec edge case): localStorage was cleared/never written but
+      // the backend already has prior progress — recover it rather than
+      // restarting blind. Only applies while the local draft is still empty.
+      setProgress((prev) => {
+        if (hasOnboardingProgress(prev.answers) || !hasOnboardingProgress(state.answers)) {
+          return prev;
+        }
+        return { ...prev, answers: state.answers };
+      });
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const totalSteps = STEP_ORDER.length;
   const atEnd = progress.stepIndex >= totalSteps;
+  // Backend can only *confirm* completion (recovering a cleared/never-written
+  // local flag, spec edge case), never revoke a local one — a backend read
+  // that hasn't caught up yet (or a past sync failure) must not kick a
+  // returning user who already finished back into onboarding.
+  const completed = progress.completed || backendCompleted === true;
 
   function updateSection<K extends keyof OnboardingAnswers>(
     key: K,
@@ -183,9 +238,21 @@ export function OnboardingPage() {
     }));
   }
 
+  /** Background sync (FOR-121): never awaited by callers, never blocks navigation. */
+  function syncInBackground(next: OnboardingProgress) {
+    void syncOnboardingProgress(next).then((ok) => {
+      if (!ok) {
+        notify.warning(SYNC_FAILED_MESSAGE);
+      }
+    });
+  }
+
   function goToStep(index: number) {
+    interactedRef.current = true;
     setError(undefined);
-    setProgress((prev) => ({ ...prev, stepIndex: index }));
+    const next: OnboardingProgress = { ...progress, stepIndex: index };
+    setProgress(next);
+    syncInBackground(next);
   }
 
   function handleNext() {
@@ -207,23 +274,28 @@ export function OnboardingPage() {
   }
 
   function handleGoToDashboard() {
-    setProgress((prev) => ({ ...prev, completed: true }));
+    interactedRef.current = true;
+    const next: OnboardingProgress = { ...progress, completed: true };
+    setProgress(next);
+    syncInBackground(next);
     navigate('/');
   }
 
   function handleRestart() {
+    interactedRef.current = true;
+    setBackendCompleted(undefined);
     clearOnboardingProgress();
     setProgress(INITIAL_PROGRESS);
     setError(undefined);
   }
 
-  if (progress.completed || atEnd) {
+  if (completed || atEnd) {
     return (
       <div className={styles.page}>
         <OnboardingHeader />
         <div className={styles.panel}>
           <CompletionStep
-            alreadyCompleted={progress.completed}
+            alreadyCompleted={completed}
             onGoToDashboard={handleGoToDashboard}
             onRestart={handleRestart}
           />
