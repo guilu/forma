@@ -3,7 +3,9 @@ package dev.diegobarrioh.forma.application;
 import dev.diegobarrioh.forma.domain.ShoppingBudget;
 import dev.diegobarrioh.forma.domain.ShoppingCategory;
 import dev.diegobarrioh.forma.domain.ShoppingListStatus;
+import dev.diegobarrioh.forma.domain.ShoppingUnit;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -15,9 +17,14 @@ import java.util.List;
  * @param status the list status
  * @param items resolved item entries
  * @param budget the weekly + monthly budget
+ * @param generatedAt when this list was generated/created (FOR-108)
  */
 public record ShoppingListView(
-    LocalDate weekStartDate, ShoppingListStatus status, List<Entry> items, ShoppingBudget budget) {
+    LocalDate weekStartDate,
+    ShoppingListStatus status,
+    List<Entry> items,
+    ShoppingBudget budget,
+    Instant generatedAt) {
 
   /**
    * One checklist entry.
@@ -30,6 +37,10 @@ public record ShoppingListView(
    * @param quantity units/packages
    * @param estimatedCostEur stored line cost
    * @param checked checked state
+   * @param unit unit of measure for {@code quantity} (FOR-108)
+   * @param servings number of servings this line represents (FOR-108); {@code null} when the
+   *     resolved product is not linked to a nutrition food, mirroring the {@code category} fallback
+   *     — never fabricated for non-food items
    */
   public record Entry(
       String id,
@@ -38,5 +49,7 @@ public record ShoppingListView(
       ShoppingCategory category,
       int quantity,
       BigDecimal estimatedCostEur,
-      boolean checked) {}
+      boolean checked,
+      ShoppingUnit unit,
+      Integer servings) {}
 }

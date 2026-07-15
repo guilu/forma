@@ -2,6 +2,7 @@ package dev.diegobarrioh.forma.application;
 
 import dev.diegobarrioh.forma.domain.ShoppingList;
 import dev.diegobarrioh.forma.domain.ShoppingListStatus;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -13,17 +14,23 @@ import java.util.List;
  * @param status the list status
  * @param notes optional note
  * @param items the list's items, each with its id
+ * @param generatedAt when this list was generated/created (FOR-108)
  */
 public record ActiveShoppingList(
     String id,
     LocalDate weekStartDate,
     ShoppingListStatus status,
     String notes,
-    List<StoredShoppingListItem> items) {
+    List<StoredShoppingListItem> items,
+    Instant generatedAt) {
 
   /** The domain {@link ShoppingList} (drops item ids), for budgeting and rules. */
   public ShoppingList toDomain() {
     return new ShoppingList(
-        weekStartDate, status, items.stream().map(StoredShoppingListItem::item).toList(), notes);
+        weekStartDate,
+        status,
+        items.stream().map(StoredShoppingListItem::item).toList(),
+        notes,
+        generatedAt);
   }
 }

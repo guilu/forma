@@ -15,9 +15,18 @@ import java.math.BigDecimal;
  * @param quantity number of units/packages; must be >= 1
  * @param estimatedCostEur estimated line cost in euros; required, non-negative
  * @param checked whether the item has been picked up
+ * @param unit unit of measure for {@code quantity} (FOR-108); {@code null} defaults to {@link
+ *     ShoppingUnit#UD} so old rows/callers stay backward compatible
+ * @param servings number of servings this line item represents (FOR-108); nullable when not
+ *     applicable (e.g. items not linked to a nutrition food), must be >= 1 when present
  */
 public record ShoppingListItem(
-    String productId, int quantity, BigDecimal estimatedCostEur, boolean checked) {
+    String productId,
+    int quantity,
+    BigDecimal estimatedCostEur,
+    boolean checked,
+    ShoppingUnit unit,
+    Integer servings) {
 
   public ShoppingListItem {
     if (productId == null || productId.isBlank()) {
@@ -32,10 +41,16 @@ public record ShoppingListItem(
     if (estimatedCostEur.signum() < 0) {
       throw new IllegalArgumentException("estimatedCostEur must be >= 0, was: " + estimatedCostEur);
     }
+    if (unit == null) {
+      unit = ShoppingUnit.UD;
+    }
+    if (servings != null && servings < 1) {
+      throw new IllegalArgumentException("servings must be >= 1 when present, was: " + servings);
+    }
   }
 
   /** Returns a copy of this item with the given checked state. */
   public ShoppingListItem withChecked(boolean value) {
-    return new ShoppingListItem(productId, quantity, estimatedCostEur, value);
+    return new ShoppingListItem(productId, quantity, estimatedCostEur, value, unit, servings);
   }
 }

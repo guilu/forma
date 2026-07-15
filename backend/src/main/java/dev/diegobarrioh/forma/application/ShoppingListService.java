@@ -52,6 +52,11 @@ public class ShoppingListService {
                   String productName = product == null ? productId : product.product().name();
                   ShoppingCategory category =
                       product == null ? ShoppingCategory.OTROS : product.product().category();
+                  // Servings only surface for items whose product is genuinely linked to a
+                  // nutrition food (FOR-108) — never fabricated for non-food/unresolved items.
+                  boolean linkedToFood =
+                      product != null && product.product().linkedFoodItemId() != null;
+                  Integer servings = linkedToFood ? stored.item().servings() : null;
                   return new Entry(
                       stored.id(),
                       productId,
@@ -59,7 +64,9 @@ public class ShoppingListService {
                       category,
                       stored.item().quantity(),
                       stored.item().estimatedCostEur(),
-                      stored.item().checked());
+                      stored.item().checked(),
+                      stored.item().unit(),
+                      servings);
                 })
             .toList();
 
@@ -67,7 +74,8 @@ public class ShoppingListService {
         active.weekStartDate(),
         active.status(),
         entries,
-        budgetService.budgetFor(active.toDomain()));
+        budgetService.budgetFor(active.toDomain()),
+        active.generatedAt());
   }
 
   /**

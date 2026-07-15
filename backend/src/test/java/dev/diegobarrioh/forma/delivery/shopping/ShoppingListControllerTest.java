@@ -1,9 +1,11 @@
 package dev.diegobarrioh.forma.delivery.shopping;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -15,7 +17,9 @@ import dev.diegobarrioh.forma.domain.ShoppingBudget;
 import dev.diegobarrioh.forma.domain.ShoppingCategory;
 import dev.diegobarrioh.forma.domain.ShoppingListItem;
 import dev.diegobarrioh.forma.domain.ShoppingListStatus;
+import dev.diegobarrioh.forma.domain.ShoppingUnit;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -26,11 +30,14 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * Web-slice tests for {@link ShoppingListController} (FOR-39): the list + budget response, the
- * check-toggle, and not-found handling.
+ * Web-slice tests for {@link ShoppingListController} (FOR-39, FOR-108): the list + budget response
+ * including {@code unit}/{@code servings}/{@code generatedAt}, the check-toggle, and not-found
+ * handling.
  */
 @WebMvcTest(ShoppingListController.class)
 class ShoppingListControllerTest {
+
+  private static final Instant GENERATED_AT = Instant.parse("2026-07-06T08:00:00Z");
 
   @Autowired private MockMvc mockMvc;
   @MockBean private ShoppingListService service;
@@ -47,8 +54,11 @@ class ShoppingListControllerTest {
                 ShoppingCategory.CEREALES_Y_LEGUMBRES,
                 2,
                 new BigDecimal("3.90"),
-                false)),
-        new ShoppingBudget(new BigDecimal("24.60"), new BigDecimal("106.52")));
+                false,
+                ShoppingUnit.KG,
+                4)),
+        new ShoppingBudget(new BigDecimal("24.60"), new BigDecimal("106.52")),
+        GENERATED_AT);
   }
 
   @Test
@@ -59,12 +69,44 @@ class ShoppingListControllerTest {
         .perform(get("/api/v1/shopping/list"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.status").value("ACTIVE"))
+        .andExpect(jsonPath("$.generatedAt").value(GENERATED_AT.toString()))
         .andExpect(jsonPath("$.items[0].id").value("i1"))
         .andExpect(jsonPath("$.items[0].productId").value("p1"))
         .andExpect(jsonPath("$.items[0].productName").value("Avena"))
         .andExpect(jsonPath("$.items[0].category").value("CEREALES_Y_LEGUMBRES"))
+        .andExpect(jsonPath("$.items[0].unit").value("KG"))
+        .andExpect(jsonPath("$.items[0].servings").value(4))
         .andExpect(jsonPath("$.budget.weeklyEur").value(24.60))
         .andExpect(jsonPath("$.budget.monthlyEur").value(106.52));
+  }
+
+  @Test
+  void nullServingsAreReturnedAsNullNotOmitted() throws Exception {
+    ShoppingListView viewWithNoServings =
+        new ShoppingListView(
+            LocalDate.of(2026, 7, 6),
+            ShoppingListStatus.ACTIVE,
+            List.of(
+                new ShoppingListView.Entry(
+                    "i1",
+                    "p1",
+                    "Bolsas",
+                    ShoppingCategory.OTROS,
+                    1,
+                    new BigDecimal("0.90"),
+                    false,
+                    ShoppingUnit.UD,
+                    null)),
+            new ShoppingBudget(new BigDecimal("0.90"), new BigDecimal("3.90")),
+            GENERATED_AT);
+    when(service.currentView()).thenReturn(viewWithNoServings);
+
+    // Explicit-null check (not just "no value at path", which jsonPath cannot distinguish from
+    // absence) — the spec requires servings: null in the payload, never omitted.
+    mockMvc
+        .perform(get("/api/v1/shopping/list"))
+        .andExpect(status().isOk())
+        .andExpect(content().string(containsString("\"servings\":null")));
   }
 
   @Test
@@ -72,7 +114,9 @@ class ShoppingListControllerTest {
     when(service.setChecked(eq("i1"), eq(true)))
         .thenReturn(
             new StoredShoppingListItem(
-                "i1", new ShoppingListItem("p1", 2, new BigDecimal("3.90"), true)));
+                "i1",
+                new ShoppingListItem(
+                    "p1", 2, new BigDecimal("3.90"), true, ShoppingUnit.UD, null)));
 
     mockMvc
         .perform(

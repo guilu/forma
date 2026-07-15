@@ -6,11 +6,12 @@ import java.util.List;
 
 /**
  * Response body for {@code GET /api/v1/shopping/list} (FOR-39): the weekly checklist with resolved
- * product names, ids and categories (FOR-106), and the budget. Delivery read model, distinct from
- * the application view (ADR-005).
+ * product names, ids, categories (FOR-106), unit/servings (FOR-108), and the budget, plus the
+ * list's {@code generatedAt} timestamp (FOR-108). Delivery read model, distinct from the
+ * application view (ADR-005).
  */
 public record ShoppingListResponse(
-    String weekStartDate, String status, List<Item> items, Budget budget) {
+    String weekStartDate, String status, List<Item> items, Budget budget, String generatedAt) {
 
   public record Item(
       String id,
@@ -19,7 +20,9 @@ public record ShoppingListResponse(
       String category,
       int quantity,
       BigDecimal estimatedCostEur,
-      boolean checked) {}
+      boolean checked,
+      String unit,
+      Integer servings) {}
 
   public record Budget(BigDecimal weeklyEur, BigDecimal monthlyEur) {}
 
@@ -36,10 +39,16 @@ public record ShoppingListResponse(
                         entry.category().name(),
                         entry.quantity(),
                         entry.estimatedCostEur(),
-                        entry.checked()))
+                        entry.checked(),
+                        entry.unit().name(),
+                        entry.servings()))
             .toList();
     Budget budget = new Budget(view.budget().weeklyEur(), view.budget().monthlyEur());
     return new ShoppingListResponse(
-        view.weekStartDate().toString(), view.status().name(), items, budget);
+        view.weekStartDate().toString(),
+        view.status().name(),
+        items,
+        budget,
+        view.generatedAt().toString());
   }
 }
