@@ -6,9 +6,10 @@ import java.util.List;
 
 /**
  * Response body for {@code GET /api/v1/shopping/list} (FOR-39): the weekly checklist with resolved
- * product names, ids, categories (FOR-106), unit/servings (FOR-108), and the budget, plus the
- * list's {@code generatedAt} timestamp (FOR-108). Delivery read model, distinct from the
- * application view (ADR-005).
+ * product names, ids, categories (FOR-106), unit/servings (FOR-108), a provider link-out {@code
+ * productUrl} (FOR-109), and the budget, plus the list's {@code generatedAt} timestamp (FOR-108).
+ * Also reused as the response for {@code POST .../regenerate} (FOR-109), since a regenerate
+ * rebuilds the whole list. Delivery read model, distinct from the application view (ADR-005).
  */
 public record ShoppingListResponse(
     String weekStartDate, String status, List<Item> items, Budget budget, String generatedAt) {
@@ -22,7 +23,8 @@ public record ShoppingListResponse(
       BigDecimal estimatedCostEur,
       boolean checked,
       String unit,
-      Integer servings) {}
+      Integer servings,
+      String productUrl) {}
 
   public record Budget(BigDecimal weeklyEur, BigDecimal monthlyEur) {}
 
@@ -41,7 +43,8 @@ public record ShoppingListResponse(
                         entry.estimatedCostEur(),
                         entry.checked(),
                         entry.unit().name(),
-                        entry.servings()))
+                        entry.servings(),
+                        entry.productUrl()))
             .toList();
     Budget budget = new Budget(view.budget().weeklyEur(), view.budget().monthlyEur());
     return new ShoppingListResponse(

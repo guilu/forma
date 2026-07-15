@@ -4,9 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.diegobarrioh.forma.application.ActiveShoppingList;
 import dev.diegobarrioh.forma.application.ShoppingListRepository;
+import dev.diegobarrioh.forma.domain.ShoppingListItem;
 import dev.diegobarrioh.forma.domain.ShoppingUnit;
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,9 +19,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
 /**
- * Integration test for {@link JdbcShoppingListRepository} (FOR-39, FOR-108) against the in-memory
- * PostgreSQL-mode H2 with Flyway applied (ADR-007). Uses its own fixture (not the seed) for
- * determinism.
+ * Integration test for {@link JdbcShoppingListRepository} (FOR-39, FOR-108, FOR-109) against the
+ * in-memory PostgreSQL-mode H2 with Flyway applied (ADR-007). Uses its own fixture (not the seed)
+ * for determinism.
  */
 @SpringBootTest
 @ActiveProfiles("test")
@@ -97,5 +101,80 @@ class JdbcShoppingListRepositoryTest {
   @Test
   void setCheckedOfUnknownItemReturnsEmpty() {
     assertThat(repository.setChecked("00000000-0000-0000-0000-000000000000", true)).isEmpty();
+  }
+
+  @Test
+  void regenerateReplacesItemsAndStampsGeneratedAt() {
+    Instant newGeneratedAt = Instant.parse("2026-07-13T09:00:00Z");
+    List<ShoppingListItem> newItems =
+        List.of(
+            new ShoppingListItem("p3", 1, new BigDecimal("2.50"), false, ShoppingUnit.UD, null));
+
+    ActiveShoppingList regenerated = repository.regenerate(newItems, newGeneratedAt).orElseThrow();
+
+    assertThat(regenerated.generatedAt()).isEqualTo(newGeneratedAt);
+    assertThat(regenerated.items())
+        .singleElement()
+        .satisfies(
+            stored -> {
+              assertThat(stored.item().productId()).isEqualTo("p3");
+              assertThat(stored.item().quantity()).isEqualTo(1);
+              assertThat(stored.item().estimatedCostEur()).isEqualByComparingTo("2.50");
+              assertThat(stored.item().checked()).isFalse();
+            });
+
+    // Subsequent read reflects the rebuilt list (the original item is gone, not just amended).
+    ActiveShoppingList reread = repository.findActive().orElseThrow();
+    assertThat(reread.items())
+        .singleElement()
+        .satisfies(s -> assertThat(s.item().productId()).isEqualTo("p3"));
+  }
+
+  @Test
+  void regenerateWithEmptyItemsClearsExistingItems() {
+    ActiveShoppingList regenerated =
+        repository.regenerate(List.of(), Instant.parse("2026-07-13T09:00:00Z")).orElseThrow();
+
+    assertThat(regenerated.items()).isEmpty();
+  }
+
+  @Test
+  void regenerateWithNoActiveListReturnsEmpty() {
+    jdbcTemplate.update("DELETE FROM shopping_list_items");
+    jdbcTemplate.update("DELETE FROM shopping_lists");
+
+    assertThat(repository.regenerate(List.of(), Instant.now())).isEmpty();
+  }
+
+  @Test
+  void updatesItemQuantityAndCost() {
+    var updated = repository.updateQuantity(ITEM_ID, 5, new BigDecimal("9.75")).orElseThrow();
+
+    assertThat(updated.item().quantity()).isEqualTo(5);
+    assertThat(updated.item().estimatedCostEur()).isEqualByComparingTo("9.75");
+    // Subsequent read reflects the new quantity/cost.
+    ActiveShoppingList reread = repository.findActive().orElseThrow();
+    assertThat(reread.items().get(0).item().quantity()).isEqualTo(5);
+  }
+
+  @Test
+  void updateQuantityOfUnknownItemReturnsEmpty() {
+    assertThat(
+            repository.updateQuantity(
+                "00000000-0000-0000-0000-000000000000", 3, new BigDecimal("1.00")))
+        .isEmpty();
+  }
+
+  @Test
+  void findsItemById() {
+    var found = repository.findItem(ITEM_ID).orElseThrow();
+
+    assertThat(found.id()).isEqualTo(ITEM_ID);
+    assertThat(found.item().productId()).isEqualTo("p1");
+  }
+
+  @Test
+  void findItemOfUnknownIdReturnsEmpty() {
+    assertThat(repository.findItem("00000000-0000-0000-0000-000000000000")).isEmpty();
   }
 }

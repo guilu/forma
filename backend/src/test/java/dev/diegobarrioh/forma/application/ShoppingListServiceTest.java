@@ -11,13 +11,15 @@ import dev.diegobarrioh.forma.domain.ShoppingUnit;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 /**
- * Unit tests for {@link ShoppingListService} (FOR-39, FOR-108): resolves product names + budget,
- * threads {@code unit}/{@code servings}/{@code generatedAt} (FOR-108), and toggles checked state
+ * Unit tests for {@link ShoppingListService} (FOR-39, FOR-108, FOR-109): resolves product names +
+ * budget, threads {@code unit}/{@code servings}/{@code generatedAt} (FOR-108) and {@code
+ * productUrl} (FOR-109), toggles checked state, regenerates the list and edits an item's quantity
  * (no Spring context — ADR-007).
  */
 class ShoppingListServiceTest {
@@ -47,6 +49,7 @@ class ShoppingListServiceTest {
               assertThat(entry.unit()).isEqualTo(ShoppingUnit.KG);
               // p1 ("Avena") is not linked to a food item in this fixture -> no servings.
               assertThat(entry.servings()).isNull();
+              assertThat(entry.productUrl()).isEqualTo("https://tienda.mercadona.es/p1");
             });
     // 1.95 * 2 = 3.90.
     assertThat(view.budget().weeklyEur()).isEqualByComparingTo("3.90");
@@ -116,7 +119,23 @@ class ShoppingListServiceTest {
               assertThat(entry.productName()).isEqualTo("p1");
               assertThat(entry.category()).isEqualTo(ShoppingCategory.OTROS);
               assertThat(entry.servings()).isNull();
+              // Unresolved product -> no URL to link out to either, not a broken link.
+              assertThat(entry.productUrl()).isNull();
             });
+  }
+
+  @Test
+  void productWithNoUrlSurfacesNullProductUrl() {
+    FakeProductRepository productsWithoutUrl = new FakeProductRepository(null, false);
+    ShoppingListService serviceWithoutUrl =
+        new ShoppingListService(
+            lists, productsWithoutUrl, new ShoppingBudgetService(productsWithoutUrl));
+
+    ShoppingListView view = serviceWithoutUrl.currentView();
+
+    assertThat(view.items())
+        .singleElement()
+        .satisfies(entry -> assertThat(entry.productUrl()).isNull());
   }
 
   @Test
@@ -131,56 +150,235 @@ class ShoppingListServiceTest {
         .hasMessageContaining("nope");
   }
 
+  @Test
+  void regenerateRebuildsListFromProductCatalogAndResetsChecked() {
+    ShoppingListView view = service.regenerate();
+
+    assertThat(view.items())
+        .singleElement()
+        .satisfies(
+            entry -> {
+              assertThat(entry.productId()).isEqualTo("p1");
+              assertThat(entry.quantity()).isEqualTo(1);
+              // 1.95 * 1 = 1.95.
+              assertThat(entry.estimatedCostEur()).isEqualByComparingTo("1.95");
+              assertThat(entry.checked()).isFalse();
+            });
+    assertThat(lists.lastRegeneratedItems()).hasSize(1);
+    assertThat(lists.lastRegeneratedAt()).isNotNull();
+  }
+
+  @Test
+  void regenerateOnEmptyProductCatalogProducesValidEmptyList() {
+    ShoppingProductRepository noProducts =
+        new ShoppingProductRepository() {
+          @Override
+          public List<StoredShoppingProduct> findAll() {
+            return List.of();
+          }
+
+          @Override
+          public StoredShoppingProduct create(ShoppingProduct product) {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public Optional<StoredShoppingProduct> update(String id, ShoppingProduct product) {
+            throw new UnsupportedOperationException();
+          }
+        };
+    ShoppingListService serviceWithNoProducts =
+        new ShoppingListService(lists, noProducts, new ShoppingBudgetService(noProducts));
+
+    ShoppingListView view = serviceWithNoProducts.regenerate();
+
+    assertThat(view.items()).isEmpty();
+  }
+
+  @Test
+  void regenerateWithNoActiveListThrowsNotFound() {
+    FakeListRepository listsWithNoActive = new FakeListRepository();
+    listsWithNoActive.hasActiveList = false;
+    ShoppingListService serviceWithNoActiveList =
+        new ShoppingListService(listsWithNoActive, products, new ShoppingBudgetService(products));
+
+    assertThatThrownBy(serviceWithNoActiveList::regenerate).isInstanceOf(NotFoundException.class);
+  }
+
+  @Test
+  void quantityEditRecalculatesCostFromProductPrice() {
+    StoredShoppingListItem updated = service.updateQuantity("i1", 5);
+
+    // 1.95 * 5 = 9.75.
+    assertThat(updated.item().quantity()).isEqualTo(5);
+    assertThat(updated.item().estimatedCostEur()).isEqualByComparingTo("9.75");
+  }
+
+  @Test
+  void quantityEditToSameValueIsIdempotent() {
+    StoredShoppingListItem updated = service.updateQuantity("i1", 2);
+
+    assertThat(updated.item().quantity()).isEqualTo(2);
+    assertThat(updated.item().estimatedCostEur()).isEqualByComparingTo("3.90");
+  }
+
+  @Test
+  void quantityEditOnUnknownItemThrowsNotFound() {
+    assertThatThrownBy(() -> service.updateQuantity("nope", 3))
+        .isInstanceOf(NotFoundException.class)
+        .hasMessageContaining("nope");
+  }
+
+  @Test
+  void quantityEditOnUnresolvableProductThrowsNotFoundInsteadOfFabricatingCost() {
+    FakeListRepository listsWithOrphanItem = new FakeListRepository();
+    listsWithOrphanItem.orphanProductId = true;
+    ShoppingListService serviceWithOrphanItem =
+        new ShoppingListService(listsWithOrphanItem, products, new ShoppingBudgetService(products));
+
+    assertThatThrownBy(() -> serviceWithOrphanItem.updateQuantity("i1", 3))
+        .isInstanceOf(NotFoundException.class);
+  }
+
   private static final class FakeListRepository implements ShoppingListRepository {
-    private final Integer storedServings;
+    private boolean hasActiveList = true;
+    private boolean orphanProductId = false;
+    private List<ShoppingListItem> lastRegeneratedItems;
+    private Instant lastRegeneratedAt;
+    private Instant generatedAt = GENERATED_AT;
+
+    // Mutable "persisted" items, keyed by id, so regenerate/updateQuantity/setChecked/findItem all
+    // behave like a real store (subsequent findActive()/findItem() reflect prior writes), mirroring
+    // JdbcShoppingListRepository's real persistence semantics.
+    private final java.util.LinkedHashMap<String, ShoppingListItem> itemsById =
+        new java.util.LinkedHashMap<>();
 
     FakeListRepository() {
       this(null);
     }
 
     FakeListRepository(Integer storedServings) {
-      this.storedServings = storedServings;
+      itemsById.put(
+          "i1",
+          new ShoppingListItem(
+              "p1", 2, new BigDecimal("3.90"), false, ShoppingUnit.KG, storedServings));
+    }
+
+    List<ShoppingListItem> lastRegeneratedItems() {
+      return lastRegeneratedItems;
+    }
+
+    Instant lastRegeneratedAt() {
+      return lastRegeneratedAt;
     }
 
     @Override
     public Optional<ActiveShoppingList> findActive() {
-      StoredShoppingListItem item =
-          new StoredShoppingListItem(
-              "i1",
-              new ShoppingListItem(
-                  "p1", 2, new BigDecimal("3.90"), false, ShoppingUnit.KG, storedServings));
+      if (!hasActiveList) {
+        return Optional.empty();
+      }
+      List<StoredShoppingListItem> items =
+          itemsById.entrySet().stream()
+              .map(e -> new StoredShoppingListItem(e.getKey(), e.getValue()))
+              .toList();
       return Optional.of(
           new ActiveShoppingList(
               "list1",
               LocalDate.of(2026, 7, 6),
               ShoppingListStatus.ACTIVE,
               null,
-              List.of(item),
-              GENERATED_AT));
+              items,
+              generatedAt));
     }
 
     @Override
     public Optional<StoredShoppingListItem> setChecked(String itemId, boolean checked) {
-      if (!itemId.equals("i1")) {
+      ShoppingListItem item = itemsById.get(itemId);
+      if (item == null) {
         return Optional.empty();
       }
-      return Optional.of(
-          new StoredShoppingListItem(
-              itemId,
-              new ShoppingListItem(
-                  "p1", 2, new BigDecimal("3.90"), checked, ShoppingUnit.KG, storedServings)));
+      ShoppingListItem updated =
+          new ShoppingListItem(
+              item.productId(),
+              item.quantity(),
+              item.estimatedCostEur(),
+              checked,
+              item.unit(),
+              item.servings());
+      itemsById.put(itemId, updated);
+      return Optional.of(new StoredShoppingListItem(itemId, updated));
+    }
+
+    @Override
+    public Optional<ActiveShoppingList> regenerate(
+        List<ShoppingListItem> items, Instant newGeneratedAt) {
+      if (!hasActiveList) {
+        return Optional.empty();
+      }
+      this.lastRegeneratedItems = new ArrayList<>(items);
+      this.lastRegeneratedAt = newGeneratedAt;
+      itemsById.clear();
+      for (int i = 0; i < items.size(); i++) {
+        itemsById.put("regen-" + i, items.get(i));
+      }
+      this.generatedAt = newGeneratedAt;
+      return findActive();
+    }
+
+    @Override
+    public Optional<StoredShoppingListItem> updateQuantity(
+        String itemId, int quantity, BigDecimal estimatedCostEur) {
+      ShoppingListItem item = itemsById.get(itemId);
+      if (item == null) {
+        return Optional.empty();
+      }
+      ShoppingListItem updated =
+          new ShoppingListItem(
+              item.productId(),
+              quantity,
+              estimatedCostEur,
+              item.checked(),
+              item.unit(),
+              item.servings());
+      itemsById.put(itemId, updated);
+      return Optional.of(new StoredShoppingListItem(itemId, updated));
+    }
+
+    @Override
+    public Optional<StoredShoppingListItem> findItem(String itemId) {
+      ShoppingListItem item = itemsById.get(itemId);
+      if (item == null) {
+        return Optional.empty();
+      }
+      if (orphanProductId) {
+        item =
+            new ShoppingListItem(
+                "unknown-product",
+                item.quantity(),
+                item.estimatedCostEur(),
+                item.checked(),
+                item.unit(),
+                item.servings());
+      }
+      return Optional.of(new StoredShoppingListItem(itemId, item));
     }
   }
 
   private static final class FakeProductRepository implements ShoppingProductRepository {
     private final String linkedFoodItemId;
+    private final boolean withUrl;
 
     FakeProductRepository() {
-      this(null);
+      this(null, true);
     }
 
     FakeProductRepository(String linkedFoodItemId) {
+      this(linkedFoodItemId, true);
+    }
+
+    FakeProductRepository(String linkedFoodItemId, boolean withUrl) {
       this.linkedFoodItemId = linkedFoodItemId;
+      this.withUrl = withUrl;
     }
 
     @Override
@@ -190,7 +388,7 @@ class ShoppingListServiceTest {
               "p1",
               new ShoppingProduct(
                   "Avena",
-                  null,
+                  withUrl ? "https://tienda.mercadona.es/p1" : null,
                   null,
                   new BigDecimal("1.95"),
                   null,

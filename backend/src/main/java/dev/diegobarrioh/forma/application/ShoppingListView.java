@@ -41,6 +41,8 @@ public record ShoppingListView(
    * @param servings number of servings this line represents (FOR-108); {@code null} when the
    *     resolved product is not linked to a nutrition food, mirroring the {@code category} fallback
    *     — never fabricated for non-food items
+   * @param productUrl provider link-out target resolved from {@code ShoppingProduct.url} (FOR-109);
+   *     {@code null} when the product does not resolve or has no stored URL — never a broken link
    */
   public record Entry(
       String id,
@@ -51,5 +53,6 @@ public record ShoppingListView(
       BigDecimal estimatedCostEur,
       boolean checked,
       ShoppingUnit unit,
-      Integer servings) {}
+      Integer servings,
+      String productUrl) {}
 }
