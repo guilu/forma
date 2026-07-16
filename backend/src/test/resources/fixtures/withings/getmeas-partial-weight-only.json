@@ -1,0 +1,22 @@
+{
+  "_comment": "Representative fixture: a partial measure group carrying only weight (type 1). value*10^unit: 71800*10^-3=71.8kg. Fat/muscle/water must stay null — never fabricated (spec FOR-132 Edge Cases: 'Partial group (weight only) -> import weight, leave the rest null').",
+  "status": 0,
+  "body": {
+    "updatetime": 1752508900,
+    "timezone": "Europe/Madrid",
+    "measuregrps": [
+      {
+        "grpid": 400000002,
+        "attrib": 0,
+        "date": 1752508800,
+        "created": 1752508810,
+        "category": 1,
+        "deviceid": "fixture-device-id",
+        "measures": [{ "value": 71800, "type": 1, "unit": -3 }],
+        "comment": null
+      }
+    ],
+    "more": 0,
+    "offset": 0
+  }
+}

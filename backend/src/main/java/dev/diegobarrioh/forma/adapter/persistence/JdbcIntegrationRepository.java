@@ -28,6 +28,10 @@ import org.springframework.stereotype.Repository;
  * <p><b>No token/secret column exists here</b> (ADR-004, spec FOR-126 boundary rule) — this is the
  * adapter later FOR-103 slices extend with encrypted token storage, without changing the {@link
  * IntegrationRepository} port.
+ *
+ * <p>{@code last_sync_duplicates_skipped} (migration V16, FOR-132) is additive on this same table —
+ * it records the last sync's dedup count alongside the existing {@code last_sync_*} columns, not a
+ * new table, mirroring how the rest of {@link SyncOutcome} is already flattened here.
  */
 @Repository
 public class JdbcIntegrationRepository implements IntegrationRepository {
@@ -35,7 +39,7 @@ public class JdbcIntegrationRepository implements IntegrationRepository {
   private static final String FIND_ALL_SQL =
       """
       SELECT provider, status, connected_at, last_sync_at,
-        last_sync_result, last_sync_imported_count, last_sync_message
+        last_sync_result, last_sync_imported_count, last_sync_duplicates_skipped, last_sync_message
       FROM integration_connection
       WHERE owner_id = ?
       ORDER BY provider
@@ -44,7 +48,7 @@ public class JdbcIntegrationRepository implements IntegrationRepository {
   private static final String FIND_ONE_SQL =
       """
       SELECT provider, status, connected_at, last_sync_at,
-        last_sync_result, last_sync_imported_count, last_sync_message
+        last_sync_result, last_sync_imported_count, last_sync_duplicates_skipped, last_sync_message
       FROM integration_connection
       WHERE owner_id = ? AND provider = ?
       """;
@@ -53,7 +57,8 @@ public class JdbcIntegrationRepository implements IntegrationRepository {
       """
       UPDATE integration_connection SET
         status = ?, connected_at = ?, last_sync_at = ?,
-        last_sync_result = ?, last_sync_imported_count = ?, last_sync_message = ?
+        last_sync_result = ?, last_sync_imported_count = ?, last_sync_duplicates_skipped = ?,
+        last_sync_message = ?
       WHERE owner_id = ? AND provider = ?
       """;
 
@@ -61,8 +66,8 @@ public class JdbcIntegrationRepository implements IntegrationRepository {
       """
       INSERT INTO integration_connection
         (owner_id, provider, status, connected_at, last_sync_at,
-         last_sync_result, last_sync_imported_count, last_sync_message)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+         last_sync_result, last_sync_imported_count, last_sync_duplicates_skipped, last_sync_message)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       """;
 
   private static final RowMapper<IntegrationConnection> ROW_MAPPER =
@@ -75,6 +80,7 @@ public class JdbcIntegrationRepository implements IntegrationRepository {
               toSyncOutcome(
                   rs.getString("last_sync_result"),
                   (Integer) rs.getObject("last_sync_imported_count"),
+                  (Integer) rs.getObject("last_sync_duplicates_skipped"),
                   rs.getString("last_sync_message")));
 
   private final JdbcTemplate jdbcTemplate;
@@ -104,6 +110,7 @@ public class JdbcIntegrationRepository implements IntegrationRepository {
     OffsetDateTime lastSyncAt = toOffsetDateTime(connection.lastSyncAt());
     String lastSyncResult = outcome == null ? null : outcome.result().name();
     Integer lastSyncImportedCount = outcome == null ? null : outcome.importedCount();
+    Integer lastSyncDuplicatesSkipped = outcome == null ? null : outcome.duplicatesSkipped();
     String lastSyncMessage = outcome == null ? null : outcome.message();
 
     int updated =
@@ -114,6 +121,7 @@ public class JdbcIntegrationRepository implements IntegrationRepository {
             lastSyncAt,
             lastSyncResult,
             lastSyncImportedCount,
+            lastSyncDuplicatesSkipped,
             lastSyncMessage,
             ownerId,
             connection.provider().name());
@@ -127,17 +135,22 @@ public class JdbcIntegrationRepository implements IntegrationRepository {
           lastSyncAt,
           lastSyncResult,
           lastSyncImportedCount,
+          lastSyncDuplicatesSkipped,
           lastSyncMessage);
     }
     return connection;
   }
 
-  private static SyncOutcome toSyncOutcome(String result, Integer importedCount, String message) {
+  private static SyncOutcome toSyncOutcome(
+      String result, Integer importedCount, Integer duplicatesSkipped, String message) {
     if (result == null) {
       return null;
     }
     return new SyncOutcome(
-        SyncResult.valueOf(result), importedCount == null ? 0 : importedCount, message);
+        SyncResult.valueOf(result),
+        importedCount == null ? 0 : importedCount,
+        duplicatesSkipped == null ? 0 : duplicatesSkipped,
+        message);
   }
 
   private static OffsetDateTime toOffsetDateTime(Instant instant) {

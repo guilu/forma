@@ -88,7 +88,7 @@ class IntegrationConnectionTest {
 
   @Test
   void disconnectPreservesSyncHistory() {
-    SyncOutcome outcome = new SyncOutcome(SyncResult.OK, 0, null);
+    SyncOutcome outcome = new SyncOutcome(SyncResult.OK, 0, 0, null);
     IntegrationConnection synced =
         IntegrationConnection.disconnectedDefault(IntegrationProvider.WITHINGS)
             .connect(NOW)
@@ -102,7 +102,7 @@ class IntegrationConnectionTest {
 
   @Test
   void withSyncOutcomeRecordsLastSyncAtAndOutcomeWithoutFabricatingImportedCount() {
-    SyncOutcome outcome = new SyncOutcome(SyncResult.OK, 0, null);
+    SyncOutcome outcome = new SyncOutcome(SyncResult.OK, 0, 0, null);
     IntegrationConnection connected =
         IntegrationConnection.disconnectedDefault(IntegrationProvider.WITHINGS).connect(NOW);
 
@@ -140,7 +140,7 @@ class IntegrationConnectionTest {
 
   @Test
   void needsReauthMarksAConnectedProviderNeedingReauthWithoutClearingConnectedAtOrSyncHistory() {
-    SyncOutcome outcome = new SyncOutcome(SyncResult.OK, 0, null);
+    SyncOutcome outcome = new SyncOutcome(SyncResult.OK, 0, 0, null);
     IntegrationConnection connected =
         IntegrationConnection.disconnectedDefault(IntegrationProvider.WITHINGS)
             .connect(NOW)

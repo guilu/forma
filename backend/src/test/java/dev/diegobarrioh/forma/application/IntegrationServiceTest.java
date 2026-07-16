@@ -3,27 +3,33 @@ package dev.diegobarrioh.forma.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.diegobarrioh.forma.domain.BodyMeasurement;
 import dev.diegobarrioh.forma.domain.IntegrationConnection;
 import dev.diegobarrioh.forma.domain.IntegrationProvider;
 import dev.diegobarrioh.forma.domain.IntegrationStatus;
+import dev.diegobarrioh.forma.domain.MeasurementSource;
 import dev.diegobarrioh.forma.domain.SyncResult;
 import java.lang.reflect.Method;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 /**
  * Application use case tests for {@link IntegrationService} (FOR-126 status/sync/mock-connect,
- * extended by FOR-131 with real Withings OAuth connect/callback/disconnect/refresh). Uses
- * hand-rolled in-memory fakes for every port (no Spring, no Mockito), matching {@code
- * GoalServiceTest} (FOR-125, ADR-007). {@link IntegrationProvider#WITHINGS} has a fake OAuth
- * gateway registered (mirroring the real {@code WithingsOAuthAdapter} being the only
- * production-registered {@link ProviderOAuthGateway}); {@link IntegrationProvider#GOOGLE_FIT} has
- * none, so it exercises the FOR-126 mock-connect fallback ({@link ConnectResult#connection()}
- * documented in {@link ConnectResult}) unchanged by this story.
+ * extended by FOR-131 with real Withings OAuth connect/callback/disconnect/refresh, and by FOR-132
+ * with a real Withings Getmeas import into {@code BodyMeasurement}). Uses hand-rolled in-memory
+ * fakes for every port (no Spring, no Mockito), matching {@code GoalServiceTest} (FOR-125,
+ * ADR-007). {@link IntegrationProvider#WITHINGS} has a fake OAuth gateway and a fake measures
+ * gateway registered (mirroring the real {@code WithingsOAuthAdapter}/{@code
+ * WithingsMeasuresAdapter} being the only production-registered implementations); {@link
+ * IntegrationProvider#GOOGLE_FIT} has neither, so it exercises the FOR-126 mock-connect + stub-sync
+ * fallback unchanged by this story.
  */
 class IntegrationServiceTest {
 
@@ -33,9 +39,21 @@ class IntegrationServiceTest {
   private final RecordingIntegrationRepository repository = new RecordingIntegrationRepository();
   private final FakeOAuthStateStore stateStore = new FakeOAuthStateStore();
   private final FakeIntegrationTokenStore tokenStore = new FakeIntegrationTokenStore();
+  private final FakeImportedMeasureMarkerStore markerStore = new FakeImportedMeasureMarkerStore();
+  private final FakeBodyMeasurementRepository bodyMeasurementRepository =
+      new FakeBodyMeasurementRepository();
   private final FakeWithingsGateway withingsGateway = new FakeWithingsGateway();
+  private final FakeWithingsMeasuresGateway withingsMeasuresGateway =
+      new FakeWithingsMeasuresGateway();
   private final IntegrationService service =
-      new IntegrationService(repository, stateStore, tokenStore, List.of(withingsGateway));
+      new IntegrationService(
+          repository,
+          stateStore,
+          tokenStore,
+          markerStore,
+          bodyMeasurementRepository,
+          List.of(withingsGateway),
+          List.of(withingsMeasuresGateway));
 
   // --- status (FOR-126, unaffected by FOR-131) ---------------------------------------------
 
@@ -335,6 +353,152 @@ class IntegrationServiceTest {
     assertThat(synced.lastSyncOutcome().result()).isEqualTo(SyncResult.NOT_CONNECTED);
   }
 
+  // --- sync: real Withings import (FOR-132) -----------------------------------------------
+
+  @Test
+  void syncOnAConnectedWithingsProviderImportsFetchedGroupsAsBodyMeasurements() {
+    connectAndCompleteWithingsCallback();
+    withingsMeasuresGateway.groupsToReturn =
+        List.of(
+            new ImportedMeasureGroup(1L, measurement(70.0, "2026-07-10T08:00:00Z")),
+            new ImportedMeasureGroup(2L, measurement(70.5, "2026-07-11T08:00:00Z")));
+
+    IntegrationConnection synced = service.sync(IntegrationProvider.WITHINGS);
+
+    assertThat(synced.lastSyncOutcome().result()).isEqualTo(SyncResult.OK);
+    assertThat(synced.lastSyncOutcome().importedCount()).isEqualTo(2);
+    assertThat(synced.lastSyncOutcome().duplicatesSkipped()).isZero();
+    assertThat(bodyMeasurementRepository.saved).hasSize(2);
+    assertThat(
+            markerStore.findImportedGroupIds(
+                IntegrationService.OWNER_ID, IntegrationProvider.WITHINGS))
+        .containsExactlyInAnyOrder(1L, 2L);
+  }
+
+  @Test
+  void reSyncingTheSameFetchedGroupsImportsZeroAndReportsDuplicatesSkippedWithoutDuplicatingRows() {
+    connectAndCompleteWithingsCallback();
+    withingsMeasuresGateway.groupsToReturn =
+        List.of(
+            new ImportedMeasureGroup(1L, measurement(70.0, "2026-07-10T08:00:00Z")),
+            new ImportedMeasureGroup(2L, measurement(70.5, "2026-07-11T08:00:00Z")));
+    service.sync(IntegrationProvider.WITHINGS);
+
+    IntegrationConnection resynced = service.sync(IntegrationProvider.WITHINGS);
+
+    assertThat(resynced.lastSyncOutcome().result()).isEqualTo(SyncResult.OK);
+    assertThat(resynced.lastSyncOutcome().importedCount()).isZero();
+    assertThat(resynced.lastSyncOutcome().duplicatesSkipped()).isEqualTo(2);
+    assertThat(bodyMeasurementRepository.saved).hasSize(2); // no new rows, still just the first two
+  }
+
+  @Test
+  void syncSkipsOnlyTheAlreadyImportedGroupsAndImportsTheNewOnes() {
+    connectAndCompleteWithingsCallback();
+    withingsMeasuresGateway.groupsToReturn =
+        List.of(new ImportedMeasureGroup(1L, measurement(70.0, "2026-07-10T08:00:00Z")));
+    service.sync(IntegrationProvider.WITHINGS);
+    withingsMeasuresGateway.groupsToReturn =
+        List.of(
+            new ImportedMeasureGroup(1L, measurement(70.0, "2026-07-10T08:00:00Z")),
+            new ImportedMeasureGroup(3L, measurement(71.2, "2026-07-12T08:00:00Z")));
+
+    IntegrationConnection synced = service.sync(IntegrationProvider.WITHINGS);
+
+    assertThat(synced.lastSyncOutcome().importedCount()).isEqualTo(1);
+    assertThat(synced.lastSyncOutcome().duplicatesSkipped()).isEqualTo(1);
+    assertThat(bodyMeasurementRepository.saved).hasSize(2);
+  }
+
+  @Test
+  void syncOmitsSinceOnFirstSyncButPassesLastSyncAtOnSubsequentSyncs() {
+    connectAndCompleteWithingsCallback();
+    withingsMeasuresGateway.groupsToReturn = List.of();
+
+    service.sync(IntegrationProvider.WITHINGS);
+    assertThat(withingsMeasuresGateway.lastSinceUsed).isNull();
+
+    service.sync(IntegrationProvider.WITHINGS);
+    assertThat(withingsMeasuresGateway.lastSinceUsed).isNotNull();
+  }
+
+  @Test
+  void syncWhenTokenRefreshFailsReturnsNeedsReauthAndImportsNothing() {
+    connectAndCompleteWithingsCallback();
+    // An expiry deep in the past guarantees the refresh branch runs regardless of real wall-clock
+    // time at test execution (IntegrationService#sync evaluates expiry against Instant.now()).
+    tokenStore.store(
+        IntegrationService.OWNER_ID,
+        IntegrationProvider.WITHINGS,
+        new ExchangedTokens(
+            "fake-access-token", "fake-refresh-token", Instant.parse("2000-01-01T00:00:00Z")));
+    withingsGateway.failRefresh = true;
+    withingsMeasuresGateway.groupsToReturn =
+        List.of(new ImportedMeasureGroup(1L, measurement(70.0, "2026-07-10T08:00:00Z")));
+
+    IntegrationConnection synced = service.sync(IntegrationProvider.WITHINGS);
+
+    assertThat(synced.lastSyncOutcome().result()).isEqualTo(SyncResult.NEEDS_REAUTH);
+    assertThat(synced.lastSyncOutcome().importedCount()).isZero();
+    assertThat(bodyMeasurementRepository.saved).isEmpty();
+    assertThat(
+            repository
+                .findByOwnerAndProvider(IntegrationService.OWNER_ID, IntegrationProvider.WITHINGS)
+                .orElseThrow()
+                .status())
+        .isEqualTo(IntegrationStatus.NEEDS_REAUTH);
+  }
+
+  @Test
+  void syncWhenTheProviderFetchFailsReturnsAReadableErrorOutcomeWithoutCorruptingTheConnection() {
+    connectAndCompleteWithingsCallback();
+    withingsMeasuresGateway.failFetch = true;
+
+    IntegrationConnection synced = service.sync(IntegrationProvider.WITHINGS);
+
+    assertThat(synced.lastSyncOutcome().result()).isEqualTo(SyncResult.ERROR);
+    assertThat(synced.lastSyncOutcome().importedCount()).isZero();
+    assertThat(synced.status()).isEqualTo(IntegrationStatus.CONNECTED);
+    assertThat(bodyMeasurementRepository.saved).isEmpty();
+  }
+
+  @Test
+  void syncErrorOutcomeMessageNeverContainsTheAccessToken() {
+    connectAndCompleteWithingsCallback();
+    withingsMeasuresGateway.failFetch = true;
+
+    IntegrationConnection synced = service.sync(IntegrationProvider.WITHINGS);
+
+    assertThat(synced.lastSyncOutcome().message())
+        .doesNotContain(withingsGateway.tokensToReturn.accessToken());
+  }
+
+  @Test
+  void syncOnAConnectedGoogleFitProviderWithNoMeasuresGatewayStaysTheStubImport() {
+    // Out of FOR-132 scope: providers without a registered ProviderMeasuresGateway keep the
+    // FOR-126 stub/no-op import unchanged.
+    service.connect(IntegrationProvider.GOOGLE_FIT);
+
+    IntegrationConnection synced = service.sync(IntegrationProvider.GOOGLE_FIT);
+
+    assertThat(synced.lastSyncOutcome().result()).isEqualTo(SyncResult.OK);
+    assertThat(synced.lastSyncOutcome().importedCount()).isZero();
+    assertThat(synced.lastSyncOutcome().duplicatesSkipped()).isZero();
+    assertThat(bodyMeasurementRepository.saved).isEmpty();
+  }
+
+  private static BodyMeasurement measurement(double weightKg, String measuredAt) {
+    return new BodyMeasurement(
+        Instant.parse(measuredAt),
+        MeasurementSource.WITHINGS,
+        weightKg,
+        null,
+        null,
+        null,
+        null,
+        null);
+  }
+
   // --- port boundary guard (FOR-126, unaffected by FOR-131) -----------------------------------
 
   @Test
@@ -499,6 +663,70 @@ class IntegrationServiceTest {
         throw new ProviderOAuthException("Withings token refresh failed");
       }
       return refreshedTokensToReturn;
+    }
+  }
+
+  /** In-memory fake {@link ImportedMeasureMarkerStore} (FOR-132) — a plain in-memory set. */
+  private static class FakeImportedMeasureMarkerStore implements ImportedMeasureMarkerStore {
+    private final Set<String> marked = new LinkedHashSet<>();
+
+    @Override
+    public Set<Long> findImportedGroupIds(String ownerId, IntegrationProvider provider) {
+      Set<Long> ids = new LinkedHashSet<>();
+      for (String entry : marked) {
+        String[] parts = entry.split(":", 3);
+        if (parts[0].equals(ownerId) && parts[1].equals(provider.name())) {
+          ids.add(Long.valueOf(parts[2]));
+        }
+      }
+      return ids;
+    }
+
+    @Override
+    public void markImported(
+        String ownerId, IntegrationProvider provider, long groupId, Instant importedAt) {
+      marked.add(ownerId + ":" + provider.name() + ":" + groupId);
+    }
+  }
+
+  /**
+   * In-memory fake {@link BodyMeasurementRepository} (FOR-132) — records every saved measurement.
+   */
+  private static class FakeBodyMeasurementRepository implements BodyMeasurementRepository {
+    final List<BodyMeasurement> saved = new ArrayList<>();
+
+    @Override
+    public void save(BodyMeasurement measurement) {
+      saved.add(measurement);
+    }
+
+    @Override
+    public List<BodyMeasurement> list() {
+      return List.copyOf(saved);
+    }
+  }
+
+  /**
+   * Fake {@link ProviderMeasuresGateway} for {@link IntegrationProvider#WITHINGS} (FOR-132) — no
+   * HTTP call, returns a configurable, test-controlled list of already-mapped groups.
+   */
+  private static class FakeWithingsMeasuresGateway implements ProviderMeasuresGateway {
+    List<ImportedMeasureGroup> groupsToReturn = List.of();
+    boolean failFetch = false;
+    Instant lastSinceUsed;
+
+    @Override
+    public IntegrationProvider provider() {
+      return IntegrationProvider.WITHINGS;
+    }
+
+    @Override
+    public List<ImportedMeasureGroup> fetchMeasureGroups(String accessToken, Instant since) {
+      lastSinceUsed = since;
+      if (failFetch) {
+        throw new ProviderSyncException("Withings measures fetch failed");
+      }
+      return groupsToReturn;
     }
   }
 }

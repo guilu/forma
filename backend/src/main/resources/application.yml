@@ -39,6 +39,9 @@ forma:
       scope: user.metrics
       authorize-url: https://account.withings.com/oauth2_user/authorize2
       token-url: https://wbsapi.withings.net/v2/oauth2
+      # Measure API (Getmeas, FOR-132) — real body-composition sync, bearer-token authenticated,
+      # distinct from the OAuth token endpoint above.
+      measure-url: https://wbsapi.withings.net/measure
       token-encryption-key: ${WITHINGS_TOKEN_ENC_KEY:}
 
 server:

@@ -207,5 +207,12 @@ class WithingsOAuthAdapterTest {
       }
       return nextResponse;
     }
+
+    @Override
+    public String postAuthenticated(
+        String url, Map<String, String> formParams, String accessToken) {
+      throw new UnsupportedOperationException(
+          "WithingsOAuthAdapter never calls the bearer-authenticated transport method");
+    }
   }
 }

@@ -1,5 +1,6 @@
 package dev.diegobarrioh.forma.application;
 
+import dev.diegobarrioh.forma.domain.BodyMeasurement;
 import dev.diegobarrioh.forma.domain.IntegrationConnection;
 import dev.diegobarrioh.forma.domain.IntegrationProvider;
 import dev.diegobarrioh.forma.domain.IntegrationStatus;
@@ -9,6 +10,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
@@ -19,8 +21,11 @@ import org.springframework.stereotype.Service;
  * FOR-131 (slice 2) adds a real Withings OAuth connect/callback/disconnect and encrypted token
  * refresh on top of that shell — every other registered provider still falls back to the FOR-126
  * mock (see {@link ConnectResult}), since only Withings has a registered OAuth app (spec FOR-131).
- * Real provider sync into {@code BodyMeasurement} is still FOR-103 slice 3; {@link #sync} stays the
- * FOR-126 stub.
+ * FOR-132 (slice 3, final) replaces {@link #sync}'s stub with a real Withings Getmeas import into
+ * {@code BodyMeasurement} — refresh token if needed, fetch measure groups, map, skip
+ * already-imported {@code grpid}s, save the rest, and record a real {@link SyncOutcome}. Providers
+ * with no registered {@link ProviderMeasuresGateway} (Google Fit, Apple Health — out of FOR-132
+ * scope) keep the FOR-126 stub/no-op sync behavior unchanged.
  *
  * <p>Single-user MVP (ADR-002): every use case operates on the one {@link #OWNER_ID} row, mirroring
  * {@link UserProfileService#OWNER_ID} / {@link GoalService#OWNER_ID}. No shared "current account"
@@ -33,22 +38,41 @@ public class IntegrationService {
   /** Fixed single-user owner id for the MVP (ADR-002), mirroring {@link GoalService#OWNER_ID}. */
   public static final String OWNER_ID = "default-user";
 
+  /** User-readable, secret-free sync failure messages (ADR-004/ADR-008 — never leak tokens). */
+  private static final String MESSAGE_NOT_CONNECTED = "El proveedor no está conectado.";
+
+  private static final String MESSAGE_NEEDS_REAUTH =
+      "Reconecta el proveedor para seguir sincronizando.";
+  private static final String MESSAGE_PROVIDER_ERROR =
+      "El proveedor no está disponible temporalmente, inténtalo más tarde.";
+
   private final IntegrationRepository repository;
   private final OAuthStateStore stateStore;
   private final IntegrationTokenStore tokenStore;
+  private final ImportedMeasureMarkerStore markerStore;
+  private final BodyMeasurementRepository bodyMeasurementRepository;
   private final Map<IntegrationProvider, ProviderOAuthGateway> gatewaysByProvider;
+  private final Map<IntegrationProvider, ProviderMeasuresGateway> measuresGatewaysByProvider;
 
   public IntegrationService(
       IntegrationRepository repository,
       OAuthStateStore stateStore,
       IntegrationTokenStore tokenStore,
-      List<ProviderOAuthGateway> gateways) {
+      ImportedMeasureMarkerStore markerStore,
+      BodyMeasurementRepository bodyMeasurementRepository,
+      List<ProviderOAuthGateway> gateways,
+      List<ProviderMeasuresGateway> measuresGateways) {
     this.repository = repository;
     this.stateStore = stateStore;
     this.tokenStore = tokenStore;
+    this.markerStore = markerStore;
+    this.bodyMeasurementRepository = bodyMeasurementRepository;
     this.gatewaysByProvider =
         gateways.stream()
             .collect(Collectors.toMap(ProviderOAuthGateway::provider, Function.identity()));
+    this.measuresGatewaysByProvider =
+        measuresGateways.stream()
+            .collect(Collectors.toMap(ProviderMeasuresGateway::provider, Function.identity()));
   }
 
   /**
@@ -140,9 +164,9 @@ public class IntegrationService {
    * instead of silently dropping the connection (spec FOR-131 Edge Cases: "Refresh failure → mark
    * connection needing re-auth; do not silently drop").
    *
-   * <p>Not called automatically by {@link #sync} yet — {@code sync} stays the FOR-126 stub this
-   * slice (FOR-103 slice 3 does real sync). This is the seam slice 3's real sync calls before
-   * hitting the Withings Measure API. {@code now} is an explicit parameter (matching {@link
+   * <p>Called automatically by {@link #sync} (FOR-132) for any provider with a registered {@link
+   * ProviderMeasuresGateway}, before it calls the Withings Measure API — the seam this was
+   * originally added for. {@code now} is an explicit parameter (matching {@link
    * IntegrationConnection#connect(Instant)}'s style) so callers — and tests — control the instant
    * expiry is evaluated against.
    */
@@ -170,26 +194,96 @@ public class IntegrationService {
   }
 
   /**
-   * Triggers a manual sync. When {@link IntegrationStatus#CONNECTED}, performs a stub/no-op import
-   * — {@code importedCount} is always {@code 0}, never fabricated (spec FOR-126 Functional
-   * Requirements) — persists the outcome and returns it. Otherwise (disconnected, still {@link
-   * IntegrationStatus#PENDING} an OAuth callback, or {@link IntegrationStatus#NEEDS_REAUTH})
-   * resolves the spec's open question by returning a readable {@link SyncResult#NOT_CONNECTED}
-   * outcome instead of a 409 (keeps the FOR-57/FOR-123 frontend error handling simple, spec FOR-126
-   * Edge Cases) — nothing is persisted, since no sync actually ran. FOR-131 tightened this from
-   * "not DISCONNECTED" to "is CONNECTED" so a mid-handshake or needs-reauth provider is never
-   * treated as sync-able.
+   * Triggers a manual sync (FOR-126, real Withings import added by FOR-132). Otherwise
+   * (disconnected, still {@link IntegrationStatus#PENDING} an OAuth callback) resolves the spec's
+   * open question by returning a readable {@link SyncResult#NOT_CONNECTED} outcome instead of a 409
+   * (keeps the FOR-57/FOR-123 frontend error handling simple, spec FOR-126 Edge Cases) — nothing is
+   * persisted, since no sync actually ran. FOR-131 tightened this from "not DISCONNECTED" to "is
+   * CONNECTED" so a mid-handshake provider is never treated as sync-able.
+   *
+   * <p>When {@link IntegrationStatus#CONNECTED} and a {@link ProviderMeasuresGateway} is registered
+   * for {@code provider} (Withings, FOR-132): refreshes the access token first (spec FOR-132 Edge
+   * Cases: "Token expired → refreshed first"); if the refresh fails, records a {@link
+   * SyncResult#NEEDS_REAUTH} outcome instead of attempting a sync with a stale token. Otherwise
+   * fetches measure groups since the last successful sync ({@link
+   * IntegrationConnection#lastSyncAt()}, incremental — spec FOR-132: "prefer incremental sync"),
+   * skips groups whose {@code grpid} is already recorded in {@link ImportedMeasureMarkerStore}
+   * (idempotent duplicate detection, ADR-004 — ), saves the rest via {@link
+   * BodyMeasurementRepository}, marks each newly-imported {@code grpid}, and records the real
+   * counts. A provider-side failure (unreachable, rate-limited, 5xx, unparseable) is caught and
+   * converted to a readable {@link SyncResult#ERROR} outcome — the connection stays {@link
+   * IntegrationStatus#CONNECTED} (spec FOR-132 Edge Cases: "connection not corrupted, no crash"),
+   * never propagated as an exception.
+   *
+   * <p>Providers without a registered {@link ProviderMeasuresGateway} (Google Fit, Apple Health —
+   * out of FOR-132 scope) keep the FOR-126 stub/no-op import ({@code importedCount} always {@code
+   * 0}).
    */
   public IntegrationConnection sync(IntegrationProvider provider) {
     IntegrationConnection current = currentOrDefault(provider);
     if (current.status() != IntegrationStatus.CONNECTED) {
       SyncOutcome notConnected =
-          new SyncOutcome(SyncResult.NOT_CONNECTED, 0, "El proveedor no está conectado.");
+          new SyncOutcome(SyncResult.NOT_CONNECTED, 0, 0, MESSAGE_NOT_CONNECTED);
       return current.withSyncOutcome(current.lastSyncAt(), notConnected);
     }
-    SyncOutcome stubOutcome = new SyncOutcome(SyncResult.OK, 0, null);
-    IntegrationConnection synced = current.withSyncOutcome(Instant.now(), stubOutcome);
+
+    Optional<ProviderMeasuresGateway> measuresGateway = measuresGatewayFor(provider);
+    if (measuresGateway.isEmpty()) {
+      SyncOutcome stubOutcome = new SyncOutcome(SyncResult.OK, 0, 0, null);
+      IntegrationConnection synced = current.withSyncOutcome(Instant.now(), stubOutcome);
+      return repository.save(OWNER_ID, synced);
+    }
+
+    IntegrationConnection refreshed = refreshTokenIfNeeded(provider, Instant.now());
+    if (refreshed.status() == IntegrationStatus.NEEDS_REAUTH) {
+      SyncOutcome needsReauth =
+          new SyncOutcome(SyncResult.NEEDS_REAUTH, 0, 0, MESSAGE_NEEDS_REAUTH);
+      return repository.save(OWNER_ID, refreshed.withSyncOutcome(Instant.now(), needsReauth));
+    }
+
+    Optional<ExchangedTokens> tokens = tokenStore.find(OWNER_ID, provider);
+    if (tokens.isEmpty()) {
+      // Defensive: CONNECTED with a registered OAuth gateway should always have stored tokens
+      // (they are set together in #callback); treat the impossible case the same as a failed
+      // refresh rather than crashing or calling the provider with no credentials.
+      SyncOutcome needsReauth =
+          new SyncOutcome(SyncResult.NEEDS_REAUTH, 0, 0, MESSAGE_NEEDS_REAUTH);
+      return repository.save(OWNER_ID, refreshed.withSyncOutcome(Instant.now(), needsReauth));
+    }
+
+    List<ImportedMeasureGroup> fetchedGroups;
+    try {
+      fetchedGroups =
+          measuresGateway
+              .get()
+              .fetchMeasureGroups(tokens.get().accessToken(), refreshed.lastSyncAt());
+    } catch (ProviderSyncException ex) {
+      SyncOutcome errorOutcome = new SyncOutcome(SyncResult.ERROR, 0, 0, MESSAGE_PROVIDER_ERROR);
+      return repository.save(OWNER_ID, refreshed.withSyncOutcome(Instant.now(), errorOutcome));
+    }
+
+    Set<Long> alreadyImported = markerStore.findImportedGroupIds(OWNER_ID, provider);
+    Instant importedAt = Instant.now();
+    int importedCount = 0;
+    int duplicatesSkipped = 0;
+    for (ImportedMeasureGroup group : fetchedGroups) {
+      if (alreadyImported.contains(group.externalGroupId())) {
+        duplicatesSkipped++;
+        continue;
+      }
+      BodyMeasurement measurement = group.measurement();
+      bodyMeasurementRepository.save(measurement);
+      markerStore.markImported(OWNER_ID, provider, group.externalGroupId(), importedAt);
+      importedCount++;
+    }
+
+    SyncOutcome outcome = new SyncOutcome(SyncResult.OK, importedCount, duplicatesSkipped, null);
+    IntegrationConnection synced = refreshed.withSyncOutcome(importedAt, outcome);
     return repository.save(OWNER_ID, synced);
+  }
+
+  private Optional<ProviderMeasuresGateway> measuresGatewayFor(IntegrationProvider provider) {
+    return Optional.ofNullable(measuresGatewaysByProvider.get(provider));
   }
 
   private Optional<ProviderOAuthGateway> gatewayFor(IntegrationProvider provider) {

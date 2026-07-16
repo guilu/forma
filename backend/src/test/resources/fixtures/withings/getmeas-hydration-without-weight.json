@@ -1,0 +1,22 @@
+{
+  "_comment": "Representative fixture: a measure group carrying hydration mass (type 77) but NO weight (type 1). BodyMeasurement requires weightKg > 0, so this whole group must be skipped rather than fabricating a placeholder weight (spec FOR-132 Edge Cases: 'Hydration mass but no weight in the group -> waterPercentage null', resolved conservatively in WithingsMeasuresAdapter's javadoc: no weight means no measurement at all).",
+  "status": 0,
+  "body": {
+    "updatetime": 1752336100,
+    "timezone": "Europe/Madrid",
+    "measuregrps": [
+      {
+        "grpid": 400000004,
+        "attrib": 0,
+        "date": 1752336000,
+        "created": 1752336010,
+        "category": 1,
+        "deviceid": "fixture-device-id",
+        "measures": [{ "value": 40000, "type": 77, "unit": -3 }],
+        "comment": null
+      }
+    ],
+    "more": 0,
+    "offset": 0
+  }
+}
