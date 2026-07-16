@@ -66,7 +66,7 @@ A Withings Public Cloud app exists (Production, name "forma"):
 
 ## Data Model Notes
 
-- New table (V15): encrypted provider tokens keyed by `(owner_id, provider)` — encrypted access/refresh token columns + expiry. Do NOT add tokens to `integration_connection`.
+- New table (V15): encrypted provider tokens keyed by `(owner_id, provider)` — AES-256-GCM ciphertext + per-token nonce columns for access + refresh tokens, plus expiry. Do NOT add tokens to `integration_connection`. Store ciphertext + nonce (and auth tag) only, never plaintext.
 - OAuth state challenge: a short-lived persisted table OR a documented in-memory store; must expire and be single-use.
 - Reuse FOR-126 `IntegrationConnection` for status transitions (add a PENDING/AWAITING_CALLBACK state if needed; document).
 - No new dependency leaking Withings types into the domain.
@@ -81,7 +81,7 @@ A Withings Public Cloud app exists (Production, name "forma"):
 
 ## Open Questions
 
-- Encryption approach for tokens at rest: app-level envelope encryption (key from env) vs DB-native — decide + document, consistent with ADR-003. Key management (env var) documented.
+- ~~Encryption approach for tokens at rest~~ **RESOLVED**: app-level **AES-256-GCM**. Key from env `WITHINGS_TOKEN_ENC_KEY` — a base64-encoded 32-byte random key, generated once by the operator via `openssl rand -base64 32`, never committed, distinct per environment. Each token encrypted with a fresh random 96-bit nonce stored alongside the ciphertext. Losing the key makes stored tokens unrecoverable → users must re-connect (acceptable for single-user MVP). Rotation = re-auth (out of scope).
 - OAuth state store: persisted (small table, needs migration) vs in-memory (simpler, lost on restart) — pick for MVP + document.
 - ~~Callback response: redirect vs JSON~~ **RESOLVED**: the registered redirect URI is the SPA route `https://forma.diegobarrioh.dev/auth`; Withings redirects the browser there, and the SPA relays `code`+`state` to the backend via `POST /api/v1/integrations/withings/callback` returning the updated connection status as JSON. A future frontend story implements the `/auth` route.
 - Whether Withings token refresh/revoke can be exercised in tests without live credentials — use recorded fixtures; document what is and isn't covered.
