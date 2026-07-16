@@ -5,7 +5,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.diegobarrioh.forma.domain.MealLogEntry;
 import dev.diegobarrioh.forma.domain.MealType;
+import dev.diegobarrioh.forma.domain.NutritionDayCatalog;
+import dev.diegobarrioh.forma.domain.NutritionDayType;
 import dev.diegobarrioh.forma.domain.NutritionTotals;
+import dev.diegobarrioh.forma.domain.TargetComparison;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -16,16 +19,21 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
- * Application use case tests for {@link MealLogService} (FOR-127): logging catalog/free entries
- * (owner-scoped, ADR-002), input validation, and the day consumption read model reusing {@link
- * NutritionCalculationService}-style calculators. Hand-rolled in-memory fake (no Spring, no
- * Mockito), matching {@code GoalServiceTest} (FOR-125).
+ * Application use case tests for {@link MealLogService} (FOR-127/FOR-128): logging catalog/free
+ * entries (owner-scoped, ADR-002), input validation, and the day consumption read model reusing
+ * {@link NutritionCalculationService}-style calculators plus the FOR-128 date -&gt; {@link
+ * NutritionDayType} resolver so {@code target}/{@code comparison} populate. Hand-rolled in-memory
+ * fake (no Spring, no Mockito), matching {@code GoalServiceTest} (FOR-125).
  */
 class MealLogServiceTest {
 
   private static final Clock FIXED_CLOCK =
       Clock.fixed(Instant.parse("2026-07-15T12:00:00Z"), ZoneOffset.UTC);
+
+  // 2026-07-15 is a Wednesday -> STRENGTH day per the shared weekly training day policy.
   private static final LocalDate TODAY = LocalDate.of(2026, 7, 15);
+  private static final LocalDate A_SATURDAY = LocalDate.of(2026, 7, 11); // RUNNING (not future)
+  private static final LocalDate A_SUNDAY = LocalDate.of(2026, 7, 12); // REST (not future)
 
   private final RecordingMealLogRepository repository = new RecordingMealLogRepository();
   private final MealLogService service = new MealLogService(repository, FIXED_CLOCK);
@@ -111,13 +119,45 @@ class MealLogServiceTest {
   }
 
   @Test
-  void consumptionHasNoPlanTargetInThisSliceSinceNoDateToDayTypeMappingExistsYet() {
+  void consumptionResolvesTheDayTypeFromTheDateViaTheSharedWeeklyTrainingDayPolicy() {
+    DayConsumption strengthDay = service.consumption(TODAY);
+    DayConsumption runningDay = service.consumption(A_SATURDAY);
+    DayConsumption restDay = service.consumption(A_SUNDAY);
+
+    assertThat(strengthDay.dayType()).isEqualTo(NutritionDayType.STRENGTH);
+    assertThat(runningDay.dayType()).isEqualTo(NutritionDayType.RUNNING);
+    assertThat(restDay.dayType()).isEqualTo(NutritionDayType.REST);
+  }
+
+  @Test
+  void consumptionOnAStrengthDayPopulatesTargetAndComparisonFromTheStrengthTemplate() {
     service.log(LogMealCommand.free(TODAY, MealType.BREAKFAST, "A", 100, 10.0, 10.0, 10.0));
 
     DayConsumption consumption = service.consumption(TODAY);
 
-    assertThat(consumption.target()).isNull();
-    assertThat(consumption.comparison()).isNull();
+    var expectedTemplate = NutritionDayCatalog.findByType(NutritionDayType.STRENGTH).orElseThrow();
+    assertThat(consumption.target()).isEqualTo(expectedTemplate.template());
+    assertThat(consumption.comparison())
+        .isEqualTo(TargetComparison.of(consumption.consumed(), expectedTemplate.template()));
+  }
+
+  @Test
+  void consumptionOnARestDayPopulatesTargetFromTheRestTemplate() {
+    DayConsumption consumption = service.consumption(A_SUNDAY);
+
+    var expectedTemplate = NutritionDayCatalog.findByType(NutritionDayType.REST).orElseThrow();
+    assertThat(consumption.target()).isEqualTo(expectedTemplate.template());
+    assertThat(consumption.comparison()).isNotNull();
+  }
+
+  @Test
+  void emptyDayIsConsumedZeroedButTargetAndComparisonAreStillPopulatedFromTheResolvedDayType() {
+    DayConsumption consumption = service.consumption(TODAY);
+
+    assertThat(consumption.consumed()).isEqualTo(new NutritionTotals(0, 0.0, 0.0, 0.0));
+    assertThat(consumption.entries()).isEmpty();
+    assertThat(consumption.target()).isNotNull();
+    assertThat(consumption.comparison()).isNotNull();
   }
 
   @Test

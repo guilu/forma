@@ -4,30 +4,32 @@ import dev.diegobarrioh.forma.domain.FoodCatalog;
 import dev.diegobarrioh.forma.domain.FoodItem;
 import dev.diegobarrioh.forma.domain.MealLog;
 import dev.diegobarrioh.forma.domain.MealLogEntry;
+import dev.diegobarrioh.forma.domain.NutritionDayCatalog;
+import dev.diegobarrioh.forma.domain.NutritionDayTemplate;
+import dev.diegobarrioh.forma.domain.NutritionDayType;
+import dev.diegobarrioh.forma.domain.NutritionDayTypeResolver;
 import dev.diegobarrioh.forma.domain.NutritionTotals;
+import dev.diegobarrioh.forma.domain.TargetComparison;
 import java.time.Clock;
 import java.time.LocalDate;
 import org.springframework.stereotype.Service;
 
 /**
- * Application use cases for meal consumption logging and the day consumption read model (FOR-127,
- * first implementable slice of FOR-102). Macros only (kcal/protein/carbs/fat); hydration and key
- * nutrients are later FOR-102 slices.
+ * Application use cases for meal consumption logging and the day consumption read model
+ * (FOR-127/FOR-128, first implementable slices of FOR-102). Macros only (kcal/protein/carbs/fat);
+ * hydration and key nutrients are later FOR-102 slices.
  *
  * <p>Single-user MVP (ADR-002): every use case operates on the one {@link #OWNER_ID} row, mirroring
  * {@link GoalService#OWNER_ID}/{@link UserProfileService#OWNER_ID} (FOR-107/125). Never logs entry
  * contents (personal health data) — see method javadoc.
  *
- * <p><b>No plan-target resolution in this slice.</b> {@link #consumption} always returns a {@code
- * null} target/comparison. The repository's plan side ({@code NutritionDayTemplate}, {@code
- * NutritionDayCatalog}) is keyed by {@code NutritionDayType} (RUNNING/STRENGTH/REST) — there is no
- * date-to-day-type schedule anywhere in the codebase, so an arbitrary {@code date} cannot be
- * resolved to a plan target. FOR-127's spec/api.md assume this resolution exists; it does not.
- * Building a date→day-type mapping would reach into the Training bounded context speculatively,
- * which is out of scope for this story (AGENTS.md: no speculative abstractions). This falls back to
- * the spec's own documented "no plan target" edge case, which is well-defined behavior, not a
- * shortcut. A future story must add day scheduling before {@code target}/{@code comparison} can be
- * populated.
+ * <p><b>Plan-target resolution (FOR-128).</b> {@link #consumption} resolves {@code date} to a
+ * {@link NutritionDayType} via {@link NutritionDayTypeResolver} (which itself reuses the shared
+ * training day-classification — no duplicated policy, no circular dependency on any training
+ * service), looks up that type's {@link NutritionDayTemplate} in {@link NutritionDayCatalog}, and
+ * compares it to the day's consumed totals via {@link TargetComparison#of}. {@code target}/{@code
+ * comparison} are {@code null} only if the catalog has no template for the resolved type — a
+ * fail-safe for a closed, always-seeded enum, not an expected runtime path.
  */
 @Service
 public class MealLogService {
@@ -108,8 +110,9 @@ public class MealLogService {
 
   /**
    * The owner's day consumption read model for {@code date}: consumed macros derived fresh from
-   * that day's logged entries. Never 404s — an empty day returns zeroed consumption (spec FOR-127
-   * edge case). Target/comparison are always {@code null} in this slice; see class javadoc.
+   * that day's logged entries, plus the date's resolved {@code target}/{@code comparison}
+   * (FOR-128). Never 404s — an empty day returns zeroed consumption (spec FOR-127 edge case), with
+   * {@code target}/{@code comparison} still populated from the resolved day type.
    *
    * @throws ValidationException if {@code date} is missing or far in the future
    */
@@ -120,7 +123,14 @@ public class MealLogService {
         stored.stream()
             .map(StoredMealLogEntry::entry)
             .reduce(MealLog.empty(date), MealLog::withEntry, (a, b) -> b);
-    return new DayConsumption(date, log.consumedTotals(), null, null, stored);
+    NutritionTotals consumed = log.consumedTotals();
+
+    NutritionDayType dayType = NutritionDayTypeResolver.resolve(date);
+    NutritionDayTemplate target =
+        NutritionDayCatalog.findByType(dayType).map(day -> day.template()).orElse(null);
+    TargetComparison comparison = target == null ? null : TargetComparison.of(consumed, target);
+
+    return new DayConsumption(date, dayType, consumed, target, comparison, stored);
   }
 
   private void validateDate(LocalDate date) {

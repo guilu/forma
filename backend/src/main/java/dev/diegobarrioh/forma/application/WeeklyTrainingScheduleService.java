@@ -4,6 +4,7 @@ import dev.diegobarrioh.forma.application.WeeklyTrainingSchedule.TrainingDay;
 import dev.diegobarrioh.forma.application.WeeklyTrainingSchedule.TrainingEntry;
 import dev.diegobarrioh.forma.domain.SessionStatus;
 import dev.diegobarrioh.forma.domain.SessionType;
+import dev.diegobarrioh.forma.domain.WeeklyTrainingDayPolicy;
 import dev.diegobarrioh.forma.domain.WorkoutType;
 import java.time.DayOfWeek;
 import java.util.ArrayList;
@@ -18,7 +19,9 @@ import org.springframework.stereotype.Service;
  * templates, applying stored completion status (FOR-27).
  *
  * <p>The plan (FOR-22/FOR-23) and templates (FOR-25) are not scheduled to real dates yet, so this
- * service applies a simple, documented scheduling policy for the MVP:
+ * service applies a simple, documented scheduling policy for the MVP, defined once in {@link
+ * WeeklyTrainingDayPolicy} (extracted for FOR-128 so the nutrition consumption target uses the
+ * exact same day-kind classification, not a duplicate):
  *
  * <ul>
  *   <li>Running: plan week {@link #PLAN_WEEK} (the first week), each session on its own day
@@ -36,12 +39,6 @@ public class WeeklyTrainingScheduleService {
 
   /** The plan week shown by the MVP calendar. */
   static final int PLAN_WEEK = 1;
-
-  private static final Map<DayOfWeek, WorkoutType> STRENGTH_DAYS =
-      Map.of(
-          DayOfWeek.MONDAY, WorkoutType.PUSH,
-          DayOfWeek.WEDNESDAY, WorkoutType.PULL,
-          DayOfWeek.FRIDAY, WorkoutType.LEGS);
 
   private final RunningPlanService runningPlanService;
   private final WorkoutTemplateService workoutTemplateService;
@@ -85,21 +82,22 @@ public class WeeklyTrainingScheduleService {
                             stored)));
 
     // Strength templates on their assigned days.
-    STRENGTH_DAYS.forEach(
-        (day, type) ->
-            workoutTemplateService
-                .findByType(type)
-                .ifPresent(
-                    template ->
-                        entriesByDay
-                            .get(day)
-                            .add(
-                                entry(
-                                    day,
-                                    "STRENGTH",
-                                    strengthTitle(type),
-                                    template.items().size() + " ejercicios",
-                                    stored))));
+    WeeklyTrainingDayPolicy.strengthDays()
+        .forEach(
+            (day, type) ->
+                workoutTemplateService
+                    .findByType(type)
+                    .ifPresent(
+                        template ->
+                            entriesByDay
+                                .get(day)
+                                .add(
+                                    entry(
+                                        day,
+                                        "STRENGTH",
+                                        strengthTitle(type),
+                                        template.items().size() + " ejercicios",
+                                        stored))));
 
     List<TrainingDay> days = new ArrayList<>(DayOfWeek.values().length);
     for (DayOfWeek day : DayOfWeek.values()) {

@@ -16,7 +16,11 @@ import dev.diegobarrioh.forma.application.StoredMealLogEntry;
 import dev.diegobarrioh.forma.application.ValidationException;
 import dev.diegobarrioh.forma.domain.MealLogEntry;
 import dev.diegobarrioh.forma.domain.MealType;
+import dev.diegobarrioh.forma.domain.NutritionDayCatalog;
+import dev.diegobarrioh.forma.domain.NutritionDayTemplate;
+import dev.diegobarrioh.forma.domain.NutritionDayType;
 import dev.diegobarrioh.forma.domain.NutritionTotals;
+import dev.diegobarrioh.forma.domain.TargetComparison;
 import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -137,13 +141,18 @@ class MealLogControllerTest {
 
   @Test
   void consumptionBeforeAnyLogReturns200WithZeroedConsumedNeverA404() throws Exception {
+    // 2026-07-15 is a Wednesday -> STRENGTH day (FOR-128), but this test only asserts consumed.
+    NutritionDayTemplate strengthTemplate =
+        NutritionDayCatalog.findByType(NutritionDayType.STRENGTH).orElseThrow().template();
+    NutritionTotals zeroed = new NutritionTotals(0, 0.0, 0.0, 0.0);
     when(mealLogService.consumption(eq(LocalDate.of(2026, 7, 15))))
         .thenReturn(
             new DayConsumption(
                 LocalDate.of(2026, 7, 15),
-                new NutritionTotals(0, 0.0, 0.0, 0.0),
-                null,
-                null,
+                NutritionDayType.STRENGTH,
+                zeroed,
+                strengthTemplate,
+                TargetComparison.of(zeroed, strengthTemplate),
                 List.of()));
 
     mockMvc
@@ -155,8 +164,88 @@ class MealLogControllerTest {
   }
 
   @Test
-  void consumptionReturnsConsumedTotalsAndEntriesAndNullTargetWhenNoneResolvable()
-      throws Exception {
+  void consumptionOnAStrengthDayReturnsTheResolvedDayTypeTargetAndComparison() throws Exception {
+    MealLogEntry entry =
+        new MealLogEntry(
+            LocalDate.of(2026, 7, 15),
+            MealType.LUNCH,
+            "Pollo (pechuga)",
+            "chicken",
+            new NutritionTotals(600, 40.0, 60.0, 20.0));
+    NutritionDayTemplate strengthTemplate =
+        NutritionDayCatalog.findByType(NutritionDayType.STRENGTH).orElseThrow().template();
+    NutritionTotals consumed = new NutritionTotals(600, 40.0, 60.0, 20.0);
+    when(mealLogService.consumption(eq(LocalDate.of(2026, 7, 15))))
+        .thenReturn(
+            new DayConsumption(
+                LocalDate.of(2026, 7, 15),
+                NutritionDayType.STRENGTH,
+                consumed,
+                strengthTemplate,
+                TargetComparison.of(consumed, strengthTemplate),
+                List.of(new StoredMealLogEntry("entry-1", entry))));
+
+    mockMvc
+        .perform(get("/api/v1/nutrition/consumption").param("date", "2026-07-15"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.dayType").value("STRENGTH"))
+        .andExpect(jsonPath("$.consumed.kcal").value(600))
+        .andExpect(jsonPath("$.target.kcal").value(strengthTemplate.targetCalories()))
+        .andExpect(jsonPath("$.comparison.caloriesReached").value(false))
+        .andExpect(jsonPath("$.entries[0].id").value("entry-1"))
+        .andExpect(jsonPath("$.entries[0].mealType").value("LUNCH"))
+        .andExpect(jsonPath("$.entries[0].name").value("Pollo (pechuga)"))
+        .andExpect(jsonPath("$.entries[0].kcal").value(600));
+  }
+
+  @Test
+  void consumptionOnARunningDayReturnsTheRunningTemplateTarget() throws Exception {
+    NutritionDayTemplate runningTemplate =
+        NutritionDayCatalog.findByType(NutritionDayType.RUNNING).orElseThrow().template();
+    NutritionTotals zeroed = new NutritionTotals(0, 0.0, 0.0, 0.0);
+    when(mealLogService.consumption(eq(LocalDate.of(2026, 7, 18)))) // Saturday
+        .thenReturn(
+            new DayConsumption(
+                LocalDate.of(2026, 7, 18),
+                NutritionDayType.RUNNING,
+                zeroed,
+                runningTemplate,
+                TargetComparison.of(zeroed, runningTemplate),
+                List.of()));
+
+    mockMvc
+        .perform(get("/api/v1/nutrition/consumption").param("date", "2026-07-18"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.dayType").value("RUNNING"))
+        .andExpect(jsonPath("$.target.kcal").value(runningTemplate.targetCalories()));
+  }
+
+  @Test
+  void consumptionOnARestDayReturnsTheRestTemplateTarget() throws Exception {
+    NutritionDayTemplate restTemplate =
+        NutritionDayCatalog.findByType(NutritionDayType.REST).orElseThrow().template();
+    NutritionTotals zeroed = new NutritionTotals(0, 0.0, 0.0, 0.0);
+    when(mealLogService.consumption(eq(LocalDate.of(2026, 7, 19)))) // Sunday
+        .thenReturn(
+            new DayConsumption(
+                LocalDate.of(2026, 7, 19),
+                NutritionDayType.REST,
+                zeroed,
+                restTemplate,
+                TargetComparison.of(zeroed, restTemplate),
+                List.of()));
+
+    mockMvc
+        .perform(get("/api/v1/nutrition/consumption").param("date", "2026-07-19"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.dayType").value("REST"))
+        .andExpect(jsonPath("$.target.kcal").value(restTemplate.targetCalories()));
+  }
+
+  @Test
+  void consumptionFailsSafeWithNullTargetAndComparisonWhenNoneResolvable() throws Exception {
+    // Fail-safe path (spec FOR-128 edge case): the service reports no resolvable template for the
+    // day type (should not happen for the closed/always-seeded enum) -> controller must not crash.
     MealLogEntry entry =
         new MealLogEntry(
             LocalDate.of(2026, 7, 15),
@@ -168,6 +257,7 @@ class MealLogControllerTest {
         .thenReturn(
             new DayConsumption(
                 LocalDate.of(2026, 7, 15),
+                NutritionDayType.STRENGTH,
                 new NutritionTotals(600, 40.0, 60.0, 20.0),
                 null,
                 null,
@@ -179,10 +269,7 @@ class MealLogControllerTest {
         .andExpect(jsonPath("$.consumed.kcal").value(600))
         .andExpect(jsonPath("$.target").value(org.hamcrest.Matchers.nullValue()))
         .andExpect(jsonPath("$.comparison").value(org.hamcrest.Matchers.nullValue()))
-        .andExpect(jsonPath("$.entries[0].id").value("entry-1"))
-        .andExpect(jsonPath("$.entries[0].mealType").value("LUNCH"))
-        .andExpect(jsonPath("$.entries[0].name").value("Pollo (pechuga)"))
-        .andExpect(jsonPath("$.entries[0].kcal").value(600));
+        .andExpect(jsonPath("$.entries[0].id").value("entry-1"));
   }
 
   @Test
