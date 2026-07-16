@@ -1,0 +1,67 @@
+package dev.diegobarrioh.forma.domain;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.time.DayOfWeek;
+import org.junit.jupiter.api.Test;
+
+/**
+ * Unit tests for {@link WeeklyTrainingDayPolicy} (FOR-128): the single source of truth for the
+ * deterministic MVP weekly training day classification, shared by {@code
+ * WeeklyTrainingScheduleService} (FOR-26) and {@link NutritionDayTypeResolver} (FOR-128).
+ */
+class WeeklyTrainingDayPolicyTest {
+
+  @Test
+  void classifiesTuesdayThursdayAndSaturdayAsRunning() {
+    assertThat(WeeklyTrainingDayPolicy.classify(DayOfWeek.TUESDAY))
+        .isEqualTo(NutritionDayType.RUNNING);
+    assertThat(WeeklyTrainingDayPolicy.classify(DayOfWeek.THURSDAY))
+        .isEqualTo(NutritionDayType.RUNNING);
+    assertThat(WeeklyTrainingDayPolicy.classify(DayOfWeek.SATURDAY))
+        .isEqualTo(NutritionDayType.RUNNING);
+  }
+
+  @Test
+  void classifiesMondayWednesdayAndFridayAsStrength() {
+    assertThat(WeeklyTrainingDayPolicy.classify(DayOfWeek.MONDAY))
+        .isEqualTo(NutritionDayType.STRENGTH);
+    assertThat(WeeklyTrainingDayPolicy.classify(DayOfWeek.WEDNESDAY))
+        .isEqualTo(NutritionDayType.STRENGTH);
+    assertThat(WeeklyTrainingDayPolicy.classify(DayOfWeek.FRIDAY))
+        .isEqualTo(NutritionDayType.STRENGTH);
+  }
+
+  @Test
+  void classifiesSundayAsRest() {
+    assertThat(WeeklyTrainingDayPolicy.classify(DayOfWeek.SUNDAY)).isEqualTo(NutritionDayType.REST);
+  }
+
+  @Test
+  void strengthDaysMapEachDayToItsWorkoutType() {
+    assertThat(WeeklyTrainingDayPolicy.strengthDays())
+        .containsEntry(DayOfWeek.MONDAY, WorkoutType.PUSH)
+        .containsEntry(DayOfWeek.WEDNESDAY, WorkoutType.PULL)
+        .containsEntry(DayOfWeek.FRIDAY, WorkoutType.LEGS)
+        .hasSize(3);
+  }
+
+  @Test
+  void runningDaysMatchTheDaysTheRunningPlanGeneratorActuallySchedules() {
+    assertThat(WeeklyTrainingDayPolicy.runningDays())
+        .containsExactlyInAnyOrder(DayOfWeek.TUESDAY, DayOfWeek.THURSDAY, DayOfWeek.SATURDAY);
+    // Not duplicated: derived from the real generator output (FOR-23), not a hardcoded literal set.
+    assertThat(
+            RunningPlanGenerator.sixteenWeekPlan().stream()
+                .map(RunningPlanSession::dayOfWeek)
+                .distinct())
+        .containsExactlyInAnyOrderElementsOf(WeeklyTrainingDayPolicy.runningDays());
+  }
+
+  @Test
+  void everyDayOfWeekIsClassified() {
+    for (DayOfWeek day : DayOfWeek.values()) {
+      assertThat(WeeklyTrainingDayPolicy.classify(day)).isNotNull();
+    }
+  }
+}
