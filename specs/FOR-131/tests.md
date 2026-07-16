@@ -25,8 +25,8 @@ Withings OAuth connect/disconnect + encrypted token storage. NO real measures sy
 
 ## API Tests
 
-- `POST /{provider}/connect` → 200 with `authorizationUrl`; unknown provider → 400.
-- `GET /{provider}/callback` valid → CONNECTED (or documented redirect); mismatched/expired state → 400, no connection.
+- `POST /{provider}/connect` → 200 with `authorizationUrl` (contains `redirect_uri=https://forma.diegobarrioh.dev/auth`, `scope=user.metrics`, `state`, PKCE); unknown provider → 400.
+- `POST /{provider}/callback` (SPA-relayed `{code,state}`) valid → CONNECTED; mismatched/expired state → 400, no connection.
 - `DELETE /{provider}` → DISCONNECTED and no tokens at rest afterwards.
 - **No response body, header, log line, or error message contains a token, `code`, or `state`** (assert explicitly across connect/callback/disconnect).
 

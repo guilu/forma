@@ -28,7 +28,7 @@ Turn FOR-126's mock connect into a real Withings OAuth flow: authorization URL, 
 
 - Hexagonal: application ports stay token-free; Withings + encryption are adapter concerns.
 - OAuth state/PKCE for CSRF; single-use, expiring state challenge (persisted table or documented in-memory).
-- Secrets (OAuth client id/secret, redirect URI, encryption key) from config/env only — never committed, never request input.
+- Secrets from config/env only — never committed. Real registered Withings app (Production, "forma"): `redirect_uri=https://forma.diegobarrioh.dev/auth` (a SPA route, NOT the backend), scope `user.metrics`. Env: `WITHINGS_CLIENT_ID`, `WITHINGS_CLIENT_SECRET`, `WITHINGS_TOKEN_ENC_KEY` (names indicative). Callback is a backend `POST /{provider}/callback` the SPA calls with `{code,state}` after the browser lands on `/auth`.
 - Never log tokens, `code`, or `state` (ADR-004/ADR-008).
 - Owner-scoped per ADR-002.
 - New migration is **V15** (current head V14); one column per statement.

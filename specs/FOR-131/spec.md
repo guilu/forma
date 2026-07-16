@@ -16,6 +16,23 @@ refresh, and disconnect that revokes/forgets tokens. NO real Withings data sync 
 `BodyMeasurement` this slice — sync stays the FOR-126 stub (`importedCount: 0`); that is
 FOR-103 slice 3. See `specs/FOR-103/` for full scope + security requirements.
 
+## Registered Withings application (real, provided by product owner)
+
+A Withings Public Cloud app exists (Production, name "forma"):
+
+- **Registered OAuth2 redirect URL**: `https://forma.diegobarrioh.dev/auth` — this is a
+  **frontend/SPA route**, NOT a backend API path. Withings redirects the browser there
+  with `code` + `state`; the SPA then relays them to the backend to complete the
+  exchange (see Flow). This resolves the spec's callback-contract open question.
+- **Scope**: `user.metrics` — grants access to body-composition measures (weight, fat,
+  muscle, water) via Withings *Measure — Getmeas*, the data slice 3 maps into
+  `BodyMeasurement`.
+- **Client id + client secret**: issued by Withings, held only by the product owner.
+  They are **secrets** — read from config/env (`WITHINGS_CLIENT_ID`,
+  `WITHINGS_CLIENT_SECRET`), never committed, never placed in specs/code/tests. The
+  token-encryption key is likewise env-provided (`WITHINGS_TOKEN_ENC_KEY` or equivalent).
+  Tests use placeholders + recorded fixtures.
+
 ## Repository baseline (FOR-126, merged)
 
 - `integration_connection` table keyed by `(owner_id, provider)`, one row per provider, **token-free by design** (V12 migration documents this).
@@ -24,16 +41,17 @@ FOR-103 slice 3. See `specs/FOR-103/` for full scope + security requirements.
 
 ## User/System Flow
 
-1. User taps "Conectar Withings" → `POST /api/v1/integrations/withings/connect` returns a Withings **authorization URL** (+ persists a short-lived OAuth state/PKCE challenge). Status stays DISCONNECTED (or a PENDING state) until the callback completes.
-2. User authorizes at Withings → Withings redirects to the callback with `code` + `state`.
-3. `GET /api/v1/integrations/withings/callback?code&state` → validate state, exchange code for tokens, **encrypt + store** them, mark the connection CONNECTED.
-4. On later use, if the access token is expired, refresh it using the stored refresh token.
-5. `DELETE /api/v1/integrations/withings` → revoke/forget tokens; nothing remains at rest.
+1. User taps "Conectar Withings" → `POST /api/v1/integrations/withings/connect` returns a Withings **authorization URL** (built with `redirect_uri=https://forma.diegobarrioh.dev/auth`, scope `user.metrics`, `state`, PKCE). Backend persists a short-lived single-use state/PKCE challenge. Status stays DISCONNECTED (or PENDING) until completion.
+2. User authorizes at Withings → Withings redirects the browser to the registered SPA route `https://forma.diegobarrioh.dev/auth?code=...&state=...`.
+3. The SPA reads `code` + `state` from the URL and relays them to the backend: `POST /api/v1/integrations/withings/callback` with `{ code, state }`.
+4. Backend validates `state`, exchanges `code` for tokens, **encrypts + stores** them, marks the connection CONNECTED.
+5. On later use, if the access token is expired, refresh it using the stored refresh token.
+6. `DELETE /api/v1/integrations/withings` → revoke/forget tokens; nothing remains at rest.
 
 ## Functional Requirements
 
-- Build the Withings authorization URL (client id, redirect URI, scope, state, PKCE) from config.
-- Callback: validate `state` against a stored, unexpired challenge (CSRF/PKCE); exchange `code` for access+refresh tokens; store encrypted; mark CONNECTED with `connectedAt`.
+- Build the Withings authorization URL from config: `client_id` (`WITHINGS_CLIENT_ID`), `redirect_uri=https://forma.diegobarrioh.dev/auth`, `scope=user.metrics`, `state`, PKCE `code_challenge`.
+- Callback endpoint is a **backend `POST` the SPA calls with `{ code, state }`** (the browser redirect lands on the SPA `/auth` route, not the backend). Validate `state` against a stored, unexpired, single-use challenge (CSRF/PKCE); exchange `code` for access+refresh tokens using `WITHINGS_CLIENT_SECRET`; store encrypted; mark CONNECTED with `connectedAt`.
 - Encrypted token storage in a NEW table (migration **V15**), separate from `integration_connection`; access token, refresh token, expiry — all encrypted at rest.
 - Token refresh when the access token is expired (or documented if the provider refresh path can't be exercised without live credentials).
 - Disconnect revokes/forgets the stored tokens.
@@ -65,5 +83,5 @@ FOR-103 slice 3. See `specs/FOR-103/` for full scope + security requirements.
 
 - Encryption approach for tokens at rest: app-level envelope encryption (key from env) vs DB-native — decide + document, consistent with ADR-003. Key management (env var) documented.
 - OAuth state store: persisted (small table, needs migration) vs in-memory (simpler, lost on restart) — pick for MVP + document.
-- Callback response: redirect back to the SPA vs JSON — the SPA needs to land somewhere after authorizing; document the chosen contract (this affects a future frontend story).
+- ~~Callback response: redirect vs JSON~~ **RESOLVED**: the registered redirect URI is the SPA route `https://forma.diegobarrioh.dev/auth`; Withings redirects the browser there, and the SPA relays `code`+`state` to the backend via `POST /api/v1/integrations/withings/callback` returning the updated connection status as JSON. A future frontend story implements the `/auth` route.
 - Whether Withings token refresh/revoke can be exercised in tests without live credentials — use recorded fixtures; document what is and isn't covered.

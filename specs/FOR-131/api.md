@@ -8,11 +8,11 @@
 
 ### POST /api/v1/integrations/{provider}/connect (changed)
 
-Starts OAuth: returns the provider authorization URL and persists a short-lived state/PKCE challenge. No longer flips status directly (that happens at the callback).
+Starts OAuth: returns the provider authorization URL (`redirect_uri=https://forma.diegobarrioh.dev/auth`, `scope=user.metrics`, `state`, PKCE) and persists a short-lived state/PKCE challenge. No longer flips status directly.
 
-### GET /api/v1/integrations/{provider}/callback?code=...&state=... (new)
+### POST /api/v1/integrations/{provider}/callback (new)
 
-OAuth redirect target: validates `state`, exchanges `code` for tokens, stores them encrypted, marks CONNECTED. Server-to-server redirect landing; the SPA does not call this via fetch.
+Completes OAuth. The browser redirect lands on the **SPA** route `https://forma.diegobarrioh.dev/auth` (the registered Withings redirect URL); the SPA reads `code`+`state` from the URL and calls this endpoint with them in the body. Backend validates `state`, exchanges `code` for tokens, stores them encrypted, marks CONNECTED. The SPA — not Withings — calls this.
 
 ### DELETE /api/v1/integrations/{provider} (changed)
 
@@ -21,7 +21,10 @@ Disconnect now also revokes/forgets the stored tokens.
 ## Request
 
 `POST /api/v1/integrations/withings/connect` — no body.
-`GET /api/v1/integrations/withings/callback?code=...&state=...` — provider-supplied query params.
+`POST /api/v1/integrations/withings/callback` — SPA-relayed body:
+```json
+{ "code": "auth-code-from-withings", "state": "the-state-from-the-redirect" }
+```
 
 ## Response
 
@@ -29,13 +32,10 @@ Disconnect now also revokes/forgets the stored tokens.
 ```json
 { "authorizationUrl": "https://account.withings.com/oauth2_user/authorize2?client_id=...&state=...&redirect_uri=...&scope=...&code_challenge=..." }
 ```
-`GET /api/v1/integrations/withings/callback` — on success, either:
-- a redirect (302) back to the SPA integrations page, OR
-- `200` with the updated connection status:
+`POST /api/v1/integrations/withings/callback` — on success, `200` with the updated connection status:
 ```json
 { "provider": "WITHINGS", "status": "CONNECTED", "connectedAt": "2026-07-16T15:00:00Z" }
 ```
-Document the chosen contract (redirect vs JSON) — it affects the frontend story.
 
 ## Errors
 
