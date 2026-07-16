@@ -8,3 +8,15 @@ spring:
     username: sa
     password: ""
     driver-class-name: org.h2.Driver
+
+# Withings OAuth test fixtures (FOR-131). NOT real secrets: client id/secret are placeholder
+# strings (WithingsOAuthAdapterTest/JdbcIntegrationTokenStoreTest never call the live Withings
+# API — recorded fixtures / a fake transport only, per AGENTS.md and tests.md). The encryption key
+# is a throwaway value generated once with `openssl rand -base64 32` for this test suite only; it
+# is not used by any real environment and losing/rotating it has zero production impact.
+forma:
+  integrations:
+    withings:
+      client-id: test-client-id
+      client-secret: test-client-secret
+      token-encryption-key: "loqw42BT5R/c7R+x3c4TCbQDKQayhpkVqnVtWPpO1c8="

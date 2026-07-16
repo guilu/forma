@@ -77,4 +77,35 @@ public record IntegrationConnection(
   public IntegrationConnection withSyncOutcome(Instant syncedAt, SyncOutcome outcome) {
     return new IntegrationConnection(provider, status, connectedAt, syncedAt, outcome);
   }
+
+  /**
+   * Marks the provider {@link IntegrationStatus#PENDING} while a real OAuth authorization
+   * round-trip is in flight (FOR-131): an authorization URL was issued and the callback has not
+   * completed yet. Never downgrades an already-{@link IntegrationStatus#CONNECTED} provider —
+   * re-authorizing an already-working connection must not make it look disconnected/pending in the
+   * meantime (spec FOR-131 Open Questions: "Connect when already CONNECTED → document").
+   */
+  public IntegrationConnection awaitingCallback() {
+    if (status == IntegrationStatus.CONNECTED) {
+      return this;
+    }
+    return new IntegrationConnection(
+        provider, IntegrationStatus.PENDING, connectedAt, lastSyncAt, lastSyncOutcome);
+  }
+
+  /**
+   * Marks the provider {@link IntegrationStatus#NEEDS_REAUTH} after a token refresh failure
+   * (FOR-131 Edge Cases: "Refresh failure → mark connection needing re-auth; do not silently
+   * drop"). {@link #connectedAt}, {@link #lastSyncAt} and {@link #lastSyncOutcome} are preserved —
+   * this is a readable "was connected, now needs the user to reconnect" state, not a reset. A
+   * connection that was never connected has nothing to re-authorize, so this is a no-op for {@link
+   * IntegrationStatus#DISCONNECTED}.
+   */
+  public IntegrationConnection needsReauth() {
+    if (status == IntegrationStatus.DISCONNECTED) {
+      return this;
+    }
+    return new IntegrationConnection(
+        provider, IntegrationStatus.NEEDS_REAUTH, connectedAt, lastSyncAt, lastSyncOutcome);
+  }
 }

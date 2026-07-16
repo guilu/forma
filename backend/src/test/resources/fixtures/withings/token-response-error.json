@@ -1,0 +1,6 @@
+{
+  "_comment": "Representative fixture matching Withings' documented error-response shape (non-zero status = error, per their API convention of embedding errors in an HTTP 200 body). NOT captured from a live call.",
+  "status": 503,
+  "body": {},
+  "error": "invalid_params"
+}
