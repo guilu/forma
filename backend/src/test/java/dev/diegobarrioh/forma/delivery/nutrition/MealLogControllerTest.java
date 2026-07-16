@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import dev.diegobarrioh.forma.application.DayConsumption;
+import dev.diegobarrioh.forma.application.HydrationService;
 import dev.diegobarrioh.forma.application.MealLogService;
 import dev.diegobarrioh.forma.application.NutritionCalculationService;
 import dev.diegobarrioh.forma.application.NutritionDayCatalogService;
@@ -43,6 +44,7 @@ class MealLogControllerTest {
   @MockBean private MealLogService mealLogService;
   @MockBean private NutritionDayCatalogService nutritionDayCatalogService;
   @MockBean private NutritionCalculationService nutritionCalculationService;
+  @MockBean private HydrationService hydrationService;
 
   @Test
   void logsACatalogEntryAndReturns201WithTheStoredMacros() throws Exception {
