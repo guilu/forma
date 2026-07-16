@@ -10,6 +10,7 @@ import { GoalsPage } from '../pages/GoalsPage';
 import { SettingsPage } from '../pages/SettingsPage';
 import { IntegrationsPage } from '../pages/IntegrationsPage';
 import { OnboardingPage } from '../pages/onboarding/OnboardingPage';
+import { AuthCallbackPage } from '../pages/AuthCallbackPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 
 /**
@@ -21,9 +22,15 @@ import { NotFoundPage } from '../pages/NotFoundPage';
  * `AppShell` route, not a child. It is a first-run flow, not a navigation
  * section (absent from `app/navigation.ts` on purpose), and rendering it
  * outside the shell keeps a mid-flow user from wandering off via the sidebar.
+ *
+ * `/auth` (FOR-133) is the same kind of exception: the registered Withings
+ * OAuth2 redirect URL (spec FOR-131) lands here mid-flow, so it renders
+ * outside `AppShell` too — no persistent sidebar/nav while the OAuth
+ * callback is still resolving.
  */
 export const routes: RouteObject[] = [
   { path: '/onboarding', element: <OnboardingPage /> },
+  { path: '/auth', element: <AuthCallbackPage /> },
   {
     path: '/',
     element: <AppShell />,

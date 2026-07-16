@@ -22,12 +22,20 @@ function renderSection() {
   );
 }
 
-vi.mock('../../api/integrations', () => ({
-  listIntegrations: vi.fn(),
-  connectIntegration: vi.fn(),
-  disconnectIntegration: vi.fn(),
-  syncIntegration: vi.fn(),
-}));
+// FOR-133: `isAuthorizationRequired` is a pure type-guard the component now
+// imports alongside the mocked I/O functions — keep the real implementation
+// via `importOriginal` rather than re-declaring it here (a stub would risk
+// drifting from the real discriminant logic).
+vi.mock('../../api/integrations', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../api/integrations')>();
+  return {
+    ...actual,
+    listIntegrations: vi.fn(),
+    connectIntegration: vi.fn(),
+    disconnectIntegration: vi.fn(),
+    syncIntegration: vi.fn(),
+  };
+});
 
 const listMock = vi.mocked(listIntegrations);
 const connectMock = vi.mocked(connectIntegration);
@@ -54,6 +62,13 @@ const appleHealth: IntegrationConnection = {
   providerName: 'Apple Health',
   description: 'Sincroniza tus datos de salud de Apple.',
   status: 'NOT_CONNECTED',
+};
+
+// FOR-133: Withings not-yet-connected, to exercise the "Conectar Withings" OAuth redirect.
+const withingsAvailable: IntegrationConnection = {
+  ...withings,
+  status: 'NOT_CONNECTED',
+  lastSyncAt: undefined,
 };
 
 describe('IntegrationsSection', () => {
@@ -410,6 +425,114 @@ describe('IntegrationsSection', () => {
 
       const region = screen.getByRole('log');
       expect(within(region).getAllByText('Sincronizado con Withings.')).toHaveLength(1);
+    });
+  });
+
+  // FOR-133: fixes the FOR-123 drift — `connectIntegration` now returns
+  // `{ authorizationUrl }` for a provider with a registered OAuth gateway
+  // (Withings, FOR-131), and the connect handler must redirect the browser
+  // there instead of treating it as an already-completed connect.
+  describe('Withings OAuth connect redirect (FOR-133)', () => {
+    // jsdom's `window.location.assign` is non-configurable, so `vi.spyOn`
+    // cannot patch it directly — replace the whole `window.location` binding
+    // instead (standard jsdom workaround) and restore it afterwards.
+    const originalLocation = window.location;
+    let assignSpy: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+      assignSpy = vi.fn();
+      Object.defineProperty(window, 'location', {
+        value: { ...originalLocation, assign: assignSpy },
+        writable: true,
+        configurable: true,
+      });
+    });
+
+    afterEach(() => {
+      Object.defineProperty(window, 'location', {
+        value: originalLocation,
+        writable: true,
+        configurable: true,
+      });
+    });
+
+    it('redirects the browser to the authorization URL after connecting Withings', async () => {
+      listMock.mockResolvedValue([withingsAvailable]);
+      connectMock.mockResolvedValue({
+        authorizationUrl:
+          'https://account.withings.com/oauth2_user/authorize2?client_id=abc&state=xyz',
+      });
+      const user = userEvent.setup();
+
+      renderSection();
+      await user.click(await screen.findByRole('button', { name: 'Conectar' }));
+
+      await waitFor(() => expect(connectMock).toHaveBeenCalledWith('WITHINGS'));
+      expect(assignSpy).toHaveBeenCalledWith(
+        'https://account.withings.com/oauth2_user/authorize2?client_id=abc&state=xyz',
+      );
+      // The browser is navigating away — this must never be reported as a
+      // completed connection (that only happens once `/auth` calls back).
+      expect(screen.queryByRole('log')).not.toHaveTextContent('Conectado con Withings');
+    });
+
+    it('does not redirect when connect fails, and surfaces the error instead', async () => {
+      listMock.mockResolvedValue([withingsAvailable]);
+      connectMock.mockRejectedValue(
+        new ApiRequestError(502, 'No se pudo conectar con Withings.', 'PROVIDER_ERROR'),
+      );
+      const user = userEvent.setup();
+
+      renderSection();
+      await user.click(await screen.findByRole('button', { name: 'Conectar' }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'No se pudo conectar con Withings',
+      );
+      expect(assignSpy).not.toHaveBeenCalled();
+    });
+
+    it('guards against a double-submit: a rapid second click while pending does not connect twice', async () => {
+      listMock.mockResolvedValue([withingsAvailable]);
+      let resolveConnect!: (value: { authorizationUrl: string }) => void;
+      connectMock.mockReturnValue(
+        new Promise((resolve) => {
+          resolveConnect = resolve;
+        }),
+      );
+      const user = userEvent.setup();
+
+      renderSection();
+      const connectButton = await screen.findByRole('button', { name: 'Conectar' });
+      await user.click(connectButton);
+      // The button is now `loading`/disabled (Button component) — a second
+      // click must not fire a second connect/redirect.
+      await user.click(connectButton);
+
+      resolveConnect({
+        authorizationUrl: 'https://account.withings.com/oauth2_user/authorize2?client_id=abc',
+      });
+      await waitFor(() => expect(assignSpy).toHaveBeenCalledTimes(1));
+      expect(connectMock).toHaveBeenCalledTimes(1);
+    });
+
+    // The existing mock immediate-connect providers (Google Fit, Apple
+    // Health — no registered OAuth gateway, FOR-131) must keep behaving
+    // exactly as before this story: no redirect, success toast as usual.
+    it('does not redirect for a provider with no OAuth gateway (mock immediate-connect unchanged)', async () => {
+      listMock.mockResolvedValue([googleFit]);
+      connectMock.mockResolvedValue({
+        provider: 'GOOGLE_FIT',
+        status: 'CONNECTED',
+        connectedAt: '2026-07-15T08:00:00Z',
+      });
+      const user = userEvent.setup();
+
+      renderSection();
+      await user.click(await screen.findByRole('button', { name: 'Conectar' }));
+
+      expect(await screen.findByRole('log')).toHaveTextContent('Conectado con Google Fit.');
+      expect(assignSpy).not.toHaveBeenCalled();
     });
   });
 });

@@ -30,6 +30,11 @@ vi.mock('./api/insights', () => ({
 }));
 vi.mock('./api/integrations', () => ({
   listIntegrations: vi.fn().mockResolvedValue([]),
+  completeIntegrationCallback: vi.fn().mockResolvedValue({
+    provider: 'WITHINGS',
+    status: 'CONNECTED',
+    connectedAt: '2026-07-16T15:00:00Z',
+  }),
 }));
 
 /**
@@ -89,6 +94,19 @@ describe('App', () => {
 
     expect(screen.getByRole('heading', { name: 'Perfil' })).toBeInTheDocument();
     // Onboarding is not a nav section (app/navigation.ts) and is not wrapped in
+    // AppShell, so the persistent sidebar/mobile nav must not be present.
+    expect(screen.queryAllByRole('navigation')).toHaveLength(0);
+  });
+
+  it('renders the FOR-133 auth callback route at /auth, outside the AppShell', async () => {
+    render(
+      <MemoryRouter initialEntries={['/auth?code=abc&state=xyz']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('heading', { name: 'Conexión con Withings' })).toBeInTheDocument();
+    // Same rationale as /onboarding: a mid-flow OAuth landing renders outside
     // AppShell, so the persistent sidebar/mobile nav must not be present.
     expect(screen.queryAllByRole('navigation')).toHaveLength(0);
   });

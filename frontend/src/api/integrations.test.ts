@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { type ApiClient } from './client';
 import {
+  completeIntegrationCallback,
   connectIntegration,
   disconnectIntegration,
   listIntegrations,
@@ -112,11 +113,16 @@ describe('integrations API (FOR-126 delivery/integrations contract, FOR-123)', (
     expect(connection).not.toHaveProperty('refreshToken');
   });
 
-  it('POSTs connect to the lower-cased provider path segment (matches IntegrationController)', async () => {
+  // FOR-133: FOR-131 changed `POST /{provider}/connect` — verified directly
+  // against `ConnectResponse`/`IntegrationController` in
+  // `backend/src/main/java/.../delivery/integrations/`. For a provider with a
+  // registered OAuth gateway (Withings) it now returns only
+  // `{ authorizationUrl }`, replacing the FOR-126 status shape this client
+  // used to assume unconditionally (the FOR-123 drift this story fixes).
+  it('POSTs connect to the lower-cased provider path segment and returns the authorization URL (Withings, FOR-131/FOR-133)', async () => {
     const result = {
-      provider: 'WITHINGS',
-      status: 'CONNECTED',
-      connectedAt: '2026-07-15T08:00:00Z',
+      authorizationUrl:
+        'https://account.withings.com/oauth2_user/authorize2?client_id=abc&state=xyz',
     };
     const request = vi.fn().mockResolvedValue(result);
     const client: ApiClient = { baseUrl: 'http://test', request };
@@ -127,6 +133,68 @@ describe('integrations API (FOR-126 delivery/integrations contract, FOR-123)', (
       method: 'POST',
     });
     expect(response).toBe(result);
+    expect(response).toHaveProperty('authorizationUrl');
+  });
+
+  // FOR-131 keeps the FOR-126 immediate-connect fallback for providers with no
+  // registered OAuth gateway yet (Google Fit, Apple Health) — `ConnectResult`
+  // is a discriminated union on the backend, so the client must round-trip
+  // both shapes untouched rather than assuming one.
+  it('returns the mock immediate-connect shape untouched for a provider with no OAuth gateway (Google Fit)', async () => {
+    const result = {
+      provider: 'GOOGLE_FIT',
+      status: 'CONNECTED',
+      connectedAt: '2026-07-15T08:00:00Z',
+    };
+    const request = vi.fn().mockResolvedValue(result);
+    const client: ApiClient = { baseUrl: 'http://test', request };
+
+    const response = await connectIntegration('GOOGLE_FIT', client);
+
+    expect(request).toHaveBeenCalledWith('/api/v1/integrations/google_fit/connect', {
+      method: 'POST',
+    });
+    expect(response).toBe(result);
+    expect(response).not.toHaveProperty('authorizationUrl');
+  });
+
+  // FOR-133: the SPA's new `/auth` route relays `code`/`state` here after the
+  // Withings redirect lands — verified against `CallbackRequest`/
+  // `IntegrationController.callback` (`POST /{provider}/callback`).
+  it('POSTs the callback with { code, state } and returns the updated connection status', async () => {
+    const result = {
+      provider: 'WITHINGS',
+      status: 'CONNECTED',
+      connectedAt: '2026-07-16T15:00:00Z',
+    };
+    const request = vi.fn().mockResolvedValue(result);
+    const client: ApiClient = { baseUrl: 'http://test', request };
+
+    const response = await completeIntegrationCallback(
+      'WITHINGS',
+      'auth-code',
+      'state-value',
+      client,
+    );
+
+    expect(request).toHaveBeenCalledWith('/api/v1/integrations/withings/callback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: 'auth-code', state: 'state-value' }),
+    });
+    expect(response).toBe(result);
+  });
+
+  // spec FOR-131 api.md: 400 on missing/mismatched/expired/replayed state —
+  // the client must surface this as a rejected promise the `/auth` page can
+  // render, never swallow it.
+  it('propagates a rejected callback request (e.g. 400 invalid/expired state) instead of swallowing it', async () => {
+    const request = vi.fn().mockRejectedValue(new Error('invalid state'));
+    const client: ApiClient = { baseUrl: 'http://test', request };
+
+    await expect(
+      completeIntegrationCallback('WITHINGS', 'auth-code', 'bad-state', client),
+    ).rejects.toThrow('invalid state');
   });
 
   it('DELETEs disconnect to the lower-cased provider path segment', async () => {
