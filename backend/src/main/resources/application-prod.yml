@@ -11,3 +11,11 @@ spring:
     url: ${SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME}
     password: ${SPRING_DATASOURCE_PASSWORD}
+
+# Withings OAuth secrets (FOR-131) are read from the environment via the base application.yml's
+# empty-default placeholders (WITHINGS_CLIENT_ID / WITHINGS_CLIENT_SECRET / WITHINGS_TOKEN_ENC_KEY).
+# They are deliberately NOT declared "required, no fallback" here: by design the application boots
+# without them (see AesGcmTokenCipher / WithingsOAuthAdapter javadoc — lazy-fail), so an environment
+# that never uses Withings is unaffected, and a real connect/callback without them fails loudly at
+# that call with a clear ProviderOAuthException / "key not configured" error instead of at startup.
+# A deployment that DOES use Withings must set all three — see the PR's Security notes.

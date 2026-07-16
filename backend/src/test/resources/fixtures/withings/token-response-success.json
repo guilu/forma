@@ -1,0 +1,12 @@
+{
+  "_comment": "Representative fixture matching Withings' publicly documented v2/oauth2 requesttoken response shape. NOT captured from a live call — this story has no real Withings credentials (spec FOR-131 tests.md: 'never call the live Withings API in tests'). Values below are fixture placeholders, not real tokens.",
+  "status": 0,
+  "body": {
+    "userid": 12345678,
+    "access_token": "FIXTURE_ACCESS_TOKEN_abcdef0123456789",
+    "refresh_token": "FIXTURE_REFRESH_TOKEN_abcdef0123456789",
+    "expires_in": 10800,
+    "scope": "user.metrics",
+    "token_type": "Bearer"
+  }
+}

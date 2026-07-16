@@ -17,6 +17,12 @@ public enum ApiErrorCode {
   UNAUTHORIZED,
   /** Authenticated caller lacks permission. Reserved placeholder. */
   FORBIDDEN,
+  /**
+   * An upstream external provider call failed (FOR-131, e.g. a Withings OAuth token exchange or
+   * refresh) — the caller's request was valid, but a dependency this server does not control
+   * failed. Maps to HTTP 502.
+   */
+  PROVIDER_ERROR,
   /** Unexpected server-side error; details are logged, never returned. */
   INTERNAL_ERROR
 }

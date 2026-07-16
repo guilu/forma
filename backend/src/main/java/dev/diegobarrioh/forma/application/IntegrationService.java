@@ -7,13 +7,20 @@ import dev.diegobarrioh.forma.domain.SyncOutcome;
 import dev.diegobarrioh.forma.domain.SyncResult;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
 /**
- * Application use cases for provider-neutral integration connections (FOR-126, first implementable
- * slice of FOR-103): status read model, connect/disconnect/manual-sync. No real OAuth, no token
- * storage, no real provider sync — this slice's connect is a mock and its sync is a stub/no-op
- * import (spec FOR-126 Summary).
+ * Application use cases for provider-neutral integration connections. FOR-126 (first implementable
+ * slice of FOR-103) shipped the status read model and a mock connect/disconnect/ manual-sync shell.
+ * FOR-131 (slice 2) adds a real Withings OAuth connect/callback/disconnect and encrypted token
+ * refresh on top of that shell — every other registered provider still falls back to the FOR-126
+ * mock (see {@link ConnectResult}), since only Withings has a registered OAuth app (spec FOR-131).
+ * Real provider sync into {@code BodyMeasurement} is still FOR-103 slice 3; {@link #sync} stays the
+ * FOR-126 stub.
  *
  * <p>Single-user MVP (ADR-002): every use case operates on the one {@link #OWNER_ID} row, mirroring
  * {@link UserProfileService#OWNER_ID} / {@link GoalService#OWNER_ID}. No shared "current account"
@@ -27,9 +34,21 @@ public class IntegrationService {
   public static final String OWNER_ID = "default-user";
 
   private final IntegrationRepository repository;
+  private final OAuthStateStore stateStore;
+  private final IntegrationTokenStore tokenStore;
+  private final Map<IntegrationProvider, ProviderOAuthGateway> gatewaysByProvider;
 
-  public IntegrationService(IntegrationRepository repository) {
+  public IntegrationService(
+      IntegrationRepository repository,
+      OAuthStateStore stateStore,
+      IntegrationTokenStore tokenStore,
+      List<ProviderOAuthGateway> gateways) {
     this.repository = repository;
+    this.stateStore = stateStore;
+    this.tokenStore = tokenStore;
+    this.gatewaysByProvider =
+        gateways.stream()
+            .collect(Collectors.toMap(ProviderOAuthGateway::provider, Function.identity()));
   }
 
   /**
@@ -42,34 +61,128 @@ public class IntegrationService {
   }
 
   /**
-   * Marks {@code provider} connected (mock, no OAuth this slice). Idempotent when already connected
-   * (spec FOR-126 Open Questions).
+   * Starts connecting {@code provider}. When a {@link ProviderOAuthGateway} is registered for it
+   * (Withings, FOR-131), issues a single-use OAuth state/PKCE challenge, marks the connection
+   * {@link IntegrationStatus#PENDING} (unless already {@link IntegrationStatus#CONNECTED} — see
+   * {@link IntegrationConnection#awaitingCallback()}), and returns {@link
+   * ConnectResult#authorizationRequired(String)}. Otherwise falls back to the FOR-126 mock
+   * immediate-connect and returns {@link ConnectResult#connected(IntegrationConnection)} (spec
+   * FOR-131 only implements Withings; Google Fit/Apple Health have no registered OAuth app yet —
+   * documented scope decision, see {@link ConnectResult}).
    */
-  public IntegrationConnection connect(IntegrationProvider provider) {
-    IntegrationConnection connected = currentOrDefault(provider).connect(Instant.now());
+  public ConnectResult connect(IntegrationProvider provider) {
+    Optional<ProviderOAuthGateway> gateway = gatewayFor(provider);
+    if (gateway.isEmpty()) {
+      IntegrationConnection connected = currentOrDefault(provider).connect(Instant.now());
+      return ConnectResult.connected(repository.save(OWNER_ID, connected));
+    }
+
+    Instant now = Instant.now();
+    OAuthChallenge challenge = stateStore.create(OWNER_ID, provider, now);
+    repository.save(OWNER_ID, currentOrDefault(provider).awaitingCallback());
+    String authorizationUrl =
+        gateway.get().buildAuthorizationUrl(challenge.state(), challenge.codeChallenge());
+    return ConnectResult.authorizationRequired(authorizationUrl);
+  }
+
+  /**
+   * Completes an OAuth round trip for {@code provider} (FOR-131): validates {@code state} against a
+   * stored, unexpired, single-use challenge (spec FOR-131 Edge Cases: "mismatched/expired/replayed
+   * state → reject, no connection created, no tokens stored"), exchanges {@code code} for tokens
+   * via the registered {@link ProviderOAuthGateway}, stores them encrypted, and marks the
+   * connection {@link IntegrationStatus#CONNECTED}.
+   *
+   * <p>The state challenge is consumed (removed) before the token exchange is attempted, so a
+   * failed exchange cannot be retried with the same {@code code}/{@code state} — the caller must
+   * restart the connect flow, matching how Withings itself treats authorization codes as
+   * single-use.
+   *
+   * @throws ValidationException if {@code provider} has no registered OAuth gateway
+   * @throws OAuthStateException if {@code state} does not match a live, unconsumed challenge
+   * @throws ProviderOAuthException if the token exchange fails; the connection is left unchanged
+   *     (still {@link IntegrationStatus#PENDING} or whatever it was before)
+   */
+  public IntegrationConnection callback(IntegrationProvider provider, String code, String state) {
+    ProviderOAuthGateway gateway =
+        gatewayFor(provider)
+            .orElseThrow(
+                () ->
+                    new ValidationException("El proveedor no admite conexión OAuth: " + provider));
+
+    Instant now = Instant.now();
+    OAuthChallenge challenge =
+        stateStore.consume(OWNER_ID, provider, state, now).orElseThrow(OAuthStateException::new);
+
+    ExchangedTokens tokens = gateway.exchangeAuthorizationCode(code, challenge.codeVerifier());
+
+    tokenStore.store(OWNER_ID, provider, tokens);
+    IntegrationConnection connected = currentOrDefault(provider).connect(now);
     return repository.save(OWNER_ID, connected);
   }
 
   /**
-   * Marks {@code provider} disconnected. Idempotent no-op when already disconnected (spec FOR-126
-   * Edge Cases).
+   * Marks {@code provider} disconnected and forgets any stored tokens (spec FOR-131 Functional
+   * Requirements: "Disconnect revokes/forgets the stored tokens"). Idempotent no-op on the
+   * connection status when already disconnected (spec FOR-126 Edge Cases); forgetting tokens is
+   * always safe to call even when none are stored.
    */
   public IntegrationConnection disconnect(IntegrationProvider provider) {
+    tokenStore.forget(OWNER_ID, provider);
     IntegrationConnection disconnected = currentOrDefault(provider).disconnect();
     return repository.save(OWNER_ID, disconnected);
   }
 
   /**
-   * Triggers a manual sync. When connected, performs a stub/no-op import — {@code importedCount} is
-   * always {@code 0}, never fabricated (spec FOR-126 Functional Requirements) — persists the
-   * outcome and returns it. When disconnected, resolves the spec's open question by returning a
-   * readable {@link SyncResult#NOT_CONNECTED} outcome instead of a 409 (keeps the FOR-57/FOR-123
-   * frontend error handling simple, spec FOR-126 Edge Cases) — nothing is persisted, since no sync
-   * actually ran.
+   * Refreshes {@code provider}'s stored access token if it has expired as of {@code now}, using the
+   * stored refresh token (spec FOR-131 Functional Requirements: "Token refresh when the access
+   * token is expired"). A no-op when no tokens are stored, or when the current access token is
+   * still valid. On refresh failure, marks the connection {@link IntegrationStatus#NEEDS_REAUTH}
+   * instead of silently dropping the connection (spec FOR-131 Edge Cases: "Refresh failure → mark
+   * connection needing re-auth; do not silently drop").
+   *
+   * <p>Not called automatically by {@link #sync} yet — {@code sync} stays the FOR-126 stub this
+   * slice (FOR-103 slice 3 does real sync). This is the seam slice 3's real sync calls before
+   * hitting the Withings Measure API. {@code now} is an explicit parameter (matching {@link
+   * IntegrationConnection#connect(Instant)}'s style) so callers — and tests — control the instant
+   * expiry is evaluated against.
+   */
+  public IntegrationConnection refreshTokenIfNeeded(IntegrationProvider provider, Instant now) {
+    Optional<ExchangedTokens> stored = tokenStore.find(OWNER_ID, provider);
+    if (stored.isEmpty()) {
+      return currentOrDefault(provider);
+    }
+    if (now.isBefore(stored.get().accessTokenExpiresAt())) {
+      return currentOrDefault(provider);
+    }
+
+    ProviderOAuthGateway gateway =
+        gatewayFor(provider)
+            .orElseThrow(
+                () ->
+                    new ValidationException("El proveedor no admite conexión OAuth: " + provider));
+    try {
+      ExchangedTokens refreshed = gateway.refreshTokens(stored.get().refreshToken());
+      tokenStore.store(OWNER_ID, provider, refreshed);
+      return currentOrDefault(provider);
+    } catch (ProviderOAuthException ex) {
+      return repository.save(OWNER_ID, currentOrDefault(provider).needsReauth());
+    }
+  }
+
+  /**
+   * Triggers a manual sync. When {@link IntegrationStatus#CONNECTED}, performs a stub/no-op import
+   * — {@code importedCount} is always {@code 0}, never fabricated (spec FOR-126 Functional
+   * Requirements) — persists the outcome and returns it. Otherwise (disconnected, still {@link
+   * IntegrationStatus#PENDING} an OAuth callback, or {@link IntegrationStatus#NEEDS_REAUTH})
+   * resolves the spec's open question by returning a readable {@link SyncResult#NOT_CONNECTED}
+   * outcome instead of a 409 (keeps the FOR-57/FOR-123 frontend error handling simple, spec FOR-126
+   * Edge Cases) — nothing is persisted, since no sync actually ran. FOR-131 tightened this from
+   * "not DISCONNECTED" to "is CONNECTED" so a mid-handshake or needs-reauth provider is never
+   * treated as sync-able.
    */
   public IntegrationConnection sync(IntegrationProvider provider) {
     IntegrationConnection current = currentOrDefault(provider);
-    if (current.status() == IntegrationStatus.DISCONNECTED) {
+    if (current.status() != IntegrationStatus.CONNECTED) {
       SyncOutcome notConnected =
           new SyncOutcome(SyncResult.NOT_CONNECTED, 0, "El proveedor no está conectado.");
       return current.withSyncOutcome(current.lastSyncAt(), notConnected);
@@ -77,6 +190,10 @@ public class IntegrationService {
     SyncOutcome stubOutcome = new SyncOutcome(SyncResult.OK, 0, null);
     IntegrationConnection synced = current.withSyncOutcome(Instant.now(), stubOutcome);
     return repository.save(OWNER_ID, synced);
+  }
+
+  private Optional<ProviderOAuthGateway> gatewayFor(IntegrationProvider provider) {
+    return Optional.ofNullable(gatewaysByProvider.get(provider));
   }
 
   private IntegrationConnection currentOrDefault(IntegrationProvider provider) {

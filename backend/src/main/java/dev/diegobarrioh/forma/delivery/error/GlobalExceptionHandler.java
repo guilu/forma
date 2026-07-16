@@ -1,6 +1,8 @@
 package dev.diegobarrioh.forma.delivery.error;
 
 import dev.diegobarrioh.forma.application.NotFoundException;
+import dev.diegobarrioh.forma.application.OAuthStateException;
+import dev.diegobarrioh.forma.application.ProviderOAuthException;
 import dev.diegobarrioh.forma.application.ValidationException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -111,6 +113,33 @@ public class GlobalExceptionHandler {
   @ResponseStatus(HttpStatus.NOT_FOUND)
   public ApiError handleNotFound(NotFoundException ex, HttpServletRequest request) {
     return ApiError.of(ApiErrorCode.NOT_FOUND, ex.getMessage(), correlationId(request), null);
+  }
+
+  /**
+   * An OAuth callback's {@code state} did not match a stored, unexpired, unconsumed challenge
+   * (FOR-131 Edge Cases: "mismatched/expired/replayed state → reject") — maps to 400 {@code
+   * VALIDATION_ERROR}. {@link OAuthStateException#getMessage()} is always a fixed, generic string
+   * (never the caller-supplied {@code state} value), so it is safe to return as-is (spec FOR-131
+   * api.md: "Never log or echo code, state, or any token").
+   */
+  @ExceptionHandler(OAuthStateException.class)
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  public ApiError handleOAuthState(OAuthStateException ex, HttpServletRequest request) {
+    return ApiError.of(
+        ApiErrorCode.VALIDATION_ERROR, ex.getMessage(), correlationId(request), null);
+  }
+
+  /**
+   * A provider OAuth call (Withings token exchange/refresh) failed (FOR-131 Edge Cases: "Token
+   * exchange failure... readable outcome, no secret leak") — maps to 502. {@link
+   * ProviderOAuthException#getMessage()} is always a safe, generic summary the adapter constructs
+   * deliberately without the raw provider response body, an authorization code, or a token (see its
+   * javadoc), so it is safe to return as-is.
+   */
+  @ExceptionHandler(ProviderOAuthException.class)
+  @ResponseStatus(HttpStatus.BAD_GATEWAY)
+  public ApiError handleProviderOAuth(ProviderOAuthException ex, HttpServletRequest request) {
+    return ApiError.of(ApiErrorCode.PROVIDER_ERROR, ex.getMessage(), correlationId(request), null);
   }
 
   /**

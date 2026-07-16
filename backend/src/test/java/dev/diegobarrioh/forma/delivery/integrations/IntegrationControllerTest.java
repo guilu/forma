@@ -9,7 +9,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import dev.diegobarrioh.forma.application.ConnectResult;
 import dev.diegobarrioh.forma.application.IntegrationService;
+import dev.diegobarrioh.forma.application.OAuthStateException;
+import dev.diegobarrioh.forma.application.ProviderOAuthException;
 import dev.diegobarrioh.forma.domain.IntegrationConnection;
 import dev.diegobarrioh.forma.domain.IntegrationProvider;
 import dev.diegobarrioh.forma.domain.IntegrationStatus;
@@ -21,13 +24,15 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * Web-slice tests for {@link IntegrationController} (FOR-126): routing, response shape per {@code
- * specs/FOR-126/api.md}, and the token/secret-leak guard from {@code tests.md} ("No response body
- * or log line contains a token/secret"). {@link IntegrationService} is mocked, like {@code
- * GoalControllerTest} (FOR-125).
+ * Web-slice tests for {@link IntegrationController} (FOR-126 status/sync/disconnect, extended by
+ * FOR-131 with real Withings OAuth connect/callback): routing, response shape per {@code
+ * specs/FOR-131/api.md}, and the token/secret/code/state-leak guard from {@code tests.md} ("No
+ * response body, header, log line, or error message contains a token, code, or state"). {@link
+ * IntegrationService} is mocked, like {@code GoalControllerTest} (FOR-125).
  */
 @WebMvcTest(IntegrationController.class)
 class IntegrationControllerTest {
@@ -78,20 +83,53 @@ class IntegrationControllerTest {
   }
 
   @Test
-  void connectMarksTheProviderConnected() throws Exception {
+  void connectOnAProviderWithARegisteredOAuthGatewayReturnsAnAuthorizationUrl() throws Exception {
+    // FOR-131 api.md: connect "changed" — Withings no longer flips status directly.
     when(service.connect(IntegrationProvider.WITHINGS))
         .thenReturn(
-            new IntegrationConnection(
-                IntegrationProvider.WITHINGS,
-                IntegrationStatus.CONNECTED,
-                CONNECTED_AT,
-                null,
-                null));
+            ConnectResult.authorizationRequired(
+                "https://account.withings.com/oauth2_user/authorize2?client_id=test&state=abc&redirect_uri=https%3A%2F%2Fforma.diegobarrioh.dev%2Fauth&scope=user.metrics&code_challenge=xyz"));
 
     mockMvc
         .perform(post("/api/v1/integrations/withings/connect"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.provider").value("WITHINGS"))
+        .andExpect(
+            jsonPath("$.authorizationUrl")
+                .value(
+                    org.hamcrest.Matchers.startsWith(
+                        "https://account.withings.com/oauth2_user/authorize2")))
+        .andExpect(
+            jsonPath("$.authorizationUrl")
+                .value(
+                    org.hamcrest.Matchers.containsString(
+                        "redirect_uri=https%3A%2F%2Fforma.diegobarrioh.dev%2Fauth")))
+        .andExpect(
+            jsonPath("$.authorizationUrl")
+                .value(org.hamcrest.Matchers.containsString("scope=user.metrics")))
+        .andExpect(jsonPath("$.provider").doesNotExist())
+        .andExpect(jsonPath("$.status").doesNotExist())
+        .andExpect(jsonPath("$.connectedAt").doesNotExist());
+  }
+
+  @Test
+  void connectOnAProviderWithoutAnOAuthGatewayKeepsTheMockConnectResponseShape() throws Exception {
+    // Google Fit/Apple Health have no registered OAuth app (out of FOR-131 scope) — the FOR-126
+    // mock-connect fallback still applies, unchanged.
+    when(service.connect(IntegrationProvider.GOOGLE_FIT))
+        .thenReturn(
+            ConnectResult.connected(
+                new IntegrationConnection(
+                    IntegrationProvider.GOOGLE_FIT,
+                    IntegrationStatus.CONNECTED,
+                    CONNECTED_AT,
+                    null,
+                    null)));
+
+    mockMvc
+        .perform(post("/api/v1/integrations/google_fit/connect"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.authorizationUrl").doesNotExist())
+        .andExpect(jsonPath("$.provider").value("GOOGLE_FIT"))
         .andExpect(jsonPath("$.status").value("CONNECTED"))
         .andExpect(jsonPath("$.connectedAt").value("2026-07-15T08:00:00Z"));
   }
@@ -102,6 +140,113 @@ class IntegrationControllerTest {
         .perform(post("/api/v1/integrations/not-a-provider/connect"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+  }
+
+  @Test
+  void callbackWithAValidRequestReturnsTheConnectedStatus() throws Exception {
+    when(service.callback(IntegrationProvider.WITHINGS, "withings-auth-code", "the-state"))
+        .thenReturn(
+            new IntegrationConnection(
+                IntegrationProvider.WITHINGS,
+                IntegrationStatus.CONNECTED,
+                CONNECTED_AT,
+                null,
+                null));
+
+    mockMvc
+        .perform(
+            post("/api/v1/integrations/withings/callback")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"code\":\"withings-auth-code\",\"state\":\"the-state\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.provider").value("WITHINGS"))
+        .andExpect(jsonPath("$.status").value("CONNECTED"))
+        .andExpect(jsonPath("$.connectedAt").value("2026-07-15T08:00:00Z"));
+  }
+
+  @Test
+  void callbackWithAMissingCodeReturnsValidationError() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/integrations/withings/callback")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"state\":\"the-state\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+  }
+
+  @Test
+  void callbackWithAMissingStateReturnsValidationError() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/integrations/withings/callback")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"code\":\"withings-auth-code\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+  }
+
+  @Test
+  void callbackWithAnUnknownProviderReturnsValidationError() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/integrations/not-a-provider/callback")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"code\":\"c\",\"state\":\"s\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+  }
+
+  @Test
+  void callbackWithAMismatchedStateReturnsValidationErrorAndNeverEchoesTheState() throws Exception {
+    when(service.callback(IntegrationProvider.WITHINGS, "some-code", "wrong-state"))
+        .thenThrow(new OAuthStateException());
+
+    mockMvc
+        .perform(
+            post("/api/v1/integrations/withings/callback")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"code\":\"some-code\",\"state\":\"wrong-state\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+        .andExpect(
+            content()
+                .string(
+                    org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("wrong-state"))))
+        .andExpect(
+            content()
+                .string(
+                    org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("some-code"))));
+  }
+
+  @Test
+  void callbackWhenTheProviderExchangeFailsReturnsABadGatewayWithNoSecretLeak() throws Exception {
+    when(service.callback(IntegrationProvider.WITHINGS, "some-code", "the-state"))
+        .thenThrow(
+            new ProviderOAuthException(
+                "Withings devolvió un error al procesar la solicitud (status=503)."));
+
+    mockMvc
+        .perform(
+            post("/api/v1/integrations/withings/callback")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"code\":\"some-code\",\"state\":\"the-state\"}"))
+        .andExpect(status().isBadGateway())
+        .andExpect(jsonPath("$.code").value("PROVIDER_ERROR"))
+        .andExpect(
+            content()
+                .string(
+                    org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsStringIgnoringCase("token"))))
+        .andExpect(
+            content()
+                .string(
+                    org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsStringIgnoringCase("secret"))))
+        .andExpect(
+            content()
+                .string(
+                    org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("some-code"))));
   }
 
   @Test
@@ -173,12 +318,8 @@ class IntegrationControllerTest {
   void connectResponseNeverContainsATokenOrSecretField() throws Exception {
     when(service.connect(eq(IntegrationProvider.WITHINGS)))
         .thenReturn(
-            new IntegrationConnection(
-                IntegrationProvider.WITHINGS,
-                IntegrationStatus.CONNECTED,
-                CONNECTED_AT,
-                null,
-                null));
+            ConnectResult.authorizationRequired(
+                "https://account.withings.com/oauth2_user/authorize2?client_id=test&state=abc&code_challenge=xyz"));
 
     mockMvc
         .perform(post("/api/v1/integrations/withings/connect"))
@@ -193,6 +334,46 @@ class IntegrationControllerTest {
                 .string(
                     org.hamcrest.Matchers.not(
                         org.hamcrest.Matchers.containsStringIgnoringCase("secret"))));
+  }
+
+  @Test
+  void callbackResponseNeverContainsATokenCodeOrStateField() throws Exception {
+    // FOR-131 tests.md: assert explicitly across callback that no token/code/state leaks.
+    when(service.callback(IntegrationProvider.WITHINGS, "withings-auth-code", "the-state-value"))
+        .thenReturn(
+            new IntegrationConnection(
+                IntegrationProvider.WITHINGS,
+                IntegrationStatus.CONNECTED,
+                CONNECTED_AT,
+                null,
+                null));
+
+    mockMvc
+        .perform(
+            post("/api/v1/integrations/withings/callback")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"code\":\"withings-auth-code\",\"state\":\"the-state-value\"}"))
+        .andExpect(status().isOk())
+        .andExpect(
+            content()
+                .string(
+                    org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsStringIgnoringCase("token"))))
+        .andExpect(
+            content()
+                .string(
+                    org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsStringIgnoringCase("secret"))))
+        .andExpect(
+            content()
+                .string(
+                    org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("withings-auth-code"))))
+        .andExpect(
+            content()
+                .string(
+                    org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("the-state-value"))));
   }
 
   @Test

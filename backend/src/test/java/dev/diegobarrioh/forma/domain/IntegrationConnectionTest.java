@@ -114,6 +114,57 @@ class IntegrationConnectionTest {
   }
 
   @Test
+  void awaitingCallbackMarksAnUnconnectedProviderPendingWithoutSettingConnectedAt() {
+    IntegrationConnection disconnected =
+        IntegrationConnection.disconnectedDefault(IntegrationProvider.WITHINGS);
+
+    IntegrationConnection pending = disconnected.awaitingCallback();
+
+    assertThat(pending.status()).isEqualTo(IntegrationStatus.PENDING);
+    assertThat(pending.connectedAt()).isNull();
+  }
+
+  @Test
+  void awaitingCallbackOnAnAlreadyConnectedProviderDoesNotDowngradeStatus() {
+    // FOR-131 spec Open Questions: "Connect when already CONNECTED → document (re-auth vs 409)".
+    // Resolved: re-auth is allowed but must never visibly downgrade an already-working connection
+    // to PENDING while a fresh authorization round-trip is in flight.
+    IntegrationConnection connected =
+        IntegrationConnection.disconnectedDefault(IntegrationProvider.WITHINGS).connect(NOW);
+
+    IntegrationConnection stillConnected = connected.awaitingCallback();
+
+    assertThat(stillConnected.status()).isEqualTo(IntegrationStatus.CONNECTED);
+    assertThat(stillConnected.connectedAt()).isEqualTo(NOW);
+  }
+
+  @Test
+  void needsReauthMarksAConnectedProviderNeedingReauthWithoutClearingConnectedAtOrSyncHistory() {
+    SyncOutcome outcome = new SyncOutcome(SyncResult.OK, 0, null);
+    IntegrationConnection connected =
+        IntegrationConnection.disconnectedDefault(IntegrationProvider.WITHINGS)
+            .connect(NOW)
+            .withSyncOutcome(LATER, outcome);
+
+    IntegrationConnection needsReauth = connected.needsReauth();
+
+    assertThat(needsReauth.status()).isEqualTo(IntegrationStatus.NEEDS_REAUTH);
+    assertThat(needsReauth.connectedAt()).isEqualTo(NOW);
+    assertThat(needsReauth.lastSyncAt()).isEqualTo(LATER);
+    assertThat(needsReauth.lastSyncOutcome()).isEqualTo(outcome);
+  }
+
+  @Test
+  void needsReauthOnANeverConnectedProviderIsANoOp() {
+    IntegrationConnection disconnected =
+        IntegrationConnection.disconnectedDefault(IntegrationProvider.WITHINGS);
+
+    IntegrationConnection stillDisconnected = disconnected.needsReauth();
+
+    assertThat(stillDisconnected).isEqualTo(disconnected);
+  }
+
+  @Test
   void carriesNoTokenOrSecretField() {
     // Compile-time boundary guard (ADR-004 + spec FOR-126): fail loudly if a future edit adds a
     // token/secret record component to the domain aggregate directly (slices 2-3 must add token
