@@ -1,0 +1,35 @@
+{
+  "_comment": "Representative fixture: two distinct real-measure groups, used to test dedup round trips (re-sync must import 0 new + report duplicatesSkipped=2, never duplicate rows).",
+  "status": 0,
+  "body": {
+    "updatetime": 1752595300,
+    "timezone": "Europe/Madrid",
+    "measuregrps": [
+      {
+        "grpid": 400000010,
+        "attrib": 0,
+        "date": 1752595200,
+        "created": 1752595210,
+        "category": 1,
+        "deviceid": "fixture-device-id",
+        "measures": [
+          { "value": 72500, "type": 1, "unit": -3 },
+          { "value": 18200, "type": 6, "unit": -3 }
+        ],
+        "comment": null
+      },
+      {
+        "grpid": 400000011,
+        "attrib": 0,
+        "date": 1752508800,
+        "created": 1752508810,
+        "category": 1,
+        "deviceid": "fixture-device-id",
+        "measures": [{ "value": 71800, "type": 1, "unit": -3 }],
+        "comment": null
+      }
+    ],
+    "more": 0,
+    "offset": 0
+  }
+}

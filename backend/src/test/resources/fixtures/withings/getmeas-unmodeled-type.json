@@ -1,0 +1,25 @@
+{
+  "_comment": "Representative fixture: a measure group carrying weight (type 1, modeled) alongside bone mass (type 88, NOT modeled by this codebase). The unmodeled type must be silently ignored -> weight still maps, no crash (spec FOR-132 Edge Cases: 'Withings measure type FORMA doesn't model (e.g. bone mass 88) -> skip, no crash').",
+  "status": 0,
+  "body": {
+    "updatetime": 1752422500,
+    "timezone": "Europe/Madrid",
+    "measuregrps": [
+      {
+        "grpid": 400000003,
+        "attrib": 0,
+        "date": 1752422400,
+        "created": 1752422410,
+        "category": 1,
+        "deviceid": "fixture-device-id",
+        "measures": [
+          { "value": 73100, "type": 1, "unit": -3 },
+          { "value": 3200, "type": 88, "unit": -3 }
+        ],
+        "comment": null
+      }
+    ],
+    "more": 0,
+    "offset": 0
+  }
+}

@@ -31,9 +31,20 @@ public class JdkHttpWithingsTransport implements WithingsHttpTransport {
 
   @Override
   public String post(String url, Map<String, String> formParams) {
+    return send(HttpRequest.newBuilder(URI.create(url)), formParams);
+  }
+
+  @Override
+  public String postAuthenticated(String url, Map<String, String> formParams, String accessToken) {
+    return send(
+        HttpRequest.newBuilder(URI.create(url)).header("Authorization", "Bearer " + accessToken),
+        formParams);
+  }
+
+  private String send(HttpRequest.Builder requestBuilder, Map<String, String> formParams) {
     String body = encodeForm(formParams);
     HttpRequest request =
-        HttpRequest.newBuilder(URI.create(url))
+        requestBuilder
             .timeout(REQUEST_TIMEOUT)
             .header("Content-Type", "application/x-www-form-urlencoded")
             .POST(HttpRequest.BodyPublishers.ofString(body))

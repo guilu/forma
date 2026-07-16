@@ -68,7 +68,7 @@ class IntegrationControllerTest {
             IntegrationStatus.CONNECTED,
             CONNECTED_AT,
             SYNCED_AT,
-            new SyncOutcome(SyncResult.OK, 0, null));
+            new SyncOutcome(SyncResult.OK, 0, 0, null));
     when(service.status()).thenReturn(List.of(withings));
 
     mockMvc
@@ -258,7 +258,7 @@ class IntegrationControllerTest {
                 IntegrationStatus.CONNECTED,
                 CONNECTED_AT,
                 SYNCED_AT,
-                new SyncOutcome(SyncResult.OK, 0, null)));
+                new SyncOutcome(SyncResult.OK, 0, 0, null)));
 
     mockMvc
         .perform(post("/api/v1/integrations/withings/sync"))
@@ -277,7 +277,7 @@ class IntegrationControllerTest {
                 .withSyncOutcome(
                     null,
                     new SyncOutcome(
-                        SyncResult.NOT_CONNECTED, 0, "El proveedor no está conectado.")));
+                        SyncResult.NOT_CONNECTED, 0, 0, "El proveedor no está conectado.")));
 
     mockMvc
         .perform(post("/api/v1/integrations/google_fit/sync"))
@@ -292,6 +292,77 @@ class IntegrationControllerTest {
         .perform(post("/api/v1/integrations/not-a-provider/sync"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+  }
+
+  @Test
+  void syncOnAConnectedWithingsProviderReturnsRealImportedAndDuplicatesSkippedCounts()
+      throws Exception {
+    // FOR-132: sync now performs a real Withings import; the response carries real counts,
+    // including the new duplicatesSkipped field (spec FOR-132 api.md).
+    when(service.sync(IntegrationProvider.WITHINGS))
+        .thenReturn(
+            new IntegrationConnection(
+                IntegrationProvider.WITHINGS,
+                IntegrationStatus.CONNECTED,
+                CONNECTED_AT,
+                SYNCED_AT,
+                new SyncOutcome(SyncResult.OK, 3, 12, null)));
+
+    mockMvc
+        .perform(post("/api/v1/integrations/withings/sync"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.result").value("OK"))
+        .andExpect(jsonPath("$.importedCount").value(3))
+        .andExpect(jsonPath("$.duplicatesSkipped").value(12));
+  }
+
+  @Test
+  void syncWhenTokenRefreshFailsReturnsANeedsReauthOutcomeAsA200NotAnError() throws Exception {
+    when(service.sync(IntegrationProvider.WITHINGS))
+        .thenReturn(
+            new IntegrationConnection(
+                IntegrationProvider.WITHINGS,
+                IntegrationStatus.NEEDS_REAUTH,
+                CONNECTED_AT,
+                SYNCED_AT,
+                new SyncOutcome(
+                    SyncResult.NEEDS_REAUTH,
+                    0,
+                    0,
+                    "Reconecta el proveedor para seguir sincronizando.")));
+
+    mockMvc
+        .perform(post("/api/v1/integrations/withings/sync"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.result").value("NEEDS_REAUTH"))
+        .andExpect(jsonPath("$.importedCount").value(0));
+  }
+
+  @Test
+  void syncWhenTheProviderFailsReturnsAReadableErrorOutcomeAsA200NotAnHttp5xx() throws Exception {
+    when(service.sync(IntegrationProvider.WITHINGS))
+        .thenReturn(
+            new IntegrationConnection(
+                IntegrationProvider.WITHINGS,
+                IntegrationStatus.CONNECTED,
+                CONNECTED_AT,
+                SYNCED_AT,
+                new SyncOutcome(
+                    SyncResult.ERROR,
+                    0,
+                    0,
+                    "El proveedor no está disponible temporalmente, inténtalo más tarde.")));
+
+    mockMvc
+        .perform(post("/api/v1/integrations/withings/sync"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.result").value("ERROR"))
+        .andExpect(jsonPath("$.importedCount").value(0))
+        .andExpect(
+            content()
+                .string(
+                    org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsStringIgnoringCase("token"))));
   }
 
   @Test
@@ -386,7 +457,7 @@ class IntegrationControllerTest {
                     IntegrationStatus.CONNECTED,
                     CONNECTED_AT,
                     SYNCED_AT,
-                    new SyncOutcome(SyncResult.OK, 0, null))));
+                    new SyncOutcome(SyncResult.OK, 0, 0, null))));
 
     mockMvc
         .perform(get("/api/v1/integrations"))

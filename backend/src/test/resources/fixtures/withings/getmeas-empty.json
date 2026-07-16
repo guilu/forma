@@ -1,0 +1,11 @@
+{
+  "_comment": "Representative fixture: an empty Getmeas response (no measure groups since the last sync) -> importedCount 0, OK outcome, no crash (spec FOR-132 Edge Cases).",
+  "status": 0,
+  "body": {
+    "updatetime": 1752595300,
+    "timezone": "Europe/Madrid",
+    "measuregrps": [],
+    "more": 0,
+    "offset": 0
+  }
+}

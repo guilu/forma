@@ -22,8 +22,8 @@ import org.springframework.web.bind.annotation.RestController;
  * FOR-131 (slice 2) adds real Withings OAuth — {@code connect} now returns an authorization URL for
  * providers with a registered OAuth gateway (Withings) instead of connecting immediately, and the
  * new {@code callback} endpoint is what the SPA calls (after the browser lands on its {@code /auth}
- * route) to complete the exchange. Real provider sync into {@code BodyMeasurement} is still FOR-103
- * slice 3; {@code sync} stays the FOR-126 stub.
+ * route) to complete the exchange. FOR-132 (slice 3, final) makes {@code sync} perform a real
+ * Withings Getmeas import into {@code BodyMeasurement}, replacing the FOR-126 stub.
  *
  * <p>Thin controller (ADR-001, ADR-005): parses the {@code provider} path segment to the domain
  * enum and delegates all behavior to {@link IntegrationService}. Never accepts or returns
@@ -81,9 +81,11 @@ public class IntegrationController {
   }
 
   /**
-   * Triggers a manual sync now; returns a real outcome (stub/no-op import, {@code importedCount}
-   * never fabricated). Syncing a disconnected provider returns a readable {@code NOT_CONNECTED}
-   * outcome rather than an error (spec FOR-126 Edge Cases).
+   * Triggers a manual sync now (FOR-132: real Withings Getmeas import into {@code BodyMeasurement}
+   * when connected; {@code importedCount}/{@code duplicatesSkipped} never fabricated). Syncing a
+   * disconnected provider returns a readable {@code NOT_CONNECTED} outcome rather than an error
+   * (spec FOR-126 Edge Cases); a token-refresh or provider failure returns a readable {@code
+   * NEEDS_REAUTH}/{@code ERROR} outcome, never an HTTP 5xx (spec FOR-132 api.md).
    */
   @PostMapping("/{provider}/sync")
   public SyncResponse sync(@PathVariable String provider) {

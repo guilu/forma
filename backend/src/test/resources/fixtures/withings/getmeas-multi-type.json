@@ -1,0 +1,27 @@
+{
+  "_comment": "Representative fixture matching Withings' publicly documented v2/measure Getmeas response shape (spec FOR-132 tests.md: 'never call the live Withings API in tests'). One real-measure group (category=1) carrying weight (type 1), fat ratio % (type 6), muscle mass (type 76) and hydration mass (type 77). value*10^unit: weight 72500*10^-3=72.5kg, fat% 18200*10^-3=18.2%, muscle 32000*10^-3=32.0kg, hydration 43500*10^-3=43.5kg -> waterPercentage = 43.5/72.5*100 = 60.0%.",
+  "status": 0,
+  "body": {
+    "updatetime": 1752595300,
+    "timezone": "Europe/Madrid",
+    "measuregrps": [
+      {
+        "grpid": 400000001,
+        "attrib": 0,
+        "date": 1752595200,
+        "created": 1752595210,
+        "category": 1,
+        "deviceid": "fixture-device-id",
+        "measures": [
+          { "value": 72500, "type": 1, "unit": -3 },
+          { "value": 18200, "type": 6, "unit": -3 },
+          { "value": 32000, "type": 76, "unit": -3 },
+          { "value": 43500, "type": 77, "unit": -3 }
+        ],
+        "comment": null
+      }
+    ],
+    "more": 0,
+    "offset": 0
+  }
+}

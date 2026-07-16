@@ -68,7 +68,7 @@ class JdbcIntegrationRepositoryTest {
 
   @Test
   void saveRoundTripsASyncOutcome() {
-    SyncOutcome outcome = new SyncOutcome(SyncResult.OK, 0, null);
+    SyncOutcome outcome = new SyncOutcome(SyncResult.OK, 0, 0, null);
     IntegrationConnection connection =
         new IntegrationConnection(
             IntegrationProvider.WITHINGS,
@@ -84,7 +84,29 @@ class JdbcIntegrationRepositoryTest {
     assertThat(read.lastSyncAt()).isEqualTo(SYNCED_AT);
     assertThat(read.lastSyncOutcome().result()).isEqualTo(SyncResult.OK);
     assertThat(read.lastSyncOutcome().importedCount()).isZero();
+    assertThat(read.lastSyncOutcome().duplicatesSkipped()).isZero();
     assertThat(read.lastSyncOutcome().message()).isNull();
+  }
+
+  @Test
+  void saveRoundTripsANonZeroDuplicatesSkippedCount() {
+    // FOR-132: duplicatesSkipped is a new column (migration V16) alongside the existing
+    // last_sync_* columns this repository already flattens SyncOutcome onto.
+    SyncOutcome outcome = new SyncOutcome(SyncResult.OK, 3, 12, null);
+    IntegrationConnection connection =
+        new IntegrationConnection(
+            IntegrationProvider.WITHINGS,
+            IntegrationStatus.CONNECTED,
+            CONNECTED_AT,
+            SYNCED_AT,
+            outcome);
+
+    repository.save(OWNER, connection);
+
+    IntegrationConnection read =
+        repository.findByOwnerAndProvider(OWNER, IntegrationProvider.WITHINGS).orElseThrow();
+    assertThat(read.lastSyncOutcome().importedCount()).isEqualTo(3);
+    assertThat(read.lastSyncOutcome().duplicatesSkipped()).isEqualTo(12);
   }
 
   @Test
