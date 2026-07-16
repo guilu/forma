@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.diegobarrioh.forma.application.MealLogRepository;
 import dev.diegobarrioh.forma.application.StoredMealLogEntry;
+import dev.diegobarrioh.forma.domain.FoodCatalog;
+import dev.diegobarrioh.forma.domain.KeyNutrientTotals;
 import dev.diegobarrioh.forma.domain.MealLogEntry;
 import dev.diegobarrioh.forma.domain.MealType;
 import dev.diegobarrioh.forma.domain.NutritionTotals;
@@ -108,5 +110,27 @@ class JdbcMealLogRepositoryTest {
             OTHER_DAY, MealType.LUNCH, "OtroDia", new NutritionTotals(1, 1.0, 1.0, 1.0)));
 
     assertThat(repository.findByOwnerAndDate(OWNER, DAY)).isEmpty();
+  }
+
+  /**
+   * FOR-134 known limitation, documented rather than silently lost: {@code meal_log_entry} (V13)
+   * has no key-nutrient columns, and this story adds no migration (head stays V16, reference data
+   * only). A snapshot computed at logging time is therefore NOT persisted, so a JDBC round trip
+   * always reconstructs {@link KeyNutrientTotals#empty()} for a reloaded entry, even when the
+   * original entry (in-memory, pre-persistence) carried known key nutrients. This is honest (never
+   * fabricated) rather than a silent precision loss, and is called out in the PR's "Known
+   * limitations" — a follow-up story adding a migration is needed to persist per-entry key
+   * nutrients.
+   */
+  @Test
+  void keyNutrientsAreNotPersistedYetAndReloadAsEmptyNoMigrationInThisSlice() {
+    var oats = FoodCatalog.findById("oats").orElseThrow(); // has known key nutrients
+    MealLogEntry original = MealLogEntry.fromCatalog(DAY, MealType.BREAKFAST, oats, 1.0);
+    assertThat(original.keyNutrients()).isNotEqualTo(KeyNutrientTotals.empty());
+
+    repository.save(OWNER, original);
+    StoredMealLogEntry read = repository.findByOwnerAndDate(OWNER, DAY).get(0);
+
+    assertThat(read.entry().keyNutrients()).isEqualTo(KeyNutrientTotals.empty());
   }
 }

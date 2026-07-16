@@ -15,6 +15,7 @@ import dev.diegobarrioh.forma.application.NutritionCalculationService;
 import dev.diegobarrioh.forma.application.NutritionDayCatalogService;
 import dev.diegobarrioh.forma.application.StoredMealLogEntry;
 import dev.diegobarrioh.forma.application.ValidationException;
+import dev.diegobarrioh.forma.domain.KeyNutrientTotals;
 import dev.diegobarrioh.forma.domain.MealLogEntry;
 import dev.diegobarrioh.forma.domain.MealType;
 import dev.diegobarrioh.forma.domain.NutritionDayCatalog;
@@ -101,6 +102,48 @@ class MealLogControllerTest {
   }
 
   @Test
+  void logsAFreeEntryWithOptionalKeyNutrientsAndReturns201() throws Exception {
+    // FOR-134: free/ad-hoc entries may optionally carry key nutrients; the request must not be
+    // rejected for including them, and the cross-field/macro validation is unaffected.
+    MealLogEntry entry =
+        new MealLogEntry(
+            LocalDate.of(2026, 7, 15),
+            MealType.MID_MORNING,
+            "Barrita",
+            null,
+            new NutritionTotals(180, 6.0, 24.0, 7.0));
+    when(mealLogService.log(any())).thenReturn(new StoredMealLogEntry("entry-3", entry));
+
+    mockMvc
+        .perform(
+            post("/api/v1/nutrition/log")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"date":"2026-07-15","mealType":"MID_MORNING","name":"Barrita",
+                     "kcal":180,"proteinG":6,"carbsG":24,"fatG":7,
+                     "fiberG":3,"sugarsG":12,"sodiumMg":90,"saturatedFatG":2}
+                    """))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.name").value("Barrita"));
+  }
+
+  @Test
+  void rejectsANegativeFreeEntryKeyNutrientWithValidationError() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/nutrition/log")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"date":"2026-07-15","mealType":"MID_MORNING","name":"Barrita",
+                     "kcal":180,"proteinG":6,"carbsG":24,"fatG":7,"fiberG":-1}
+                    """))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+  }
+
+  @Test
   void rejectsAnUnknownMealTypeWithValidationError() throws Exception {
     mockMvc
         .perform(
@@ -153,6 +196,7 @@ class MealLogControllerTest {
                 LocalDate.of(2026, 7, 15),
                 NutritionDayType.STRENGTH,
                 zeroed,
+                KeyNutrientTotals.zero(),
                 strengthTemplate,
                 TargetComparison.of(zeroed, strengthTemplate),
                 List.of()));
@@ -161,6 +205,8 @@ class MealLogControllerTest {
         .perform(get("/api/v1/nutrition/consumption").param("date", "2026-07-15"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.consumed.kcal").value(0))
+        .andExpect(jsonPath("$.keyNutrients.fiberG").value(0.0))
+        .andExpect(jsonPath("$.keyNutrients.sodiumMg").value(0))
         .andExpect(jsonPath("$.entries").isArray())
         .andExpect(jsonPath("$.entries").isEmpty());
   }
@@ -177,12 +223,14 @@ class MealLogControllerTest {
     NutritionDayTemplate strengthTemplate =
         NutritionDayCatalog.findByType(NutritionDayType.STRENGTH).orElseThrow().template();
     NutritionTotals consumed = new NutritionTotals(600, 40.0, 60.0, 20.0);
+    KeyNutrientTotals keyNutrients = new KeyNutrientTotals(22.0, 40.0, 1800, 12.0);
     when(mealLogService.consumption(eq(LocalDate.of(2026, 7, 15))))
         .thenReturn(
             new DayConsumption(
                 LocalDate.of(2026, 7, 15),
                 NutritionDayType.STRENGTH,
                 consumed,
+                keyNutrients,
                 strengthTemplate,
                 TargetComparison.of(consumed, strengthTemplate),
                 List.of(new StoredMealLogEntry("entry-1", entry))));
@@ -192,6 +240,10 @@ class MealLogControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.dayType").value("STRENGTH"))
         .andExpect(jsonPath("$.consumed.kcal").value(600))
+        .andExpect(jsonPath("$.keyNutrients.fiberG").value(22.0))
+        .andExpect(jsonPath("$.keyNutrients.sugarsG").value(40.0))
+        .andExpect(jsonPath("$.keyNutrients.sodiumMg").value(1800))
+        .andExpect(jsonPath("$.keyNutrients.saturatedFatG").value(12.0))
         .andExpect(jsonPath("$.target.kcal").value(strengthTemplate.targetCalories()))
         .andExpect(jsonPath("$.comparison.caloriesReached").value(false))
         .andExpect(jsonPath("$.entries[0].id").value("entry-1"))
@@ -211,6 +263,7 @@ class MealLogControllerTest {
                 LocalDate.of(2026, 7, 18),
                 NutritionDayType.RUNNING,
                 zeroed,
+                KeyNutrientTotals.zero(),
                 runningTemplate,
                 TargetComparison.of(zeroed, runningTemplate),
                 List.of()));
@@ -233,6 +286,7 @@ class MealLogControllerTest {
                 LocalDate.of(2026, 7, 19),
                 NutritionDayType.REST,
                 zeroed,
+                KeyNutrientTotals.zero(),
                 restTemplate,
                 TargetComparison.of(zeroed, restTemplate),
                 List.of()));
@@ -261,6 +315,7 @@ class MealLogControllerTest {
                 LocalDate.of(2026, 7, 15),
                 NutritionDayType.STRENGTH,
                 new NutritionTotals(600, 40.0, 60.0, 20.0),
+                KeyNutrientTotals.zero(),
                 null,
                 null,
                 List.of(new StoredMealLogEntry("entry-1", entry))));

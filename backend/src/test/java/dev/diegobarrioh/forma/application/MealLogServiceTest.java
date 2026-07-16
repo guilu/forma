@@ -3,6 +3,7 @@ package dev.diegobarrioh.forma.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.diegobarrioh.forma.domain.KeyNutrientTotals;
 import dev.diegobarrioh.forma.domain.MealLogEntry;
 import dev.diegobarrioh.forma.domain.MealType;
 import dev.diegobarrioh.forma.domain.NutritionDayCatalog;
@@ -64,7 +65,20 @@ class MealLogServiceTest {
   @Test
   void rejectsAnEntryWithNeitherFoodItemIdNorMacros() {
     LogMealCommand command =
-        new LogMealCommand(TODAY, MealType.LUNCH, null, null, null, null, null, null, null);
+        new LogMealCommand(
+            TODAY,
+            MealType.LUNCH,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null);
 
     assertThatThrownBy(() -> service.log(command)).isInstanceOf(ValidationException.class);
   }
@@ -72,7 +86,8 @@ class MealLogServiceTest {
   @Test
   void rejectsAnEntryWithBothFoodItemIdAndFreeMacros() {
     LogMealCommand command =
-        new LogMealCommand(TODAY, MealType.LUNCH, "oats", 1.0, "Avena", 90, 5.0, 8.0, 3.0);
+        new LogMealCommand(
+            TODAY, MealType.LUNCH, "oats", 1.0, "Avena", 90, 5.0, 8.0, 3.0, null, null, null, null);
 
     assertThatThrownBy(() -> service.log(command)).isInstanceOf(ValidationException.class);
   }
@@ -173,6 +188,95 @@ class MealLogServiceTest {
     DayConsumption consumption = service.consumption(TODAY);
 
     assertThat(consumption.entries()).isEmpty();
+  }
+
+  // --- FOR-134: consumed key-nutrient totals, reusing the catalog + the null/partial rule ---
+
+  @Test
+  void consumptionForADayWithNoLogsHasZeroedKeyNutrientTotalsNeverNull() {
+    DayConsumption consumption = service.consumption(TODAY);
+
+    assertThat(consumption.keyNutrients()).isEqualTo(KeyNutrientTotals.zero());
+  }
+
+  @Test
+  void consumptionSumsKeyNutrientsFromACatalogEntry() {
+    // oats: fiber 10.6/100g, defaultServingG=60 -> 1 portion = 60g -> x0.6.
+    service.log(LogMealCommand.catalog(TODAY, MealType.BREAKFAST, "oats", 1.0));
+
+    DayConsumption consumption = service.consumption(TODAY);
+
+    assertThat(consumption.keyNutrients().fiberG())
+        .isCloseTo(6.4, org.assertj.core.api.Assertions.within(0.05));
+  }
+
+  @Test
+  void consumptionAcceptsOptionalKeyNutrientsOnAFreeEntry() {
+    LogMealCommand command =
+        new LogMealCommand(
+            TODAY,
+            MealType.MID_MORNING,
+            null,
+            null,
+            "Barrita",
+            180,
+            6.0,
+            24.0,
+            7.0,
+            3.0,
+            12.0,
+            90,
+            2.0);
+
+    service.log(command);
+    DayConsumption consumption = service.consumption(TODAY);
+
+    assertThat(consumption.keyNutrients()).isEqualTo(new KeyNutrientTotals(3.0, 12.0, 90, 2.0));
+  }
+
+  @Test
+  void consumptionNullsAKeyNutrientTotalWhenOneLoggedEntryLacksIt() {
+    LogMealCommand withFiber =
+        new LogMealCommand(
+            TODAY,
+            MealType.BREAKFAST,
+            null,
+            null,
+            "A",
+            100,
+            10.0,
+            10.0,
+            10.0,
+            3.0,
+            null,
+            null,
+            null);
+    LogMealCommand withoutFiber =
+        LogMealCommand.free(TODAY, MealType.LUNCH, "B", 100, 10.0, 10.0, 10.0); // no key nutrients
+
+    service.log(withFiber);
+    service.log(withoutFiber);
+    DayConsumption consumption = service.consumption(TODAY);
+
+    assertThat(consumption.keyNutrients().fiberG()).isNull();
+  }
+
+  @Test
+  void rejectsANegativeFreeEntryFiber() {
+    LogMealCommand command =
+        new LogMealCommand(
+            TODAY, MealType.LUNCH, null, null, "X", 90, 5.0, 8.0, 3.0, -1.0, null, null, null);
+
+    assertThatThrownBy(() -> service.log(command)).isInstanceOf(ValidationException.class);
+  }
+
+  @Test
+  void rejectsANegativeFreeEntrySodium() {
+    LogMealCommand command =
+        new LogMealCommand(
+            TODAY, MealType.LUNCH, null, null, "X", 90, 5.0, 8.0, 3.0, null, null, -1, null);
+
+    assertThatThrownBy(() -> service.log(command)).isInstanceOf(ValidationException.class);
   }
 
   /** In-memory fake, matching {@code RecordingGoalRepository} (FOR-125). */

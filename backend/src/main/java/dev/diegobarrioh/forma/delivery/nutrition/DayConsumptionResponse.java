@@ -1,6 +1,7 @@
 package dev.diegobarrioh.forma.delivery.nutrition;
 
 import dev.diegobarrioh.forma.application.DayConsumption;
+import dev.diegobarrioh.forma.domain.KeyNutrientTotals;
 import dev.diegobarrioh.forma.domain.NutritionDayTemplate;
 import dev.diegobarrioh.forma.domain.NutritionTotals;
 import java.time.LocalDate;
@@ -8,13 +9,20 @@ import java.util.List;
 
 /**
  * Response body for {@code GET /api/v1/nutrition/consumption?date=} (FOR-127 api.md, {@code
- * target}/{@code comparison} wired by FOR-128 api.md).
+ * target}/{@code comparison} wired by FOR-128 api.md, {@code keyNutrients} added by FOR-134
+ * api.md).
  *
  * <p>Delivery read model, distinct from the application {@link DayConsumption} view (ADR-005).
  * {@code dayType} is the date's resolved {@code NutritionDayType} (FOR-128, added per api.md's
  * recommendation so the UI can label the day). {@code target}/{@code comparison} are explicit JSON
  * {@code null} (never omitted) only in the fail-safe case where the catalog has no template for the
  * resolved day type — matching the FOR-125 {@code GoalResponse} progress-null precedent.
+ *
+ * <p><b>Key nutrients (FOR-134).</b> {@code keyNutrients} is always present (never omitted); its
+ * four fields are independently {@code null} when the day's logged entries don't honestly support a
+ * value — see {@link KeyNutrientTotals}'s javadoc for the documented null/partial rule. Units:
+ * {@code sodiumMg} is milligrams; {@code fiberG}/{@code sugarsG}/{@code saturatedFatG} are grams
+ * (spec FOR-134 api.md).
  *
  * <p><b>Discrepancy vs specs/FOR-128/api.md</b>: that doc's example {@code comparison} shows {@code
  * kcalDelta}/{@code withinTarget}, but the actual domain {@code TargetComparison} (FOR-32, reused
@@ -29,6 +37,7 @@ public record DayConsumptionResponse(
     LocalDate date,
     String dayType,
     Macros consumed,
+    KeyNutrients keyNutrients,
     Macros target,
     Comparison comparison,
     List<EntrySummary> entries) {
@@ -44,6 +53,19 @@ public record DayConsumptionResponse(
           target.targetProteinG(),
           target.targetCarbsG(),
           target.targetFatG());
+    }
+  }
+
+  /**
+   * Consumed key-nutrient totals (FOR-134). {@code sodiumMg} is milligrams; the other three fields
+   * are grams. Any field may be {@code null} — see the class javadoc's documented null/partial
+   * rule.
+   */
+  public record KeyNutrients(
+      Double fiberG, Double sugarsG, Integer sodiumMg, Double saturatedFatG) {
+    static KeyNutrients from(KeyNutrientTotals totals) {
+      return new KeyNutrients(
+          totals.fiberG(), totals.sugarsG(), totals.sodiumMg(), totals.saturatedFatG());
     }
   }
 
@@ -81,6 +103,7 @@ public record DayConsumptionResponse(
         view.date(),
         view.dayType() == null ? null : view.dayType().name(),
         Macros.from(view.consumed()),
+        KeyNutrients.from(view.keyNutrients()),
         target,
         comparison,
         entries);

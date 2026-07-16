@@ -53,6 +53,16 @@ public record MealLog(LocalDate date, List<MealLogEntry> entries) {
     return new NutritionTotals(calories, round1(protein), round1(carbs), round1(fat));
   }
 
+  /**
+   * The day's consumed key-nutrient totals (FOR-134): a fresh sum over every entry's own {@link
+   * MealLogEntry#keyNutrients()}, delegated to {@link KeyNutrientTotals#sum} — same
+   * derived-on-read, never-drifts guarantee as {@link #consumedTotals()}, and the same documented
+   * null/partial rule for a day mixing entries with and without a given nutrient.
+   */
+  public KeyNutrientTotals consumedKeyNutrients() {
+    return KeyNutrientTotals.sum(entries.stream().map(MealLogEntry::keyNutrients).toList());
+  }
+
   private static double round1(double value) {
     return Math.round(value * 10.0) / 10.0;
   }

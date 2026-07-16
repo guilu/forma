@@ -37,6 +37,34 @@ public final class NutritionCalculator {
     return totals(List.of(item));
   }
 
+  /**
+   * Key-nutrient totals for a single {@link MealItem} (FOR-134): fibre/sugars/sodium/saturated-fat
+   * from the resolved {@link FoodItem}, scaled by the same {@code quantityG / 100.0} factor used by
+   * {@link #itemTotals} for macros — no duplicated scaling logic, just applied to the four
+   * additional nullable fields. A nutrient the food doesn't carry propagates as {@code null} (never
+   * fabricated), independently per nutrient.
+   */
+  public static KeyNutrientTotals itemKeyNutrients(MealItem item) {
+    FoodItem food =
+        FoodCatalog.findById(item.foodItemId())
+            .orElseThrow(
+                () -> new IllegalArgumentException("unknown foodItemId: " + item.foodItemId()));
+    double factor = item.quantityG() / 100.0;
+    return new KeyNutrientTotals(
+        scaleGrams(food.fiberPer100g(), factor),
+        scaleGrams(food.sugarsPer100g(), factor),
+        scaleMilligrams(food.sodiumMgPer100g(), factor),
+        scaleGrams(food.saturatedFatPer100g(), factor));
+  }
+
+  private static Double scaleGrams(Double per100g, double factor) {
+    return per100g == null ? null : round1(per100g * factor);
+  }
+
+  private static Integer scaleMilligrams(Double per100gMg, double factor) {
+    return per100gMg == null ? null : (int) Math.round(per100gMg * factor);
+  }
+
   private static NutritionTotals totals(List<MealItem> items) {
     double calories = 0;
     double protein = 0;

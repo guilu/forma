@@ -2,6 +2,7 @@ package dev.diegobarrioh.forma.application;
 
 import dev.diegobarrioh.forma.domain.FoodCatalog;
 import dev.diegobarrioh.forma.domain.FoodItem;
+import dev.diegobarrioh.forma.domain.KeyNutrientTotals;
 import dev.diegobarrioh.forma.domain.MealLog;
 import dev.diegobarrioh.forma.domain.MealLogEntry;
 import dev.diegobarrioh.forma.domain.NutritionDayCatalog;
@@ -16,8 +17,9 @@ import org.springframework.stereotype.Service;
 
 /**
  * Application use cases for meal consumption logging and the day consumption read model
- * (FOR-127/FOR-128, first implementable slices of FOR-102). Macros only (kcal/protein/carbs/fat);
- * hydration and key nutrients are later FOR-102 slices.
+ * (FOR-127/FOR-128, first implementable slices of FOR-102). Macros (kcal/protein/carbs/fat) plus,
+ * since FOR-134, consumed key nutrients (fibra/azúcares/sodio/grasas saturadas); hydration is a
+ * separate FOR-102 slice.
  *
  * <p>Single-user MVP (ADR-002): every use case operates on the one {@link #OWNER_ID} row, mirroring
  * {@link GoalService#OWNER_ID}/{@link UserProfileService#OWNER_ID} (FOR-107/125). Never logs entry
@@ -30,6 +32,12 @@ import org.springframework.stereotype.Service;
  * compares it to the day's consumed totals via {@link TargetComparison#of}. {@code target}/{@code
  * comparison} are {@code null} only if the catalog has no template for the resolved type — a
  * fail-safe for a closed, always-seeded enum, not an expected runtime path.
+ *
+ * <p><b>Key nutrients (FOR-134).</b> A catalog entry's key nutrients come from the resolved {@link
+ * FoodItem}; a free entry's are optional caller input, validated non-negative when present. {@link
+ * #consumption} sums them via {@code MealLog#consumedKeyNutrients()} under the documented
+ * null/partial rule (a nutrient's day total is {@code null} if any logged entry lacks it). See
+ * {@link MealLogEntry}'s javadoc for a known persistence limitation.
  */
 @Service
 public class MealLogService {
@@ -97,9 +105,20 @@ public class MealLogService {
           || command.fatG() < 0) {
         throw new ValidationException("macro values must not be negative");
       }
+      validateKeyNutrient(command.fiberG(), "fiberG");
+      validateKeyNutrient(command.sugarsG(), "sugarsG");
+      if (command.sodiumMg() != null && command.sodiumMg() < 0) {
+        throw new ValidationException("sodiumMg must not be negative");
+      }
+      validateKeyNutrient(command.saturatedFatG(), "saturatedFatG");
       NutritionTotals totals =
           new NutritionTotals(command.kcal(), command.proteinG(), command.carbsG(), command.fatG());
-      entry = MealLogEntry.freeEntry(command.date(), command.mealType(), command.name(), totals);
+      KeyNutrientTotals keyNutrients =
+          new KeyNutrientTotals(
+              command.fiberG(), command.sugarsG(), command.sodiumMg(), command.saturatedFatG());
+      entry =
+          MealLogEntry.freeEntry(
+              command.date(), command.mealType(), command.name(), totals, keyNutrients);
     } else {
       throw new ValidationException(
           "Provide either foodItemId+portions or free-item macros (name + kcal/proteinG/carbsG/fatG)");
@@ -124,13 +143,14 @@ public class MealLogService {
             .map(StoredMealLogEntry::entry)
             .reduce(MealLog.empty(date), MealLog::withEntry, (a, b) -> b);
     NutritionTotals consumed = log.consumedTotals();
+    KeyNutrientTotals keyNutrients = log.consumedKeyNutrients();
 
     NutritionDayType dayType = NutritionDayTypeResolver.resolve(date);
     NutritionDayTemplate target =
         NutritionDayCatalog.findByType(dayType).map(day -> day.template()).orElse(null);
     TargetComparison comparison = target == null ? null : TargetComparison.of(consumed, target);
 
-    return new DayConsumption(date, dayType, consumed, target, comparison, stored);
+    return new DayConsumption(date, dayType, consumed, keyNutrients, target, comparison, stored);
   }
 
   private void validateDate(LocalDate date) {
@@ -140,6 +160,13 @@ public class MealLogService {
     LocalDate maxAllowed = LocalDate.now(clock).plusDays(1);
     if (date.isAfter(maxAllowed)) {
       throw new ValidationException("date must not be in the far future");
+    }
+  }
+
+  /** Validates an optional free-entry key nutrient (FOR-134): non-negative when present. */
+  private static void validateKeyNutrient(Double value, String field) {
+    if (value != null && value < 0) {
+      throw new ValidationException(field + " must not be negative");
     }
   }
 }

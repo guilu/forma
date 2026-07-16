@@ -2,6 +2,7 @@ package dev.diegobarrioh.forma.adapter.persistence;
 
 import dev.diegobarrioh.forma.application.MealLogRepository;
 import dev.diegobarrioh.forma.application.StoredMealLogEntry;
+import dev.diegobarrioh.forma.domain.KeyNutrientTotals;
 import dev.diegobarrioh.forma.domain.MealLogEntry;
 import dev.diegobarrioh.forma.domain.MealType;
 import dev.diegobarrioh.forma.domain.NutritionTotals;
@@ -22,6 +23,14 @@ import org.springframework.stereotype.Repository;
  * insert and owner+date lookup, no update/delete. Rows are ordered by {@code logged_at} so entries
  * always come back in the order they were logged, never re-ordered or overwritten (spec FOR-127
  * edge case: "Multiple entries same meal/day → all counted; never overwrite").
+ *
+ * <p><b>Known limitation (FOR-134).</b> {@code meal_log_entry} has no key-nutrient columns, and
+ * FOR-134 adds no migration (in-code reference data only, head stays V16) — so {@link
+ * MealLogEntry#keyNutrients()} is NOT written by {@link #save} and always reconstructs as {@link
+ * KeyNutrientTotals#empty()} in {@link #ROW_MAPPER}. This is an explicit, honest limitation (never
+ * fabricated data), not a silent bug — see {@code JdbcMealLogRepositoryTest} and the FOR-134 PR's
+ * "Known limitations". A follow-up story with a migration is needed to persist per-entry key
+ * nutrients.
  */
 @Repository
 public class JdbcMealLogRepository implements MealLogRepository {
@@ -39,7 +48,9 @@ public class JdbcMealLogRepository implements MealLogRepository {
                       rs.getInt("kcal"),
                       rs.getBigDecimal("protein_g").doubleValue(),
                       rs.getBigDecimal("carbs_g").doubleValue(),
-                      rs.getBigDecimal("fat_g").doubleValue())));
+                      rs.getBigDecimal("fat_g").doubleValue()),
+                  // FOR-134: not persisted (see class javadoc) -> always reconstructed as unknown.
+                  KeyNutrientTotals.empty()));
 
   private final JdbcTemplate jdbcTemplate;
 
