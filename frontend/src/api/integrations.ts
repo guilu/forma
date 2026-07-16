@@ -34,6 +34,22 @@
  * rather than throwing (spec FOR-126 Edge Cases) — callers must check
  * `result`, not assume every resolved sync succeeded (FOR-123: never
  * fabricate a "sync succeeded" message for that case).
+ *
+ * <p><b>FOR-133 fixes the FOR-123 connect drift</b> — verified directly
+ * against `ConnectResponse`/`CallbackRequest`/`IntegrationController`
+ * (`backend/src/main/java/.../delivery/integrations/*`, FOR-131). {@link
+ * connectIntegration} no longer assumes the FOR-126 status shape
+ * unconditionally: the backend's `ConnectResult` is a discriminated union —
+ * a provider with a registered OAuth gateway (Withings) returns only {@link
+ * AuthorizationRequiredResult} (`{ authorizationUrl }`), while a provider
+ * without one yet (Google Fit, Apple Health) keeps the FOR-126 mock
+ * immediate-connect {@link ConnectionActionResult} shape untouched. {@link
+ * completeIntegrationCallback} is new: the `/auth` route relays the
+ * `code`/`state` Withings redirected back with to `POST
+ * /{provider}/callback`, completing the OAuth round trip. Neither `code` nor
+ * `state` nor any token ever round-trips through this module beyond the
+ * single request that carries them (ADR-004: no secret in a frontend read
+ * model or persisted state).
  */
 import { apiClient, type ApiClient } from './client';
 
@@ -98,14 +114,38 @@ interface IntegrationsListBody {
 }
 
 /**
- * Raw connect/disconnect response (`ConnectionStatusResponse`, FOR-126):
- * shared by `POST /{provider}/connect` and `DELETE /{provider}` — no sync
- * fields (those only appear on the status list and the sync response).
+ * Raw connect (mock-fallback)/disconnect/callback response
+ * (`ConnectionStatusResponse`, FOR-126, reused by the FOR-131 callback): no
+ * sync fields (those only appear on the status list and the sync response).
  */
 export interface ConnectionActionResult {
   readonly provider: IntegrationProviderId;
   readonly status: 'CONNECTED' | 'DISCONNECTED';
   readonly connectedAt: string | null;
+}
+
+/**
+ * Raw connect response for a provider with a registered OAuth gateway
+ * (Withings, FOR-131's `ConnectResponse.authorizationRequired` branch): the
+ * caller must redirect the browser here (`window.location.assign`) to
+ * continue the OAuth flow — never render or store this value beyond that.
+ */
+export interface AuthorizationRequiredResult {
+  readonly authorizationUrl: string;
+}
+
+/**
+ * `POST /{provider}/connect` response (FOR-131 `ConnectResponse`): exactly
+ * one of the two shapes, discriminated by the presence of
+ * `authorizationUrl`. See {@link isAuthorizationRequired}.
+ */
+export type ConnectResult = AuthorizationRequiredResult | ConnectionActionResult;
+
+/** Narrows a {@link ConnectResult} to the OAuth-redirect branch. */
+export function isAuthorizationRequired(
+  result: ConnectResult,
+): result is AuthorizationRequiredResult {
+  return 'authorizationUrl' in result;
 }
 
 /**
@@ -149,16 +189,48 @@ export function listIntegrations(client: ApiClient = apiClient): Promise<Integra
 }
 
 /**
- * Connects a provider (mock, no OAuth this slice — FOR-126; real OAuth is
- * FOR-103 slice 2). Idempotent when already connected.
+ * Starts connecting a provider (FOR-131, changed from FOR-126's mock-only
+ * shape). For a provider with a registered OAuth gateway (Withings) this
+ * returns {@link AuthorizationRequiredResult} — the caller must redirect the
+ * browser to `authorizationUrl` to continue; it does NOT connect
+ * immediately. For a provider without one yet (Google Fit, Apple Health)
+ * this keeps the FOR-126 mock immediate-connect behavior and returns
+ * {@link ConnectionActionResult}. Use {@link isAuthorizationRequired} to
+ * discriminate. Idempotent when already connected.
  */
 export function connectIntegration(
   providerId: IntegrationProviderId,
   client: ApiClient = apiClient,
+): Promise<ConnectResult> {
+  return client.request<ConnectResult>(`${INTEGRATIONS_PATH}/${providerPath(providerId)}/connect`, {
+    method: 'POST',
+  });
+}
+
+/**
+ * Completes an OAuth round trip (FOR-131 `POST /{provider}/callback`,
+ * FOR-133 wiring). The `/auth` route calls this once, on mount, with the
+ * `code`/`state` Withings redirected the browser back with — never render,
+ * log or persist either value beyond this single call (spec FOR-133: "The
+ * SPA handles only code/state in transit — never a token; never persist
+ * them"). Rejects (via {@link ApiRequestError}) on an invalid/expired/
+ * replayed `state`, a missing `code`, or a provider token-exchange failure
+ * (spec FOR-131 api.md) — callers must render that rejection, not swallow
+ * it.
+ */
+export function completeIntegrationCallback(
+  providerId: IntegrationProviderId,
+  code: string,
+  state: string,
+  client: ApiClient = apiClient,
 ): Promise<ConnectionActionResult> {
   return client.request<ConnectionActionResult>(
-    `${INTEGRATIONS_PATH}/${providerPath(providerId)}/connect`,
-    { method: 'POST' },
+    `${INTEGRATIONS_PATH}/${providerPath(providerId)}/callback`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, state }),
+    },
   );
 }
 

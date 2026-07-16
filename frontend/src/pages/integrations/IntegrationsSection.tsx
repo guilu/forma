@@ -12,6 +12,7 @@ import { ApiRequestError } from '../../api/client';
 import {
   connectIntegration,
   disconnectIntegration,
+  isAuthorizationRequired,
   listIntegrations,
   syncIntegration,
   type IntegrationConnection,
@@ -50,6 +51,16 @@ import styles from './IntegrationsSection.module.css';
  * `result: 'NOT_CONNECTED'` outcome instead of importing anything — that case
  * renders the existing `actionError` message rather than a fabricated
  * success toast.
+ *
+ * <p>FOR-133 fixes the FOR-123 connect drift: {@link connectIntegration} now
+ * returns a discriminated union (FOR-131's `ConnectResult`). For a provider
+ * with a registered OAuth gateway (Withings), `handleConnect` redirects the
+ * full page to the returned `authorizationUrl` via `window.location.assign`
+ * instead of treating the response as an already-completed connection — the
+ * connection only becomes CONNECTED once `/auth` (`AuthCallbackPage`)
+ * relays the provider's redirect back to the backend callback. Providers
+ * without a registered gateway yet (Google Fit, Apple Health) are unaffected
+ * and keep the FOR-126 mock immediate-connect success-toast behavior.
  *
  * <p>Never renders a token, secret or other credential field — the read model
  * itself ({@link IntegrationConnection}) carries none (ADR-004).
@@ -156,7 +167,15 @@ export function IntegrationsSection() {
     setActionError(undefined);
     setPendingProviderId(provider.providerId);
     try {
-      await connectIntegration(provider.providerId);
+      const result = await connectIntegration(provider.providerId);
+      if (isAuthorizationRequired(result)) {
+        // Full-page navigation to Withings — the app briefly leaves (spec
+        // FOR-133 ui.md). The connection isn't CONNECTED yet; that only
+        // happens once `/auth` relays the redirect back to the callback, so
+        // no success toast here.
+        window.location.assign(result.authorizationUrl);
+        return;
+      }
       notify.success(`Conectado con ${provider.providerName}.`);
     } catch (error) {
       setActionError(messageFromError(error, `No se pudo conectar con ${provider.providerName}.`));
