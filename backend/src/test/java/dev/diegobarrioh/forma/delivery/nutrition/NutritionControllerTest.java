@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import dev.diegobarrioh.forma.application.HydrationService;
 import dev.diegobarrioh.forma.application.MealLogService;
 import dev.diegobarrioh.forma.application.NutritionCalculationService;
 import dev.diegobarrioh.forma.application.NutritionDayCatalogService;
@@ -41,6 +42,7 @@ class NutritionControllerTest {
   @Autowired private MockMvc mockMvc;
   @MockBean private NutritionDayCatalogService service;
   @MockBean private MealLogService mealLogService;
+  @MockBean private HydrationService hydrationService;
 
   private static NutritionDay runningDay() {
     NutritionDayTemplate template =

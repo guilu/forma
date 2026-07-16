@@ -1,5 +1,6 @@
 package dev.diegobarrioh.forma.delivery.nutrition;
 
+import dev.diegobarrioh.forma.application.HydrationService;
 import dev.diegobarrioh.forma.application.MealLogService;
 import dev.diegobarrioh.forma.application.NotFoundException;
 import dev.diegobarrioh.forma.application.NutritionCalculationService;
@@ -28,10 +29,13 @@ import org.springframework.web.bind.annotation.RestController;
  * consumption vs plan target, reusing the same FOR-32 calculators — macros only.
  *
  * <p>Thin controller (ADR-001, ADR-005): maps service results to delivery read models, delegating
- * macro totals to {@link NutritionCalculationService} and meal-log use cases to {@link
- * MealLogService} (no business logic here). An unknown day type yields {@code NOT_FOUND} (404); an
- * unknown meal type or invalid logging input yields {@code VALIDATION_ERROR} (400), both via the
- * FOR-27 {@code GlobalExceptionHandler}. Mounted under {@link ApiPaths#V1}.
+ * macro totals to {@link NutritionCalculationService}, meal-log use cases to {@link
+ * MealLogService}, and hydration use cases to {@link HydrationService} (no business logic here).
+ * {@code POST /nutrition/hydration} and {@code GET /nutrition/hydration} (FOR-130) log water intake
+ * and read the hydration progress read model (total vs daily goal). An unknown day type yields
+ * {@code NOT_FOUND} (404); an unknown meal type or invalid logging input yields {@code
+ * VALIDATION_ERROR} (400), both via the FOR-27 {@code GlobalExceptionHandler}. Mounted under {@link
+ * ApiPaths#V1}.
  */
 @RestController
 @RequestMapping(ApiPaths.V1 + "/nutrition")
@@ -40,14 +44,17 @@ public class NutritionController {
   private final NutritionDayCatalogService service;
   private final NutritionCalculationService calculationService;
   private final MealLogService mealLogService;
+  private final HydrationService hydrationService;
 
   public NutritionController(
       NutritionDayCatalogService service,
       NutritionCalculationService calculationService,
-      MealLogService mealLogService) {
+      MealLogService mealLogService,
+      HydrationService hydrationService) {
     this.service = service;
     this.calculationService = calculationService;
     this.mealLogService = mealLogService;
+    this.hydrationService = hydrationService;
   }
 
   /** Returns the seeded nutrition day for the given type (e.g. {@code running}). */
@@ -75,6 +82,23 @@ public class NutritionController {
   public DayConsumptionResponse consumption(
       @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
     return DayConsumptionResponse.from(mealLogService.consumption(date));
+  }
+
+  /** Logs a water-intake volume for a day (FOR-130). */
+  @PostMapping("/hydration")
+  @ResponseStatus(HttpStatus.CREATED)
+  public WaterIntakeResponse logHydration(@Valid @RequestBody LogWaterIntakeRequest request) {
+    return WaterIntakeResponse.from(hydrationService.log(request.toCommand()));
+  }
+
+  /**
+   * Hydration progress read model: total logged volume vs daily goal (FOR-130). Never 404s — an
+   * empty day returns a zeroed total.
+   */
+  @GetMapping("/hydration")
+  public HydrationProgressResponse hydration(
+      @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+    return HydrationProgressResponse.from(hydrationService.hydrationProgress(date));
   }
 
   private static NutritionDayType parseType(String type) {
