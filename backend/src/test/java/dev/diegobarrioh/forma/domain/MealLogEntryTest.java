@@ -2,6 +2,7 @@ package dev.diegobarrioh.forma.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.within;
 
 import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
@@ -52,6 +53,46 @@ class MealLogEntryTest {
     assertThat(entry.foodItemId()).isNull();
     assertThat(entry.name()).isEqualTo("Café con leche");
     assertThat(entry.totals()).isEqualTo(macros);
+  }
+
+  // --- FOR-134: key nutrients travel alongside macros, computed once at logging time ---
+
+  @Test
+  void fromCatalogComputesKeyNutrientsViaNutritionCalculatorReusingTheSameScaling() {
+    FoodItem oats = FoodCatalog.findById("oats").orElseThrow(); // fiber 10.6/100g
+
+    MealLogEntry entry = MealLogEntry.fromCatalog(DAY, MealType.LUNCH, oats, 1.0); // 60g -> x0.6
+
+    assertThat(entry.keyNutrients().fiberG()).isCloseTo(6.4, within(0.05));
+  }
+
+  @Test
+  void fromCatalogPropagatesNullKeyNutrientsForAFoodWithNoData() {
+    FoodItem vegetables = FoodCatalog.findById("vegetables").orElseThrow();
+
+    MealLogEntry entry = MealLogEntry.fromCatalog(DAY, MealType.LUNCH, vegetables, 1.0);
+
+    assertThat(entry.keyNutrients()).isEqualTo(KeyNutrientTotals.empty());
+  }
+
+  @Test
+  void theShortFreeEntryFactoryDefaultsKeyNutrientsToUnknown() {
+    NutritionTotals macros = new NutritionTotals(90, 5.0, 8.0, 3.0);
+
+    MealLogEntry entry = MealLogEntry.freeEntry(DAY, MealType.MID_MORNING, "Café", macros);
+
+    assertThat(entry.keyNutrients()).isEqualTo(KeyNutrientTotals.empty());
+  }
+
+  @Test
+  void freeEntryAcceptsOptionalKeyNutrientsProvidedByTheCaller() {
+    NutritionTotals macros = new NutritionTotals(180, 6.0, 24.0, 7.0);
+    KeyNutrientTotals keyNutrients = new KeyNutrientTotals(3.0, 12.0, 90, 2.0);
+
+    MealLogEntry entry =
+        MealLogEntry.freeEntry(DAY, MealType.MID_MORNING, "Barrita", macros, keyNutrients);
+
+    assertThat(entry.keyNutrients()).isEqualTo(keyNutrients);
   }
 
   @Test

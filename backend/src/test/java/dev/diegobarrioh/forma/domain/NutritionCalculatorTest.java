@@ -64,4 +64,54 @@ class NutritionCalculatorTest {
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("ghost-food");
   }
+
+  // --- FOR-134: itemKeyNutrients reuses the same per-100g x factor scaling as itemTotals ---
+
+  @Test
+  void itemKeyNutrientsScalesAKnownFoodsNutrientsByGrams() {
+    // oats: fiber 10.6/sugars 0/sodium 2mg/satFat 1.2 per 100g; 60g -> x0.6 factor (same as
+    // macros).
+    NutritionTotals macros = NutritionCalculator.itemTotals(new MealItem("oats", 60));
+    KeyNutrientTotals keyNutrients = NutritionCalculator.itemKeyNutrients(new MealItem("oats", 60));
+
+    assertThat(macros.calories()).isEqualTo(233); // sanity: same factor as macros
+    assertThat(keyNutrients.fiberG()).isCloseTo(6.4, within(0.05)); // 10.6 * 0.6 = 6.36 -> 6.4
+    assertThat(keyNutrients.sugarsG()).isEqualTo(0.0);
+    assertThat(keyNutrients.sodiumMg()).isEqualTo(1); // 2 * 0.6 = 1.2 -> round to 1
+    assertThat(keyNutrients.saturatedFatG())
+        .isCloseTo(0.7, within(0.05)); // 1.2 * 0.6 = 0.72 -> 0.7
+  }
+
+  @Test
+  void itemKeyNutrientsPropagatesNullForAFoodWithNoKeyNutrientData() {
+    // "vegetables" catalog entry has no known key nutrients -> every field stays null, never
+    // fabricated, even though the food and grams are perfectly valid.
+    KeyNutrientTotals keyNutrients =
+        NutritionCalculator.itemKeyNutrients(new MealItem("vegetables", 200));
+
+    assertThat(keyNutrients.fiberG()).isNull();
+    assertThat(keyNutrients.sugarsG()).isNull();
+    assertThat(keyNutrients.sodiumMg()).isNull();
+    assertThat(keyNutrients.saturatedFatG()).isNull();
+  }
+
+  @Test
+  void itemKeyNutrientsPropagatesNullPerNutrientIndependentlyForAPartialFood() {
+    // "chicken" has fiber/sugars known (0) but sodium unknown (null) -> each nutrient is
+    // independent, not all-or-nothing.
+    KeyNutrientTotals keyNutrients =
+        NutritionCalculator.itemKeyNutrients(new MealItem("chicken", 150));
+
+    assertThat(keyNutrients.fiberG()).isEqualTo(0.0);
+    assertThat(keyNutrients.sugarsG()).isEqualTo(0.0);
+    assertThat(keyNutrients.sodiumMg()).isNull();
+    assertThat(keyNutrients.saturatedFatG()).isNotNull();
+  }
+
+  @Test
+  void itemKeyNutrientsRejectsAnUnknownFoodId() {
+    assertThatThrownBy(() -> NutritionCalculator.itemKeyNutrients(new MealItem("ghost-food", 100)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("ghost-food");
+  }
 }

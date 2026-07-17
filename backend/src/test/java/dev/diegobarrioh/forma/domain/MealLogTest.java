@@ -57,4 +57,83 @@ class MealLogTest {
     assertThat(log.entries()).hasSize(2);
     assertThat(log.consumedTotals().calories()).isEqualTo(200);
   }
+
+  // --- FOR-134: consumedKeyNutrients reuses KeyNutrientTotals.sum (the documented null/partial
+  // rule: a nutrient's day total is null if ANY logged entry that day lacks it). ---
+
+  @Test
+  void emptyLogHasZeroedKeyNutrientTotalsNeverNull() {
+    MealLog log = MealLog.empty(DAY);
+
+    KeyNutrientTotals keyNutrients = log.consumedKeyNutrients();
+
+    assertThat(keyNutrients).isEqualTo(KeyNutrientTotals.zero());
+  }
+
+  @Test
+  void keyNutrientsSumAcrossEntriesWhenAllHaveTheData() {
+    MealLogEntry a =
+        MealLogEntry.freeEntry(
+            DAY,
+            MealType.BREAKFAST,
+            "A",
+            new NutritionTotals(100, 1.0, 1.0, 1.0),
+            new KeyNutrientTotals(2.0, 3.0, 100, 1.0));
+    MealLogEntry b =
+        MealLogEntry.freeEntry(
+            DAY,
+            MealType.LUNCH,
+            "B",
+            new NutritionTotals(100, 1.0, 1.0, 1.0),
+            new KeyNutrientTotals(1.0, 2.0, 50, 0.5));
+
+    MealLog log = MealLog.empty(DAY).withEntry(a).withEntry(b);
+
+    KeyNutrientTotals total = log.consumedKeyNutrients();
+    assertThat(total.fiberG()).isEqualTo(3.0);
+    assertThat(total.sugarsG()).isEqualTo(5.0);
+    assertThat(total.sodiumMg()).isEqualTo(150);
+    assertThat(total.saturatedFatG()).isEqualTo(1.5);
+  }
+
+  @Test
+  void aDayMixingAFoodWithAndWithoutFiberNullsOnlyTheFiberTotal() {
+    MealLogEntry withFiber =
+        MealLogEntry.freeEntry(
+            DAY,
+            MealType.BREAKFAST,
+            "A",
+            new NutritionTotals(100, 1.0, 1.0, 1.0),
+            new KeyNutrientTotals(2.0, 3.0, 100, 1.0));
+    MealLogEntry withoutFiber =
+        MealLogEntry.freeEntry(
+            DAY,
+            MealType.LUNCH,
+            "B",
+            new NutritionTotals(100, 1.0, 1.0, 1.0),
+            new KeyNutrientTotals(null, 2.0, 50, 0.5));
+
+    MealLog log = MealLog.empty(DAY).withEntry(withFiber).withEntry(withoutFiber);
+
+    KeyNutrientTotals total = log.consumedKeyNutrients();
+    assertThat(total.fiberG()).isNull();
+    assertThat(total.sugarsG()).isEqualTo(5.0);
+    assertThat(total.sodiumMg()).isEqualTo(150);
+    assertThat(total.saturatedFatG()).isEqualTo(1.5);
+  }
+
+  @Test
+  void aCatalogEntryWithNoKeyNutrientDataNullsTheAffectedTotals() {
+    FoodItem vegetables =
+        FoodCatalog.findById("vegetables").orElseThrow(); // all key nutrients null
+    MealLogEntry entry = MealLogEntry.fromCatalog(DAY, MealType.LUNCH, vegetables, 1.0);
+
+    MealLog log = MealLog.empty(DAY).withEntry(entry);
+
+    KeyNutrientTotals total = log.consumedKeyNutrients();
+    assertThat(total.fiberG()).isNull();
+    assertThat(total.sugarsG()).isNull();
+    assertThat(total.sodiumMg()).isNull();
+    assertThat(total.saturatedFatG()).isNull();
+  }
 }

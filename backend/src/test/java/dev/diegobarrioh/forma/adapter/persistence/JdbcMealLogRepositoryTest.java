@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.diegobarrioh.forma.application.MealLogRepository;
 import dev.diegobarrioh.forma.application.StoredMealLogEntry;
+import dev.diegobarrioh.forma.domain.FoodCatalog;
+import dev.diegobarrioh.forma.domain.KeyNutrientTotals;
 import dev.diegobarrioh.forma.domain.MealLogEntry;
 import dev.diegobarrioh.forma.domain.MealType;
 import dev.diegobarrioh.forma.domain.NutritionTotals;
@@ -108,5 +110,82 @@ class JdbcMealLogRepositoryTest {
             OTHER_DAY, MealType.LUNCH, "OtroDia", new NutritionTotals(1, 1.0, 1.0, 1.0)));
 
     assertThat(repository.findByOwnerAndDate(OWNER, DAY)).isEmpty();
+  }
+
+  /**
+   * FOR-134 (migration V17): a catalog entry's key nutrients, snapshotted at logging time from the
+   * FOR-30 {@link FoodCatalog} food, survive a full JDBC round trip — proving they are genuinely
+   * persisted to and read back from the {@code meal_log_entry} key-nutrient columns, not just held
+   * in memory. Oats carries all four values (fibre/sugars/sodium/saturated fat), so none is lost.
+   */
+  @Test
+  void aCatalogEntrysKeyNutrientsSurviveAFullPersistenceRoundTrip() {
+    var oats = FoodCatalog.findById("oats").orElseThrow(); // all four key nutrients known
+    MealLogEntry original = MealLogEntry.fromCatalog(DAY, MealType.BREAKFAST, oats, 1.0);
+    assertThat(original.keyNutrients()).isNotEqualTo(KeyNutrientTotals.empty());
+
+    repository.save(OWNER, original);
+    StoredMealLogEntry read = repository.findByOwnerAndDate(OWNER, DAY).get(0);
+
+    assertThat(read.entry().keyNutrients()).isEqualTo(original.keyNutrients());
+  }
+
+  /**
+   * FOR-134 (migration V17): a free entry's optionally-provided key nutrients (sodium in mg, others
+   * in grams) round-trip exactly, and the sodium value keeps its milligram magnitude (a NUMERIC
+   * column, not truncated or unit-swapped).
+   */
+  @Test
+  void aFreeEntrysProvidedKeyNutrientsSurviveAFullPersistenceRoundTrip() {
+    KeyNutrientTotals provided = new KeyNutrientTotals(3.0, 12.0, 90, 2.0);
+    MealLogEntry original =
+        MealLogEntry.freeEntry(
+            DAY,
+            MealType.MID_MORNING,
+            "Barrita",
+            new NutritionTotals(180, 6.0, 24.0, 7.0),
+            provided);
+
+    repository.save(OWNER, original);
+    StoredMealLogEntry read = repository.findByOwnerAndDate(OWNER, DAY).get(0);
+
+    assertThat(read.entry().keyNutrients()).isEqualTo(provided);
+    assertThat(read.entry().keyNutrients().sodiumMg()).isEqualTo(90);
+  }
+
+  /**
+   * FOR-134 (migration V17): a partially-known key-nutrient profile round-trips with its nulls
+   * intact — a nutrient the food genuinely lacks stays {@code null} through persistence (never
+   * fabricated as 0), independently per column. "chicken" has fibre/sugars = 0 but sodium = null.
+   */
+  @Test
+  void partialKeyNutrientNullsAreNotFabricatedThroughPersistence() {
+    var chicken = FoodCatalog.findById("chicken").orElseThrow(); // sodium null, sat fat known
+    MealLogEntry original = MealLogEntry.fromCatalog(DAY, MealType.LUNCH, chicken, 1.0);
+
+    repository.save(OWNER, original);
+    StoredMealLogEntry read = repository.findByOwnerAndDate(OWNER, DAY).get(0);
+
+    KeyNutrientTotals keyNutrients = read.entry().keyNutrients();
+    assertThat(keyNutrients.sodiumMg()).isNull();
+    assertThat(keyNutrients).isEqualTo(original.keyNutrients());
+  }
+
+  /**
+   * FOR-134 (migration V17): a free entry with no key nutrients (all columns NULL) round-trips as
+   * {@link KeyNutrientTotals#empty()}, and the row still loads cleanly — the backward-compatible
+   * nullable-columns case (also what any pre-V17 row backfills to).
+   */
+  @Test
+  void anEntryWithNoKeyNutrientsRoundTripsAsEmpty() {
+    MealLogEntry original =
+        MealLogEntry.freeEntry(
+            DAY, MealType.LUNCH, "Café con leche", new NutritionTotals(90, 5.0, 8.0, 3.0));
+    assertThat(original.keyNutrients()).isEqualTo(KeyNutrientTotals.empty());
+
+    repository.save(OWNER, original);
+    StoredMealLogEntry read = repository.findByOwnerAndDate(OWNER, DAY).get(0);
+
+    assertThat(read.entry().keyNutrients()).isEqualTo(KeyNutrientTotals.empty());
   }
 }

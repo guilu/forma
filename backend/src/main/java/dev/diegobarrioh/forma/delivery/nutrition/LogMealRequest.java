@@ -10,7 +10,8 @@ import jakarta.validation.constraints.PositiveOrZero;
 import java.time.LocalDate;
 
 /**
- * Request body for {@code POST /api/v1/nutrition/log} (FOR-127 api.md).
+ * Request body for {@code POST /api/v1/nutrition/log} (FOR-127 api.md, key nutrients added by
+ * FOR-134 api.md).
  *
  * <p>Delivery DTO, distinct from the {@link dev.diegobarrioh.forma.domain.MealLogEntry} domain type
  * (ADR-005). {@code mealType} is validated as a {@code String} against the known {@link MealType}
@@ -21,6 +22,12 @@ import java.time.LocalDate;
  * dev.diegobarrioh.forma.application.MealLogService}, not here, so it stays testable without a web
  * context and consistent with the "unknown foodItemId" check which also needs the FOR-30 catalog.
  *
+ * <p><b>Key nutrients (FOR-134).</b> {@code fiberG}/{@code sugarsG}/{@code sodiumMg}/{@code
+ * saturatedFatG} are optional and only meaningful for a free/ad-hoc entry — a catalog entry's key
+ * nutrients are always derived from the resolved {@link dev.diegobarrioh.forma.domain.FoodItem}, so
+ * these fields are ignored when {@code foodItemId} is provided. Validated non-negative when
+ * present, same {@code @PositiveOrZero} pattern as the existing macro fields.
+ *
  * @param date required, ISO-8601
  * @param mealType required; one of the {@link MealType} names
  * @param foodItemId FOR-30 catalog food id; provide with {@code portions} for a catalog entry
@@ -30,6 +37,12 @@ import java.time.LocalDate;
  * @param proteinG free entry's protein grams; must be non-negative when present
  * @param carbsG free entry's carbohydrate grams; must be non-negative when present
  * @param fatG free entry's fat grams; must be non-negative when present
+ * @param fiberG free entry's optional fibre grams (FOR-134); must be non-negative when present
+ * @param sugarsG free entry's optional sugars grams (FOR-134); must be non-negative when present
+ * @param sodiumMg free entry's optional sodium milligrams (FOR-134); must be non-negative when
+ *     present
+ * @param saturatedFatG free entry's optional saturated fat grams (FOR-134); must be non-negative
+ *     when present
  */
 public record LogMealRequest(
     @NotNull LocalDate date,
@@ -45,11 +58,27 @@ public record LogMealRequest(
     @PositiveOrZero Integer kcal,
     @PositiveOrZero Double proteinG,
     @PositiveOrZero Double carbsG,
-    @PositiveOrZero Double fatG) {
+    @PositiveOrZero Double fatG,
+    @PositiveOrZero Double fiberG,
+    @PositiveOrZero Double sugarsG,
+    @PositiveOrZero Integer sodiumMg,
+    @PositiveOrZero Double saturatedFatG) {
 
   /** Builds the application-layer command; cross-field validation happens in the service. */
   public LogMealCommand toCommand() {
     return new LogMealCommand(
-        date, MealType.valueOf(mealType), foodItemId, portions, name, kcal, proteinG, carbsG, fatG);
+        date,
+        MealType.valueOf(mealType),
+        foodItemId,
+        portions,
+        name,
+        kcal,
+        proteinG,
+        carbsG,
+        fatG,
+        fiberG,
+        sugarsG,
+        sodiumMg,
+        saturatedFatG);
   }
 }
