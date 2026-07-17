@@ -8,6 +8,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import dev.diegobarrioh.forma.application.MuscleWorkedMap;
+import dev.diegobarrioh.forma.application.MuscleWorkedMap.MuscleWorked;
+import dev.diegobarrioh.forma.application.MuscleWorkedMapService;
 import dev.diegobarrioh.forma.application.NotFoundException;
 import dev.diegobarrioh.forma.application.StoredSessionStatus;
 import dev.diegobarrioh.forma.application.TrainingSessionStatusService;
@@ -17,6 +20,7 @@ import dev.diegobarrioh.forma.application.WeeklyTrainingSchedule.TrainingEntry;
 import dev.diegobarrioh.forma.application.WeeklyTrainingScheduleService;
 import dev.diegobarrioh.forma.application.WeeklyTrainingSummary;
 import dev.diegobarrioh.forma.application.WeeklyTrainingSummaryService;
+import dev.diegobarrioh.forma.domain.MuscleLoad;
 import dev.diegobarrioh.forma.domain.SessionStatus;
 import java.time.DayOfWeek;
 import java.util.List;
@@ -38,6 +42,7 @@ class TrainingControllerTest {
   @MockBean private WeeklyTrainingScheduleService scheduleService;
   @MockBean private TrainingSessionStatusService statusService;
   @MockBean private WeeklyTrainingSummaryService summaryService;
+  @MockBean private MuscleWorkedMapService muscleWorkedMapService;
 
   @Test
   void returnsTheWeekWithSessionIdsAndRestDays() throws Exception {
@@ -145,5 +150,49 @@ class TrainingControllerTest {
         .andExpect(jsonPath("$.totalPlannedRunningKm").value(0.0))
         .andExpect(jsonPath("$.completedRunningKm").value(0.0))
         .andExpect(jsonPath("$.message").value("No hay entrenamientos planificados esta semana."));
+  }
+
+  @Test
+  void returnsTheMuscleMapForAStrengthSessionPerApiMd() throws Exception {
+    when(muscleWorkedMapService.resolve("MONDAY:STRENGTH"))
+        .thenReturn(
+            new MuscleWorkedMap(
+                "MONDAY:STRENGTH",
+                List.of(
+                    new MuscleWorked("pecho", MuscleLoad.HIGH),
+                    new MuscleWorked("tríceps", MuscleLoad.HIGH),
+                    new MuscleWorked("hombro", MuscleLoad.MEDIUM))));
+
+    mockMvc
+        .perform(get("/api/v1/training/sessions/MONDAY:STRENGTH/muscle-map"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.sessionId").value("MONDAY:STRENGTH"))
+        .andExpect(jsonPath("$.muscles[0].muscle").value("pecho"))
+        .andExpect(jsonPath("$.muscles[0].load").value("HIGH"))
+        .andExpect(jsonPath("$.muscles[2].muscle").value("hombro"))
+        .andExpect(jsonPath("$.muscles[2].load").value("MEDIUM"));
+  }
+
+  @Test
+  void aNonStrengthSessionReturns200WithAnEmptyMuscleMapNeverA404() throws Exception {
+    when(muscleWorkedMapService.resolve("SATURDAY:RUNNING"))
+        .thenReturn(new MuscleWorkedMap("SATURDAY:RUNNING", List.of()));
+
+    mockMvc
+        .perform(get("/api/v1/training/sessions/SATURDAY:RUNNING/muscle-map"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.sessionId").value("SATURDAY:RUNNING"))
+        .andExpect(jsonPath("$.muscles").isEmpty());
+  }
+
+  @Test
+  void anUnknownSessionIdReturns404ForTheMuscleMap() throws Exception {
+    when(muscleWorkedMapService.resolve("X"))
+        .thenThrow(new NotFoundException("No existe la sesión de entrenamiento: X"));
+
+    mockMvc
+        .perform(get("/api/v1/training/sessions/X/muscle-map"))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("NOT_FOUND"));
   }
 }

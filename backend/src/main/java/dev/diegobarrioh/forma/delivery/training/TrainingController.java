@@ -1,5 +1,6 @@
 package dev.diegobarrioh.forma.delivery.training;
 
+import dev.diegobarrioh.forma.application.MuscleWorkedMapService;
 import dev.diegobarrioh.forma.application.TrainingSessionStatusService;
 import dev.diegobarrioh.forma.application.WeeklyTrainingScheduleService;
 import dev.diegobarrioh.forma.application.WeeklyTrainingSummaryService;
@@ -14,8 +15,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Training REST endpoints (FOR-26/FOR-27/FOR-98) under {@link ApiPaths#V1}{@code /training}: read
- * the weekly calendar, read the weekly adherence summary, and mark a session's completion status.
+ * Training REST endpoints (FOR-26/FOR-27/FOR-98/FOR-136) under {@link ApiPaths#V1}{@code
+ * /training}: read the weekly calendar, read the weekly adherence summary, mark a session's
+ * completion status, and read a strength session's worked-muscle map.
  *
  * <p>Thin controller (ADR-001, ADR-005): it maps to/from delivery DTOs and delegates to the
  * application services. Validation and not-found failures are turned into the standard {@code
@@ -28,14 +30,17 @@ public class TrainingController {
   private final WeeklyTrainingScheduleService scheduleService;
   private final TrainingSessionStatusService statusService;
   private final WeeklyTrainingSummaryService summaryService;
+  private final MuscleWorkedMapService muscleWorkedMapService;
 
   public TrainingController(
       WeeklyTrainingScheduleService scheduleService,
       TrainingSessionStatusService statusService,
-      WeeklyTrainingSummaryService summaryService) {
+      WeeklyTrainingSummaryService summaryService,
+      MuscleWorkedMapService muscleWorkedMapService) {
     this.scheduleService = scheduleService;
     this.statusService = statusService;
     this.summaryService = summaryService;
+    this.muscleWorkedMapService = muscleWorkedMapService;
   }
 
   /** Returns the current week's training calendar (Monday through Sunday). */
@@ -56,5 +61,15 @@ public class TrainingController {
       @PathVariable String id, @Valid @RequestBody UpdateSessionStatusRequest request) {
     return SessionStatusResponse.from(
         statusService.updateStatus(id, SessionStatus.valueOf(request.status()), request.notes()));
+  }
+
+  /**
+   * Worked-muscle map for a strength session (FOR-136), derived from its exercises' {@code
+   * primaryMuscles}. A non-strength session (running) returns an empty map (200), never an error;
+   * an unknown session id returns 404.
+   */
+  @GetMapping("/sessions/{sessionId}/muscle-map")
+  public MuscleWorkedMapResponse muscleMap(@PathVariable String sessionId) {
+    return MuscleWorkedMapResponse.from(muscleWorkedMapService.resolve(sessionId));
   }
 }
