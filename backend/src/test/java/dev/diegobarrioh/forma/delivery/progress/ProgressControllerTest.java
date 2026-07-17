@@ -7,11 +7,15 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import dev.diegobarrioh.forma.application.AchievementService;
+import dev.diegobarrioh.forma.application.AchievementView;
+import dev.diegobarrioh.forma.application.AchievementsView;
 import dev.diegobarrioh.forma.application.Adherence;
 import dev.diegobarrioh.forma.application.AdherenceService;
 import dev.diegobarrioh.forma.application.ValidationException;
 import dev.diegobarrioh.forma.domain.AdherenceCategory;
 import dev.diegobarrioh.forma.domain.CategoryAdherence;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -21,15 +25,17 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * Web-slice tests for {@link ProgressController} (FOR-129): routing, {@code days} handling and
- * response shape per {@code specs/FOR-129/api.md} and {@code tests.md}. {@link AdherenceService} is
- * mocked, like {@code MealLogControllerTest} (FOR-127).
+ * Web-slice tests for {@link ProgressController} (FOR-129 adherence + FOR-135 achievements):
+ * routing and response shape per {@code specs/FOR-129/api.md} / {@code specs/FOR-135/api.md}.
+ * {@link AdherenceService}/{@link AchievementService} are mocked, like {@code
+ * MealLogControllerTest} (FOR-127).
  */
 @WebMvcTest(ProgressController.class)
 class ProgressControllerTest {
 
   @Autowired private MockMvc mockMvc;
   @MockBean private AdherenceService service;
+  @MockBean private AchievementService achievementService;
 
   private static Adherence adherenceView() {
     return new Adherence(
@@ -121,5 +127,54 @@ class ProgressControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.categories[1].completed").value(0))
         .andExpect(jsonPath("$.categories[1].rate").value(0.0));
+  }
+
+  @Test
+  void achievementsResponseShapeMatchesApiMdWithEarnedAndAvailable() throws Exception {
+    when(achievementService.evaluate())
+        .thenReturn(
+            new AchievementsView(
+                List.of(
+                    new AchievementView(
+                        "FIRST_MEASUREMENT",
+                        "Primera medición",
+                        "Registra tu primera medición corporal.",
+                        Instant.parse("2026-07-10T08:00:00Z"))),
+                List.of(
+                    new AchievementView(
+                        "TEN_MEASUREMENTS_LOGGED",
+                        "10 mediciones registradas",
+                        "Registra 10 mediciones corporales.",
+                        null))));
+
+    mockMvc
+        .perform(get("/api/v1/progress/achievements"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.earned[0].id").value("FIRST_MEASUREMENT"))
+        .andExpect(jsonPath("$.earned[0].title").value("Primera medición"))
+        .andExpect(jsonPath("$.earned[0].earnedAt").value("2026-07-10T08:00:00Z"))
+        .andExpect(jsonPath("$.available[0].id").value("TEN_MEASUREMENTS_LOGGED"))
+        .andExpect(jsonPath("$.available[0].earnedAt").doesNotExist());
+
+    verify(achievementService).evaluate();
+  }
+
+  @Test
+  void achievementsOnEmptyDataReturns200WithEmptyEarnedAndTheFullAvailableCatalogNeverA404()
+      throws Exception {
+    when(achievementService.evaluate())
+        .thenReturn(
+            new AchievementsView(
+                List.of(),
+                List.of(
+                    new AchievementView("FIRST_MEASUREMENT", "Primera medición", "…", null),
+                    new AchievementView(
+                        "FIRST_GOAL_CREATED", "Primer objetivo creado", "…", null))));
+
+    mockMvc
+        .perform(get("/api/v1/progress/achievements"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.earned").isEmpty())
+        .andExpect(jsonPath("$.available.length()").value(2));
   }
 }
