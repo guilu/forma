@@ -12,9 +12,14 @@ import dev.diegobarrioh.forma.application.AchievementView;
 import dev.diegobarrioh.forma.application.AchievementsView;
 import dev.diegobarrioh.forma.application.Adherence;
 import dev.diegobarrioh.forma.application.AdherenceService;
+import dev.diegobarrioh.forma.application.StreakService;
 import dev.diegobarrioh.forma.application.ValidationException;
+import dev.diegobarrioh.forma.application.WeeklyHistory;
+import dev.diegobarrioh.forma.application.WeeklyHistoryService;
 import dev.diegobarrioh.forma.domain.AdherenceCategory;
 import dev.diegobarrioh.forma.domain.CategoryAdherence;
+import dev.diegobarrioh.forma.domain.Streak;
+import dev.diegobarrioh.forma.domain.WeeklyHistoryBucket;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -25,9 +30,9 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * Web-slice tests for {@link ProgressController} (FOR-129 adherence + FOR-135 achievements):
- * routing and response shape per {@code specs/FOR-129/api.md} / {@code specs/FOR-135/api.md}.
- * {@link AdherenceService}/{@link AchievementService} are mocked, like {@code
+ * Web-slice tests for {@link ProgressController} (FOR-129 adherence, FOR-135 achievements, FOR-139
+ * streak + weekly-history): routing and response shape per {@code specs/FOR-129/api.md} / {@code
+ * specs/FOR-135/api.md} / {@code specs/FOR-139/api.md}. Services are mocked, like {@code
  * MealLogControllerTest} (FOR-127).
  */
 @WebMvcTest(ProgressController.class)
@@ -36,6 +41,8 @@ class ProgressControllerTest {
   @Autowired private MockMvc mockMvc;
   @MockBean private AdherenceService service;
   @MockBean private AchievementService achievementService;
+  @MockBean private StreakService streakService;
+  @MockBean private WeeklyHistoryService weeklyHistoryService;
 
   private static Adherence adherenceView() {
     return new Adherence(
@@ -176,5 +183,107 @@ class ProgressControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.earned").isEmpty())
         .andExpect(jsonPath("$.available.length()").value(2));
+  }
+
+  @Test
+  void defaultStreakRequestUsesA90DayWindowAndReturnsTheResponseShapeFromApiMd() throws Exception {
+    when(streakService.compute(90)).thenReturn(new Streak(6, 21, LocalDate.of(2026, 7, 18)));
+
+    mockMvc
+        .perform(get("/api/v1/progress/streak"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.currentStreakDays").value(6))
+        .andExpect(jsonPath("$.longestStreakDays").value(21))
+        .andExpect(jsonPath("$.asOf").value("2026-07-18"));
+
+    verify(streakService).compute(90);
+  }
+
+  @Test
+  void explicitStreakDaysParamIsForwardedToTheService() throws Exception {
+    when(streakService.compute(7)).thenReturn(new Streak(0, 0, LocalDate.of(2026, 7, 18)));
+
+    mockMvc.perform(get("/api/v1/progress/streak").param("days", "7")).andExpect(status().isOk());
+
+    verify(streakService).compute(eq(7));
+  }
+
+  @Test
+  void aStreakDaysValueOutOfRangeReturns400ValidationErrorViaTheApplicationLayer()
+      throws Exception {
+    when(streakService.compute(0))
+        .thenThrow(new ValidationException("days must be between 1 and 365"));
+
+    mockMvc
+        .perform(get("/api/v1/progress/streak").param("days", "0"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+  }
+
+  @Test
+  void streakOnEmptyHistoryReturns200WithAZeroedStreakNeverA404() throws Exception {
+    when(streakService.compute(90)).thenReturn(new Streak(0, 0, LocalDate.of(2026, 7, 18)));
+
+    mockMvc
+        .perform(get("/api/v1/progress/streak"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.currentStreakDays").value(0))
+        .andExpect(jsonPath("$.longestStreakDays").value(0));
+  }
+
+  @Test
+  void defaultWeeklyHistoryRequestUsesAnEightWeekWindowAndReturnsTheResponseShapeFromApiMd()
+      throws Exception {
+    when(weeklyHistoryService.compute(8))
+        .thenReturn(
+            new WeeklyHistory(
+                List.of(
+                    new WeeklyHistoryBucket(LocalDate.of(2026, 5, 25), 7, 5),
+                    new WeeklyHistoryBucket(LocalDate.of(2026, 6, 1), 7, 7))));
+
+    mockMvc
+        .perform(get("/api/v1/progress/weekly-history"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.weeks[0].weekStart").value("2026-05-25"))
+        .andExpect(jsonPath("$.weeks[0].planned").value(7))
+        .andExpect(jsonPath("$.weeks[0].completed").value(5))
+        .andExpect(jsonPath("$.weeks[1].weekStart").value("2026-06-01"));
+
+    verify(weeklyHistoryService).compute(8);
+  }
+
+  @Test
+  void explicitWeeksParamIsForwardedToTheService() throws Exception {
+    when(weeklyHistoryService.compute(4)).thenReturn(new WeeklyHistory(List.of()));
+
+    mockMvc
+        .perform(get("/api/v1/progress/weekly-history").param("weeks", "4"))
+        .andExpect(status().isOk());
+
+    verify(weeklyHistoryService).compute(eq(4));
+  }
+
+  @Test
+  void aWeeksValueOutOfRangeReturns400ValidationErrorViaTheApplicationLayer() throws Exception {
+    when(weeklyHistoryService.compute(0))
+        .thenThrow(new ValidationException("weeks must be between 1 and 52"));
+
+    mockMvc
+        .perform(get("/api/v1/progress/weekly-history").param("weeks", "0"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+  }
+
+  @Test
+  void weeklyHistoryOnEmptyDataReturns200WithZeroBucketsStillPresentNeverA404() throws Exception {
+    when(weeklyHistoryService.compute(8))
+        .thenReturn(
+            new WeeklyHistory(List.of(new WeeklyHistoryBucket(LocalDate.of(2026, 7, 13), 7, 0))));
+
+    mockMvc
+        .perform(get("/api/v1/progress/weekly-history"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.weeks.length()").value(1))
+        .andExpect(jsonPath("$.weeks[0].completed").value(0));
   }
 }
