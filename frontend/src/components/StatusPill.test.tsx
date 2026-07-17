@@ -69,4 +69,17 @@ describe('StatusPill', () => {
 
     expect(screen.getByText(label)).toHaveAttribute('data-tone', tone);
   });
+
+  it.each([
+    ['HIGH', 'Carga alta', 'accent'],
+    ['MEDIUM', 'Carga media', 'neutral'],
+    ['LOW', 'Carga baja', 'neutral'],
+  ])(
+    'renders the %s muscle load as "%s" with the %s tone (FOR-53/FOR-136)',
+    (value, label, tone) => {
+      render(<StatusPill kind="muscleLoad" value={value} />);
+
+      expect(screen.getByText(label)).toHaveAttribute('data-tone', tone);
+    },
+  );
 });

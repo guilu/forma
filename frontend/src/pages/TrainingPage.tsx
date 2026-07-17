@@ -9,8 +9,10 @@ import { MetricCard } from '../components/MetricCard';
 import { Modal } from '../components/Modal';
 import { useNotify } from '../components/NotificationProvider';
 import { StatusPill } from '../components/StatusPill';
+import { WidgetLoading } from '../components/WidgetLoading';
 import { ApiRequestError } from '../api/client';
 import {
+  getMuscleMap,
   getTrainingWeek,
   updateSessionStatus,
   type SessionStatus,
@@ -18,6 +20,7 @@ import {
   type TrainingSession,
   type TrainingWeek,
 } from '../api/training';
+import { groupMusclesForDisplay, type MuscleGroupDisplay } from './trainingMuscleLabels';
 import styles from './TrainingPage.module.css';
 
 /**
@@ -37,10 +40,14 @@ import styles from './TrainingPage.module.css';
  *       sees each session's plain {@code detail} summary string (e.g. "3
  *       ejercicios"). Shown as a labelled placeholder in the session detail
  *       view instead of a fabricated table.
- *   <li>"Calorías estimadas", "Volumen total" and "Duración total" tiles,
- *       the muscle-worked heatmap, the weekly-history bars and "RACHA
- *       ACTUAL" — no calories/volume/duration/streak field exists anywhere in
- *       the training domain or API.
+ *   <li>"Calorías estimadas", "Volumen total" and "Duración total" tiles, the
+ *       weekly-history bars and "RACHA ACTUAL" — no calories/volume/duration/
+ *       streak field exists anywhere in the training domain or API. The
+ *       muscle-worked heatmap *is* backed (FOR-136, {@code GET
+ *       …/sessions/{id}/muscle-map}) and is wired into the strength session
+ *       detail below, normalized for display by {@code trainingMuscleLabels}
+ *       (spec FOR-53: the frontend, not the backend, owns that
+ *       normalization).
  *   <li>Weekly summary counts (planned vs. completed sessions) are *not* the
  *       FOR-28 {@code WeeklyTrainingSummary} — that calculation is
  *       application-layer only and is not exposed over HTTP. This page tallies
@@ -404,10 +411,13 @@ function SessionDetailModal({
         <StatusPill kind="training" value={session.status} />
         {session.notes && <p className={styles.notes}>{session.notes}</p>}
         {session.kind === 'STRENGTH' && (
-          <p className={styles.placeholder}>
-            El desglose por ejercicio (series, reps, peso, descanso) no está disponible todavía: la
-            API no expone las plantillas de fuerza por HTTP.
-          </p>
+          <>
+            <p className={styles.placeholder}>
+              El desglose por ejercicio (series, reps, peso, descanso) no está disponible todavía:
+              la API no expone las plantillas de fuerza por HTTP.
+            </p>
+            <MuscleMapSection sessionId={session.id} />
+          </>
         )}
         <div className={styles.actions}>
           {session.status !== 'COMPLETED' && (
@@ -433,5 +443,72 @@ function SessionDetailModal({
         </div>
       </div>
     </Modal>
+  );
+}
+
+type MuscleMapState =
+  | { readonly status: 'loading' }
+  | { readonly status: 'error' }
+  | { readonly status: 'ready'; readonly muscles: readonly MuscleGroupDisplay[] };
+
+const MUSCLE_MAP_ERROR = 'No se pudieron cargar los músculos trabajados.';
+
+/**
+ * The FOR-136 worked-muscle heatmap for a strength session (spec FOR-53: "now
+ * backed by FOR-136 — wire the heatmap to the muscle-map endpoint"). Fetched
+ * on demand per session (the endpoint is per-session, not part of the FOR-26
+ * week payload) and normalized for display via `trainingMuscleLabels`
+ * (frontend-owned grouping — the backend read model itself stays untouched).
+ * A load failure here is scoped to this section only: the rest of the
+ * session detail (status, actions) keeps working, matching the page's
+ * existing "error, prior state preserved" pattern.
+ */
+function MuscleMapSection({ sessionId }: { readonly sessionId: string }) {
+  const [state, setState] = useState<MuscleMapState>({ status: 'loading' });
+
+  useEffect(() => {
+    let cancelled = false;
+    setState({ status: 'loading' });
+    getMuscleMap(sessionId)
+      .then((map) => {
+        if (!cancelled) {
+          setState({ status: 'ready', muscles: groupMusclesForDisplay(map.muscles) });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setState({ status: 'error' });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId]);
+
+  return (
+    <div className={styles.muscleMap}>
+      <h3 className={styles.muscleMapTitle}>Músculos trabajados</h3>
+      {state.status === 'loading' && (
+        <WidgetLoading label="Cargando músculos trabajados…" rows={2} />
+      )}
+      {state.status === 'error' && (
+        <p className={styles.muscleMapError} role="alert">
+          {MUSCLE_MAP_ERROR}
+        </p>
+      )}
+      {state.status === 'ready' &&
+        (state.muscles.length === 0 ? (
+          <p className={styles.message}>Sin datos de músculos para esta sesión.</p>
+        ) : (
+          <ul className={styles.muscleList} aria-label="Músculos trabajados">
+            {state.muscles.map((muscle) => (
+              <li key={muscle.label} className={styles.muscleItem}>
+                <Badge tone="neutral">{muscle.label}</Badge>
+                <StatusPill kind="muscleLoad" value={muscle.load} />
+              </li>
+            ))}
+          </ul>
+        ))}
+    </div>
   );
 }

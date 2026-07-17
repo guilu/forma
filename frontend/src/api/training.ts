@@ -60,3 +60,40 @@ export function updateSessionStatus(
     },
   );
 }
+
+/**
+ * Load level a muscle receives within a strength session (FOR-136), derived
+ * server-side from how many of the session's exercises hit it.
+ */
+export type MuscleLoad = 'HIGH' | 'MEDIUM' | 'LOW';
+
+/**
+ * One worked muscle and its derived load (FOR-136). `muscle` is the raw
+ * label verbatim from the backend's exercise catalog — lowercase, accented
+ * Spanish (e.g. `"hombro"` and `"hombro anterior"` are distinct values). The
+ * backend never normalizes this; display grouping/normalization is a UI-layer
+ * concern (see `pages/trainingMuscleLabels.ts`).
+ */
+export interface MuscleWorked {
+  readonly muscle: string;
+  readonly load: MuscleLoad;
+}
+
+/**
+ * The worked-muscle map for a training session (FOR-136). `muscles` is empty
+ * for a non-strength (running/rest) session — not an error.
+ */
+export interface MuscleWorkedMap {
+  readonly sessionId: string;
+  readonly muscles: MuscleWorked[];
+}
+
+/** Fetches the worked-muscle map for a session (FOR-136); empty for non-strength sessions. */
+export function getMuscleMap(
+  sessionId: string,
+  client: ApiClient = apiClient,
+): Promise<MuscleWorkedMap> {
+  return client.request<MuscleWorkedMap>(
+    `/api/v1/training/sessions/${encodeURIComponent(sessionId)}/muscle-map`,
+  );
+}
