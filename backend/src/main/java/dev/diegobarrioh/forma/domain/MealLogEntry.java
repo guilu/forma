@@ -17,12 +17,11 @@ import java.util.Objects;
  * NutritionDayTemplate} or {@link MealTemplate} (spec FOR-127: "logging is additive — must NOT
  * mutate any plan template").
  *
- * <p><b>Known limitation (FOR-134).</b> {@code keyNutrients} is NOT persisted by {@code
- * JdbcMealLogRepository}: the {@code meal_log_entry} table (V13) has no key-nutrient columns, and
- * this story adds no migration (in-code reference data only, head stays V16). A JDBC round trip
- * therefore reconstructs {@link KeyNutrientTotals#empty()} for a reloaded entry even if the
- * original had known values — honest (never fabricated) rather than silently wrong. See {@code
- * JdbcMealLogRepositoryTest} and the FOR-134 PR's "Known limitations".
+ * <p><b>Persistence (FOR-134, V17).</b> {@code keyNutrients} is persisted alongside {@code totals}
+ * by {@code JdbcMealLogRepository} into the V17 key-nutrient columns and read back on load, so it
+ * survives a full round trip. Each nutrient is independently nullable: one a food genuinely lacks
+ * is stored and reloaded as {@code null} ("unknown"), never fabricated as 0. See {@code
+ * JdbcMealLogRepositoryTest}.
  *
  * @param date the day the meal was consumed
  * @param mealType the meal type; required

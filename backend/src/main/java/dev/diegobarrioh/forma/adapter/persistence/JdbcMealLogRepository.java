@@ -6,7 +6,11 @@ import dev.diegobarrioh.forma.domain.KeyNutrientTotals;
 import dev.diegobarrioh.forma.domain.MealLogEntry;
 import dev.diegobarrioh.forma.domain.MealType;
 import dev.diegobarrioh.forma.domain.NutritionTotals;
+import java.math.BigDecimal;
 import java.sql.Date;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Types;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -16,7 +20,7 @@ import org.springframework.stereotype.Repository;
 
 /**
  * JDBC adapter that persists {@link MealLogEntry} rows to the {@code meal_log_entry} table
- * (FOR-127, migration V13).
+ * (FOR-127, migration V13; key-nutrient columns added by FOR-134, migration V17).
  *
  * <p>Plain JDBC via {@link JdbcTemplate} — no ORM (ADR-003), following {@link JdbcGoalRepository}'s
  * per-owner list-of-rows shape. Append-only for this slice (spec FOR-127 Open Questions): only
@@ -24,13 +28,14 @@ import org.springframework.stereotype.Repository;
  * always come back in the order they were logged, never re-ordered or overwritten (spec FOR-127
  * edge case: "Multiple entries same meal/day → all counted; never overwrite").
  *
- * <p><b>Known limitation (FOR-134).</b> {@code meal_log_entry} has no key-nutrient columns, and
- * FOR-134 adds no migration (in-code reference data only, head stays V16) — so {@link
- * MealLogEntry#keyNutrients()} is NOT written by {@link #save} and always reconstructs as {@link
- * KeyNutrientTotals#empty()} in {@link #ROW_MAPPER}. This is an explicit, honest limitation (never
- * fabricated data), not a silent bug — see {@code JdbcMealLogRepositoryTest} and the FOR-134 PR's
- * "Known limitations". A follow-up story with a migration is needed to persist per-entry key
- * nutrients.
+ * <p><b>Key nutrients (FOR-134, V17).</b> {@link MealLogEntry#keyNutrients()} is a snapshot
+ * computed once at logging time (from the FOR-30 catalog food, or the free entry's provided values)
+ * and is persisted alongside the macro snapshot into the V17 {@code fiber_g}/{@code
+ * sugars_g}/{@code sodium_mg}/{@code saturated_fat_g} columns, then read back by {@link
+ * #ROW_MAPPER}. Each column is nullable: a nutrient a food genuinely lacks is stored and reloaded
+ * as {@code null} ("unknown"), never fabricated as 0 — so the day-consumption read model's
+ * documented null/partial-total rule holds against the real persisted rows. A change to the in-code
+ * catalog never rewrites logged history, exactly as for the macro snapshot.
  */
 @Repository
 public class JdbcMealLogRepository implements MealLogRepository {
@@ -49,8 +54,11 @@ public class JdbcMealLogRepository implements MealLogRepository {
                       rs.getBigDecimal("protein_g").doubleValue(),
                       rs.getBigDecimal("carbs_g").doubleValue(),
                       rs.getBigDecimal("fat_g").doubleValue()),
-                  // FOR-134: not persisted (see class javadoc) -> always reconstructed as unknown.
-                  KeyNutrientTotals.empty()));
+                  new KeyNutrientTotals(
+                      nullableDouble(rs, "fiber_g"),
+                      nullableDouble(rs, "sugars_g"),
+                      nullableInteger(rs, "sodium_mg"),
+                      nullableDouble(rs, "saturated_fat_g"))));
 
   private final JdbcTemplate jdbcTemplate;
 
@@ -61,7 +69,8 @@ public class JdbcMealLogRepository implements MealLogRepository {
   @Override
   public List<StoredMealLogEntry> findByOwnerAndDate(String ownerId, LocalDate date) {
     return jdbcTemplate.query(
-        "SELECT id, log_date, meal_type, food_item_id, name, kcal, protein_g, carbs_g, fat_g"
+        "SELECT id, log_date, meal_type, food_item_id, name, kcal, protein_g, carbs_g, fat_g,"
+            + " fiber_g, sugars_g, sodium_mg, saturated_fat_g"
             + " FROM meal_log_entry WHERE owner_id = ? AND log_date = ? ORDER BY logged_at, id",
         ROW_MAPPER,
         ownerId,
@@ -71,21 +80,56 @@ public class JdbcMealLogRepository implements MealLogRepository {
   @Override
   public StoredMealLogEntry save(String ownerId, MealLogEntry entry) {
     UUID id = UUID.randomUUID();
+    KeyNutrientTotals keyNutrients = entry.keyNutrients();
     jdbcTemplate.update(
         "INSERT INTO meal_log_entry"
             + " (id, owner_id, log_date, meal_type, food_item_id, name, kcal, protein_g, carbs_g,"
-            + " fat_g)"
-            + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        id,
-        ownerId,
-        Date.valueOf(entry.date()),
-        entry.mealType().name(),
-        entry.foodItemId(),
-        entry.name(),
-        entry.totals().calories(),
-        entry.totals().proteinG(),
-        entry.totals().carbsG(),
-        entry.totals().fatG());
+            + " fat_g, fiber_g, sugars_g, sodium_mg, saturated_fat_g)"
+            + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (ps) -> {
+          ps.setObject(1, id);
+          ps.setString(2, ownerId);
+          ps.setDate(3, Date.valueOf(entry.date()));
+          ps.setString(4, entry.mealType().name());
+          ps.setString(5, entry.foodItemId());
+          ps.setString(6, entry.name());
+          ps.setInt(7, entry.totals().calories());
+          ps.setBigDecimal(8, BigDecimal.valueOf(entry.totals().proteinG()));
+          ps.setBigDecimal(9, BigDecimal.valueOf(entry.totals().carbsG()));
+          ps.setBigDecimal(10, BigDecimal.valueOf(entry.totals().fatG()));
+          setNullableDouble(ps, 11, keyNutrients.fiberG());
+          setNullableDouble(ps, 12, keyNutrients.sugarsG());
+          setNullableInteger(ps, 13, keyNutrients.sodiumMg());
+          setNullableDouble(ps, 14, keyNutrients.saturatedFatG());
+        });
     return new StoredMealLogEntry(id.toString(), entry);
+  }
+
+  private static Double nullableDouble(ResultSet rs, String column) throws SQLException {
+    BigDecimal value = rs.getBigDecimal(column);
+    return value == null ? null : value.doubleValue();
+  }
+
+  private static Integer nullableInteger(ResultSet rs, String column) throws SQLException {
+    int value = rs.getInt(column);
+    return rs.wasNull() ? null : value;
+  }
+
+  private static void setNullableDouble(java.sql.PreparedStatement ps, int index, Double value)
+      throws SQLException {
+    if (value == null) {
+      ps.setNull(index, Types.NUMERIC);
+    } else {
+      ps.setBigDecimal(index, BigDecimal.valueOf(value));
+    }
+  }
+
+  private static void setNullableInteger(java.sql.PreparedStatement ps, int index, Integer value)
+      throws SQLException {
+    if (value == null) {
+      ps.setNull(index, Types.INTEGER);
+    } else {
+      ps.setInt(index, value);
+    }
   }
 }
