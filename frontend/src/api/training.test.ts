@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { getTrainingWeek, updateSessionStatus } from './training';
+import { getMuscleMap, getTrainingWeek, updateSessionStatus } from './training';
 import { type ApiClient } from './client';
 
 describe('training API', () => {
@@ -25,5 +25,16 @@ describe('training API', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: 'COMPLETED', notes: 'Hecho' }),
     });
+  });
+
+  it('GETs the muscle-map endpoint for a session (FOR-136)', async () => {
+    const map = { sessionId: 'MONDAY:STRENGTH', muscles: [{ muscle: 'pecho', load: 'HIGH' }] };
+    const request = vi.fn().mockResolvedValue(map);
+    const client: ApiClient = { baseUrl: 'http://test', request };
+
+    const result = await getMuscleMap('MONDAY:STRENGTH', client);
+
+    expect(request).toHaveBeenCalledWith('/api/v1/training/sessions/MONDAY%3ASTRENGTH/muscle-map');
+    expect(result).toBe(map);
   });
 });

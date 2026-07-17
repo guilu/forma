@@ -1,6 +1,7 @@
 import { Badge, type BadgeTone } from './Badge';
 
-export type StatusKind = 'severity' | 'connection' | 'plazo' | 'source' | 'training' | 'goalStatus';
+export type StatusKind =
+  'severity' | 'connection' | 'plazo' | 'source' | 'training' | 'goalStatus' | 'muscleLoad';
 
 interface StatusMapping {
   readonly tone: BadgeTone;
@@ -72,6 +73,18 @@ const GOAL_STATUS_TONES: Record<string, StatusMapping> = {
   ARCHIVED: { tone: 'neutral', label: 'Archivado' },
 };
 
+/**
+ * Muscle load level (backend `MuscleLoad`, FOR-136): `HIGH` gets the accent
+ * tone (mirrors `TRAINING_TONES.COMPLETED` — it highlights the muscles a
+ * strength session emphasizes most), `MEDIUM`/`LOW` stay neutral since they
+ * are not warnings or errors, just a lower emphasis level.
+ */
+const MUSCLE_LOAD_TONES: Record<string, StatusMapping> = {
+  HIGH: { tone: 'accent', label: 'Carga alta' },
+  MEDIUM: { tone: 'neutral', label: 'Carga media' },
+  LOW: { tone: 'neutral', label: 'Carga baja' },
+};
+
 const TABLES: Record<StatusKind, Record<string, StatusMapping>> = {
   severity: SEVERITY_TONES,
   connection: CONNECTION_TONES,
@@ -79,6 +92,7 @@ const TABLES: Record<StatusKind, Record<string, StatusMapping>> = {
   source: SOURCE_TONES,
   training: TRAINING_TONES,
   goalStatus: GOAL_STATUS_TONES,
+  muscleLoad: MUSCLE_LOAD_TONES,
 };
 
 interface StatusPillProps {

@@ -3,7 +3,12 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TrainingPage } from './TrainingPage';
 import { NotificationProvider } from '../components/NotificationProvider';
-import { getTrainingWeek, updateSessionStatus, type TrainingWeek } from '../api/training';
+import {
+  getMuscleMap,
+  getTrainingWeek,
+  updateSessionStatus,
+  type TrainingWeek,
+} from '../api/training';
 
 /** TrainingPage calls `useNotify()` (FOR-63), which requires a provider. */
 function renderPage() {
@@ -17,10 +22,12 @@ function renderPage() {
 vi.mock('../api/training', () => ({
   getTrainingWeek: vi.fn(),
   updateSessionStatus: vi.fn(),
+  getMuscleMap: vi.fn(),
 }));
 
 const getWeekMock = vi.mocked(getTrainingWeek);
 const updateMock = vi.mocked(updateSessionStatus);
+const getMuscleMapMock = vi.mocked(getMuscleMap);
 
 // Fixed "today" = Monday 2026-07-06, so the MONDAY entry below is always
 // picked up by the today's-session card regardless of when the suite runs.
@@ -62,6 +69,11 @@ describe('TrainingPage', () => {
   beforeEach(() => {
     getWeekMock.mockReset();
     updateMock.mockReset();
+    getMuscleMapMock.mockReset();
+    // Default: no muscles (matches a non-strength/no-data response) so tests
+    // that open a strength detail without asserting on the muscle map don't
+    // hang on an unresolved promise.
+    getMuscleMapMock.mockResolvedValue({ sessionId: '', muscles: [] });
     // Only Date is mocked — setTimeout/setInterval stay real so RTL's
     // findBy/waitFor polling keeps working without manually advancing timers.
     vi.useFakeTimers({ toFake: ['Date'] });
@@ -131,6 +143,63 @@ describe('TrainingPage', () => {
     expect(screen.getByRole('dialog', { name: /Lunes · Fuerza/ })).toBeInTheDocument();
     // Documented gap: no exercise-level breakdown is available from the API.
     expect(screen.getByText(/no está disponible todavía/)).toBeInTheDocument();
+  });
+
+  it('loads and renders the FOR-136 muscle map for a strength session, grouped and normalized', async () => {
+    getWeekMock.mockResolvedValue(week);
+    getMuscleMapMock.mockResolvedValue({
+      sessionId: 'MONDAY:STRENGTH',
+      muscles: [
+        { muscle: 'pecho', load: 'HIGH' },
+        { muscle: 'hombro', load: 'MEDIUM' },
+        { muscle: 'hombro anterior', load: 'HIGH' },
+      ],
+    });
+    const user = userEvent.setup();
+
+    renderPage();
+    await screen.findByRole('heading', { name: 'Calendario semanal' });
+
+    await user.click(screen.getByRole('button', { name: 'Ver detalle' }));
+
+    expect(getMuscleMapMock).toHaveBeenCalledWith('MONDAY:STRENGTH');
+    const dialog = await screen.findByRole('dialog', { name: /Lunes · Fuerza/ });
+    expect(within(dialog).getByText('Pecho')).toBeInTheDocument();
+    // "hombro" + "hombro anterior" merge into one "Hombro" group, keeping the
+    // higher (HIGH) load (FOR-53 spec: frontend-owned normalization).
+    expect(within(dialog).getAllByText('Hombro')).toHaveLength(1);
+    expect(within(dialog).getAllByText('Carga alta')).toHaveLength(2); // Pecho + merged Hombro
+  });
+
+  it('shows a calm error and preserves the rest of the detail when the muscle map fails to load', async () => {
+    getWeekMock.mockResolvedValue(week);
+    getMuscleMapMock.mockRejectedValue(new Error('network'));
+    const user = userEvent.setup();
+
+    renderPage();
+    await screen.findByRole('heading', { name: 'Calendario semanal' });
+
+    await user.click(screen.getByRole('button', { name: 'Ver detalle' }));
+
+    const dialog = await screen.findByRole('dialog', { name: /Lunes · Fuerza/ });
+    expect(
+      await within(dialog).findByText(/no se pudieron cargar los músculos trabajados/i),
+    ).toBeInTheDocument();
+    // The rest of the detail (exercise-breakdown gap notice) still renders.
+    expect(within(dialog).getByText(/no está disponible todavía/)).toBeInTheDocument();
+  });
+
+  it('does not fetch a muscle map for a running session (FOR-136 is strength-only)', async () => {
+    getWeekMock.mockResolvedValue(week);
+    const user = userEvent.setup();
+
+    renderPage();
+    await screen.findByText('Tirada larga');
+
+    await user.click(screen.getByRole('button', { name: /Carrera.*Tirada larga/s }));
+
+    await screen.findByRole('dialog', { name: /Martes · Carrera/ });
+    expect(getMuscleMapMock).not.toHaveBeenCalled();
   });
 
   it('opens the session detail for a running session', async () => {
