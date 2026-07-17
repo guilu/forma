@@ -60,12 +60,16 @@ context.
 
 ## Proposed story slices
 
-1. **Goals + milestones domain + persistence + API** — unblocks the Objetivos screen (FOR-122).
-2. **Adherence read model API** (30-day planned vs completed per category) — unblocks FOR-56 context.
-3. **Streak calculation + weekly-history bars API** — unblocks FOR-53 streak/history.
-4. **Achievements/logros** (rule-driven, persisted).
-5. **Muscle-worked mapping API** (may need an `Exercise` catalog-extension prerequisite) — unblocks FOR-53 heatmap.
-6. **Progress photos storage + private retrieval** (privacy review required).
+> **Status (updated 2026-07-18):** slices 1, 2, 4, 5 are DONE. Only **3** and **6**
+> remain. This stub was written before slices 1/2 shipped — verify repo state
+> before creating new slice issues (goals/adherence already exist).
+
+1. ✅ **DONE (FOR-125)** — Goals + milestones domain + persistence + API (`Goal`/`Milestone`, `V11__goal.sql`, `GoalController`). Unblocks the Objetivos screen (FOR-122).
+2. ✅ **DONE (FOR-129)** — Adherence read model API (`AdherenceService`, `GET /api/v1/progress/adherence?days=`). Unblocks FOR-56 context.
+3. ⬜ **FOR-139** — Streak calculation + weekly-history bars API — unblocks FOR-53 streak/history. NOTE: `training_session_status` stores only current status per weekday (no per-date training history) — streak derives from nutrition/measurement dates.
+4. ✅ **DONE (FOR-135)** — Achievements/logros (rule-driven, persisted).
+5. ✅ **DONE (FOR-136)** — Muscle-worked mapping API. `Exercise.primaryMuscles` already existed; no catalog extension needed. Unblocks FOR-53 heatmap.
+6. ⬜ **FOR-140** — Progress photos storage + private retrieval (privacy review required).
 
 ## Open Questions
 
