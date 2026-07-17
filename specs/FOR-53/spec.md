@@ -42,13 +42,25 @@ and rest days without embedding progression rules in the UI.
 ## Data Model Notes
 
 Consumes FOR-26 weekly schedule, FOR-27 session status (PATCH), FOR-25 workout
-templates (exercise sets/reps), FOR-28 weekly summary. **Mockup extras not yet
+templates (exercise sets/reps), FOR-28 weekly summary, and **FOR-136 muscle-worked
+map** (`GET /api/v1/training/sessions/{sessionId}/muscle-map` → `{ muscle, load }`
+per muscle, load ∈ HIGH/MEDIUM/LOW) for the heatmap. **Mockup extras not yet
 backed**: per-exercise logged weight/rest and per-exercise completion, estimated
-calories, muscle-worked heatmap, weekly-history bars, "RACHA ACTUAL" streak — the
-current model has session-level (not exercise-level) completion. Render only
-what the API supports; show the rest as placeholder or omit, and do not invent
-backend (repository priority, AGENTS.md). Document the exercise-level-completion
-gap for a future backend story.
+calories, weekly-history bars, "RACHA ACTUAL" streak — the current model has
+session-level (not exercise-level) completion. Render only what the API supports;
+show the rest as placeholder or omit, and do not invent backend (repository
+priority, AGENTS.md). Document the exercise-level-completion gap for a future
+backend story.
+
+**Muscle-heatmap label normalization (from FOR-136):** the muscle-map endpoint
+returns muscle labels verbatim from `Exercise.primaryMuscles()` — granular,
+lowercase, accented Spanish (e.g. `"hombro"` AND `"hombro anterior"` are distinct
+values; `"tríceps"` carries an accent). The backend does not normalize (faithful
+derivation, no fabrication — repo priority). The **frontend owns a display-label /
+normalization map** so the heatmap doesn't render fragmented or inconsistent muscle
+groups: group `"hombro anterior"` → `"hombro"`, handle casing/accents, and map to
+the mockup's muscle regions. Keep this map in the UI layer only; do not push
+normalization back into the backend read model.
 
 ## Edge Cases
 
@@ -61,4 +73,6 @@ gap for a future backend story.
 - Per-exercise completion + logged weight/rest exceed current backend (session-
   level only) — recommend session-level completion for the MVP and document the
   exercise-level gap.
-- Calories/muscle-map/streak: defer unless an endpoint exists.
+- Calories/streak: defer unless an endpoint exists.
+- Muscle-map: **now backed by FOR-136** — wire the heatmap to the muscle-map
+  endpoint, but own the label-normalization map in the UI (see Data Model Notes).
