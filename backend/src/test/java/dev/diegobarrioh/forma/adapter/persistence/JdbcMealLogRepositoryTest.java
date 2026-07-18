@@ -156,11 +156,12 @@ class JdbcMealLogRepositoryTest {
   /**
    * FOR-134 (migration V17): a partially-known key-nutrient profile round-trips with its nulls
    * intact — a nutrient the food genuinely lacks stays {@code null} through persistence (never
-   * fabricated as 0), independently per column. "chicken" has fibre/sugars = 0 but sodium = null.
+   * fabricated as 0), independently per column. "chicken" has fibre/sugars = 0 but sodium and sat
+   * fat = null (FOR-152: not given by the Macros sheet).
    */
   @Test
   void partialKeyNutrientNullsAreNotFabricatedThroughPersistence() {
-    var chicken = FoodCatalog.findById("chicken").orElseThrow(); // sodium null, sat fat known
+    var chicken = FoodCatalog.findById("chicken").orElseThrow(); // sodium and sat fat null
     MealLogEntry original = MealLogEntry.fromCatalog(DAY, MealType.LUNCH, chicken, 1.0);
 
     repository.save(OWNER, original);

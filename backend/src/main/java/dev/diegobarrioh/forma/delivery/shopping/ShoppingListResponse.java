@@ -26,7 +26,16 @@ public record ShoppingListResponse(
       Integer servings,
       String productUrl) {}
 
-  public record Budget(BigDecimal weeklyEur, BigDecimal monthlyEur) {}
+  /**
+   * @param weeklyThresholdEur the FOR-152 plan cost-threshold constant (&lt;120 €/sem)
+   * @param overThreshold whether {@code weeklyEur} exceeds {@code weeklyThresholdEur} (strictly),
+   *     consumed by the dashboard signal (frontend batch, deferred) and FOR-150 rule 6
+   */
+  public record Budget(
+      BigDecimal weeklyEur,
+      BigDecimal monthlyEur,
+      BigDecimal weeklyThresholdEur,
+      boolean overThreshold) {}
 
   /** Maps the application view to its API read model. */
   public static ShoppingListResponse from(ShoppingListView view) {
@@ -46,7 +55,12 @@ public record ShoppingListResponse(
                         entry.servings(),
                         entry.productUrl()))
             .toList();
-    Budget budget = new Budget(view.budget().weeklyEur(), view.budget().monthlyEur());
+    Budget budget =
+        new Budget(
+            view.budget().weeklyEur(),
+            view.budget().monthlyEur(),
+            view.budget().weeklyThresholdEur(),
+            view.budget().overThreshold());
     return new ShoppingListResponse(
         view.weekStartDate().toString(),
         view.status().name(),

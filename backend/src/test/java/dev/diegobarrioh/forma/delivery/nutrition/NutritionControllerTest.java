@@ -77,7 +77,7 @@ class NutritionControllerTest {
         .andExpect(jsonPath("$.targets.proteinG").value(162))
         .andExpect(jsonPath("$.meals[0].mealType").value("BREAKFAST"))
         // Food id resolved to its catalog name.
-        .andExpect(jsonPath("$.meals[0].items[0].food").value("Avena"))
+        .andExpect(jsonPath("$.meals[0].items[0].food").value("Copos de avena"))
         .andExpect(jsonPath("$.meals[0].optional").value(false))
         .andExpect(jsonPath("$.meals[1].mealType").value("POST_WORKOUT"))
         .andExpect(jsonPath("$.meals[1].optional").value(true));
@@ -90,21 +90,21 @@ class NutritionControllerTest {
     mockMvc
         .perform(get("/api/v1/nutrition/days/running"))
         .andExpect(status().isOk())
-        // Breakfast: 120g oats (389 kcal/16.9P/66.3C/6.9F per 100g) -> FOR-32 mealTotals.
-        .andExpect(jsonPath("$.meals[0].totals.calories").value(467))
-        .andExpect(jsonPath("$.meals[0].totals.proteinG").value(20.3))
-        .andExpect(jsonPath("$.meals[0].totals.carbsG").value(79.6))
-        .andExpect(jsonPath("$.meals[0].totals.fatG").value(8.3))
-        // Post-run: 20g whey protein (400 kcal/80P/8C/6F per 100g).
-        .andExpect(jsonPath("$.meals[1].totals.calories").value(80))
-        .andExpect(jsonPath("$.meals[1].totals.proteinG").value(16.0))
+        // Breakfast: 120g oats (370 kcal/13.0P/60.0C/7.0F per 100g, FOR-152) -> FOR-32 mealTotals.
+        .andExpect(jsonPath("$.meals[0].totals.calories").value(444))
+        .andExpect(jsonPath("$.meals[0].totals.proteinG").value(15.6))
+        .andExpect(jsonPath("$.meals[0].totals.carbsG").value(72.0))
+        .andExpect(jsonPath("$.meals[0].totals.fatG").value(8.4))
+        // Post-run: 20g whey protein (390 kcal/78P/8C/6F per 100g, FOR-152).
+        .andExpect(jsonPath("$.meals[1].totals.calories").value(78))
+        .andExpect(jsonPath("$.meals[1].totals.proteinG").value(15.6))
         .andExpect(jsonPath("$.meals[1].totals.carbsG").value(1.6))
         .andExpect(jsonPath("$.meals[1].totals.fatG").value(1.2))
         // Day totals: sum of raw contributions, rounded once (FOR-32 dayTotals).
-        .andExpect(jsonPath("$.totals.calories").value(547))
-        .andExpect(jsonPath("$.totals.proteinG").value(36.3))
-        .andExpect(jsonPath("$.totals.carbsG").value(81.2))
-        .andExpect(jsonPath("$.totals.fatG").value(9.5))
+        .andExpect(jsonPath("$.totals.calories").value(522))
+        .andExpect(jsonPath("$.totals.proteinG").value(31.2))
+        .andExpect(jsonPath("$.totals.carbsG").value(73.6))
+        .andExpect(jsonPath("$.totals.fatG").value(9.6))
         // Day totals fall short of the 1940/162/271/25 targets on every macro.
         .andExpect(jsonPath("$.targetComparison.caloriesReached").value(false))
         .andExpect(jsonPath("$.targetComparison.proteinReached").value(false))

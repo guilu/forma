@@ -28,11 +28,11 @@ class NutritionCalculationServiceTest {
   void computesDayTotalsAndComparesToTargets() {
     List<MealTemplate> day = List.of(meal(List.of(new MealItem("chicken", 200))));
 
-    assertThat(service.dayTotals(day).calories()).isEqualTo(330); // 165 * 2
+    assertThat(service.dayTotals(day).calories()).isEqualTo(220); // 110 * 2
 
     NutritionDayTemplate lowTarget =
-        new NutritionDayTemplate(NutritionDayType.STRENGTH, 300, 50, 10, 5, null);
-    // chicken 200 g = 330 kcal, 62 g protein — reaches these modest targets.
+        new NutritionDayTemplate(NutritionDayType.STRENGTH, 200, 40, 10, 3, null);
+    // chicken 200 g = 220 kcal, 46 g protein — reaches these modest targets.
     assertThat(service.compareToTargets(day, lowTarget).caloriesReached()).isTrue();
     assertThat(service.compareToTargets(day, lowTarget).proteinReached()).isTrue();
   }

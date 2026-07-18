@@ -18,7 +18,7 @@ class MealLogEntryTest {
 
   @Test
   void fromCatalogComputesTotalsFromFoodItemAndPortionsViaNutritionCalculator() {
-    // whey-protein: 400 kcal/80P/8C/6F per 100g, defaultServingG=30 -> 1 portion = 30g.
+    // whey-protein: 390 kcal/78P/8C/6F per 100g, defaultServingG=30 -> 1 portion = 30g.
     FoodItem wheyProtein = FoodCatalog.findById("whey-protein").orElseThrow();
 
     MealLogEntry entry = MealLogEntry.fromCatalog(DAY, MealType.BREAKFAST, wheyProtein, 1.0);
@@ -26,21 +26,21 @@ class MealLogEntryTest {
     assertThat(entry.date()).isEqualTo(DAY);
     assertThat(entry.mealType()).isEqualTo(MealType.BREAKFAST);
     assertThat(entry.foodItemId()).isEqualTo("whey-protein");
-    assertThat(entry.name()).isEqualTo("Proteína whey");
-    assertThat(entry.totals().calories()).isEqualTo(120); // 400 * 0.3
-    assertThat(entry.totals().proteinG()).isEqualTo(24.0); // 80 * 0.3
+    assertThat(entry.name()).isEqualTo("Whey proteína");
+    assertThat(entry.totals().calories()).isEqualTo(117); // 390 * 0.3
+    assertThat(entry.totals().proteinG()).isEqualTo(23.4); // 78 * 0.3
     assertThat(entry.totals().carbsG()).isEqualTo(2.4); // 8 * 0.3
     assertThat(entry.totals().fatG()).isEqualTo(1.8); // 6 * 0.3
   }
 
   @Test
   void fromCatalogScalesQuantityByPortionsTimesDefaultServing() {
-    // oats: defaultServingG=60, 1.5 portions -> 90g. kcal 389/100g -> 350.1 -> 350.
+    // oats: defaultServingG=60, 1.5 portions -> 90g. kcal 370/100g -> 333.
     FoodItem oats = FoodCatalog.findById("oats").orElseThrow();
 
     MealLogEntry entry = MealLogEntry.fromCatalog(DAY, MealType.LUNCH, oats, 1.5);
 
-    assertThat(entry.totals().calories()).isEqualTo(350);
+    assertThat(entry.totals().calories()).isEqualTo(333);
   }
 
   @Test
