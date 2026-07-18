@@ -6,7 +6,7 @@ describe('getNutritionDay', () => {
   it('GETs the nutrition day endpoint for a type', async () => {
     const day = { type: 'RUNNING', targets: {}, meals: [] };
     const request = vi.fn().mockResolvedValue(day);
-    const client: ApiClient = { baseUrl: 'http://test', request };
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
 
     const result = await getNutritionDay('running', client);
 

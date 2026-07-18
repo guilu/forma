@@ -20,7 +20,7 @@ describe('profile API', () => {
       },
     };
     const request = vi.fn().mockResolvedValue(profile);
-    const client: ApiClient = { baseUrl: 'http://test', request };
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
 
     const result = await getProfile(client);
 
@@ -31,7 +31,7 @@ describe('profile API', () => {
   it('PATCHes the profile fields section', async () => {
     const updated = { name: 'Ada Lovelace' };
     const request = vi.fn().mockResolvedValue(updated);
-    const client: ApiClient = { baseUrl: 'http://test', request };
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
 
     const result = await updateProfileFields(
       { name: 'Ada Lovelace', heightCm: 170, sex: 'FEMALE' },
@@ -48,7 +48,7 @@ describe('profile API', () => {
 
   it('omits undefined fields from the PATCH body (partial update contract, FOR-107)', async () => {
     const request = vi.fn().mockResolvedValue({});
-    const client: ApiClient = { baseUrl: 'http://test', request };
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
 
     await updateProfileFields({ name: 'Ada Lovelace' }, client);
 
@@ -62,7 +62,7 @@ describe('profile API', () => {
   it('PATCHes the theme preference (FOR-120)', async () => {
     const updated = { themeMode: 'LIGHT' };
     const request = vi.fn().mockResolvedValue(updated);
-    const client: ApiClient = { baseUrl: 'http://test', request };
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
 
     const result = await updateThemeMode({ themeMode: 'LIGHT' }, client);
 
@@ -77,7 +77,7 @@ describe('profile API', () => {
   it('PATCHes the onboarding answers + completed flag (FOR-121)', async () => {
     const updated = { firstRunCompleted: true };
     const request = vi.fn().mockResolvedValue(updated);
-    const client: ApiClient = { baseUrl: 'http://test', request };
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
 
     const result = await submitOnboardingAnswers(
       {
@@ -102,7 +102,7 @@ describe('profile API', () => {
 
   it('sends onboarding values verbatim, no enum-casing transform (verified against SubmitOnboardingAnswersRequest.toDomain — raw strings, not backend-enum-coerced)', async () => {
     const request = vi.fn().mockResolvedValue({});
-    const client: ApiClient = { baseUrl: 'http://test', request };
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
 
     await submitOnboardingAnswers(
       { metrics: { choice: 'MANUAL', measurementSaved: false }, completed: false },

@@ -67,9 +67,19 @@ export interface ApiClient {
    * Thin typed wrapper over `fetch` that prefixes the base URL and requests
    * JSON. Feature stories build their calls on top of this rather than calling
    * `fetch` directly. On a non-2xx response it throws {@link ApiRequestError}
-   * carrying the backend's `ApiError.message`.
+   * carrying the backend's `ApiError.message`. A `204 No Content` response
+   * (e.g. a DELETE) resolves to `undefined` instead of attempting to parse an
+   * empty body as JSON (FOR-144).
    */
   request<T>(path: string, init?: RequestInit): Promise<T>;
+  /**
+   * Same base-URL/error-handling boundary as {@link request}, but for
+   * binary responses (FOR-144: the owner-scoped progress-photo endpoint
+   * returns raw image bytes, never JSON). Resolves the response body as a
+   * `Blob` so callers can turn it into an object URL; never parses it as
+   * JSON, and never exposes a public/static URL itself.
+   */
+  requestBlob(path: string, init?: RequestInit): Promise<Blob>;
 }
 
 /** Best-effort parse of a backend `ApiError` body; returns undefined if absent/malformed. */
@@ -85,6 +95,16 @@ async function parseApiError(response: Response): Promise<ApiErrorBody | undefin
   return undefined;
 }
 
+async function throwForErrorResponse(response: Response): Promise<never> {
+  const body = await parseApiError(response);
+  throw new ApiRequestError(
+    response.status,
+    body?.message ?? `API request failed: ${response.status} ${response.statusText}`,
+    body?.code,
+    body?.details,
+  );
+}
+
 export function createApiClient(baseUrl: string = getApiBaseUrl()): ApiClient {
   return {
     baseUrl,
@@ -95,16 +115,26 @@ export function createApiClient(baseUrl: string = getApiBaseUrl()): ApiClient {
       });
 
       if (!response.ok) {
-        const body = await parseApiError(response);
-        throw new ApiRequestError(
-          response.status,
-          body?.message ?? `API request failed: ${response.status} ${response.statusText}`,
-          body?.code,
-          body?.details,
-        );
+        await throwForErrorResponse(response);
+      }
+
+      // A 204 (e.g. DELETE /progress/photos/{id}, FOR-144) has no body — calling
+      // response.json() on it would throw. Every other success response here is
+      // JSON, matching the backend's ApiPaths conventions.
+      if (response.status === 204) {
+        return undefined as T;
       }
 
       return (await response.json()) as T;
+    },
+    async requestBlob(path: string, init?: RequestInit): Promise<Blob> {
+      const response = await fetch(`${baseUrl}${path}`, init);
+
+      if (!response.ok) {
+        await throwForErrorResponse(response);
+      }
+
+      return response.blob();
     },
   };
 }

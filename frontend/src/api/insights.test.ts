@@ -15,7 +15,7 @@ describe('getWeeklyInsights', () => {
       generatedAt: 'now',
     };
     const request = vi.fn().mockResolvedValue(insights);
-    const client: ApiClient = { baseUrl: 'http://test', request };
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
 
     const result = await getWeeklyInsights(client);
 
@@ -40,7 +40,7 @@ describe('getInsightsHistory', () => {
       },
     ];
     const request = vi.fn().mockResolvedValue(history);
-    const client: ApiClient = { baseUrl: 'http://test', request };
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
 
     const result = await getInsightsHistory(client);
 

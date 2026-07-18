@@ -10,7 +10,7 @@ import { ApiRequestError, type ApiClient } from './client';
 describe('createBodyMeasurement', () => {
   it('POSTs the measurement payload to the versioned endpoint', async () => {
     const request = vi.fn().mockResolvedValue({ source: 'MANUAL' });
-    const client: ApiClient = { baseUrl: 'http://test', request };
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
 
     await createBodyMeasurement(
       { measuredAt: '2026-07-05T08:00:00Z', weightKg: 78.4, bodyFatPercentage: 18.2, bmi: 23.9 },
@@ -33,7 +33,7 @@ describe('createBodyMeasurement', () => {
     const request = vi
       .fn()
       .mockRejectedValue(new ApiRequestError(400, 'Request validation failed'));
-    const client: ApiClient = { baseUrl: 'http://test', request };
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
 
     await expect(
       createBodyMeasurement(
@@ -48,7 +48,7 @@ describe('listBodyMeasurements', () => {
   it('GETs the versioned endpoint and returns the measurements', async () => {
     const measurements = [{ source: 'MANUAL', weightKg: 73.6 }];
     const request = vi.fn().mockResolvedValue(measurements);
-    const client: ApiClient = { baseUrl: 'http://test', request };
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
 
     const result = await listBodyMeasurements(client);
 

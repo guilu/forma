@@ -28,7 +28,9 @@ export type IconName =
   | 'sun'
   | 'moon'
   | 'check'
-  | 'externalLink';
+  | 'externalLink'
+  | 'trash'
+  | 'upload';
 
 const PATHS: Record<IconName, string> = {
   dashboard: 'M3 3h7v7H3zM14 3h7v4h-7zM14 10h7v11h-7zM3 13h7v8H3z',
@@ -71,6 +73,10 @@ const PATHS: Record<IconName, string> = {
   // External-link box + outward arrow — provider link-out/add-to-cart entry
   // point (shopping list item rows, FOR-118).
   externalLink: 'M14 4h6v6M20 4l-9 9M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5',
+  // Trash can — destructive delete affordance (progress photo gallery, FOR-144).
+  trash: 'M4 7h16M9 7V4h6v3M10 11v6M14 11v6M6 7l1 13h10l1-13',
+  // Upward arrow into a tray — upload affordance (progress photo upload, FOR-144).
+  upload: 'M12 15V4M8 8l4-4 4 4M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3',
 };
 
 interface IconProps {

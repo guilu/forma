@@ -149,7 +149,7 @@ describe('fromOnboardingAnswersOutput', () => {
 describe('syncOnboardingProgress (FOR-121)', () => {
   it('resolves true and submits the mapped payload on success', async () => {
     const request = vi.fn().mockResolvedValue({ firstRunCompleted: false });
-    const client: ApiClient = { baseUrl: 'http://test', request };
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
     const progress: OnboardingProgress = { ...INITIAL_PROGRESS, completed: false };
 
     const ok = await syncOnboardingProgress(progress, client);
@@ -163,7 +163,7 @@ describe('syncOnboardingProgress (FOR-121)', () => {
 
   it('resolves false (never throws) when the backend call fails — a save failure must not block the flow', async () => {
     const request = vi.fn().mockRejectedValue(new Error('network down'));
-    const client: ApiClient = { baseUrl: 'http://test', request };
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
 
     const ok = await syncOnboardingProgress(INITIAL_PROGRESS, client);
 
@@ -188,7 +188,7 @@ describe('fetchOnboardingBackendState (FOR-121)', () => {
       firstRunCompleted: true,
     };
     const request = vi.fn().mockResolvedValue(profile);
-    const client: ApiClient = { baseUrl: 'http://test', request };
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
 
     const state = await fetchOnboardingBackendState(client);
 
@@ -203,7 +203,7 @@ describe('fetchOnboardingBackendState (FOR-121)', () => {
 
   it('returns undefined when the backend is unreachable — graceful fallback, never throws', async () => {
     const request = vi.fn().mockRejectedValue(new Error('network down'));
-    const client: ApiClient = { baseUrl: 'http://test', request };
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
 
     const state = await fetchOnboardingBackendState(client);
 

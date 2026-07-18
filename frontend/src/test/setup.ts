@@ -72,6 +72,33 @@ function ensureMatchMedia() {
 
 ensureMatchMedia();
 
+/**
+ * jsdom does not implement `URL.createObjectURL`/`URL.revokeObjectURL` (FOR-144,
+ * first story to render a photo via an authenticated-fetch → object URL). This
+ * default returns a stable, distinguishable `blob:mock-N` string per call so
+ * component tests can assert an `<img>`'s `src` without a real Blob storage
+ * backend; `revokeObjectURL` is a no-op. Tests that need to assert revocation
+ * itself spy on `URL.revokeObjectURL` directly.
+ */
+function ensureObjectUrl() {
+  if (typeof URL.createObjectURL === 'function') {
+    return;
+  }
+  let counter = 0;
+  Object.defineProperty(URL, 'createObjectURL', {
+    value: () => `blob:mock-${counter++}`,
+    configurable: true,
+    writable: true,
+  });
+  Object.defineProperty(URL, 'revokeObjectURL', {
+    value: () => {},
+    configurable: true,
+    writable: true,
+  });
+}
+
+ensureObjectUrl();
+
 afterEach(() => {
   cleanup();
 });

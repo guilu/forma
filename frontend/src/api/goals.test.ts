@@ -16,7 +16,7 @@ describe('goals API (FOR-125 delivery/goals contract, FOR-122)', () => {
     };
     const response: GoalsListResponse = { goals: [goal] };
     const request = vi.fn().mockResolvedValue(response);
-    const client: ApiClient = { baseUrl: 'http://test', request };
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
 
     const result = await listGoals(client);
 
@@ -26,7 +26,7 @@ describe('goals API (FOR-125 delivery/goals contract, FOR-122)', () => {
 
   it('returns an empty array, never throwing, when the backend returns no goals', async () => {
     const request = vi.fn().mockResolvedValue({ goals: [] });
-    const client: ApiClient = { baseUrl: 'http://test', request };
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
 
     const result = await listGoals(client);
 
@@ -45,7 +45,7 @@ describe('goals API (FOR-125 delivery/goals contract, FOR-122)', () => {
       milestones: [],
     };
     const request = vi.fn().mockResolvedValue(created);
-    const client: ApiClient = { baseUrl: 'http://test', request };
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
 
     const result = await createGoal(
       { title: 'Bajar a 12% grasa', metric: 'BODY_FAT_PCT', target: 12 },
@@ -72,7 +72,7 @@ describe('goals API (FOR-125 delivery/goals contract, FOR-122)', () => {
       milestones: [{ id: 'm1', title: '15%', target: 15, completed: false }],
     };
     const request = vi.fn().mockResolvedValue(created);
-    const client: ApiClient = { baseUrl: 'http://test', request };
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
 
     await createGoal(
       {
@@ -110,7 +110,7 @@ describe('goals API (FOR-125 delivery/goals contract, FOR-122)', () => {
       milestones: [{ id: 'm1', title: '15%', target: 15, completed: true }],
     };
     const request = vi.fn().mockResolvedValue(updated);
-    const client: ApiClient = { baseUrl: 'http://test', request };
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
 
     const result = await updateGoal(
       'g1',
@@ -132,7 +132,7 @@ describe('goals API (FOR-125 delivery/goals contract, FOR-122)', () => {
 
   it('encodes the goal id in the PATCH path', async () => {
     const request = vi.fn().mockResolvedValue({});
-    const client: ApiClient = { baseUrl: 'http://test', request };
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
 
     await updateGoal('g/1', { title: 'X' }, client);
 

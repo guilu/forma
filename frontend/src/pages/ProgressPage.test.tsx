@@ -2,8 +2,10 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ProgressPage } from './ProgressPage';
+import { NotificationProvider } from '../components/NotificationProvider';
 import { listBodyMeasurements, type BodyMeasurement } from '../api/bodyMeasurements';
 import { getInsightsHistory, getWeeklyInsights, type WeeklyInsights } from '../api/insights';
+import { listProgressPhotos } from '../api/progress';
 import { axe } from '../test/axe';
 
 vi.mock('../api/bodyMeasurements', () => ({
@@ -20,9 +22,18 @@ vi.mock('../api/insights', () => ({
   getInsightsHistory: vi.fn(),
 }));
 
+// FOR-144: ProgressPage also hosts ProgressPhotosSection, which calls the
+// FOR-140 photos endpoint independently — mock it so these
+// measurement-focused tests aren't coupled to photo data (dedicated tests
+// live in ./progress/ProgressPhotosSection.test.tsx).
+vi.mock('../api/progress', () => ({
+  listProgressPhotos: vi.fn(),
+}));
+
 const listMock = vi.mocked(listBodyMeasurements);
 const insightsMock = vi.mocked(getWeeklyInsights);
 const historyMock = vi.mocked(getInsightsHistory);
+const photosMock = vi.mocked(listProgressPhotos);
 
 const insights: WeeklyInsights = {
   checkIn: {
@@ -43,10 +54,14 @@ const insights: WeeklyInsights = {
   generatedAt: '2026-07-10T08:00:00Z',
 };
 
+// FOR-144: ProgressPhotosSection calls `useNotify()`, which requires a
+// provider (mirrors IntegrationsSection.test.tsx's FOR-123 precedent).
 function renderProgress() {
   return render(
     <MemoryRouter>
-      <ProgressPage />
+      <NotificationProvider>
+        <ProgressPage />
+      </NotificationProvider>
     </MemoryRouter>,
   );
 }
@@ -70,6 +85,8 @@ describe('ProgressPage', () => {
     insightsMock.mockResolvedValue(insights);
     historyMock.mockReset();
     historyMock.mockResolvedValue([]);
+    photosMock.mockReset();
+    photosMock.mockResolvedValue([]);
   });
 
   it('renders a graph per metric from the measurements', async () => {
@@ -151,6 +168,16 @@ describe('ProgressPage', () => {
     expect(
       screen.getByText('Aún no hay suficientes datos para una recomendación.'),
     ).toBeInTheDocument();
+  });
+
+  it('renders the FOR-144 progress-photos section independently of the measurement charts', async () => {
+    listMock.mockResolvedValue([]);
+    photosMock.mockResolvedValue([]);
+
+    renderProgress();
+
+    expect(await screen.findByRole('heading', { name: 'Fotos de progreso' })).toBeInTheDocument();
+    expect(screen.getByText('Aún no tienes fotos de progreso.')).toBeInTheDocument();
   });
 
   it('has no accessibility violations with three rendered charts (FOR-114)', async () => {
