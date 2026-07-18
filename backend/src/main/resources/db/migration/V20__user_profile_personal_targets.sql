@@ -31,19 +31,51 @@ ALTER TABLE user_profile ADD COLUMN carbs_target_g NUMERIC(6, 1);
 -- Only the fields explicitly given by the Perfil sheet are seeded (name, height, baseline,
 -- targets); sex/mainGoal/activityLevel/birthDate are left unset here to avoid fabricating data not
 -- present in the source sheet (documented gap, see spec.md/AGENTS.md "never invent requirements").
--- This assumes no prior row exists for default-user (true for this repo's current state: V8's
--- user_profile table ships empty, spec FOR-149 verified repository state), following the same
--- plain-INSERT seeding convention as V5's shopping starter data.
-INSERT INTO user_profile (
+-- Merge rather than plain-insert so existing single-user databases (for example deployments where
+-- onboarding/profile data was already saved before FOR-149) can apply V20 without a duplicate-key
+-- startup failure. The seed is source-of-truth plan reference data from Perfil, so it updates the
+-- fixed default-user row when present and inserts it only for fresh databases.
+MERGE INTO user_profile AS target
+USING (
+    VALUES (
+        'default-user', 'Diego', 180.0,
+        160.0,
+        73.6, 14.7, 22.7,
+        2300.0, 12.0, 13.0,
+        73.0, 75.0, 70.0, 260.0
+    )
+) AS source (
+    owner_id, name, height_cm,
+    protein_target_g,
+    baseline_weight_kg, baseline_body_fat_pct, baseline_bmi,
+    base_calories_kcal, body_fat_target_min_pct, body_fat_target_max_pct,
+    weight_target_min_kg, weight_target_max_kg, fat_target_g, carbs_target_g
+)
+ON target.owner_id = source.owner_id
+WHEN MATCHED THEN UPDATE SET
+    name = source.name,
+    height_cm = source.height_cm,
+    protein_target_g = source.protein_target_g,
+    baseline_weight_kg = source.baseline_weight_kg,
+    baseline_body_fat_pct = source.baseline_body_fat_pct,
+    baseline_bmi = source.baseline_bmi,
+    base_calories_kcal = source.base_calories_kcal,
+    body_fat_target_min_pct = source.body_fat_target_min_pct,
+    body_fat_target_max_pct = source.body_fat_target_max_pct,
+    weight_target_min_kg = source.weight_target_min_kg,
+    weight_target_max_kg = source.weight_target_max_kg,
+    fat_target_g = source.fat_target_g,
+    carbs_target_g = source.carbs_target_g
+WHEN NOT MATCHED THEN INSERT (
     owner_id, name, height_cm,
     protein_target_g,
     baseline_weight_kg, baseline_body_fat_pct, baseline_bmi,
     base_calories_kcal, body_fat_target_min_pct, body_fat_target_max_pct,
     weight_target_min_kg, weight_target_max_kg, fat_target_g, carbs_target_g
 ) VALUES (
-    'default-user', 'Diego', 180.0,
-    160.0,
-    73.6, 14.7, 22.7,
-    2300.0, 12.0, 13.0,
-    73.0, 75.0, 70.0, 260.0
+    source.owner_id, source.name, source.height_cm,
+    source.protein_target_g,
+    source.baseline_weight_kg, source.baseline_body_fat_pct, source.baseline_bmi,
+    source.base_calories_kcal, source.body_fat_target_min_pct, source.body_fat_target_max_pct,
+    source.weight_target_min_kg, source.weight_target_max_kg, source.fat_target_g, source.carbs_target_g
 );
