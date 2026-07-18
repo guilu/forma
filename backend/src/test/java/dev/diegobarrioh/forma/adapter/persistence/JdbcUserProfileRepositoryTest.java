@@ -7,6 +7,8 @@ import dev.diegobarrioh.forma.domain.ActivityLevel;
 import dev.diegobarrioh.forma.domain.DefaultObjectives;
 import dev.diegobarrioh.forma.domain.MainGoal;
 import dev.diegobarrioh.forma.domain.OnboardingAnswers;
+import dev.diegobarrioh.forma.domain.PersonalTargets;
+import dev.diegobarrioh.forma.domain.ProfileBaseline;
 import dev.diegobarrioh.forma.domain.Sex;
 import dev.diegobarrioh.forma.domain.ThemeMode;
 import dev.diegobarrioh.forma.domain.UnitPreferences;
@@ -65,7 +67,9 @@ class JdbcUserProfileRepositoryTest {
                 new OnboardingAnswers.TrainingDraft(List.of("MONDAY", "THURSDAY")),
                 new OnboardingAnswers.EquipmentDraft(List.of("DUMBBELLS", "MAT")),
                 new OnboardingAnswers.NutritionDraft("high-protein", "lactose")),
-            true);
+            true,
+            new ProfileBaseline(73.6, 14.7, 22.7),
+            new PersonalTargets(2300.0, 12.0, 13.0, 73.0, 75.0, 70.0, 260.0));
 
     repository.save(profile);
     Optional<UserProfile> read = repository.find("default-user");
@@ -86,6 +90,16 @@ class JdbcUserProfileRepositoryTest {
     assertThat(stored.onboardingAnswers().training().days()).containsExactly("MONDAY", "THURSDAY");
     assertThat(stored.onboardingAnswers().equipment().items()).containsExactly("DUMBBELLS", "MAT");
     assertThat(stored.firstRunCompleted()).isTrue();
+    assertThat(stored.profileBaseline().weightKg()).isEqualTo(73.6);
+    assertThat(stored.profileBaseline().bodyFatPct()).isEqualTo(14.7);
+    assertThat(stored.profileBaseline().bmi()).isEqualTo(22.7);
+    assertThat(stored.personalTargets().baseCaloriesKcal()).isEqualTo(2300.0);
+    assertThat(stored.personalTargets().bodyFatTargetMinPct()).isEqualTo(12.0);
+    assertThat(stored.personalTargets().bodyFatTargetMaxPct()).isEqualTo(13.0);
+    assertThat(stored.personalTargets().weightTargetMinKg()).isEqualTo(73.0);
+    assertThat(stored.personalTargets().weightTargetMaxKg()).isEqualTo(75.0);
+    assertThat(stored.personalTargets().fatTargetG()).isEqualTo(70.0);
+    assertThat(stored.personalTargets().carbsTargetG()).isEqualTo(260.0);
   }
 
   @Test
@@ -105,7 +119,9 @@ class JdbcUserProfileRepositoryTest {
             DefaultObjectives.EMPTY,
             ThemeMode.DARK,
             OnboardingAnswers.EMPTY,
-            false);
+            false,
+            ProfileBaseline.EMPTY,
+            PersonalTargets.EMPTY);
 
     repository.save(updated);
 
@@ -123,7 +139,39 @@ class JdbcUserProfileRepositoryTest {
     assertThat(stored.birthDate()).isNull();
     assertThat(stored.sex()).isNull();
     assertThat(stored.defaultObjectives().caloricDeficitKcal()).isNull();
+    assertThat(stored.profileBaseline()).isEqualTo(ProfileBaseline.EMPTY);
+    assertThat(stored.personalTargets()).isEqualTo(PersonalTargets.EMPTY);
     assertThat(stored.onboardingAnswers().training().days()).isEmpty();
     assertThat(stored.onboardingAnswers().equipment().items()).isEmpty();
+  }
+
+  @Test
+  void roundTripsPartialBaselineAndTargets() {
+    UserProfile withPartialTargets =
+        new UserProfile(
+            "default-user",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            UnitPreferences.DEFAULT,
+            DefaultObjectives.EMPTY,
+            ThemeMode.DARK,
+            OnboardingAnswers.EMPTY,
+            false,
+            new ProfileBaseline(73.6, null, null),
+            new PersonalTargets(2300.0, null, null, null, null, null, null));
+
+    repository.save(withPartialTargets);
+    UserProfile stored = repository.find("default-user").orElseThrow();
+
+    assertThat(stored.profileBaseline().weightKg()).isEqualTo(73.6);
+    assertThat(stored.profileBaseline().bodyFatPct()).isNull();
+    assertThat(stored.profileBaseline().bmi()).isNull();
+    assertThat(stored.personalTargets().baseCaloriesKcal()).isEqualTo(2300.0);
+    assertThat(stored.personalTargets().bodyFatTargetMinPct()).isNull();
   }
 }

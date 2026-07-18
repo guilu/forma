@@ -44,6 +44,11 @@ import java.util.Objects;
  * @param onboardingAnswers per-step onboarding draft answers; defaults to {@link
  *     OnboardingAnswers#EMPTY} when {@code null}
  * @param firstRunCompleted whether the onboarding flow has been completed at least once
+ * @param profileBaseline plan reference baseline (initial weight/body-fat/BMI) captured once from
+ *     the *Perfil* sheet (FOR-149); defaults to {@link ProfileBaseline#EMPTY} when {@code null}
+ * @param personalTargets personal plan targets (base kcal, body-fat/weight target ranges, fat/carb
+ *     macros) from the *Perfil* sheet (FOR-149); defaults to {@link PersonalTargets#EMPTY} when
+ *     {@code null}
  */
 public record UserProfile(
     String ownerId,
@@ -58,7 +63,9 @@ public record UserProfile(
     DefaultObjectives defaultObjectives,
     ThemeMode themeMode,
     OnboardingAnswers onboardingAnswers,
-    boolean firstRunCompleted) {
+    boolean firstRunCompleted,
+    ProfileBaseline profileBaseline,
+    PersonalTargets personalTargets) {
 
   public UserProfile {
     Objects.requireNonNull(ownerId, "ownerId must not be null");
@@ -73,6 +80,12 @@ public record UserProfile(
     }
     if (onboardingAnswers == null) {
       onboardingAnswers = OnboardingAnswers.EMPTY;
+    }
+    if (profileBaseline == null) {
+      profileBaseline = ProfileBaseline.EMPTY;
+    }
+    if (personalTargets == null) {
+      personalTargets = PersonalTargets.EMPTY;
     }
   }
 
@@ -95,6 +108,8 @@ public record UserProfile(
         DefaultObjectives.EMPTY,
         ThemeMode.DARK,
         OnboardingAnswers.EMPTY,
-        false);
+        false,
+        ProfileBaseline.EMPTY,
+        PersonalTargets.EMPTY);
   }
 }

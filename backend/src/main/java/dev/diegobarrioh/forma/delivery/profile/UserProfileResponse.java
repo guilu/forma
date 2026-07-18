@@ -3,6 +3,7 @@ package dev.diegobarrioh.forma.delivery.profile;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import dev.diegobarrioh.forma.domain.DefaultObjectives;
 import dev.diegobarrioh.forma.domain.OnboardingAnswers;
+import dev.diegobarrioh.forma.domain.PersonalTargets;
 import dev.diegobarrioh.forma.domain.UnitPreferences;
 import dev.diegobarrioh.forma.domain.UserProfile;
 import java.time.LocalDate;
@@ -31,7 +32,8 @@ public record UserProfileResponse(
     DefaultObjectivesResponse defaultObjectives,
     String themeMode,
     OnboardingAnswersResponse onboardingAnswers,
-    boolean firstRunCompleted) {
+    boolean firstRunCompleted,
+    PersonalTargetsResponse personalTargets) {
 
   /** Maps the domain aggregate to its API read model. */
   public static UserProfileResponse from(UserProfile profile) {
@@ -47,7 +49,8 @@ public record UserProfileResponse(
         DefaultObjectivesResponse.from(profile.defaultObjectives()),
         profile.themeMode().name(),
         OnboardingAnswersResponse.from(profile.onboardingAnswers()),
-        profile.firstRunCompleted());
+        profile.firstRunCompleted(),
+        PersonalTargetsResponse.from(profile.personalTargets(), profile.defaultObjectives()));
   }
 
   /** Weight/height/distance/energy unit preferences (FOR-107). */
@@ -71,6 +74,37 @@ public record UserProfileResponse(
     static DefaultObjectivesResponse from(DefaultObjectives objectives) {
       return new DefaultObjectivesResponse(
           objectives.caloricDeficitKcal(), objectives.proteinTargetG(), objectives.dailyWaterMl());
+    }
+  }
+
+  /**
+   * Personal plan targets from the *Perfil* sheet (FOR-149): base kcal, body-fat/weight target
+   * ranges and fat/carb macros, all {@code null} on an unseeded profile (never a fabricated value).
+   * {@code proteinTargetG} is sourced from {@link DefaultObjectives#proteinTargetG()} (spec
+   * FOR-149: the protein target reuses that existing field/column rather than duplicating it), so
+   * it travels alongside the other targets in this single read-model block per api.md.
+   */
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  public record PersonalTargetsResponse(
+      Double baseCaloriesKcal,
+      Double bodyFatTargetMinPct,
+      Double bodyFatTargetMaxPct,
+      Double weightTargetMinKg,
+      Double weightTargetMaxKg,
+      Double proteinTargetG,
+      Double fatTargetG,
+      Double carbsTargetG) {
+
+    static PersonalTargetsResponse from(PersonalTargets targets, DefaultObjectives objectives) {
+      return new PersonalTargetsResponse(
+          targets.baseCaloriesKcal(),
+          targets.bodyFatTargetMinPct(),
+          targets.bodyFatTargetMaxPct(),
+          targets.weightTargetMinKg(),
+          targets.weightTargetMaxKg(),
+          objectives.proteinTargetG(),
+          targets.fatTargetG(),
+          targets.carbsTargetG());
     }
   }
 

@@ -28,6 +28,8 @@ class UserProfileTest {
     assertThat(defaults.onboardingAnswers()).isEqualTo(OnboardingAnswers.EMPTY);
     assertThat(defaults.name()).isNull();
     assertThat(defaults.email()).isNull();
+    assertThat(defaults.profileBaseline()).isEqualTo(ProfileBaseline.EMPTY);
+    assertThat(defaults.personalTargets()).isEqualTo(PersonalTargets.EMPTY);
   }
 
   @Test
@@ -59,7 +61,9 @@ class UserProfileTest {
                     DefaultObjectives.EMPTY,
                     ThemeMode.DARK,
                     OnboardingAnswers.EMPTY,
-                    false))
+                    false,
+                    ProfileBaseline.EMPTY,
+                    PersonalTargets.EMPTY))
         .isInstanceOf(NullPointerException.class);
   }
 
@@ -67,11 +71,14 @@ class UserProfileTest {
   void nullUnitPreferencesDefaultsToMetric() {
     UserProfile profile =
         new UserProfile(
-            OWNER_ID, null, null, null, null, null, null, null, null, null, null, null, false);
+            OWNER_ID, null, null, null, null, null, null, null, null, null, null, null, false, null,
+            null);
 
     assertThat(profile.unitPreferences()).isEqualTo(UnitPreferences.DEFAULT);
     assertThat(profile.defaultObjectives()).isEqualTo(DefaultObjectives.EMPTY);
     assertThat(profile.themeMode()).isEqualTo(ThemeMode.DARK);
     assertThat(profile.onboardingAnswers()).isEqualTo(OnboardingAnswers.EMPTY);
+    assertThat(profile.profileBaseline()).isEqualTo(ProfileBaseline.EMPTY);
+    assertThat(profile.personalTargets()).isEqualTo(PersonalTargets.EMPTY);
   }
 }
