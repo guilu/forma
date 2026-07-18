@@ -11,6 +11,7 @@ import { useNotify } from '../components/NotificationProvider';
 import { StatusPill } from '../components/StatusPill';
 import { WidgetLoading } from '../components/WidgetLoading';
 import { ApiRequestError } from '../api/client';
+import { getStreak, getWeeklyHistory, type Streak, type WeeklyHistory } from '../api/progress';
 import {
   getMuscleMap,
   getTrainingWeek,
@@ -40,14 +41,21 @@ import styles from './TrainingPage.module.css';
  *       sees each session's plain {@code detail} summary string (e.g. "3
  *       ejercicios"). Shown as a labelled placeholder in the session detail
  *       view instead of a fabricated table.
- *   <li>"Calorías estimadas", "Volumen total" and "Duración total" tiles, the
- *       weekly-history bars and "RACHA ACTUAL" — no calories/volume/duration/
- *       streak field exists anywhere in the training domain or API. The
- *       muscle-worked heatmap *is* backed (FOR-136, {@code GET
+ *   <li>"Calorías estimadas", "Volumen total" and "Duración total" tiles — no
+ *       calories/volume/duration field exists anywhere in the training domain
+ *       or API. The muscle-worked heatmap *is* backed (FOR-136, {@code GET
  *       …/sessions/{id}/muscle-map}) and is wired into the strength session
  *       detail below, normalized for display by {@code trainingMuscleLabels}
  *       (spec FOR-53: the frontend, not the backend, owns that
- *       normalization).
+ *       normalization). The weekly-history bars and "RACHA ACTUAL" (this
+ *       comment's own prior gap note) are now wired by FOR-143 to the FOR-139
+ *       {@code GET …/progress/streak} / {@code GET …/progress/weekly-history}
+ *       endpoints ({@link StreakCard}, {@link WeeklyHistoryCard} below) — both
+ *       are a real **nutrition meal-log** consistency signal, not a training
+ *       one (no per-date training-completion history exists to back a
+ *       training streak or per-week training bar; spec FOR-139: "do NOT
+ *       fabricate per-date training completion" — surfaced here exactly as
+ *       the backend documents it, per ADR-001).
  *   <li>Weekly summary counts (planned vs. completed sessions) are *not* the
  *       FOR-28 {@code WeeklyTrainingSummary} — that calculation is
  *       application-layer only and is not exposed over HTTP. This page tallies
@@ -224,7 +232,11 @@ function renderContent(
         <TodaySessionCard day={today} mark={mark} pendingId={pendingId} openDetail={openDetail} />
         <WeeklyCalendar days={state.week.days} openDetail={openDetail} />
       </div>
-      <WeeklySummary days={state.week.days} />
+      <div className={styles.side}>
+        <WeeklySummary days={state.week.days} />
+        <StreakCard />
+        <WeeklyHistoryCard />
+      </div>
     </div>
   );
 }
@@ -384,6 +396,151 @@ function WeeklySummary({ days }: { readonly days: readonly TrainingDay[] }) {
       <p className={styles.summaryNote}>
         Duración y volumen totales no están disponibles todavía en la API.
       </p>
+    </Card>
+  );
+}
+
+type StreakState =
+  | { readonly status: 'loading' }
+  | { readonly status: 'error' }
+  | { readonly status: 'ready'; readonly streak: Streak };
+
+const STREAK_ERROR = 'No se pudo cargar tu racha. Inténtalo de nuevo.';
+
+/**
+ * "Racha actual" widget (FOR-143, mockup docs/3-entrenamiento.png), wired to
+ * the FOR-139 {@code GET /api/v1/progress/streak} endpoint. Fetches
+ * independently of the training week (FOR-60 pattern, mirroring
+ * `ProgressPage`'s `InsightsSection`) so a streak failure never blocks the
+ * rest of the page. The streak is a **nutrition meal-log** consistency
+ * signal, not a training one (see this file's top doc comment) — rendered
+ * exactly as the backend returns it, including a zero streak, which is a
+ * normal state, not an error (ui-guidelines.md "no manipulative streaks": no
+ * urgency copy, just the two numbers).
+ */
+function StreakCard() {
+  const [state, setState] = useState<StreakState>({ status: 'loading' });
+  const [reloadToken, setReloadToken] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    setState({ status: 'loading' });
+    getStreak()
+      .then((streak) => {
+        if (active) {
+          setState({ status: 'ready', streak });
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setState({ status: 'error' });
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [reloadToken]);
+
+  return (
+    <Card title="Racha actual" headingLevel={2}>
+      <p className={styles.widgetCaption}>Días consecutivos con registro de nutrición.</p>
+      {state.status === 'loading' && <WidgetLoading label="Cargando racha…" rows={2} />}
+      {state.status === 'error' && (
+        <ErrorState message={STREAK_ERROR} onRetry={() => setReloadToken((n) => n + 1)} />
+      )}
+      {state.status === 'ready' && (
+        <div className={styles.streak}>
+          <p className={styles.streakValue}>{state.streak.currentStreakDays}</p>
+          <p className={styles.streakUnit}>
+            {state.streak.currentStreakDays === 1 ? 'día' : 'días'}
+          </p>
+          <p className={styles.streakNote}>
+            Récord: {state.streak.longestStreakDays}{' '}
+            {state.streak.longestStreakDays === 1 ? 'día' : 'días'}
+          </p>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+type WeeklyHistoryState =
+  | { readonly status: 'loading' }
+  | { readonly status: 'error' }
+  | { readonly status: 'ready'; readonly history: WeeklyHistory };
+
+const WEEKLY_HISTORY_ERROR = 'No se pudo cargar el historial semanal. Inténtalo de nuevo.';
+
+function formatWeekLabel(weekStart: string): string {
+  return new Date(`${weekStart}T00:00:00`).toLocaleDateString('es-ES', {
+    day: 'numeric',
+    month: 'short',
+  });
+}
+
+/**
+ * Weekly-history bars widget (FOR-143, mockup docs/3-entrenamiento.png),
+ * wired to the FOR-139 {@code GET /api/v1/progress/weekly-history} endpoint.
+ * Fetches independently, same rationale as {@link StreakCard}. Renders one
+ * bar per week exactly as returned — including all-zero weeks, which stay
+ * visible bars, never hidden (spec FOR-139: "still present in the series,
+ * never omitted-as-error"). Only a genuinely empty series (defensive; the
+ * backend documents it never happens) falls back to {@link EmptyState}.
+ */
+function WeeklyHistoryCard() {
+  const [state, setState] = useState<WeeklyHistoryState>({ status: 'loading' });
+  const [reloadToken, setReloadToken] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    setState({ status: 'loading' });
+    getWeeklyHistory()
+      .then((history) => {
+        if (active) {
+          setState({ status: 'ready', history });
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setState({ status: 'error' });
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [reloadToken]);
+
+  return (
+    <Card title="Historial semanal" headingLevel={2}>
+      <p className={styles.widgetCaption}>Días con registro de nutrición por semana.</p>
+      {state.status === 'loading' && <WidgetLoading label="Cargando historial semanal…" rows={3} />}
+      {state.status === 'error' && (
+        <ErrorState message={WEEKLY_HISTORY_ERROR} onRetry={() => setReloadToken((n) => n + 1)} />
+      )}
+      {state.status === 'ready' &&
+        (state.history.weeks.length === 0 ? (
+          <EmptyState variant="filtered" title="Todavía no hay historial semanal." />
+        ) : (
+          <ul className={styles.historyBars} aria-label="Historial semanal de constancia">
+            {state.history.weeks.map((week) => {
+              const ratio = week.planned > 0 ? week.completed / week.planned : 0;
+              return (
+                <li key={week.weekStart} className={styles.historyBarItem}>
+                  <span className={styles.historyBarTrack}>
+                    <span
+                      className={styles.historyBarFill}
+                      style={{ height: `${Math.round(ratio * 100)}%` }}
+                    />
+                  </span>
+                  <span className={styles.historyBarLabel}>{formatWeekLabel(week.weekStart)}</span>
+                  <span className={styles.srOnly}>
+                    {week.completed} de {week.planned} días
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        ))}
     </Card>
   );
 }

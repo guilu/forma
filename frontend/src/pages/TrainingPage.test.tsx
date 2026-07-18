@@ -9,6 +9,7 @@ import {
   updateSessionStatus,
   type TrainingWeek,
 } from '../api/training';
+import { getStreak, getWeeklyHistory } from '../api/progress';
 
 /** TrainingPage calls `useNotify()` (FOR-63), which requires a provider. */
 function renderPage() {
@@ -25,9 +26,21 @@ vi.mock('../api/training', () => ({
   getMuscleMap: vi.fn(),
 }));
 
+// FOR-143: streak + weekly-history widgets fetch independently of the week
+// (mirrors ProgressPage's InsightsSection/InsightsHistorySection pattern) —
+// mocked here so the many pre-existing week-focused tests below aren't
+// coupled to this data; dedicated behavior is covered by the tests at the
+// bottom of this file.
+vi.mock('../api/progress', () => ({
+  getStreak: vi.fn(),
+  getWeeklyHistory: vi.fn(),
+}));
+
 const getWeekMock = vi.mocked(getTrainingWeek);
 const updateMock = vi.mocked(updateSessionStatus);
 const getMuscleMapMock = vi.mocked(getMuscleMap);
+const getStreakMock = vi.mocked(getStreak);
+const getWeeklyHistoryMock = vi.mocked(getWeeklyHistory);
 
 // Fixed "today" = Monday 2026-07-06, so the MONDAY entry below is always
 // picked up by the today's-session card regardless of when the suite runs.
@@ -74,6 +87,22 @@ describe('TrainingPage', () => {
     // that open a strength detail without asserting on the muscle map don't
     // hang on an unresolved promise.
     getMuscleMapMock.mockResolvedValue({ sessionId: '', muscles: [] });
+    getStreakMock.mockReset();
+    getWeeklyHistoryMock.mockReset();
+    // Defaults distinct from every other assertion in this file (day names,
+    // "N/M" tallies, muscle labels) so pre-existing tests never accidentally
+    // match this widget's text.
+    getStreakMock.mockResolvedValue({
+      currentStreakDays: 4,
+      longestStreakDays: 12,
+      asOf: '2026-07-06',
+    });
+    getWeeklyHistoryMock.mockResolvedValue({
+      weeks: [
+        { weekStart: '2026-06-22', planned: 7, completed: 5 },
+        { weekStart: '2026-06-29', planned: 7, completed: 7 },
+      ],
+    });
     // Only Date is mocked — setTimeout/setInterval stay real so RTL's
     // findBy/waitFor polling keeps working without manually advancing timers.
     vi.useFakeTimers({ toFake: ['Date'] });
@@ -319,5 +348,160 @@ describe('TrainingPage', () => {
 
     expect(await screen.findByText('Hoy es día de descanso.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Iniciar entrenamiento' })).toBeNull();
+  });
+
+  // FOR-143: streak + weekly-history widgets, consuming the FOR-139 endpoints
+  // to replace the "RACHA ACTUAL"/weekly-history gap this page's doc comment
+  // documented (mockup docs/3-entrenamiento.png). Each fetches independently
+  // of the training week and of each other (FOR-60 pattern).
+  describe('streak widget (FOR-143)', () => {
+    it('shows the current and longest streak once loaded', async () => {
+      getWeekMock.mockResolvedValue(week);
+      getStreakMock.mockResolvedValue({
+        currentStreakDays: 4,
+        longestStreakDays: 12,
+        asOf: '2026-07-06',
+      });
+
+      renderPage();
+
+      const heading = await screen.findByRole('heading', { name: 'Racha actual', level: 2 });
+      const card = heading.closest('section') as HTMLElement;
+      expect(await within(card).findByText('4')).toBeInTheDocument();
+      expect(within(card).getByText(/Récord: 12 días/)).toBeInTheDocument();
+    });
+
+    it('shows a zero streak as a calm normal state, not an error', async () => {
+      getWeekMock.mockResolvedValue(week);
+      getStreakMock.mockResolvedValue({
+        currentStreakDays: 0,
+        longestStreakDays: 0,
+        asOf: '2026-07-06',
+      });
+
+      renderPage();
+
+      const heading = await screen.findByRole('heading', { name: 'Racha actual' });
+      const card = heading.closest('section') as HTMLElement;
+      expect(await within(card).findByText('0')).toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    it('shows a loading state while the streak request resolves', async () => {
+      getWeekMock.mockResolvedValue(week);
+      getStreakMock.mockReturnValue(new Promise(() => {}));
+
+      renderPage();
+
+      // Wait for the training week itself to resolve first, so the streak
+      // card has actually mounted and started its own (never-resolving)
+      // fetch — otherwise this could pass merely because the outer page is
+      // still on its own "Cargando tu semana…" loading state.
+      await screen.findByRole('heading', { name: 'Calendario semanal' });
+      expect(screen.getByText('Cargando racha…')).toBeInTheDocument();
+    });
+
+    it('shows an error scoped to the streak card and recovers on retry', async () => {
+      getWeekMock.mockResolvedValue(week);
+      getStreakMock.mockRejectedValueOnce(new Error('network'));
+      const user = userEvent.setup();
+
+      renderPage();
+
+      const heading = await screen.findByRole('heading', { name: 'Racha actual' });
+      const card = heading.closest('section') as HTMLElement;
+      expect(await within(card).findByRole('alert')).toHaveTextContent(
+        'No se pudo cargar tu racha',
+      );
+      // The weekly summary (a sibling widget) still rendered normally.
+      expect(screen.getByRole('heading', { name: 'Resumen semanal' })).toBeInTheDocument();
+
+      getStreakMock.mockResolvedValue({
+        currentStreakDays: 4,
+        longestStreakDays: 12,
+        asOf: '2026-07-06',
+      });
+      await user.click(within(card).getByRole('button', { name: 'Reintentar' }));
+
+      expect(await within(card).findByText('4')).toBeInTheDocument();
+    });
+  });
+
+  describe('weekly-history widget (FOR-143)', () => {
+    it('renders one bar per week with its completed/planned days', async () => {
+      getWeekMock.mockResolvedValue(week);
+      getWeeklyHistoryMock.mockResolvedValue({
+        weeks: [
+          { weekStart: '2026-06-22', planned: 7, completed: 5 },
+          { weekStart: '2026-06-29', planned: 7, completed: 7 },
+        ],
+      });
+
+      renderPage();
+
+      const heading = await screen.findByRole('heading', { name: 'Historial semanal', level: 2 });
+      const card = heading.closest('section') as HTMLElement;
+      expect(await within(card).findByText('5 de 7 días')).toBeInTheDocument();
+      expect(within(card).getAllByRole('listitem')).toHaveLength(2);
+      expect(within(card).getByText('7 de 7 días')).toBeInTheDocument();
+    });
+
+    it('renders zero-valued weeks as visible bars, not an empty/error state', async () => {
+      getWeekMock.mockResolvedValue(week);
+      getWeeklyHistoryMock.mockResolvedValue({
+        weeks: [{ weekStart: '2026-07-06', planned: 7, completed: 0 }],
+      });
+
+      renderPage();
+
+      const heading = await screen.findByRole('heading', { name: 'Historial semanal' });
+      const card = heading.closest('section') as HTMLElement;
+      expect(await within(card).findByText('0 de 7 días')).toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    it('shows an empty message if the series itself is empty', async () => {
+      getWeekMock.mockResolvedValue(week);
+      getWeeklyHistoryMock.mockResolvedValue({ weeks: [] });
+
+      renderPage();
+
+      const heading = await screen.findByRole('heading', { name: 'Historial semanal' });
+      const card = heading.closest('section') as HTMLElement;
+      expect(await within(card).findByText(/Todavía no hay historial semanal/)).toBeInTheDocument();
+    });
+
+    it('shows a loading state while the weekly-history request resolves', async () => {
+      getWeekMock.mockResolvedValue(week);
+      getWeeklyHistoryMock.mockReturnValue(new Promise(() => {}));
+
+      renderPage();
+
+      // Same rationale as the streak loading test above: wait for the
+      // training week to resolve so the card has actually mounted.
+      await screen.findByRole('heading', { name: 'Calendario semanal' });
+      expect(screen.getByText('Cargando historial semanal…')).toBeInTheDocument();
+    });
+
+    it('shows an error scoped to the weekly-history card and recovers on retry', async () => {
+      getWeekMock.mockResolvedValue(week);
+      getWeeklyHistoryMock.mockRejectedValueOnce(new Error('network'));
+      const user = userEvent.setup();
+
+      renderPage();
+
+      const heading = await screen.findByRole('heading', { name: 'Historial semanal' });
+      const card = heading.closest('section') as HTMLElement;
+      expect(await within(card).findByRole('alert')).toHaveTextContent(
+        'No se pudo cargar el historial semanal',
+      );
+
+      getWeeklyHistoryMock.mockResolvedValue({
+        weeks: [{ weekStart: '2026-06-29', planned: 7, completed: 7 }],
+      });
+      await user.click(within(card).getByRole('button', { name: 'Reintentar' }));
+
+      expect(await within(card).findByText('7 de 7 días')).toBeInTheDocument();
+    });
   });
 });
