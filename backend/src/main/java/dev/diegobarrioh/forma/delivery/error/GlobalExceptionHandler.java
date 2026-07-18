@@ -1,5 +1,6 @@
 package dev.diegobarrioh.forma.delivery.error;
 
+import dev.diegobarrioh.forma.application.ForbiddenException;
 import dev.diegobarrioh.forma.application.NotFoundException;
 import dev.diegobarrioh.forma.application.OAuthStateException;
 import dev.diegobarrioh.forma.application.ProviderOAuthException;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 /**
  * Baseline API exception handling (FOR-88, ADR-005). Maps exceptions to the consistent {@link
@@ -108,11 +110,40 @@ public class GlobalExceptionHandler {
         ApiErrorCode.VALIDATION_ERROR, ex.getMessage(), correlationId(request), null);
   }
 
+  /**
+   * A multipart upload exceeding {@code spring.servlet.multipart.max-file-size}/{@code
+   * max-request-size} (FOR-140: "Oversized... upload -> 400 VALIDATION_ERROR") maps to 400 rather
+   * than the framework's default — Spring's multipart resolver can reject an oversized file before
+   * it ever reaches {@code ProgressPhotoService}'s own application-level size check, so both layers
+   * must map to the same predictable, safe error shape (ADR-005).
+   */
+  @ExceptionHandler(MaxUploadSizeExceededException.class)
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  public ApiError handleMaxUploadSizeExceeded(
+      MaxUploadSizeExceededException ex, HttpServletRequest request) {
+    return ApiError.of(
+        ApiErrorCode.VALIDATION_ERROR,
+        "Uploaded file exceeds the maximum allowed size",
+        correlationId(request),
+        null);
+  }
+
   /** Missing resources map to 404 with the safe, caller-provided message. */
   @ExceptionHandler(NotFoundException.class)
   @ResponseStatus(HttpStatus.NOT_FOUND)
   public ApiError handleNotFound(NotFoundException ex, HttpServletRequest request) {
     return ApiError.of(ApiErrorCode.NOT_FOUND, ex.getMessage(), correlationId(request), null);
+  }
+
+  /**
+   * A resource exists but belongs to another owner (FOR-140, ADR-002: reject cross-user access even
+   * in the single-user MVP) maps to 403 with the safe, caller-provided message. First real use of
+   * the {@link ApiErrorCode#FORBIDDEN} code reserved by FOR-88.
+   */
+  @ExceptionHandler(ForbiddenException.class)
+  @ResponseStatus(HttpStatus.FORBIDDEN)
+  public ApiError handleForbidden(ForbiddenException ex, HttpServletRequest request) {
+    return ApiError.of(ApiErrorCode.FORBIDDEN, ex.getMessage(), correlationId(request), null);
   }
 
   /**

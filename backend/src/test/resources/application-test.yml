@@ -20,3 +20,12 @@ forma:
       client-id: test-client-id
       client-secret: test-client-secret
       token-encryption-key: "loqw42BT5R/c7R+x3c4TCbQDKQayhpkVqnVtWPpO1c8="
+
+  # Progress-photo private storage (FOR-140). Defaults to a build/ subdirectory (gitignored,
+  # cleaned by `./gradlew clean`) so the test suite never writes under a developer's real
+  # $FORMA_PROGRESS_PHOTOS_DIR/$HOME, even for a @SpringBootTest that doesn't explicitly override
+  # it. Tests asserting real file behavior (e.g. ProgressPhotoEndToEndTest) still override this
+  # with an isolated @TempDir via @DynamicPropertySource so parallel test runs never collide.
+  progress:
+    photos:
+      storage-dir: build/test-data/progress-photos
