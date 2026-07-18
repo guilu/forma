@@ -35,7 +35,9 @@ public record ShoppingListView(
    * @param category resolved product category (FOR-106); {@link ShoppingCategory#OTROS} when the
    *     product id no longer resolves, mirroring the {@code productName} fallback
    * @param quantity units/packages
-   * @param estimatedCostEur stored line cost
+   * @param estimatedCostEur line cost, derived live from the resolved product's current price ×
+   *     {@code quantity} ({@link dev.diegobarrioh.forma.application.ShoppingListService}); falls
+   *     back to the last stored snapshot when the product no longer resolves
    * @param checked checked state
    * @param unit unit of measure for {@code quantity} (FOR-108)
    * @param servings number of servings this line represents (FOR-108); {@code null} when the

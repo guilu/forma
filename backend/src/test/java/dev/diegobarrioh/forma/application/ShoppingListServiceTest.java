@@ -121,6 +121,9 @@ class ShoppingListServiceTest {
               assertThat(entry.servings()).isNull();
               // Unresolved product -> no URL to link out to either, not a broken link.
               assertThat(entry.productUrl()).isNull();
+              // No product to derive a live cost from -> fall back to the last-known stored
+              // snapshot instead of crashing or fabricating a cost from nothing.
+              assertThat(entry.estimatedCostEur()).isEqualByComparingTo("3.90");
             });
   }
 
@@ -136,6 +139,39 @@ class ShoppingListServiceTest {
     assertThat(view.items())
         .singleElement()
         .satisfies(entry -> assertThat(entry.productUrl()).isNull());
+  }
+
+  @Test
+  void listLineCostReflectsCurrentProductPriceNotStaleStoredSnapshot() {
+    // Stored snapshot cost (2.00) is stale — e.g. left over from before the product's price was
+    // edited. The product's current price (fixture: 1.95) x quantity (2) = 3.90 must win, matching
+    // what the budget total already derives (ShoppingBudgetCalculator) and what updateQuantity()
+    // already recomputes. Regression test for the edit-price-stale-line bug.
+    FakeListRepository listsWithStaleCost = new FakeListRepository(2, new BigDecimal("2.00"));
+    ShoppingListService serviceWithStaleCost =
+        new ShoppingListService(listsWithStaleCost, products, new ShoppingBudgetService(products));
+
+    ShoppingListView view = serviceWithStaleCost.currentView();
+
+    assertThat(view.items())
+        .singleElement()
+        .satisfies(entry -> assertThat(entry.estimatedCostEur()).isEqualByComparingTo("3.90"));
+  }
+
+  @Test
+  void listLineCostScalesWithQuantityGreaterThanOne() {
+    // Stored cost (100.00) is intentionally wrong/irrelevant here — quantity 3 x current product
+    // price 1.95 = 5.85 must be the live-derived value.
+    FakeListRepository listsWithQuantityThree = new FakeListRepository(3, new BigDecimal("100.00"));
+    ShoppingListService serviceWithQuantityThree =
+        new ShoppingListService(
+            listsWithQuantityThree, products, new ShoppingBudgetService(products));
+
+    ShoppingListView view = serviceWithQuantityThree.currentView();
+
+    assertThat(view.items())
+        .singleElement()
+        .satisfies(entry -> assertThat(entry.estimatedCostEur()).isEqualByComparingTo("5.85"));
   }
 
   @Test
@@ -262,6 +298,13 @@ class ShoppingListServiceTest {
           "i1",
           new ShoppingListItem(
               "p1", 2, new BigDecimal("3.90"), false, ShoppingUnit.KG, storedServings));
+    }
+
+    // Lets tests seed a stored snapshot cost that intentionally diverges from the fixture
+    // product's current price x quantity, to prove the live view no longer trusts it.
+    FakeListRepository(int quantity, BigDecimal storedCost) {
+      itemsById.put(
+          "i1", new ShoppingListItem("p1", quantity, storedCost, false, ShoppingUnit.KG, null));
     }
 
     List<ShoppingListItem> lastRegeneratedItems() {
