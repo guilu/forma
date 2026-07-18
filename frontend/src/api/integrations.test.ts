@@ -43,7 +43,7 @@ describe('integrations API (FOR-126 delivery/integrations contract, FOR-123)', (
         },
       ],
     });
-    const client: ApiClient = { baseUrl: 'http://test', request };
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
 
     const connections = await listIntegrations(client);
 
@@ -85,7 +85,7 @@ describe('integrations API (FOR-126 delivery/integrations contract, FOR-123)', (
         },
       ],
     });
-    const client: ApiClient = { baseUrl: 'http://test', request };
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
 
     const [connection] = await listIntegrations(client);
 
@@ -104,7 +104,7 @@ describe('integrations API (FOR-126 delivery/integrations contract, FOR-123)', (
         },
       ],
     });
-    const client: ApiClient = { baseUrl: 'http://test', request };
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
 
     const [connection] = await listIntegrations(client);
 
@@ -125,7 +125,7 @@ describe('integrations API (FOR-126 delivery/integrations contract, FOR-123)', (
         'https://account.withings.com/oauth2_user/authorize2?client_id=abc&state=xyz',
     };
     const request = vi.fn().mockResolvedValue(result);
-    const client: ApiClient = { baseUrl: 'http://test', request };
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
 
     const response = await connectIntegration('WITHINGS', client);
 
@@ -147,7 +147,7 @@ describe('integrations API (FOR-126 delivery/integrations contract, FOR-123)', (
       connectedAt: '2026-07-15T08:00:00Z',
     };
     const request = vi.fn().mockResolvedValue(result);
-    const client: ApiClient = { baseUrl: 'http://test', request };
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
 
     const response = await connectIntegration('GOOGLE_FIT', client);
 
@@ -168,7 +168,7 @@ describe('integrations API (FOR-126 delivery/integrations contract, FOR-123)', (
       connectedAt: '2026-07-16T15:00:00Z',
     };
     const request = vi.fn().mockResolvedValue(result);
-    const client: ApiClient = { baseUrl: 'http://test', request };
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
 
     const response = await completeIntegrationCallback(
       'WITHINGS',
@@ -190,7 +190,7 @@ describe('integrations API (FOR-126 delivery/integrations contract, FOR-123)', (
   // render, never swallow it.
   it('propagates a rejected callback request (e.g. 400 invalid/expired state) instead of swallowing it', async () => {
     const request = vi.fn().mockRejectedValue(new Error('invalid state'));
-    const client: ApiClient = { baseUrl: 'http://test', request };
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
 
     await expect(
       completeIntegrationCallback('WITHINGS', 'auth-code', 'bad-state', client),
@@ -200,7 +200,7 @@ describe('integrations API (FOR-126 delivery/integrations contract, FOR-123)', (
   it('DELETEs disconnect to the lower-cased provider path segment', async () => {
     const result = { provider: 'WITHINGS', status: 'DISCONNECTED', connectedAt: null };
     const request = vi.fn().mockResolvedValue(result);
-    const client: ApiClient = { baseUrl: 'http://test', request };
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
 
     const response = await disconnectIntegration('WITHINGS', client);
 
@@ -216,7 +216,7 @@ describe('integrations API (FOR-126 delivery/integrations contract, FOR-123)', (
       message: null,
     };
     const request = vi.fn().mockResolvedValue(outcome);
-    const client: ApiClient = { baseUrl: 'http://test', request };
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
 
     const response = await syncIntegration('WITHINGS', client);
 
@@ -233,14 +233,14 @@ describe('integrations API (FOR-126 delivery/integrations contract, FOR-123)', (
       message: 'El proveedor no está conectado.',
     };
     const request = vi.fn().mockResolvedValue(outcome);
-    const client: ApiClient = { baseUrl: 'http://test', request };
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
 
     await expect(syncIntegration('WITHINGS', client)).resolves.toEqual(outcome);
   });
 
   it('propagates a rejected request (e.g. ApiRequestError) instead of swallowing it', async () => {
     const request = vi.fn().mockRejectedValue(new Error('network'));
-    const client: ApiClient = { baseUrl: 'http://test', request };
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
 
     await expect(connectIntegration('GOOGLE_FIT', client)).rejects.toThrow('network');
   });

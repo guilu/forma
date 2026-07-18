@@ -6,7 +6,7 @@ describe('training API', () => {
   it('GETs the training week endpoint', async () => {
     const week = { days: [] };
     const request = vi.fn().mockResolvedValue(week);
-    const client: ApiClient = { baseUrl: 'http://test', request };
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
 
     const result = await getTrainingWeek(client);
 
@@ -16,7 +16,7 @@ describe('training API', () => {
 
   it('PATCHes a session status', async () => {
     const request = vi.fn().mockResolvedValue({ id: 'SATURDAY:RUNNING', status: 'COMPLETED' });
-    const client: ApiClient = { baseUrl: 'http://test', request };
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
 
     await updateSessionStatus('SATURDAY:RUNNING', 'COMPLETED', 'Hecho', client);
 
@@ -30,7 +30,7 @@ describe('training API', () => {
   it('GETs the muscle-map endpoint for a session (FOR-136)', async () => {
     const map = { sessionId: 'MONDAY:STRENGTH', muscles: [{ muscle: 'pecho', load: 'HIGH' }] };
     const request = vi.fn().mockResolvedValue(map);
-    const client: ApiClient = { baseUrl: 'http://test', request };
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
 
     const result = await getMuscleMap('MONDAY:STRENGTH', client);
 
