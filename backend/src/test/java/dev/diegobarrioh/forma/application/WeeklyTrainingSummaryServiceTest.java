@@ -53,7 +53,7 @@ class WeeklyTrainingSummaryServiceTest {
 
   @Test
   void countsCompletedStrength() {
-    statusRepository.upsert("MONDAY:STRENGTH", SessionStatus.COMPLETED, null);
+    statusRepository.upsert("TUESDAY:STRENGTH", SessionStatus.COMPLETED, null);
 
     assertThat(service.currentSummary().completedStrengthSessions()).isEqualTo(1);
   }

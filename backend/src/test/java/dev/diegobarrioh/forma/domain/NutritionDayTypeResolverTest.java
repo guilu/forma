@@ -22,7 +22,8 @@ import org.junit.jupiter.api.Test;
  */
 class NutritionDayTypeResolverTest {
 
-  // Fixture dates from tests.md: a Wednesday (STRENGTH), a Saturday (RUNNING), a Sunday (REST).
+  // Fixture dates (FOR-151: Diego's real plan): a Wednesday (RUNNING), a Tuesday (STRENGTH), a
+  // Friday (REST).
   private static final LocalDate A_WEDNESDAY = LocalDate.of(2026, 7, 15);
   private static final LocalDate A_TUESDAY = LocalDate.of(2026, 7, 14);
   private static final LocalDate A_THURSDAY = LocalDate.of(2026, 7, 16);
@@ -32,22 +33,22 @@ class NutritionDayTypeResolverTest {
   private static final LocalDate A_SUNDAY = LocalDate.of(2026, 7, 19);
 
   @Test
-  void resolvesTuesdayThursdayAndSaturdayToRunning() {
-    assertThat(NutritionDayTypeResolver.resolve(A_TUESDAY)).isEqualTo(NutritionDayType.RUNNING);
-    assertThat(NutritionDayTypeResolver.resolve(A_THURSDAY)).isEqualTo(NutritionDayType.RUNNING);
+  void resolvesMondayWednesdayAndSaturdayToRunning() {
+    assertThat(NutritionDayTypeResolver.resolve(A_MONDAY)).isEqualTo(NutritionDayType.RUNNING);
+    assertThat(NutritionDayTypeResolver.resolve(A_WEDNESDAY)).isEqualTo(NutritionDayType.RUNNING);
     assertThat(NutritionDayTypeResolver.resolve(A_SATURDAY)).isEqualTo(NutritionDayType.RUNNING);
   }
 
   @Test
-  void resolvesMondayWednesdayAndFridayToStrength() {
-    assertThat(NutritionDayTypeResolver.resolve(A_MONDAY)).isEqualTo(NutritionDayType.STRENGTH);
-    assertThat(NutritionDayTypeResolver.resolve(A_WEDNESDAY)).isEqualTo(NutritionDayType.STRENGTH);
-    assertThat(NutritionDayTypeResolver.resolve(A_FRIDAY)).isEqualTo(NutritionDayType.STRENGTH);
+  void resolvesTuesdayThursdayAndSundayToStrength() {
+    assertThat(NutritionDayTypeResolver.resolve(A_TUESDAY)).isEqualTo(NutritionDayType.STRENGTH);
+    assertThat(NutritionDayTypeResolver.resolve(A_THURSDAY)).isEqualTo(NutritionDayType.STRENGTH);
+    assertThat(NutritionDayTypeResolver.resolve(A_SUNDAY)).isEqualTo(NutritionDayType.STRENGTH);
   }
 
   @Test
-  void resolvesSundayToRest() {
-    assertThat(NutritionDayTypeResolver.resolve(A_SUNDAY)).isEqualTo(NutritionDayType.REST);
+  void resolvesFridayToRest() {
+    assertThat(NutritionDayTypeResolver.resolve(A_FRIDAY)).isEqualTo(NutritionDayType.REST);
   }
 
   @Test

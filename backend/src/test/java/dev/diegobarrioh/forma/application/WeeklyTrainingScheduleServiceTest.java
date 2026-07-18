@@ -54,17 +54,17 @@ class WeeklyTrainingScheduleServiceTest {
               assertThat(entry.title()).isEqualTo("Tirada larga");
               assertThat(entry.detail()).isEqualTo("4.0 km");
             });
-    assertThat(days.get(DayOfWeek.MONDAY).entries())
+    assertThat(days.get(DayOfWeek.TUESDAY).entries())
         .anySatisfy(
             entry -> {
               assertThat(entry.kind()).isEqualTo("STRENGTH");
-              assertThat(entry.id()).isEqualTo("MONDAY:STRENGTH");
+              assertThat(entry.id()).isEqualTo("TUESDAY:STRENGTH");
             });
   }
 
   @Test
-  void sundayIsARestDay() {
-    assertThat(byDay().get(DayOfWeek.SUNDAY).isRest()).isTrue();
+  void fridayIsARestDay() {
+    assertThat(byDay().get(DayOfWeek.FRIDAY).isRest()).isTrue();
   }
 
   @Test

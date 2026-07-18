@@ -29,12 +29,12 @@ import org.junit.jupiter.api.Test;
 class MealLogServiceTest {
 
   private static final Clock FIXED_CLOCK =
-      Clock.fixed(Instant.parse("2026-07-15T12:00:00Z"), ZoneOffset.UTC);
+      Clock.fixed(Instant.parse("2026-07-14T12:00:00Z"), ZoneOffset.UTC);
 
-  // 2026-07-15 is a Wednesday -> STRENGTH day per the shared weekly training day policy.
-  private static final LocalDate TODAY = LocalDate.of(2026, 7, 15);
+  // 2026-07-14 is a Tuesday -> STRENGTH day per the shared weekly training day policy (FOR-151).
+  private static final LocalDate TODAY = LocalDate.of(2026, 7, 14);
   private static final LocalDate A_SATURDAY = LocalDate.of(2026, 7, 11); // RUNNING (not future)
-  private static final LocalDate A_SUNDAY = LocalDate.of(2026, 7, 12); // REST (not future)
+  private static final LocalDate A_FRIDAY = LocalDate.of(2026, 7, 10); // REST (not future)
 
   private final RecordingMealLogRepository repository = new RecordingMealLogRepository();
   private final MealLogService service = new MealLogService(repository, FIXED_CLOCK);
@@ -137,7 +137,7 @@ class MealLogServiceTest {
   void consumptionResolvesTheDayTypeFromTheDateViaTheSharedWeeklyTrainingDayPolicy() {
     DayConsumption strengthDay = service.consumption(TODAY);
     DayConsumption runningDay = service.consumption(A_SATURDAY);
-    DayConsumption restDay = service.consumption(A_SUNDAY);
+    DayConsumption restDay = service.consumption(A_FRIDAY);
 
     assertThat(strengthDay.dayType()).isEqualTo(NutritionDayType.STRENGTH);
     assertThat(runningDay.dayType()).isEqualTo(NutritionDayType.RUNNING);
@@ -158,7 +158,7 @@ class MealLogServiceTest {
 
   @Test
   void consumptionOnARestDayPopulatesTargetFromTheRestTemplate() {
-    DayConsumption consumption = service.consumption(A_SUNDAY);
+    DayConsumption consumption = service.consumption(A_FRIDAY);
 
     var expectedTemplate = NutritionDayCatalog.findByType(NutritionDayType.REST).orElseThrow();
     assertThat(consumption.target()).isEqualTo(expectedTemplate.template());

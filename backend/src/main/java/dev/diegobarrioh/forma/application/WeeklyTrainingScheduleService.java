@@ -25,9 +25,9 @@ import org.springframework.stereotype.Service;
  *
  * <ul>
  *   <li>Running: plan week {@link #PLAN_WEEK} (the first week), each session on its own day
- *       (Tue/Thu/Sat per the generator).
- *   <li>Strength: one template per day — Monday PUSH, Wednesday PULL, Friday LEGS.
- *   <li>Any remaining day (e.g. Sunday) is a rest day (no entries).
+ *       (Mon/Wed/Sat per the generator, FOR-151).
+ *   <li>Strength: one template per day — Tuesday PUSH, Thursday PULL, Sunday LEGS (FOR-151).
+ *   <li>Any remaining day (i.e. Friday) is a rest day (no entries).
  * </ul>
  *
  * <p>Each session has a stable id ({@code "<DAY>:<KIND>"}) that is stable because the schedule is

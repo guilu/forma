@@ -32,9 +32,9 @@ class TrainingSessionStatusServiceTest {
 
   @Test
   void marksAStrengthSessionSkipped() {
-    service.updateStatus("MONDAY:STRENGTH", SessionStatus.SKIPPED, null);
+    service.updateStatus("TUESDAY:STRENGTH", SessionStatus.SKIPPED, null);
 
-    assertThat(repository.findAll().get("MONDAY:STRENGTH").status())
+    assertThat(repository.findAll().get("TUESDAY:STRENGTH").status())
         .isEqualTo(SessionStatus.SKIPPED);
   }
 

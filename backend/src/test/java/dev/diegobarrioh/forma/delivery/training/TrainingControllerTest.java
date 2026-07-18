@@ -59,7 +59,7 @@ class TrainingControllerTest {
                             "4.0 km",
                             "PLANNED",
                             null))),
-                new TrainingDay(DayOfWeek.SUNDAY, List.of())));
+                new TrainingDay(DayOfWeek.FRIDAY, List.of())));
     when(scheduleService.currentWeek()).thenReturn(schedule);
 
     mockMvc
@@ -154,19 +154,19 @@ class TrainingControllerTest {
 
   @Test
   void returnsTheMuscleMapForAStrengthSessionPerApiMd() throws Exception {
-    when(muscleWorkedMapService.resolve("MONDAY:STRENGTH"))
+    when(muscleWorkedMapService.resolve("TUESDAY:STRENGTH"))
         .thenReturn(
             new MuscleWorkedMap(
-                "MONDAY:STRENGTH",
+                "TUESDAY:STRENGTH",
                 List.of(
                     new MuscleWorked("pecho", MuscleLoad.HIGH),
                     new MuscleWorked("tríceps", MuscleLoad.HIGH),
                     new MuscleWorked("hombro", MuscleLoad.MEDIUM))));
 
     mockMvc
-        .perform(get("/api/v1/training/sessions/MONDAY:STRENGTH/muscle-map"))
+        .perform(get("/api/v1/training/sessions/TUESDAY:STRENGTH/muscle-map"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.sessionId").value("MONDAY:STRENGTH"))
+        .andExpect(jsonPath("$.sessionId").value("TUESDAY:STRENGTH"))
         .andExpect(jsonPath("$.muscles[0].muscle").value("pecho"))
         .andExpect(jsonPath("$.muscles[0].load").value("HIGH"))
         .andExpect(jsonPath("$.muscles[2].muscle").value("hombro"))

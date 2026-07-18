@@ -17,11 +17,11 @@ import java.util.Set;
  * here updates both consumers instead of the two drifting apart. Framework-free (ADR-001), pure and
  * deterministic.
  *
- * <p>The MVP policy (spec FOR-26/FOR-128): running Tuesday/Thursday/Saturday (the {@link
- * RunningPlanGenerator} schedule), strength Monday (PUSH) / Wednesday (PULL) / Friday (LEGS), any
- * other day (e.g. Sunday) is rest. Running days are derived directly from {@link
- * RunningPlanGenerator#sixteenWeekPlan()} rather than a second hardcoded literal set, so the two
- * can never disagree.
+ * <p>The MVP policy (spec FOR-151, Diego's real plan per {@code docs/fitness_os.xlsm}): running
+ * Monday/Wednesday/Saturday (the {@link RunningPlanGenerator} schedule), strength Tuesday (PUSH) /
+ * Thursday (PULL) / Sunday (LEGS), any other day (i.e. Friday) is rest. Running days are derived
+ * directly from {@link RunningPlanGenerator#sixteenWeekPlan()} rather than a second hardcoded
+ * literal set, so the two can never disagree.
  */
 public final class WeeklyTrainingDayPolicy {
 
@@ -33,18 +33,18 @@ public final class WeeklyTrainingDayPolicy {
   private static final Map<DayOfWeek, WorkoutType> STRENGTH_DAYS =
       new EnumMap<>(
           Map.of(
-              DayOfWeek.MONDAY, WorkoutType.PUSH,
-              DayOfWeek.WEDNESDAY, WorkoutType.PULL,
-              DayOfWeek.FRIDAY, WorkoutType.LEGS));
+              DayOfWeek.TUESDAY, WorkoutType.PUSH,
+              DayOfWeek.THURSDAY, WorkoutType.PULL,
+              DayOfWeek.SUNDAY, WorkoutType.LEGS));
 
   private WeeklyTrainingDayPolicy() {}
 
-  /** The days the running plan schedules a session on (Tuesday/Thursday/Saturday). */
+  /** The days the running plan schedules a session on (Monday/Wednesday/Saturday). */
   public static Set<DayOfWeek> runningDays() {
     return RUNNING_DAYS;
   }
 
-  /** Strength day -&gt; its {@link WorkoutType} (Monday PUSH / Wednesday PULL / Friday LEGS). */
+  /** Strength day -&gt; its {@link WorkoutType} (Tuesday PUSH / Thursday PULL / Sunday LEGS). */
   public static Map<DayOfWeek, WorkoutType> strengthDays() {
     return STRENGTH_DAYS;
   }

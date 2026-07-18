@@ -13,43 +13,43 @@ import org.junit.jupiter.api.Test;
 class WeeklyTrainingDayPolicyTest {
 
   @Test
-  void classifiesTuesdayThursdayAndSaturdayAsRunning() {
-    assertThat(WeeklyTrainingDayPolicy.classify(DayOfWeek.TUESDAY))
+  void classifiesMondayWednesdayAndSaturdayAsRunning() {
+    assertThat(WeeklyTrainingDayPolicy.classify(DayOfWeek.MONDAY))
         .isEqualTo(NutritionDayType.RUNNING);
-    assertThat(WeeklyTrainingDayPolicy.classify(DayOfWeek.THURSDAY))
+    assertThat(WeeklyTrainingDayPolicy.classify(DayOfWeek.WEDNESDAY))
         .isEqualTo(NutritionDayType.RUNNING);
     assertThat(WeeklyTrainingDayPolicy.classify(DayOfWeek.SATURDAY))
         .isEqualTo(NutritionDayType.RUNNING);
   }
 
   @Test
-  void classifiesMondayWednesdayAndFridayAsStrength() {
-    assertThat(WeeklyTrainingDayPolicy.classify(DayOfWeek.MONDAY))
+  void classifiesTuesdayThursdayAndSundayAsStrength() {
+    assertThat(WeeklyTrainingDayPolicy.classify(DayOfWeek.TUESDAY))
         .isEqualTo(NutritionDayType.STRENGTH);
-    assertThat(WeeklyTrainingDayPolicy.classify(DayOfWeek.WEDNESDAY))
+    assertThat(WeeklyTrainingDayPolicy.classify(DayOfWeek.THURSDAY))
         .isEqualTo(NutritionDayType.STRENGTH);
-    assertThat(WeeklyTrainingDayPolicy.classify(DayOfWeek.FRIDAY))
+    assertThat(WeeklyTrainingDayPolicy.classify(DayOfWeek.SUNDAY))
         .isEqualTo(NutritionDayType.STRENGTH);
   }
 
   @Test
-  void classifiesSundayAsRest() {
-    assertThat(WeeklyTrainingDayPolicy.classify(DayOfWeek.SUNDAY)).isEqualTo(NutritionDayType.REST);
+  void classifiesFridayAsRest() {
+    assertThat(WeeklyTrainingDayPolicy.classify(DayOfWeek.FRIDAY)).isEqualTo(NutritionDayType.REST);
   }
 
   @Test
   void strengthDaysMapEachDayToItsWorkoutType() {
     assertThat(WeeklyTrainingDayPolicy.strengthDays())
-        .containsEntry(DayOfWeek.MONDAY, WorkoutType.PUSH)
-        .containsEntry(DayOfWeek.WEDNESDAY, WorkoutType.PULL)
-        .containsEntry(DayOfWeek.FRIDAY, WorkoutType.LEGS)
+        .containsEntry(DayOfWeek.TUESDAY, WorkoutType.PUSH)
+        .containsEntry(DayOfWeek.THURSDAY, WorkoutType.PULL)
+        .containsEntry(DayOfWeek.SUNDAY, WorkoutType.LEGS)
         .hasSize(3);
   }
 
   @Test
   void runningDaysMatchTheDaysTheRunningPlanGeneratorActuallySchedules() {
     assertThat(WeeklyTrainingDayPolicy.runningDays())
-        .containsExactlyInAnyOrder(DayOfWeek.TUESDAY, DayOfWeek.THURSDAY, DayOfWeek.SATURDAY);
+        .containsExactlyInAnyOrder(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.SATURDAY);
     // Not duplicated: derived from the real generator output (FOR-23), not a hardcoded literal set.
     assertThat(
             RunningPlanGenerator.sixteenWeekPlan().stream()
