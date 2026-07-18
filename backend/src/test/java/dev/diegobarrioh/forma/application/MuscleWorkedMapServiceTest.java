@@ -23,13 +23,13 @@ class MuscleWorkedMapServiceTest {
           scheduleService, new WorkoutTemplateService(), new ExerciseCatalogService());
 
   @Test
-  void aggregatesTheMondayPushTemplateWithEscalatedLoadsForSharedMuscles() {
+  void aggregatesTheTuesdayPushTemplateWithEscalatedLoadsForSharedMuscles() {
     // PUSH: push-up(pecho, tríceps, hombro anterior), dumbbell-shoulder-press(hombro, tríceps),
     // bench-dip(tríceps, pecho) -> tríceps x3, pecho x2 (HIGH); hombro anterior, hombro x1
     // (MEDIUM).
-    MuscleWorkedMap result = service.resolve("MONDAY:STRENGTH");
+    MuscleWorkedMap result = service.resolve("TUESDAY:STRENGTH");
 
-    assertThat(result.sessionId()).isEqualTo("MONDAY:STRENGTH");
+    assertThat(result.sessionId()).isEqualTo("TUESDAY:STRENGTH");
     assertThat(result.muscles())
         .contains(
             new MuscleWorked("tríceps", MuscleLoad.HIGH),
@@ -48,14 +48,15 @@ class MuscleWorkedMapServiceTest {
 
   @Test
   void anUnknownSessionIdIsRejected() {
-    assertThatThrownBy(() -> service.resolve("SUNDAY:STRENGTH"))
+    // Monday is now a RUNNING day (FOR-151), so "MONDAY:STRENGTH" no longer resolves.
+    assertThatThrownBy(() -> service.resolve("MONDAY:STRENGTH"))
         .isInstanceOf(NotFoundException.class)
-        .hasMessageContaining("SUNDAY:STRENGTH");
+        .hasMessageContaining("MONDAY:STRENGTH");
   }
 
   @Test
   void neverFabricatesAMuscleNotPresentInTheRealCatalogData() {
-    MuscleWorkedMap result = service.resolve("WEDNESDAY:STRENGTH");
+    MuscleWorkedMap result = service.resolve("THURSDAY:STRENGTH");
 
     // PULL: pull-up(dorsal, bíceps), dumbbell-row(dorsal, romboides, bíceps),
     // band-face-pull(deltoides posterior, trapecio).

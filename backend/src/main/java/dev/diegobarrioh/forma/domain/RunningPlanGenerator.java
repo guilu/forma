@@ -18,6 +18,11 @@ import java.util.List;
  * in total. The long run builds gradually and monotonically from ~4 km (the user's current
  * baseline) to ~10 km; paces stay conservative, expressed as target effort (RPE) rather than pace
  * (FOR-22).
+ *
+ * <p>Sessions are scheduled on Monday/Wednesday/Saturday (FOR-151: Diego's real plan, {@code
+ * docs/fitness_os.xlsm} sheet "Running"). This is the single source of truth for the running days —
+ * {@link WeeklyTrainingDayPolicy#runningDays()} derives directly from this method's output rather
+ * than duplicating a second literal day set.
  */
 public final class RunningPlanGenerator {
 
@@ -47,11 +52,11 @@ public final class RunningPlanGenerator {
 
       plan.add(
           new RunningPlanSession(
-              week, DayOfWeek.TUESDAY, SessionType.EASY, easyKm, EASY_EFFORT, null));
+              week, DayOfWeek.MONDAY, SessionType.EASY, easyKm, EASY_EFFORT, null));
       plan.add(
           new RunningPlanSession(
               week,
-              DayOfWeek.THURSDAY,
+              DayOfWeek.WEDNESDAY,
               SessionType.INTERVALS,
               intervalsKm,
               INTERVALS_EFFORT,

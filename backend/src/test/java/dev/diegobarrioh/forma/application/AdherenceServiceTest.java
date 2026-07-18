@@ -28,11 +28,11 @@ import org.junit.jupiter.api.Test;
  * fixtures (spec FOR-129 tests.md). Hand-rolled in-memory fakes (no Spring, no Mockito), matching
  * {@code MealLogServiceTest} (FOR-127) / {@code WeeklyTrainingScheduleServiceTest} (FOR-26).
  *
- * <p>{@code TODAY} (2026-07-15) is a Wednesday -&gt; STRENGTH day per the shared weekly training
- * day policy (mirrors {@code MealLogServiceTest}'s fixed clock), so the 7-day window {@code
- * [2026-07-09, 2026-07-15]} covers, by weekday: Thu(RUNNING) Fri(STRENGTH) Sat(RUNNING) Sun(REST)
- * Mon(STRENGTH) Tue(RUNNING) Wed(STRENGTH) -&gt; 3 RUNNING days + 3 STRENGTH days = 6 planned
- * sessions (one entry per non-rest day), 1 REST day.
+ * <p>{@code TODAY} (2026-07-15) is a Wednesday -&gt; RUNNING day per the shared weekly training day
+ * policy (FOR-151: Diego's real plan; mirrors {@code MealLogServiceTest}'s fixed clock), so the
+ * 7-day window {@code [2026-07-09, 2026-07-15]} covers, by weekday: Thu(STRENGTH) Fri(REST)
+ * Sat(RUNNING) Sun(STRENGTH) Mon(RUNNING) Tue(STRENGTH) Wed(RUNNING) -&gt; 3 RUNNING days + 3
+ * STRENGTH days = 6 planned sessions (one entry per non-rest day), 1 REST day.
  */
 class AdherenceServiceTest {
 
@@ -63,18 +63,18 @@ class AdherenceServiceTest {
   @Test
   void
       trainingCountsPlannedFromTheScheduleAndCompletedFromStoredStatusesProjectedAcrossTheWindow() {
-    // Only Saturday's running session and Monday's strength session are marked COMPLETED; that
+    // Only Saturday's running session and Tuesday's strength session are marked COMPLETED; that
     // status is the *current* per-weekday snapshot (FOR-27 has no per-date history), so it is
     // projected onto every occurrence of that weekday in the window (documented in
     // AdherenceService).
     statusRepository.upsert("SATURDAY:RUNNING", SessionStatus.COMPLETED, null);
-    statusRepository.upsert("MONDAY:STRENGTH", SessionStatus.COMPLETED, null);
+    statusRepository.upsert("TUESDAY:STRENGTH", SessionStatus.COMPLETED, null);
 
     Adherence adherence = service.compute(7);
 
     CategoryAdherence training = byCategory(adherence, AdherenceCategory.TRAINING);
     assertThat(training.planned()).isEqualTo(6); // 3 RUNNING + 3 STRENGTH days, 1 REST day excluded
-    assertThat(training.completed()).isEqualTo(2); // one Saturday + one Monday in the window
+    assertThat(training.completed()).isEqualTo(2); // one Saturday + one Tuesday in the window
     assertThat(training.rate()).isEqualTo(2.0 / 6.0);
   }
 
@@ -121,13 +121,13 @@ class AdherenceServiceTest {
 
   @Test
   void aOneDayWindowOnARestDayHasZeroPlannedTrainingAndANullRate() {
-    // 2026-07-12 is a Sunday -> REST day (no running/strength scheduled).
-    Clock sundayClock = Clock.fixed(Instant.parse("2026-07-12T12:00:00Z"), ZoneOffset.UTC);
-    AdherenceService sundayService =
+    // 2026-07-17 is a Friday -> REST day (no running/strength scheduled) under FOR-151's mapping.
+    Clock fridayClock = Clock.fixed(Instant.parse("2026-07-17T12:00:00Z"), ZoneOffset.UTC);
+    AdherenceService fridayService =
         new AdherenceService(
-            scheduleService, mealLogRepository, bodyMeasurementRepository, sundayClock);
+            scheduleService, mealLogRepository, bodyMeasurementRepository, fridayClock);
 
-    Adherence adherence = sundayService.compute(1);
+    Adherence adherence = fridayService.compute(1);
 
     assertThat(adherence.from()).isEqualTo(adherence.to());
     CategoryAdherence training = byCategory(adherence, AdherenceCategory.TRAINING);
