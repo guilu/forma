@@ -8,6 +8,8 @@ import dev.diegobarrioh.forma.domain.EnergyUnit;
 import dev.diegobarrioh.forma.domain.HeightUnit;
 import dev.diegobarrioh.forma.domain.MainGoal;
 import dev.diegobarrioh.forma.domain.OnboardingAnswers;
+import dev.diegobarrioh.forma.domain.PersonalTargets;
+import dev.diegobarrioh.forma.domain.ProfileBaseline;
 import dev.diegobarrioh.forma.domain.Sex;
 import dev.diegobarrioh.forma.domain.ThemeMode;
 import dev.diegobarrioh.forma.domain.UnitPreferences;
@@ -49,7 +51,10 @@ public class JdbcUserProfileRepository implements UserProfileRepository {
         onboarding_profile_name, onboarding_profile_birth_date, onboarding_profile_sex,
         onboarding_profile_height_cm, onboarding_metrics_choice, onboarding_metrics_saved,
         onboarding_goal_selected, onboarding_training_days, onboarding_equipment_items,
-        onboarding_nutrition_preference, onboarding_nutrition_restrictions, first_run_completed
+        onboarding_nutrition_preference, onboarding_nutrition_restrictions, first_run_completed,
+        baseline_weight_kg, baseline_body_fat_pct, baseline_bmi,
+        base_calories_kcal, body_fat_target_min_pct, body_fat_target_max_pct,
+        weight_target_min_kg, weight_target_max_kg, fat_target_g, carbs_target_g
       FROM user_profile
       WHERE owner_id = ?
       """;
@@ -64,7 +69,10 @@ public class JdbcUserProfileRepository implements UserProfileRepository {
         onboarding_profile_height_cm = ?, onboarding_metrics_choice = ?,
         onboarding_metrics_saved = ?, onboarding_goal_selected = ?, onboarding_training_days = ?,
         onboarding_equipment_items = ?, onboarding_nutrition_preference = ?,
-        onboarding_nutrition_restrictions = ?, first_run_completed = ?
+        onboarding_nutrition_restrictions = ?, first_run_completed = ?,
+        baseline_weight_kg = ?, baseline_body_fat_pct = ?, baseline_bmi = ?,
+        base_calories_kcal = ?, body_fat_target_min_pct = ?, body_fat_target_max_pct = ?,
+        weight_target_min_kg = ?, weight_target_max_kg = ?, fat_target_g = ?, carbs_target_g = ?
       WHERE owner_id = ?
       """;
 
@@ -77,8 +85,12 @@ public class JdbcUserProfileRepository implements UserProfileRepository {
          onboarding_profile_name, onboarding_profile_birth_date, onboarding_profile_sex,
          onboarding_profile_height_cm, onboarding_metrics_choice, onboarding_metrics_saved,
          onboarding_goal_selected, onboarding_training_days, onboarding_equipment_items,
-         onboarding_nutrition_preference, onboarding_nutrition_restrictions, first_run_completed)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         onboarding_nutrition_preference, onboarding_nutrition_restrictions, first_run_completed,
+         baseline_weight_kg, baseline_body_fat_pct, baseline_bmi,
+         base_calories_kcal, body_fat_target_min_pct, body_fat_target_max_pct,
+         weight_target_min_kg, weight_target_max_kg, fat_target_g, carbs_target_g)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+              ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       """;
 
   private static final RowMapper<UserProfile> ROW_MAPPER =
@@ -119,7 +131,19 @@ public class JdbcUserProfileRepository implements UserProfileRepository {
                   new OnboardingAnswers.NutritionDraft(
                       rs.getString("onboarding_nutrition_preference"),
                       rs.getString("onboarding_nutrition_restrictions"))),
-              rs.getBoolean("first_run_completed"));
+              rs.getBoolean("first_run_completed"),
+              new ProfileBaseline(
+                  toNullableDouble(rs.getBigDecimal("baseline_weight_kg")),
+                  toNullableDouble(rs.getBigDecimal("baseline_body_fat_pct")),
+                  toNullableDouble(rs.getBigDecimal("baseline_bmi"))),
+              new PersonalTargets(
+                  toNullableDouble(rs.getBigDecimal("base_calories_kcal")),
+                  toNullableDouble(rs.getBigDecimal("body_fat_target_min_pct")),
+                  toNullableDouble(rs.getBigDecimal("body_fat_target_max_pct")),
+                  toNullableDouble(rs.getBigDecimal("weight_target_min_kg")),
+                  toNullableDouble(rs.getBigDecimal("weight_target_max_kg")),
+                  toNullableDouble(rs.getBigDecimal("fat_target_g")),
+                  toNullableDouble(rs.getBigDecimal("carbs_target_g"))));
 
   private final JdbcTemplate jdbcTemplate;
 
@@ -152,6 +176,8 @@ public class JdbcUserProfileRepository implements UserProfileRepository {
     UnitPreferences units = profile.unitPreferences();
     DefaultObjectives objectives = profile.defaultObjectives();
     OnboardingAnswers onboarding = profile.onboardingAnswers();
+    ProfileBaseline baseline = profile.profileBaseline();
+    PersonalTargets targets = profile.personalTargets();
     return new Object[] {
       profile.name(),
       profile.email(),
@@ -179,7 +205,17 @@ public class JdbcUserProfileRepository implements UserProfileRepository {
       String.join(",", onboarding.equipment().items()),
       onboarding.nutrition().preference(),
       onboarding.nutrition().restrictions(),
-      profile.firstRunCompleted()
+      profile.firstRunCompleted(),
+      toNullableBigDecimal(baseline.weightKg()),
+      toNullableBigDecimal(baseline.bodyFatPct()),
+      toNullableBigDecimal(baseline.bmi()),
+      toNullableBigDecimal(targets.baseCaloriesKcal()),
+      toNullableBigDecimal(targets.bodyFatTargetMinPct()),
+      toNullableBigDecimal(targets.bodyFatTargetMaxPct()),
+      toNullableBigDecimal(targets.weightTargetMinKg()),
+      toNullableBigDecimal(targets.weightTargetMaxKg()),
+      toNullableBigDecimal(targets.fatTargetG()),
+      toNullableBigDecimal(targets.carbsTargetG())
     };
   }
 

@@ -153,7 +153,9 @@ class HydrationServiceTest {
         new DefaultObjectives(null, null, dailyWaterMl),
         null,
         null,
-        false);
+        false,
+        null,
+        null);
   }
 
   /** In-memory fake, matching {@code RecordingMealLogRepository} (FOR-127). */

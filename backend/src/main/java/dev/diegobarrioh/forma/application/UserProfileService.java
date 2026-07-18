@@ -69,7 +69,9 @@ public class UserProfileService {
             current.defaultObjectives(),
             current.themeMode(),
             current.onboardingAnswers(),
-            current.firstRunCompleted());
+            current.firstRunCompleted(),
+            current.profileBaseline(),
+            current.personalTargets());
     repository.save(merged);
     return merged;
   }
@@ -147,7 +149,9 @@ public class UserProfileService {
             current.defaultObjectives(),
             current.themeMode(),
             answers,
-            completed || current.firstRunCompleted());
+            completed || current.firstRunCompleted(),
+            current.profileBaseline(),
+            current.personalTargets());
     repository.save(updated);
     return updated;
   }
@@ -170,7 +174,9 @@ public class UserProfileService {
         source.defaultObjectives(),
         source.themeMode(),
         source.onboardingAnswers(),
-        source.firstRunCompleted());
+        source.firstRunCompleted(),
+        source.profileBaseline(),
+        source.personalTargets());
   }
 
   private static UserProfile withDefaultObjectives(
@@ -188,7 +194,9 @@ public class UserProfileService {
         objectives,
         source.themeMode(),
         source.onboardingAnswers(),
-        source.firstRunCompleted());
+        source.firstRunCompleted(),
+        source.profileBaseline(),
+        source.personalTargets());
   }
 
   private static UserProfile withThemeMode(UserProfile source, ThemeMode themeMode) {
@@ -205,6 +213,8 @@ public class UserProfileService {
         source.defaultObjectives(),
         themeMode,
         source.onboardingAnswers(),
-        source.firstRunCompleted());
+        source.firstRunCompleted(),
+        source.profileBaseline(),
+        source.personalTargets());
   }
 }

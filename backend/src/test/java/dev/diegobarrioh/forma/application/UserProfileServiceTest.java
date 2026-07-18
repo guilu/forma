@@ -6,6 +6,8 @@ import dev.diegobarrioh.forma.domain.ActivityLevel;
 import dev.diegobarrioh.forma.domain.DefaultObjectives;
 import dev.diegobarrioh.forma.domain.MainGoal;
 import dev.diegobarrioh.forma.domain.OnboardingAnswers;
+import dev.diegobarrioh.forma.domain.PersonalTargets;
+import dev.diegobarrioh.forma.domain.ProfileBaseline;
 import dev.diegobarrioh.forma.domain.Sex;
 import dev.diegobarrioh.forma.domain.ThemeMode;
 import dev.diegobarrioh.forma.domain.UnitPreferences;
@@ -54,7 +56,9 @@ class UserProfileServiceTest {
             DefaultObjectives.EMPTY,
             ThemeMode.DARK,
             OnboardingAnswers.EMPTY,
-            false));
+            false,
+            ProfileBaseline.EMPTY,
+            PersonalTargets.EMPTY));
 
     assertThat(service.get().name()).isEqualTo("Ada");
   }
@@ -76,7 +80,9 @@ class UserProfileServiceTest {
             new DefaultObjectives(500.0, 140.0, 2500.0),
             ThemeMode.LIGHT,
             OnboardingAnswers.EMPTY,
-            true));
+            true,
+            ProfileBaseline.EMPTY,
+            PersonalTargets.EMPTY));
 
     UserProfile updated =
         service.updateProfileFields("New Name", null, null, null, null, null, null);
@@ -88,6 +94,39 @@ class UserProfileServiceTest {
     assertThat(updated.themeMode()).isEqualTo(ThemeMode.LIGHT);
     assertThat(updated.defaultObjectives().caloricDeficitKcal()).isEqualTo(500.0);
     assertThat(repository.rows.get(UserProfileService.OWNER_ID)).isEqualTo(updated);
+  }
+
+  @Test
+  void updateProfileFieldsPreservesBaselineAndPersonalTargets() {
+    ProfileBaseline baseline = new ProfileBaseline(73.6, 14.7, 22.7);
+    PersonalTargets targets = new PersonalTargets(2300.0, 12.0, 13.0, 73.0, 75.0, 70.0, 260.0);
+    repository.rows.put(
+        UserProfileService.OWNER_ID,
+        new UserProfile(
+            UserProfileService.OWNER_ID,
+            "Diego",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            UnitPreferences.DEFAULT,
+            new DefaultObjectives(null, 160.0, null),
+            ThemeMode.DARK,
+            OnboardingAnswers.EMPTY,
+            false,
+            baseline,
+            targets));
+
+    UserProfile updated =
+        service.updateProfileFields("Diego B.", null, null, null, null, null, null);
+
+    // A profile-fields-only update must not clobber the seeded baseline/targets (same
+    // non-clobbering contract as preferences/objectives, spec FOR-149 Edge Cases).
+    assertThat(updated.profileBaseline()).isEqualTo(baseline);
+    assertThat(updated.personalTargets()).isEqualTo(targets);
+    assertThat(updated.defaultObjectives().proteinTargetG()).isEqualTo(160.0);
   }
 
   @Test
@@ -107,7 +146,9 @@ class UserProfileServiceTest {
             DefaultObjectives.EMPTY,
             ThemeMode.DARK,
             OnboardingAnswers.EMPTY,
-            false));
+            false,
+            ProfileBaseline.EMPTY,
+            PersonalTargets.EMPTY));
 
     UserProfile updated = service.updateThemeMode(ThemeMode.LIGHT);
 
@@ -144,7 +185,9 @@ class UserProfileServiceTest {
             DefaultObjectives.EMPTY,
             ThemeMode.LIGHT,
             OnboardingAnswers.EMPTY,
-            false));
+            false,
+            ProfileBaseline.EMPTY,
+            PersonalTargets.EMPTY));
 
     UserProfile updated = service.updateDefaultObjectives(new DefaultObjectives(400.0, null, null));
 
@@ -195,7 +238,9 @@ class UserProfileServiceTest {
             DefaultObjectives.EMPTY,
             ThemeMode.DARK,
             OnboardingAnswers.EMPTY,
-            true));
+            true,
+            ProfileBaseline.EMPTY,
+            PersonalTargets.EMPTY));
 
     UserProfile updated =
         service.submitOnboardingAnswers(

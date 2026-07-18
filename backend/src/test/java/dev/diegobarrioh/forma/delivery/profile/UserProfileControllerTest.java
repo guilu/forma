@@ -13,6 +13,8 @@ import dev.diegobarrioh.forma.application.UserProfileService;
 import dev.diegobarrioh.forma.domain.DefaultObjectives;
 import dev.diegobarrioh.forma.domain.MainGoal;
 import dev.diegobarrioh.forma.domain.OnboardingAnswers;
+import dev.diegobarrioh.forma.domain.PersonalTargets;
+import dev.diegobarrioh.forma.domain.ProfileBaseline;
 import dev.diegobarrioh.forma.domain.ThemeMode;
 import dev.diegobarrioh.forma.domain.UnitPreferences;
 import dev.diegobarrioh.forma.domain.UserProfile;
@@ -49,7 +51,9 @@ class UserProfileControllerTest {
         DefaultObjectives.EMPTY,
         themeMode,
         OnboardingAnswers.EMPTY,
-        firstRunCompleted);
+        firstRunCompleted,
+        ProfileBaseline.EMPTY,
+        PersonalTargets.EMPTY);
   }
 
   @Test
@@ -65,7 +69,55 @@ class UserProfileControllerTest {
         .andExpect(jsonPath("$.unitPreferences.distanceUnit").value("KM"))
         .andExpect(jsonPath("$.unitPreferences.energyUnit").value("KCAL"))
         .andExpect(jsonPath("$.firstRunCompleted").value(false))
-        .andExpect(jsonPath("$.name").doesNotExist());
+        .andExpect(jsonPath("$.name").doesNotExist())
+        .andExpect(jsonPath("$.personalTargets.baseCaloriesKcal").doesNotExist());
+  }
+
+  @Test
+  void getReturnsSeededPersonalTargetsMatchingThePerfilSheet() throws Exception {
+    UserProfile withTargets =
+        new UserProfile(
+            "default-user",
+            "Diego",
+            null,
+            null,
+            null,
+            180.0,
+            null,
+            MainGoal.COMPOSICION,
+            UnitPreferences.DEFAULT,
+            new DefaultObjectives(null, 160.0, null),
+            ThemeMode.DARK,
+            OnboardingAnswers.EMPTY,
+            false,
+            new ProfileBaseline(73.6, 14.7, 22.7),
+            new PersonalTargets(2300.0, 12.0, 13.0, 73.0, 75.0, 70.0, 260.0));
+    when(service.get()).thenReturn(withTargets);
+
+    mockMvc
+        .perform(get("/api/v1/profile"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.name").value("Diego"))
+        .andExpect(jsonPath("$.heightCm").value(180.0))
+        .andExpect(jsonPath("$.personalTargets.baseCaloriesKcal").value(2300.0))
+        .andExpect(jsonPath("$.personalTargets.bodyFatTargetMinPct").value(12.0))
+        .andExpect(jsonPath("$.personalTargets.bodyFatTargetMaxPct").value(13.0))
+        .andExpect(jsonPath("$.personalTargets.weightTargetMinKg").value(73.0))
+        .andExpect(jsonPath("$.personalTargets.weightTargetMaxKg").value(75.0))
+        .andExpect(jsonPath("$.personalTargets.proteinTargetG").value(160.0))
+        .andExpect(jsonPath("$.personalTargets.fatTargetG").value(70.0))
+        .andExpect(jsonPath("$.personalTargets.carbsTargetG").value(260.0));
+  }
+
+  @Test
+  void getForAnUnseededProfileReturnsNullTargetsNot404() throws Exception {
+    when(service.get()).thenReturn(UserProfile.defaults("default-user"));
+
+    mockMvc
+        .perform(get("/api/v1/profile"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.personalTargets.baseCaloriesKcal").doesNotExist())
+        .andExpect(jsonPath("$.personalTargets.proteinTargetG").doesNotExist());
   }
 
   @Test
@@ -158,7 +210,9 @@ class UserProfileControllerTest {
             new DefaultObjectives(500.0, null, null),
             ThemeMode.DARK,
             OnboardingAnswers.EMPTY,
-            false);
+            false,
+            ProfileBaseline.EMPTY,
+            PersonalTargets.EMPTY);
     when(service.updateDefaultObjectives(any())).thenReturn(updated);
 
     mockMvc
@@ -192,7 +246,9 @@ class UserProfileControllerTest {
                 null,
                 null,
                 null),
-            true);
+            true,
+            ProfileBaseline.EMPTY,
+            PersonalTargets.EMPTY);
     when(service.submitOnboardingAnswers(any(), eq(true))).thenReturn(completed);
 
     mockMvc
