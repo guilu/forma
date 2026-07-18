@@ -97,7 +97,10 @@ describe('api client requestBlob (FOR-144)', () => {
     const client = createApiClient('http://test');
     const blob = await client.requestBlob('/api/v1/progress/photos/abc');
 
-    expect(blob).toBeInstanceOf(Blob);
+    // Assert the behavioural contract (content-type + size), not Blob identity:
+    // `toBeInstanceOf(Blob)` is unreliable across realms (the mocked fetch's Blob
+    // differs from the global one under jsdom/CI), and the arrayBuffer method is
+    // absent on jsdom's Blob — type and size hold in every environment.
     expect(blob.type).toBe('image/jpeg');
     expect(blob.size).toBe(3);
   });
