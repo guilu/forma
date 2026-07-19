@@ -30,18 +30,27 @@ class WeeklyInsightsServiceTest {
   private final WeeklyCheckInService checkInService = mock(WeeklyCheckInService.class);
   private final BodyTrendRecommendationService bodyTrendService =
       mock(BodyTrendRecommendationService.class);
+  private final BodyFatTrendRecommendationService bodyFatTrendService =
+      mock(BodyFatTrendRecommendationService.class);
   private final TrainingAdherenceRecommendationService trainingAdherenceService =
       mock(TrainingAdherenceRecommendationService.class);
   private final RecoveryWarningRecommendationService recoveryWarningService =
       mock(RecoveryWarningRecommendationService.class);
+  private final PaceDegradationRecommendationService paceDegradationService =
+      mock(PaceDegradationRecommendationService.class);
+  private final ShoppingCostRecommendationService shoppingCostService =
+      mock(ShoppingCostRecommendationService.class);
   private final InsightHistoryRepository historyRepository = mock(InsightHistoryRepository.class);
 
   private final WeeklyInsightsService service =
       new WeeklyInsightsService(
           checkInService,
           bodyTrendService,
+          bodyFatTrendService,
           trainingAdherenceService,
           recoveryWarningService,
+          paceDegradationService,
+          shoppingCostService,
           historyRepository,
           FIXED);
 
