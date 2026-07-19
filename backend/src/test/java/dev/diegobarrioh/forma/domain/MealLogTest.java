@@ -29,9 +29,9 @@ class MealLogTest {
 
   @Test
   void addingCatalogAndFreeEntriesAccumulatesConsumedMacros() {
-    FoodItem oats = FoodCatalog.findById("oats").orElseThrow(); // 389/16.9/66.3/6.9 per 100g
+    FoodItem oats = FoodCatalog.findById("oats").orElseThrow(); // 370/13.0/60.0/7.0 per 100g
     MealLogEntry catalogEntry =
-        MealLogEntry.fromCatalog(DAY, MealType.BREAKFAST, oats, 1.0); // 60g -> 233/10.1/39.8/4.1
+        MealLogEntry.fromCatalog(DAY, MealType.BREAKFAST, oats, 1.0); // 60g -> 222/7.8/36.0/4.2
     MealLogEntry freeEntry =
         MealLogEntry.freeEntry(
             DAY, MealType.MID_MORNING, "Café con leche", new NutritionTotals(90, 5.0, 8.0, 3.0));

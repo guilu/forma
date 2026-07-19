@@ -46,9 +46,9 @@ class MealLogServiceTest {
     StoredMealLogEntry stored = service.log(command);
 
     assertThat(stored.id()).isNotBlank();
-    assertThat(stored.entry().name()).isEqualTo("Avena");
+    assertThat(stored.entry().name()).isEqualTo("Copos de avena");
     assertThat(stored.entry().foodItemId()).isEqualTo("oats");
-    assertThat(stored.entry().totals().calories()).isEqualTo(233); // 389 * 0.6
+    assertThat(stored.entry().totals().calories()).isEqualTo(222); // 370 * 0.6
   }
 
   @Test

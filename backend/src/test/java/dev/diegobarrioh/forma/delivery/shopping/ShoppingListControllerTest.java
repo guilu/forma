@@ -61,7 +61,8 @@ class ShoppingListControllerTest {
                 ShoppingUnit.KG,
                 4,
                 "https://tienda.mercadona.es/p1")),
-        new ShoppingBudget(new BigDecimal("24.60"), new BigDecimal("106.52")),
+        new ShoppingBudget(
+            new BigDecimal("24.60"), new BigDecimal("106.52"), new BigDecimal("120.00"), false),
         GENERATED_AT);
   }
 
@@ -82,7 +83,9 @@ class ShoppingListControllerTest {
         .andExpect(jsonPath("$.items[0].servings").value(4))
         .andExpect(jsonPath("$.items[0].productUrl").value("https://tienda.mercadona.es/p1"))
         .andExpect(jsonPath("$.budget.weeklyEur").value(24.60))
-        .andExpect(jsonPath("$.budget.monthlyEur").value(106.52));
+        .andExpect(jsonPath("$.budget.monthlyEur").value(106.52))
+        .andExpect(jsonPath("$.budget.weeklyThresholdEur").value(120.00))
+        .andExpect(jsonPath("$.budget.overThreshold").value(false));
   }
 
   @Test
@@ -103,7 +106,8 @@ class ShoppingListControllerTest {
                     ShoppingUnit.UD,
                     null,
                     null)),
-            new ShoppingBudget(new BigDecimal("0.90"), new BigDecimal("3.90")),
+            new ShoppingBudget(
+                new BigDecimal("0.90"), new BigDecimal("3.90"), new BigDecimal("120.00"), false),
             GENERATED_AT);
     when(service.currentView()).thenReturn(viewWithNoServings);
 
@@ -169,7 +173,8 @@ class ShoppingListControllerTest {
                     ShoppingUnit.UD,
                     null,
                     "https://tienda.mercadona.es/p1")),
-            new ShoppingBudget(new BigDecimal("1.95"), new BigDecimal("8.44")),
+            new ShoppingBudget(
+                new BigDecimal("1.95"), new BigDecimal("8.44"), new BigDecimal("120.00"), false),
             newGeneratedAt);
     when(service.regenerate()).thenReturn(regenerated);
 

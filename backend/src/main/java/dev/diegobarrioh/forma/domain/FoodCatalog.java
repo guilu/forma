@@ -4,59 +4,107 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * The initial food catalog (FOR-30): the common foods used by the nutrition plan, with estimated
- * per-100 g nutrition values.
+ * The food catalog (FOR-30, reseeded FOR-152): Diego's 23 real foods from {@code
+ * docs/fitness_os.xlsm} sheet <b>Macros</b> (epic FOR-148 "Personalizar FORMA a Diego", slice 4),
+ * replacing the original 12 generic demo foods.
  *
  * <p>Defined in code with stable ids rather than as persisted seed data — no nutrition persistence
  * exists yet and meal items (FOR-31) only need to reference foods by a stable id (spec FOR-30 Open
- * Questions, consistent with the FOR-24 exercise catalog). No migration is introduced. Values are
- * sensible MVP estimates per 100 g, not medical data; product/price data lives in Shopping (FOR-5).
+ * Questions, reaffirmed by FOR-152's spec: "keep the in-code approach unless persistence is
+ * otherwise needed"). No migration is introduced here. kcal/protein/carbs/fat and the default
+ * serving (ración) are copied verbatim from the Macros sheet, in the sheet's own row order.
  *
- * <p><b>Key nutrients (FOR-134).</b> Fibre/sugars/sodium/saturated-fat per 100 g are populated only
- * where a reasonably confident general reference value exists (single-ingredient, low
- * brand/preparation variance — e.g. raw oats, raw banana, plain dairy, unseasoned meat's zero
- * carbs). They are left {@code null} wherever the food is too variable to responsibly assert a
- * precise number (e.g. "queso fresco" and "verduras mixtas" are generic,
- * brand/composition-dependent groupings; sodium for cooked staples like rice/potato/meat depends
- * heavily on whether salt was added during preparation, which this catalog does not track) — never
- * fabricated, per AGENTS.md and the FOR-134 spec. This intentionally yields a mix of
- * fully-populated, partially-populated and fully-null entries (see {@code FoodCatalogTest}).
+ * <p><b>Key nutrients (FOR-134).</b> The Macros sheet has no fibre/sugars/sodium/saturated-fat
+ * columns at all — so, per AGENTS.md and the FOR-134/FOR-152 "never fabricate" rule, most of these
+ * 23 foods carry fully {@code null} key nutrients. A few keep a populated (full or partial) profile
+ * only where a stable, brand-independent reference genuinely applies regardless of Diego's own
+ * tracked macro numbers: rolled oats (a standard, low-variance category), a raw banana (whose
+ * macros match the old catalog's banana reference exactly), whole eggs (fibre confidently zero;
+ * sodium/sat-fat are well-established for a standardised product), pure olive oil (a single
+ * ingredient with well-known composition), and "0 g carbs/100g -> fibre/sugars confidently 0" for
+ * the meats/fish whose sheet row shows exactly zero carbohydrate (pollo, atún, merluza, salmón).
+ * Foods whose carbs aren't exactly zero (e.g. pavo at 1 g/100g), or that are branded/composite
+ * products (queso fresco batido 0%, yogur proteína, pasta integral, pan integral, frutos secos...),
+ * are left fully {@code null} rather than guessing a plausible-looking number.
  */
 public final class FoodCatalog {
 
   private static final List<FoodItem> FOODS =
       List.of(
-          // Fully known: matches a standard raw-oats reference (fibre/sugars/sodium/sat-fat).
-          new FoodItem("oats", "Avena", 389, 16.9, 66.3, 6.9, 60, 10.6, 0.0, 2.0, 1.2),
-          // Partial: eggs have no fibre (confident); sodium/sat-fat are well-established for whole
-          // eggs; sugars is left null (too small/uncertain to assert precisely).
-          new FoodItem("eggs", "Huevos", 155, 13.0, 1.1, 11.0, 100, 0.0, null, 124.0, 3.3),
-          // Fully known: plain whole-milk yogurt's carbs are essentially all lactose (sugars).
-          new FoodItem("yogurt", "Yogur natural", 61, 3.5, 4.7, 3.3, 125, 0.0, 4.7, 36.0, 2.0),
-          // Fully null: "queso fresco" varies too much by brand/region to assert a precise value.
-          new FoodItem("fresh-cheese", "Queso fresco", 98, 11.0, 3.4, 4.0, 100),
-          // Partial: meat has no carbs (fibre/sugars confidently 0); sat-fat is well known for
-          // skinless chicken breast; sodium depends on preparation -> left null.
-          new FoodItem("chicken", "Pollo (pechuga)", 165, 31.0, 0.0, 3.6, 150, 0.0, 0.0, null, 1.0),
-          new FoodItem("turkey", "Pavo (pechuga)", 135, 29.0, 0.0, 1.0, 150, 0.0, 0.0, null, 0.3),
-          // Partial: fibre/sugars confidently 0 (fish has no carbs); sat-fat/sodium vary too much
-          // across white-fish species/preparation to assert -> left null.
-          new FoodItem("fish", "Pescado blanco", 96, 20.0, 0.0, 1.5, 150, 0.0, 0.0, null, null),
-          // Partial: cooked white rice has low, fairly consistent fibre/sat-fat and negligible
-          // sugar; sodium depends entirely on whether salt was added while cooking -> left null.
-          new FoodItem("rice", "Arroz cocido", 130, 2.7, 28.0, 0.3, 150, 0.4, 0.0, null, 0.1),
-          // Partial: boiled potato flesh has fairly consistent fibre/sugars/sat-fat; sodium depends
-          // on whether salted -> left null.
-          new FoodItem("potato", "Patata cocida", 87, 2.0, 20.0, 0.1, 200, 1.8, 0.8, null, 0.0),
-          // Fully known: matches a standard raw-banana reference exactly on all four macros, so its
-          // companion key-nutrient values are trusted from the same source.
-          new FoodItem("banana", "Plátano", 89, 1.1, 22.8, 0.3, 120, 2.6, 12.2, 1.0, 0.1),
-          // Fully null: a generic "mixed vegetables" grouping has no single accurate composition.
-          new FoodItem("vegetables", "Verduras mixtas", 40, 2.5, 7.0, 0.4, 200),
+          // Fully known: rolled oats is a stable, low-variance category; the fibre/sugars/sodium/
+          // sat-fat figures mirror the same rolled-oats reference the pre-FOR-152 catalog used.
+          new FoodItem("oats", "Copos de avena", 370, 13.0, 60.0, 7.0, 60, 10.6, 0.0, 2.0, 1.2),
           // Mostly null: whey protein powder's sugar/sodium/sat-fat vary hugely by brand/flavour;
           // only "no fibre" is a safe general claim for a protein powder.
           new FoodItem(
-              "whey-protein", "Proteína whey", 400, 80.0, 8.0, 6.0, 30, 0.0, null, null, null));
+              "whey-protein", "Whey proteína", 390, 78.0, 8.0, 6.0, 30, 0.0, null, null, null),
+          // Fully known: macros match a standard raw-banana reference exactly (same as the old
+          // catalog's banana), so its companion key-nutrient values are trusted from that source.
+          new FoodItem("banana", "Plátano", 89, 1.1, 23.0, 0.3, 120, 2.6, 12.2, 1.0, 0.1),
+          // Partial: whole eggs have no fibre (confident, animal product); sodium/sat-fat are
+          // well-established for a standardised whole egg. Sugars left null (too small/uncertain).
+          new FoodItem("eggs", "Huevos", 143, 13.0, 1.0, 10.0, 120, 0.0, null, 124.0, 3.3),
+          // Partial: liquid egg white is a pure animal protein (no fibre, confident); sugars/
+          // sodium/sat-fat depend on pasteurisation/additives -> left null.
+          new FoodItem(
+              "egg-whites", "Claras líquidas", 48, 10.5, 0.7, 0.2, 150, 0.0, null, null, null),
+          // Fully null: a specific branded product (0% fat fresh cheese) -> never fabricated.
+          new FoodItem("fresh-cheese", "Queso fresco batido 0%", 46, 8.5, 3.5, 0.1, 250),
+          // Fully null: a branded protein yogurt's sweetener/sodium profile is not given by the
+          // sheet.
+          new FoodItem("yogurt", "Yogur proteína", 59, 10.0, 4.0, 0.2, 200),
+          // Partial: pollo has 0 g carbs/100g -> fibre/sugars confidently 0; sodium and sat-fat
+          // are cut/prep-dependent and not given by the sheet -> left null.
+          new FoodItem("chicken", "Pechuga pollo", 110, 23.0, 0.0, 2.0, 200, 0.0, 0.0, null, null),
+          // Fully null: pavo has 1 g carbs/100g (not confidently 0), so unlike chicken this is not
+          // asserted.
+          new FoodItem("turkey", "Pavo lonchas/corte", 105, 22.0, 1.0, 2.0, 150),
+          // Partial: atún natural has 0 g carbs/100g -> fibre/sugars confidently 0; sodium (brine/
+          // salt varies by can) and sat-fat left null.
+          new FoodItem("tuna", "Atún natural", 116, 25.0, 0.0, 1.0, 120, 0.0, 0.0, null, null),
+          // Partial: merluza (white fish) has 0 g carbs/100g -> fibre/sugars confidently 0; sodium/
+          // sat-fat vary by prep -> left null.
+          new FoodItem("fish", "Merluza", 74, 16.0, 0.0, 1.0, 200, 0.0, 0.0, null, null),
+          // Partial: salmón has 0 g carbs/100g -> fibre/sugars confidently 0; sat-fat is
+          // meaningfully non-trivial for an oily fish but no specific figure is given -> left null.
+          new FoodItem("salmon", "Salmón", 208, 20.0, 0.0, 13.0, 180, 0.0, 0.0, null, null),
+          // Fully null: raw/dry rice's fibre/sodium/sat-fat depend on variety and cooking method,
+          // not captured by the sheet's per-100g dry figures.
+          new FoodItem("rice", "Arroz", 360, 7.0, 79.0, 1.0, 80),
+          // Fully null: a branded whole-wheat pasta product.
+          new FoodItem("whole-wheat-pasta", "Pasta integral", 350, 13.0, 70.0, 2.0, 80),
+          // Fully null: raw vs cooked potato reference values differ and aren't disambiguated by
+          // the sheet.
+          new FoodItem("potato", "Patata", 77, 2.0, 17.0, 0.1, 300),
+          // Fully null: boniato (sweet potato) has no confident reference in this dataset.
+          new FoodItem("sweet-potato", "Boniato", 86, 1.6, 20.0, 0.1, 250),
+          // Fully null: a branded whole-wheat bread product.
+          new FoodItem("whole-wheat-bread", "Pan integral", 250, 9.0, 44.0, 4.0, 80),
+          // Fully null: a generic "mixed vegetables" grouping has no single accurate composition.
+          new FoodItem("vegetables", "Verdura variada", 35, 2.0, 6.0, 0.3, 300),
+          // Fully null: a prepared/bagged salad mix varies by composition.
+          new FoodItem("salad", "Ensalada preparada", 25, 1.5, 4.0, 0.2, 150),
+          // Fully known: pure olive oil is a single ingredient with well-known, low-variance
+          // composition (no carbs/protein -> fibre/sugars/sodium confidently 0; sat-fat is a
+          // well-established figure for olive oil specifically).
+          new FoodItem(
+              "olive-oil",
+              "Aceite oliva virgen extra",
+              900,
+              0.0,
+              0.0,
+              100.0,
+              10,
+              0.0,
+              0.0,
+              0.0,
+              14.0),
+          // Fully null: a mixed nut blend's exact ratio (and thus fibre/sat-fat split) varies.
+          new FoodItem("almonds-walnuts", "Almendras/nueces", 600, 20.0, 10.0, 54.0, 25),
+          // Fully null: a frozen mixed-berry blend varies by composition.
+          new FoodItem("berries", "Frutos rojos congelados", 50, 1.0, 10.0, 0.5, 100),
+          // Fully null: skimmed milk's exact sodium/fortification profile varies by brand.
+          new FoodItem("skim-milk", "Leche desnatada", 35, 3.5, 5.0, 0.1, 250));
 
   private FoodCatalog() {}
 

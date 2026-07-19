@@ -74,4 +74,59 @@ class ShoppingBudgetCalculatorTest {
     assertThat(cheaper).isEqualByComparingTo("7.80");
     assertThat(pricier).isEqualByComparingTo("8.90");
   }
+
+  // --- FOR-152: the < 120 €/week cost threshold (epic FOR-148 slice 4, Dashboard sheet target) ---
+
+  @Test
+  void everyBudgetCarriesTheOneHundredTwentyEuroThreshold() {
+    ShoppingBudget budget = ShoppingBudgetCalculator.budget(list(), Map.of());
+
+    assertThat(budget.weeklyThresholdEur()).isEqualByComparingTo("120.00");
+  }
+
+  @Test
+  void aWeeklyTotalWellUnderTheThresholdIsNotOver() {
+    ShoppingList list = list(item("p1", 2), item("p2", 1));
+    Map<String, BigDecimal> prices =
+        Map.of("p1", new BigDecimal("1.95"), "p2", new BigDecimal("3.90"));
+
+    ShoppingBudget budget = ShoppingBudgetCalculator.budget(list, prices);
+
+    assertThat(budget.weeklyEur()).isEqualByComparingTo("7.80");
+    assertThat(budget.overThreshold()).isFalse();
+  }
+
+  @Test
+  void aWeeklyTotalWellOverTheThresholdIsOver() {
+    ShoppingList list = list(item("p1", 2));
+    Map<String, BigDecimal> prices = Map.of("p1", new BigDecimal("75.00"));
+
+    ShoppingBudget budget = ShoppingBudgetCalculator.budget(list, prices);
+
+    assertThat(budget.weeklyEur()).isEqualByComparingTo("150.00");
+    assertThat(budget.overThreshold()).isTrue();
+  }
+
+  @Test
+  void exactlyOneHundredTwentyEurosIsNotOverPerTheExcelStrictlyGreaterThanRule() {
+    // Excel Dashboard/Reglas rule is ">120 €", so exactly 120.00 stays OK (boundary documented in
+    // specs/FOR-150/spec.md: "exactly ... 120 € — document inclusive/exclusive per the Excel").
+    ShoppingList list = list(item("p1", 1));
+    Map<String, BigDecimal> prices = Map.of("p1", new BigDecimal("120.00"));
+
+    ShoppingBudget budget = ShoppingBudgetCalculator.budget(list, prices);
+
+    assertThat(budget.weeklyEur()).isEqualByComparingTo("120.00");
+    assertThat(budget.overThreshold()).isFalse();
+  }
+
+  @Test
+  void oneCentOverOneHundredTwentyEurosIsOver() {
+    ShoppingList list = list(item("p1", 1));
+    Map<String, BigDecimal> prices = Map.of("p1", new BigDecimal("120.01"));
+
+    ShoppingBudget budget = ShoppingBudgetCalculator.budget(list, prices);
+
+    assertThat(budget.overThreshold()).isTrue();
+  }
 }
