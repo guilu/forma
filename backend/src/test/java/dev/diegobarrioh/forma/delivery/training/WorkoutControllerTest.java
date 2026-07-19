@@ -31,7 +31,7 @@ class WorkoutControllerTest {
 
   private static StrengthWorkoutTemplate pushTemplate() {
     return new StrengthWorkoutTemplate(
-        WorkoutType.PUSH, List.of(new StrengthWorkoutItem("push-up", 1, 3, 8, 12, 90, 2)));
+        WorkoutType.PUSH, List.of(StrengthWorkoutItem.range("push-up", 1, 3, 8, 12, 90, 2)));
   }
 
   @Test
@@ -46,10 +46,42 @@ class WorkoutControllerTest {
         .andExpect(jsonPath("$[0].items[0].exerciseName").value("Flexiones"))
         .andExpect(jsonPath("$[0].items[0].order").value(1))
         .andExpect(jsonPath("$[0].items[0].sets").value(3))
+        .andExpect(jsonPath("$[0].items[0].repScheme").value("RANGE"))
         .andExpect(jsonPath("$[0].items[0].repsMin").value(8))
         .andExpect(jsonPath("$[0].items[0].repsMax").value(12))
         .andExpect(jsonPath("$[0].items[0].restSeconds").value(90))
         .andExpect(jsonPath("$[0].items[0].rir").value(2));
+  }
+
+  @Test
+  void anAmrapItemOmitsRepBoundsFromTheResponse() throws Exception {
+    StrengthWorkoutTemplate template =
+        new StrengthWorkoutTemplate(
+            WorkoutType.PUSH, List.of(StrengthWorkoutItem.amrap("push-up", 1, 3, 60, 1)));
+    when(service.allTemplates()).thenReturn(List.of(template));
+
+    mockMvc
+        .perform(get("/api/v1/training/workouts"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].items[0].repScheme").value("AMRAP"))
+        .andExpect(jsonPath("$[0].items[0].repsMin").doesNotExist())
+        .andExpect(jsonPath("$[0].items[0].repsMax").doesNotExist());
+  }
+
+  @Test
+  void aTimeHoldItemExposesDurationBoundsInsteadOfReps() throws Exception {
+    StrengthWorkoutTemplate template =
+        new StrengthWorkoutTemplate(
+            WorkoutType.PUSH, List.of(StrengthWorkoutItem.timeHold("plank", 1, 3, 45, 75, 45, 2)));
+    when(service.allTemplates()).thenReturn(List.of(template));
+
+    mockMvc
+        .perform(get("/api/v1/training/workouts"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].items[0].repScheme").value("TIME"))
+        .andExpect(jsonPath("$[0].items[0].durationSecondsMin").value(45))
+        .andExpect(jsonPath("$[0].items[0].durationSecondsMax").value(75))
+        .andExpect(jsonPath("$[0].items[0].repsMin").doesNotExist());
   }
 
   @Test
@@ -86,7 +118,7 @@ class WorkoutControllerTest {
     StrengthWorkoutTemplate templateWithDanglingReference =
         new StrengthWorkoutTemplate(
             WorkoutType.PUSH,
-            List.of(new StrengthWorkoutItem("no-such-exercise", 1, 3, 8, 12, 90, 2)));
+            List.of(StrengthWorkoutItem.range("no-such-exercise", 1, 3, 8, 12, 90, 2)));
     when(service.allTemplates()).thenReturn(List.of(templateWithDanglingReference));
 
     mockMvc

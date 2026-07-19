@@ -11,6 +11,11 @@ import java.util.Optional;
  * exists yet and templates (FOR-25) only need to reference exercises by a stable id (spec FOR-24
  * Open Questions, consistent with the FOR-23 in-code running plan). No migration is introduced.
  * Every exercise uses only home {@link Equipment}; there are no machine/gym exercises.
+ *
+ * <p><b>FOR-154 additions:</b> dumbbell bench press, lateral raise, biceps curl, rear-delt fly and
+ * calf raise were added so {@link WorkoutTemplateCatalog} can reference Diego's real 5-exercise
+ * blocks (sheet <em>Fuerza</em>). {@code bench-dip} stays in the catalog even though no current
+ * template references it — reference data is independent of which templates happen to use it.
  */
 public final class ExerciseCatalog {
 
@@ -38,6 +43,20 @@ public final class ExerciseCatalog {
               List.of("tríceps", "pecho"),
               Equipment.BENCH,
               "Manos en el banco, baja los codos a 90 grados y empuja hacia arriba."),
+          new Exercise(
+              "dumbbell-bench-press",
+              "Press de banca con mancuernas",
+              MovementPattern.PUSH,
+              List.of("pecho", "tríceps", "hombro anterior"),
+              Equipment.DUMBBELL,
+              "Tumbado en el banco, empuja las mancuernas desde el pecho hasta extender los brazos."),
+          new Exercise(
+              "lateral-raise",
+              "Elevaciones laterales",
+              MovementPattern.PUSH,
+              List.of("hombro lateral"),
+              Equipment.DUMBBELL,
+              "De pie, eleva las mancuernas hacia los lados hasta la altura del hombro, codos ligeramente flexionados."),
           // Pull
           new Exercise(
               "pull-up",
@@ -60,6 +79,20 @@ public final class ExerciseCatalog {
               List.of("deltoides posterior", "trapecio"),
               Equipment.BAND,
               "Tira de la banda hacia la cara separando las manos al final del movimiento."),
+          new Exercise(
+              "biceps-curl",
+              "Curl de bíceps",
+              MovementPattern.PULL,
+              List.of("bíceps"),
+              Equipment.DUMBBELL,
+              "De pie, flexiona los codos elevando las mancuernas sin balancear el torso."),
+          new Exercise(
+              "rear-delt-fly",
+              "Pájaros posteriores",
+              MovementPattern.PULL,
+              List.of("deltoides posterior"),
+              Equipment.DUMBBELL,
+              "Inclinado hacia delante, abre los brazos con las mancuernas hasta la altura de los hombros."),
           // Legs (squat / hinge)
           new Exercise(
               "goblet-squat",
@@ -82,6 +115,13 @@ public final class ExerciseCatalog {
               List.of("cuádriceps", "glúteo"),
               Equipment.BODYWEIGHT,
               "Da un paso atrás y baja la rodilla trasera cerca del suelo; alterna piernas."),
+          new Exercise(
+              "calf-raise",
+              "Elevación de gemelos",
+              MovementPattern.SQUAT,
+              List.of("gemelos"),
+              Equipment.BODYWEIGHT,
+              "De pie, elévate sobre la punta de los pies y baja controlado sin rebotar."),
           // Core
           new Exercise(
               "plank",

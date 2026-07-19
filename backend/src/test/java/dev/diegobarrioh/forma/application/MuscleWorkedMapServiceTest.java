@@ -24,8 +24,10 @@ class MuscleWorkedMapServiceTest {
 
   @Test
   void aggregatesTheTuesdayPushTemplateWithEscalatedLoadsForSharedMuscles() {
-    // PUSH: push-up(pecho, tríceps, hombro anterior), dumbbell-shoulder-press(hombro, tríceps),
-    // bench-dip(tríceps, pecho) -> tríceps x3, pecho x2 (HIGH); hombro anterior, hombro x1
+    // PUSH (FOR-154 real template): dumbbell-bench-press(pecho, tríceps, hombro anterior),
+    // dumbbell-shoulder-press(hombro, tríceps), push-up(pecho, tríceps, hombro anterior),
+    // lateral-raise(hombro lateral), plank(core, abdomen)
+    // -> tríceps x3, pecho x2, hombro anterior x2 (HIGH); hombro, hombro lateral, core, abdomen x1
     // (MEDIUM).
     MuscleWorkedMap result = service.resolve("TUESDAY:STRENGTH");
 
@@ -34,8 +36,9 @@ class MuscleWorkedMapServiceTest {
         .contains(
             new MuscleWorked("tríceps", MuscleLoad.HIGH),
             new MuscleWorked("pecho", MuscleLoad.HIGH),
-            new MuscleWorked("hombro anterior", MuscleLoad.MEDIUM),
-            new MuscleWorked("hombro", MuscleLoad.MEDIUM));
+            new MuscleWorked("hombro anterior", MuscleLoad.HIGH),
+            new MuscleWorked("hombro", MuscleLoad.MEDIUM),
+            new MuscleWorked("hombro lateral", MuscleLoad.MEDIUM));
   }
 
   @Test
@@ -58,8 +61,9 @@ class MuscleWorkedMapServiceTest {
   void neverFabricatesAMuscleNotPresentInTheRealCatalogData() {
     MuscleWorkedMap result = service.resolve("THURSDAY:STRENGTH");
 
-    // PULL: pull-up(dorsal, bíceps), dumbbell-row(dorsal, romboides, bíceps),
-    // band-face-pull(deltoides posterior, trapecio).
+    // PULL (FOR-154 real template): pull-up(dorsal, bíceps), dumbbell-row(dorsal, romboides,
+    // bíceps), band-face-pull(deltoides posterior, trapecio), biceps-curl(bíceps),
+    // rear-delt-fly(deltoides posterior) -> no new muscle names, just higher frequency.
     assertThat(result.muscles())
         .extracting(MuscleWorked::muscle)
         .containsExactlyInAnyOrder(

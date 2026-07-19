@@ -4,43 +4,64 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * The initial strength workout templates (FOR-25): Push, Pull, and Legs &amp; core, built from
- * FOR-24 catalog exercises.
+ * The strength workout templates (FOR-25, rebuilt to Diego's real plan by FOR-154): Push, Pull, and
+ * Legs &amp; core, built from FOR-24 catalog exercises.
  *
- * <p>Defined in code with moderate volume suitable for someone also running — no periodization
- * (spec FOR-25). Consistent with the FOR-23/FOR-24 in-code approach: no persistence/migration is
- * introduced. Every referenced {@code exerciseId} is checked against {@link ExerciseCatalog} at
- * class initialization, so a typo fails fast rather than shipping a dangling reference.
+ * <p>Consistent with the FOR-23/FOR-24 in-code approach: no persistence/migration is introduced.
+ * Every referenced {@code exerciseId} is checked against {@link ExerciseCatalog} at class
+ * initialization, so a typo fails fast rather than shipping a dangling reference.
+ *
+ * <p><b>FOR-154 (sheet <em>Fuerza</em> of {@code docs/fitness_os.xlsm}):</b> each template now has
+ * 5 exercises with per-exercise sets/reps/RIR/rest instead of the original 3-exercise/4-exercise
+ * uniform-scheme blocks. Every value below is transcribed directly from the sheet; nothing is
+ * fabricated. AMRAP items (Flexiones, Dominadas) and the Plancha timed hold use {@link RepScheme}
+ * (FOR-154) instead of a fixed rep range.
+ *
+ * <p><b>Documented assumption (per-side reps):</b> Zancadas' "10–12/pierna" is stored as a plain
+ * {@link RepScheme#RANGE} of 10–12 — the "/pierna" (per-leg) qualifier is not modeled as a separate
+ * domain field (spec FOR-154 Open Questions leaves this undecided); it is documented here in code
+ * and the {@code reverse-lunge} catalog instructions already say "alterna piernas".
  */
 public final class WorkoutTemplateCatalog {
-
-  // Moderate defaults: 3 sets, hypertrophy rep range, ~2 reps in reserve.
-  private static final int SETS = 3;
-  private static final int RIR = 2;
-  private static final int COMPOUND_REST_SECONDS = 90;
-  private static final int CORE_REST_SECONDS = 45;
 
   private static final List<StrengthWorkoutTemplate> TEMPLATES =
       List.of(
           new StrengthWorkoutTemplate(
               WorkoutType.PUSH,
               List.of(
-                  compound("push-up", 1),
-                  compound("dumbbell-shoulder-press", 2),
-                  compound("bench-dip", 3))),
+                  StrengthWorkoutItem.range("dumbbell-bench-press", 1, 4, 8, 12, 90, 2),
+                  StrengthWorkoutItem.range("dumbbell-shoulder-press", 2, 3, 8, 10, 90, 2),
+                  StrengthWorkoutItem.amrap("push-up", 3, 3, 60, 1),
+                  StrengthWorkoutItem.range("lateral-raise", 4, 3, 12, 20, 45, 2),
+                  StrengthWorkoutItem.timeHold("plank", 5, 3, 45, 75, 45, 2))),
           new StrengthWorkoutTemplate(
               WorkoutType.PULL,
               List.of(
-                  compound("pull-up", 1),
-                  compound("dumbbell-row", 2),
-                  compound("band-face-pull", 3))),
+                  StrengthWorkoutItem.amrap("pull-up", 1, 4, 120, 1),
+                  StrengthWorkoutItem.range("dumbbell-row", 2, 4, 8, 12, 90, 2),
+                  StrengthWorkoutItem.range("band-face-pull", 3, 3, 15, 25, 45, 2),
+                  StrengthWorkoutItem.range("biceps-curl", 4, 3, 10, 15, 60, 2),
+                  StrengthWorkoutItem.range("rear-delt-fly", 5, 3, 12, 20, 45, 2))),
           new StrengthWorkoutTemplate(
               WorkoutType.LEGS,
               List.of(
-                  compound("goblet-squat", 1),
-                  compound("dumbbell-rdl", 2),
-                  compound("reverse-lunge", 3),
-                  core("dead-bug", 4))));
+                  StrengthWorkoutItem.range("goblet-squat", 1, 4, 10, 15, 90, 2),
+                  StrengthWorkoutItem.range("dumbbell-rdl", 2, 4, 8, 12, 90, 2),
+                  // Zancadas: "10-12/pierna" — see class javadoc, per-side note not modeled.
+                  StrengthWorkoutItem.range("reverse-lunge", 3, 3, 10, 12, 90, 2),
+                  StrengthWorkoutItem.range("calf-raise", 4, 4, 15, 25, 45, 1),
+                  StrengthWorkoutItem.range("dead-bug", 5, 3, 10, 15, 45, 2))));
+
+  static {
+    // Fail fast if a template references an exercise that is not in the catalog (FOR-24).
+    for (StrengthWorkoutTemplate template : TEMPLATES) {
+      for (StrengthWorkoutItem item : template.items()) {
+        if (ExerciseCatalog.findById(item.exerciseId()).isEmpty()) {
+          throw new IllegalStateException("unknown catalog exerciseId: " + item.exerciseId());
+        }
+      }
+    }
+  }
 
   private WorkoutTemplateCatalog() {}
 
@@ -52,22 +73,5 @@ public final class WorkoutTemplateCatalog {
   /** Finds a template by its workout type. */
   public static Optional<StrengthWorkoutTemplate> findByType(WorkoutType type) {
     return TEMPLATES.stream().filter(template -> template.workoutType() == type).findFirst();
-  }
-
-  private static StrengthWorkoutItem compound(String exerciseId, int order) {
-    return item(exerciseId, order, 8, 12, COMPOUND_REST_SECONDS);
-  }
-
-  private static StrengthWorkoutItem core(String exerciseId, int order) {
-    return item(exerciseId, order, 10, 15, CORE_REST_SECONDS);
-  }
-
-  private static StrengthWorkoutItem item(
-      String exerciseId, int order, int repsMin, int repsMax, int restSeconds) {
-    // Fail fast if a template references an exercise that is not in the catalog (FOR-24).
-    if (ExerciseCatalog.findById(exerciseId).isEmpty()) {
-      throw new IllegalStateException("unknown catalog exerciseId: " + exerciseId);
-    }
-    return new StrengthWorkoutItem(exerciseId, order, SETS, repsMin, repsMax, restSeconds, RIR);
   }
 }
