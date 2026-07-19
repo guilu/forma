@@ -1,5 +1,6 @@
 package dev.diegobarrioh.forma.delivery.training;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import dev.diegobarrioh.forma.domain.ExerciseCatalog;
 import dev.diegobarrioh.forma.domain.StrengthWorkoutTemplate;
 import java.util.List;
@@ -14,7 +15,14 @@ import java.util.List;
  * real exercise list instead of a bare id; falls back to the exercise id if unresolved (should not
  * happen — catalog integrity is enforced at build by {@code WorkoutTemplateCatalog}). Deliberately
  * lean: no primary muscles/equipment/instructions, no progression or scheduling fields.
+ *
+ * <p><b>FOR-154:</b> {@code repScheme} plus its optional bounds mirror the domain {@link
+ * dev.diegobarrioh.forma.domain.RepScheme} extension so AMRAP and timed-hold items can be
+ * represented without lying about {@code repsMin}/{@code repsMax}. Fields that do not apply to the
+ * item's scheme are {@code null} and omitted from the JSON body ({@link
+ * JsonInclude.Include#NON_NULL}).
  */
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public record WorkoutResponse(String workoutType, List<Item> items) {
 
   public record Item(
@@ -22,8 +30,11 @@ public record WorkoutResponse(String workoutType, List<Item> items) {
       String exerciseName,
       int order,
       int sets,
-      int repsMin,
-      int repsMax,
+      String repScheme,
+      Integer repsMin,
+      Integer repsMax,
+      Integer durationSecondsMin,
+      Integer durationSecondsMax,
       int restSeconds,
       int rir) {}
 
@@ -40,8 +51,11 @@ public record WorkoutResponse(String workoutType, List<Item> items) {
                             .orElse(item.exerciseId()),
                         item.order(),
                         item.sets(),
+                        item.repScheme().name(),
                         item.repsMin(),
                         item.repsMax(),
+                        item.durationSecondsMin(),
+                        item.durationSecondsMax(),
                         item.restSeconds(),
                         item.rir()))
             .toList();
