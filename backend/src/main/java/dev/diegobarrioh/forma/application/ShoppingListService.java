@@ -21,7 +21,11 @@ import org.springframework.stereotype.Service;
  * ShoppingListView}. Also toggles an item's checked state, regenerates the list, and edits an
  * item's quantity. An absent list or unknown item yields {@link NotFoundException} → 404. An item
  * whose product id no longer resolves falls back to the raw id as its name and {@link
- * ShoppingCategory#OTROS} as its category (no crash).
+ * ShoppingCategory#OTROS} as its category (no crash). The entry's line cost is likewise derived
+ * live from the product's current {@code estimatedPriceEur} × quantity (mirroring {@link
+ * #updateQuantity} and {@link dev.diegobarrioh.forma.domain.ShoppingBudgetCalculator}) so an edited
+ * product price is reflected immediately instead of the stored snapshot going stale; falling back
+ * to that stored snapshot only when the product no longer resolves.
  *
  * <p><strong>Regenerate (FOR-109):</strong> the repository has no algorithmic "generate a list from
  * nutrition templates" logic — FOR-37's own spec explicitly deferred that ("automatic generation
@@ -159,13 +163,26 @@ public class ShoppingListService {
     // Link-out URL (FOR-109): resolved the same way as name/category — null when the product no
     // longer resolves or genuinely has no stored URL, never a broken link.
     String productUrl = product == null ? null : product.product().url();
+    // Line cost is derived LIVE from the product's current price (mirrors updateQuantity() and
+    // ShoppingBudgetCalculator, which already do this), so an edited product price is reflected
+    // immediately instead of showing a stale stored snapshot. Falls back to the stored snapshot
+    // when the product no longer resolves, same as name/category/url above (no crash, no
+    // fabricated cost).
+    BigDecimal estimatedCostEur =
+        product == null
+            ? stored.item().estimatedCostEur()
+            : product
+                .product()
+                .estimatedPriceEur()
+                .multiply(BigDecimal.valueOf(stored.item().quantity()))
+                .setScale(2, RoundingMode.HALF_UP);
     return new Entry(
         stored.id(),
         productId,
         productName,
         category,
         stored.item().quantity(),
-        stored.item().estimatedCostEur(),
+        estimatedCostEur,
         stored.item().checked(),
         stored.item().unit(),
         servings,
