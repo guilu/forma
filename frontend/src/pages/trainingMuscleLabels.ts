@@ -14,12 +14,21 @@
 import type { MuscleLoad, MuscleWorked } from '../api/training';
 
 /**
- * Raw catalog label -> canonical grouping key. Only the grouping explicitly
- * named by the spec ("group 'hombro anterior' into 'hombro'"); any label not
- * listed here is its own group, normalized by {@link displayLabel} alone —
- * this avoids inventing groupings the spec/backend never described.
+ * Raw catalog label -> canonical grouping key. Only genuine "hombro" synonyms
+ * confirmed against the real catalog (backend `ExerciseCatalog`/
+ * `WorkoutTemplateCatalog`): "hombro anterior" (FOR-53) and "hombro lateral",
+ * introduced by FOR-154's `lateral-raise` exercise and grouped here per
+ * FOR-160. "deltoides posterior" (rear-delt-fly, band-face-pull) is a
+ * distinct catalog term, not a "hombro" variant, and is deliberately left
+ * ungrouped — grouping it was never asked for and would hide which deltoid
+ * head a workout actually targets. Any label not listed here is its own
+ * group, normalized by {@link displayLabel} alone — this avoids inventing
+ * groupings the spec/backend never described.
  */
-const MUSCLE_GROUPS: ReadonlyMap<string, string> = new Map([['hombro anterior', 'hombro']]);
+const MUSCLE_GROUPS: ReadonlyMap<string, string> = new Map([
+  ['hombro anterior', 'hombro'],
+  ['hombro lateral', 'hombro'],
+]);
 
 /** Canonicalizes a raw muscle label: trims, lowercases (defensive) and applies the group map. */
 function canonicalize(rawMuscle: string): string {
