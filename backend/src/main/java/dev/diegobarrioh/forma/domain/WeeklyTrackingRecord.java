@@ -46,8 +46,17 @@ import java.util.regex.Pattern;
  * <p><strong>Heart-rate field</strong>: deliberately <em>not</em> added. FOR-150 rule 4 needs a
  * pace/HR signal, but the Seguimiento sheet only has "Ritmo 4 km" (pace), not FC/ppm (spec FOR-155
  * cross-slice gap flag). Adding a speculative HR field now would be an unrequested abstraction
- * (AGENTS.md "Forbidden shortcuts": no speculative abstractions); this is left for FOR-150 design
- * to resolve (either gate rule 4 on pace-degradation alone, or add HR support with its own story).
+ * (AGENTS.md "Forbidden shortcuts": no speculative abstractions); FOR-150 design resolved this by
+ * gating rule 4 on pace-degradation alone (see {@code PaceDegradationRules}) rather than adding HR
+ * support.
+ *
+ * <p><strong>Hunger field</strong>: also deliberately <em>not</em> added. FOR-150 rule 5 ("Hambre
+ * alta: &gt;7/10 varios días") needs a hunger check-in scale, but no such field exists on this
+ * record, on {@link WeeklyCheckIn}, or anywhere else in the repository. Same reasoning as the
+ * heart-rate field above: fabricating one now would be a speculative, unrequested addition. FOR-150
+ * therefore ships without rule 5 — it is gated (documented gap, no stub rule/service added) until a
+ * future story captures hunger, matching spec FOR-150 api.md's "rules gated on missing data simply
+ * do not appear."
  *
  * @param week the Seguimiento "Semana" number; required, strictly positive; one record per week
  *     (upsert/dedupe behavior lives in {@code WeeklyTrackingRecordRepository})

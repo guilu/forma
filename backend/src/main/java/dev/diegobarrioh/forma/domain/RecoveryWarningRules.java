@@ -27,7 +27,13 @@ import java.util.Locale;
  *
  * <ul>
  *   <li><b>"Several skipped sessions in a row"</b> needs per-session history that the weekly
- *       summaries do not expose — not implemented until such history exists.
+ *       summaries do not expose — not implemented until such history exists. This is the exact
+ *       signal FOR-150 rule 3 ("Fuerza baja: 2 entrenos malos") needs — a per-session strength
+ *       "good/bad" quality signal, not the planned/completed <em>counts</em> {@link WeeklyCheckIn}
+ *       already exposes. No such signal exists anywhere in the repository (verified against {@code
+ *       TrainingSessionStatusRepository} and the check-in), so FOR-150 rule 3 is gated the same
+ *       way: not implemented, no stub rule added (AGENTS.md: no speculative abstractions), until a
+ *       future story introduces that data source.
  *   <li><b>Week-over-week rising planned load</b> needs previous-week history the summaries do not
  *       expose; the "high load, low completion" signal uses <em>absolute</em> load as the supported
  *       proxy.
