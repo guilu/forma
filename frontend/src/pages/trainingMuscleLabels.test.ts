@@ -38,6 +38,29 @@ describe('groupMusclesForDisplay (FOR-53)', () => {
     expect(result).toEqual([{ label: 'Hombro', load: 'HIGH' }]);
   });
 
+  it('groups "hombro", "hombro anterior" and "hombro lateral" into one "Hombro" group, keeping the highest load (FOR-160)', () => {
+    const result = groupMusclesForDisplay([
+      { muscle: 'hombro', load: 'MEDIUM' },
+      { muscle: 'hombro anterior', load: 'LOW' },
+      { muscle: 'hombro lateral', load: 'HIGH' },
+    ]);
+
+    expect(result).toEqual([{ label: 'Hombro', load: 'HIGH' }]);
+  });
+
+  it('preserves first-appearance order when "hombro lateral" introduces the group (FOR-160)', () => {
+    const result = groupMusclesForDisplay([
+      { muscle: 'pecho', load: 'HIGH' },
+      { muscle: 'hombro lateral', load: 'MEDIUM' },
+      { muscle: 'hombro', load: 'LOW' },
+    ]);
+
+    expect(result).toEqual([
+      { label: 'Pecho', load: 'HIGH' },
+      { label: 'Hombro', load: 'MEDIUM' },
+    ]);
+  });
+
   it('keeps distinct muscles as separate groups, in first-appearance order', () => {
     const result = groupMusclesForDisplay([
       { muscle: 'pecho', load: 'HIGH' },
