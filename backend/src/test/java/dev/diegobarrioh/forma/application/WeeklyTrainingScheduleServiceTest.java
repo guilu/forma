@@ -52,7 +52,8 @@ class WeeklyTrainingScheduleServiceTest {
               assertThat(entry.kind()).isEqualTo("RUNNING");
               assertThat(entry.id()).isEqualTo("SATURDAY:RUNNING");
               assertThat(entry.title()).isEqualTo("Tirada larga");
-              assertThat(entry.detail()).isEqualTo("4.0 km");
+              // Week 1 long run under the FOR-153 real plan is 5.0 km.
+              assertThat(entry.detail()).isEqualTo("5.0 km");
             });
     assertThat(days.get(DayOfWeek.TUESDAY).entries())
         .anySatisfy(
