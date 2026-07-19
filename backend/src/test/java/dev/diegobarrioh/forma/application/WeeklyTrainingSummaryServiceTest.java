@@ -34,10 +34,10 @@ class WeeklyTrainingSummaryServiceTest {
     assertThat(summary.plannedStrengthSessions()).isEqualTo(3);
     assertThat(summary.completedRunningSessions()).isZero();
     assertThat(summary.completedStrengthSessions()).isZero();
-    // Week 1: easy 2.2 + intervals 2.4 + long 4.0 = 8.6 km.
-    assertThat(summary.totalPlannedRunningKm()).isCloseTo(8.6, within(1e-9));
+    // Week 1 (FOR-153 real plan): easy 4.0 + intervals (6x400m) 4.0 + long 5.0 = 13.0 km.
+    assertThat(summary.totalPlannedRunningKm()).isCloseTo(13.0, within(1e-9));
     assertThat(summary.completedRunningKm()).isZero();
-    assertThat(summary.message()).contains("Carrera: 0/3 sesiones (0.0/8.6 km)");
+    assertThat(summary.message()).contains("Carrera: 0/3 sesiones (0.0/13.0 km)");
   }
 
   @Test
@@ -47,8 +47,8 @@ class WeeklyTrainingSummaryServiceTest {
     WeeklyTrainingSummary summary = service.currentSummary();
 
     assertThat(summary.completedRunningSessions()).isEqualTo(1);
-    // The Saturday long run is 4.0 km.
-    assertThat(summary.completedRunningKm()).isCloseTo(4.0, within(1e-9));
+    // The Saturday long run (week 1, FOR-153 real plan) is 5.0 km.
+    assertThat(summary.completedRunningKm()).isCloseTo(5.0, within(1e-9));
   }
 
   @Test
