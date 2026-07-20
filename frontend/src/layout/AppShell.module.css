@@ -52,32 +52,36 @@
 }
 
 /*
- * Single column with a bottom nav bar on small screens. The `mobilenav` row
- * is sized `auto` (to the bar's own height) and sits last in a shell that is
- * now bounded to the viewport height (see `.shell` above), so it lands
- * exactly at the viewport bottom while `content` (the `1fr` row) is the only
- * thing that scrolls -- no `position: fixed`/`sticky` needed, the grid does
- * the pinning.
+ * Single column on small screens; no `mobilenav` grid row/area anymore.
+ * FOR-164 turned `MobileNav` into a floating, translucent "glass" pill
+ * (`position: fixed`, see MobileNav.module.css) that hovers over the content
+ * instead of sitting pinned in its own grid row, so it's out of the grid
+ * flow entirely here -- just `topbar` + `content`, same shape as desktop.
  */
 @media (max-width: 768px) {
   .shell {
     grid-template-columns: 1fr;
-    grid-template-rows: var(--topbar-height) 1fr auto;
+    grid-template-rows: var(--topbar-height) 1fr;
     grid-template-areas:
       'topbar'
-      'content'
-      'mobilenav';
+      'content';
   }
 
   .content {
     padding: var(--space-4);
     /*
-     * Extra bottom clearance so the last bit of scrolled content never reads
-     * as tucked under the bottom bar. `content` and `mobilenav` are separate
-     * grid rows (not overlapping), so this isn't masking an overlap -- it's
-     * breathing room, sized from the existing spacing scale rather than a
-     * one-off pixel guess at the bar's real height.
+     * Extra bottom clearance so scrolled content never reads as tucked under
+     * the floating nav -- unlike the previous grid-pinned bar, the pill now
+     * *overlaps* the content row (it's `position: fixed`, not a sibling grid
+     * row), so this is real occlusion to compensate for, not just breathing
+     * room. Sized as (estimated pill content height) + 2 * var(--space-4):
+     * one `--space-4` for the pill's own `bottom` offset from the viewport,
+     * one more for clearance between the last content and the pill's top
+     * edge. The 56px is the bar's own height with no dedicated token to pull
+     * from: `--space-2` padding top+bottom (16px) + the primary items' 22px
+     * icon + 2px icon/label gap + the ~0.6875rem label line (~14px) ≈ 54px,
+     * rounded up to 56px.
      */
-    padding-bottom: var(--space-8);
+    padding-bottom: calc(56px + var(--space-4) * 2);
   }
 }
