@@ -9,3 +9,9 @@
 # Editors
 .vscode/
 .idea/
+
+# Agent tooling
+.atl/
+
+# Build output
+backend/bin/
