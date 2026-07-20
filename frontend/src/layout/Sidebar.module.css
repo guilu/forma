@@ -16,7 +16,24 @@
 .nav {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
   gap: var(--space-1);
+}
+
+/*
+ * Settings group (FOR-164): wraps the sidebar's lower nav entries (currently
+ * just "Ajustes"). `.nav` grows to fill the sidebar's remaining height (see
+ * `flex: 1` above, now that the sidebar spans the full viewport height), so
+ * `margin-top: auto` here pushes this group all the way to the bottom of that
+ * space -- just above the Withings card -- instead of it sitting flush under
+ * the primary section list.
+ */
+.settingsGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: auto;
 }
 
 /*

@@ -86,6 +86,34 @@ describe('application shell', () => {
     expect(screen.getByRole('button', { name: 'Cambiar a tema oscuro' })).toBeInTheDocument();
   });
 
+  // FOR-164: "Ajustes" moves out of the primary nav flow and into its own
+  // settings group, pinned to the bottom of the sidebar's flex column (just
+  // above the Withings card) via `margin-top: auto` — matching the template's
+  // gap between the primary section list and the lower "Ajustes" entry. The
+  // pixel-level pinning itself is CSS-only and not assertable in jsdom, but
+  // the DOM grouping that drives it is.
+  it('separates "Ajustes" into its own settings group at the end of the nav', () => {
+    render(
+      <MemoryRouter>
+        <Sidebar />
+      </MemoryRouter>,
+    );
+
+    const nav = screen.getByRole('navigation', { name: 'Navegación principal' });
+    const ajustesLink = screen.getByRole('link', { name: 'Ajustes' });
+    const dashboardLink = screen.getByRole('link', { name: 'Dashboard' });
+
+    // The primary group's links are direct children of <nav>...
+    expect(dashboardLink.parentElement).toBe(nav);
+    // ...but Ajustes lives inside a dedicated settings wrapper, not as a bare
+    // sibling of the primary links.
+    expect(ajustesLink.parentElement).not.toBe(nav);
+    expect(ajustesLink.parentElement?.parentElement).toBe(nav);
+    expect(ajustesLink.parentElement).toHaveClass(styles.settingsGroup);
+    // That wrapper is the last element in the nav, so it anchors to the bottom.
+    expect(nav.lastElementChild).toBe(ajustesLink.parentElement);
+  });
+
   // The mobile bar is CSS-hidden at the jsdom desktop viewport (shown only
   // <=768px), so these query with `hidden: true` to exercise the component logic.
   it('exposes secondary sections behind the mobile "Más" overflow', async () => {

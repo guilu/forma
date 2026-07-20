@@ -1,5 +1,19 @@
+/*
+ * FOR-164: the shell is now bounded to the viewport (`height`, not
+ * `min-height`) so the grid's `1fr` content row is bounded too. Previously
+ * `min-height: 100vh` let the whole grid grow with page content, which
+ * scrolled the sidebar (spanning both grid rows) away with the page instead
+ * of it staying put like the template. `overflow: hidden` here plus
+ * `overflow-y: auto` on `.content` below moves scrolling into just the
+ * content row; the sidebar and topbar rows never grow past their own size.
+ * `100dvh` accounts for mobile browser chrome (address bar) collapsing;
+ * `100vh` is kept as the fallback for browsers/environments without `dvh`
+ * support, since this codebase has no prior `dvh` usage to match.
+ */
 .shell {
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   display: grid;
   grid-template-columns: var(--sidebar-width) 1fr;
   grid-template-rows: var(--topbar-height) 1fr;
@@ -37,7 +51,14 @@
   top: var(--space-4);
 }
 
-/* Single column with a bottom nav bar on small screens. */
+/*
+ * Single column with a bottom nav bar on small screens. The `mobilenav` row
+ * is sized `auto` (to the bar's own height) and sits last in a shell that is
+ * now bounded to the viewport height (see `.shell` above), so it lands
+ * exactly at the viewport bottom while `content` (the `1fr` row) is the only
+ * thing that scrolls -- no `position: fixed`/`sticky` needed, the grid does
+ * the pinning.
+ */
 @media (max-width: 768px) {
   .shell {
     grid-template-columns: 1fr;
@@ -50,5 +71,13 @@
 
   .content {
     padding: var(--space-4);
+    /*
+     * Extra bottom clearance so the last bit of scrolled content never reads
+     * as tucked under the bottom bar. `content` and `mobilenav` are separate
+     * grid rows (not overlapping), so this isn't masking an overlap -- it's
+     * breathing room, sized from the existing spacing scale rather than a
+     * one-off pixel guess at the bar's real height.
+     */
+    padding-bottom: var(--space-8);
   }
 }

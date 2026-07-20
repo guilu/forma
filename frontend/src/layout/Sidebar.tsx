@@ -10,25 +10,38 @@ import styles from './Sidebar.module.css';
  * where MobileNav takes over.
  */
 export function Sidebar() {
+  const primaryItems = NAV_ITEMS.filter((item) => !item.settings);
+  const settingsItems = NAV_ITEMS.filter((item) => item.settings);
+
+  const renderLink = (item: (typeof NAV_ITEMS)[number]) => (
+    <NavLink
+      key={item.path}
+      to={item.path}
+      end={item.path === '/'}
+      className={({ isActive }) =>
+        [styles.link, isActive ? styles.active : ''].filter(Boolean).join(' ')
+      }
+    >
+      <Icon name={item.icon} />
+      <span>{item.label}</span>
+    </NavLink>
+  );
+
   return (
     <aside className={styles.sidebar}>
       <div className={styles.brand}>
         <Brand />
       </div>
       <nav className={styles.nav} aria-label="Navegación principal">
-        {NAV_ITEMS.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            end={item.path === '/'}
-            className={({ isActive }) =>
-              [styles.link, isActive ? styles.active : ''].filter(Boolean).join(' ')
-            }
-          >
-            <Icon name={item.icon} />
-            <span>{item.label}</span>
-          </NavLink>
-        ))}
+        {primaryItems.map(renderLink)}
+        {/*
+         * FOR-164: the settings group (currently just "Ajustes") is pinned to
+         * the bottom of the nav's flex column via `margin-top: auto` on this
+         * wrapper -- see Sidebar.module.css `.settingsGroup` -- landing just
+         * above the Withings card, matching the template's lower "Ajustes"
+         * entry instead of it being flush with the primary section list.
+         */}
+        <div className={styles.settingsGroup}>{settingsItems.map(renderLink)}</div>
       </nav>
       <div className={styles.integration}>
         <div className={styles.integrationHeader}>
