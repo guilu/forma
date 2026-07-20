@@ -1,0 +1,987 @@
+<!doctype html>
+
+<html class="dark" lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>FORMA - Nutrición Elite Coach</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&amp;family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+      rel="stylesheet"
+    />
+    <!-- Tailwind Configuration -->
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary-fixed-dim": "#4cdf97",
+              "secondary-fixed-dim": "#7dde38",
+              "surface-elevated": "#161B22",
+              "primary-container": "#00b874",
+              tertiary: "#7ed8b6",
+              "on-primary-fixed-variant": "#005231",
+              "outline-variant": "#3c4a40",
+              "secondary-container": "#59b502",
+              "surface-stroke": "#30363D",
+              "surface-dim": "#10141a",
+              "surface-bright": "#353940",
+              "on-tertiary-fixed": "#002117",
+              "error-container": "#93000a",
+              surface: "#10141a",
+              "text-dimmed": "#8B949E",
+              "on-secondary-fixed": "#0a2000",
+              "on-primary-container": "#004126",
+              outline: "#869489",
+              "surface-variant": "#31353c",
+              error: "#ffb4ab",
+              "tertiary-container": "#57b192",
+              "on-surface-variant": "#bbcabe",
+              "surface-tint": "#4cdf97",
+              "surface-container-lowest": "#0a0e14",
+              "secondary-fixed": "#98fb53",
+              "surface-container": "#1c2026",
+              "on-error-container": "#ffdad6",
+              "primary-fixed": "#6dfcb1",
+              "warning-amber": "#FFAB70",
+              "on-primary": "#003920",
+              "inverse-on-surface": "#2d3137",
+              "on-surface": "#dfe2eb",
+              "inverse-primary": "#006d42",
+              "surface-container-highest": "#31353c",
+              secondary: "#7dde38",
+              "on-primary-fixed": "#002111",
+              "on-secondary-fixed-variant": "#245100",
+              "error-pulse": "#FF5757",
+              "surface-container-high": "#262a31",
+              "inverse-surface": "#dfe2eb",
+              "on-tertiary": "#003829",
+              background: "#10141a",
+              "on-tertiary-container": "#00402f",
+              "on-error": "#690005",
+              "on-background": "#dfe2eb",
+              "tertiary-fixed-dim": "#7ed8b6",
+              "success-vibrant": "#00B874",
+              "surface-container-low": "#181c22",
+              "tertiary-fixed": "#9af4d1",
+              "on-tertiary-fixed-variant": "#00513d",
+              primary: "#4cdf97",
+              "on-secondary": "#173800",
+              "on-secondary-container": "#1b4000",
+            },
+            borderRadius: {
+              DEFAULT: "0.25rem",
+              lg: "0.5rem",
+              xl: "0.75rem",
+              full: "9999px",
+            },
+            spacing: {
+              base: "8px",
+              "stack-gap-md": "16px",
+              "container-margin-mobile": "20px",
+              "card-padding": "24px",
+              "container-margin-desktop": "40px",
+              "stack-gap-sm": "8px",
+              "stack-gap-lg": "32px",
+              gutter: "24px",
+            },
+            fontFamily: {
+              "headline-lg": ["Montserrat"],
+              "body-lg": ["Be Vietnam Pro"],
+              "display-xl": ["Montserrat"],
+              "body-md": ["Be Vietnam Pro"],
+              "label-sm": ["Be Vietnam Pro"],
+              "headline-md": ["Montserrat"],
+              "headline-lg-mobile": ["Montserrat"],
+              "label-md": ["Be Vietnam Pro"],
+            },
+            fontSize: {
+              "headline-lg": [
+                "32px",
+                { lineHeight: "40px", fontWeight: "600" },
+              ],
+              "body-lg": ["18px", { lineHeight: "28px", fontWeight: "400" }],
+              "display-xl": [
+                "48px",
+                {
+                  lineHeight: "56px",
+                  letterSpacing: "-0.02em",
+                  fontWeight: "700",
+                },
+              ],
+              "body-md": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+              "label-sm": ["12px", { lineHeight: "16px", fontWeight: "600" }],
+              "headline-md": [
+                "20px",
+                { lineHeight: "28px", fontWeight: "600" },
+              ],
+              "headline-lg-mobile": [
+                "24px",
+                { lineHeight: "32px", fontWeight: "600" },
+              ],
+              "label-md": [
+                "14px",
+                {
+                  lineHeight: "20px",
+                  letterSpacing: "0.05em",
+                  fontWeight: "500",
+                },
+              ],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      body {
+        background-color: #10141a;
+        color: #dfe2eb;
+        -webkit-font-smoothing: antialiased;
+      }
+      .material-symbols-outlined {
+        font-variation-settings:
+          "FILL" 0,
+          "wght" 400,
+          "GRAD" 0,
+          "opsz" 24;
+      }
+      .filled-icon {
+        font-variation-settings: "FILL" 1;
+      }
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 4px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: #10141a;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #30363d;
+        border-radius: 10px;
+      }
+      .glass-card {
+        background: rgba(28, 32, 38, 0.7);
+        backdrop-filter: blur(12px);
+        border: 1px solid #30363d;
+      }
+      .gradient-button {
+        background: linear-gradient(90deg, #4cdf97 0%, #7dde38 100%);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .gradient-button:hover {
+        filter: brightness(1.1);
+        transform: translateY(-1px);
+      }
+    </style>
+  </head>
+  <body class="flex min-h-screen">
+    <!-- SideNavBar Anchor -->
+    <aside
+      class="h-screen w-64 fixed left-0 top-0 bg-surface-container dark:bg-surface-container border-r border-surface-stroke flex flex-col py-base gap-stack-gap-md z-20"
+    >
+      <div class="px-6 py-4 flex items-center gap-3">
+        <div
+          class="w-10 h-10 bg-primary-container rounded-lg flex items-center justify-center"
+        >
+          <span
+            class="font-headline-lg text-headline-lg font-black tracking-tighter text-on-primary-container"
+            >F</span
+          >
+        </div>
+        <div>
+          <h1
+            class="font-headline-md text-headline-md font-black tracking-tighter text-primary"
+          >
+            FORMA
+          </h1>
+          <p
+            class="text-[10px] font-bold tracking-[0.2em] text-on-surface-variant uppercase"
+          >
+            Elite Coach
+          </p>
+        </div>
+      </div>
+      <nav class="flex-1 px-4 space-y-1">
+        <a
+          class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant font-medium hover:bg-surface-variant/50 hover:text-primary transition-colors"
+          href="#"
+        >
+          <span class="material-symbols-outlined">dashboard</span>
+          <span class="font-label-md text-label-md">Dashboard</span>
+        </a>
+        <a
+          class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant font-medium hover:bg-surface-variant/50 hover:text-primary transition-colors"
+          href="#"
+        >
+          <span class="material-symbols-outlined">monitoring</span>
+          <span class="font-label-md text-label-md">Mediciones</span>
+        </a>
+        <a
+          class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant font-medium hover:bg-surface-variant/50 hover:text-primary transition-colors"
+          href="#"
+        >
+          <span class="material-symbols-outlined">fitness_center</span>
+          <span class="font-label-md text-label-md">Entrenamiento</span>
+        </a>
+        <a
+          class="flex items-center gap-3 px-4 py-3 rounded-xl text-primary font-bold border-r-4 border-primary bg-primary-container/10 transition-colors"
+          href="#"
+        >
+          <span class="material-symbols-outlined filled-icon">restaurant</span>
+          <span class="font-label-md text-label-md">Nutrición</span>
+        </a>
+        <a
+          class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant font-medium hover:bg-surface-variant/50 hover:text-primary transition-colors"
+          href="#"
+        >
+          <span class="material-symbols-outlined">shopping_cart</span>
+          <span class="font-label-md text-label-md">Lista de compra</span>
+        </a>
+        <a
+          class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant font-medium hover:bg-surface-variant/50 hover:text-primary transition-colors"
+          href="#"
+        >
+          <span class="material-symbols-outlined">trending_up</span>
+          <span class="font-label-md text-label-md">Progreso</span>
+        </a>
+        <a
+          class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant font-medium hover:bg-surface-variant/50 hover:text-primary transition-colors"
+          href="#"
+        >
+          <span class="material-symbols-outlined">flag</span>
+          <span class="font-label-md text-label-md">Objetivos</span>
+        </a>
+        <div class="pt-10">
+          <a
+            class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant font-medium hover:bg-surface-variant/50 hover:text-primary transition-colors"
+            href="#"
+          >
+            <span class="material-symbols-outlined">settings</span>
+            <span class="font-label-md text-label-md">Ajustes</span>
+          </a>
+        </div>
+      </nav>
+      <div class="px-6 py-4">
+        <div
+          class="bg-surface-container-low rounded-xl p-3 border border-surface-stroke flex items-center gap-3"
+        >
+          <div
+            class="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center"
+          >
+            <span class="material-symbols-outlined text-blue-400 text-sm"
+              >favorite</span
+            >
+          </div>
+          <div class="overflow-hidden">
+            <p class="text-[10px] font-bold text-on-surface-variant uppercase">
+              Withings
+            </p>
+            <p class="text-[12px] text-primary truncate">Conectado</p>
+          </div>
+        </div>
+      </div>
+    </aside>
+    <!-- Main Content Area -->
+    <main class="ml-64 flex-1 flex flex-col min-h-screen">
+      <!-- TopAppBar Anchor -->
+      <header
+        class="h-16 flex justify-between items-center px-container-desktop bg-surface-dim border-b border-surface-stroke sticky top-0 z-10"
+      >
+        <div class="flex items-center gap-stack-gap-md flex-1">
+          <div class="relative w-full max-w-md">
+            <span
+              class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant"
+              >search</span
+            >
+            <input
+              class="w-full bg-surface-container-low border border-surface-stroke rounded-full pl-10 pr-4 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+              placeholder="Buscar alimentos, recetas..."
+              type="text"
+            />
+          </div>
+        </div>
+        <div class="flex items-center gap-6">
+          <button
+            class="relative text-on-surface-variant hover:text-primary transition-colors"
+          >
+            <span class="material-symbols-outlined">notifications</span>
+            <span
+              class="absolute top-0 right-0 w-2 h-2 bg-error rounded-full"
+            ></span>
+          </button>
+          <div
+            class="flex items-center gap-3 pl-6 border-l border-surface-stroke"
+          >
+            <div class="text-right">
+              <p class="font-label-md text-label-md text-on-surface">
+                Diego V.
+              </p>
+              <p
+                class="text-[10px] text-on-surface-variant font-bold uppercase"
+              >
+                Atleta Elite
+              </p>
+            </div>
+            <img
+              class="w-10 h-10 rounded-full border-2 border-primary object-cover"
+              data-alt="Professional headshot of a fit male athlete in his 30s with a clean haircut, looking friendly and determined. The lighting is studio-quality with soft shadows, set against a dark, minimalist professional background that matches the FORMA brand's corporate and modern aesthetic."
+              src="https://lh3.googleusercontent.com/aida-public/AB6AXuAmSBzOUsAYz-wBHOG5TUdwpAiq_cQJ9aXqIUaW_UPh_mqjEETih6qwUFXP18Rkf9zEip4ixNA5ywelYIBgIRLj8qoh0ESBCwk1gO0sFiiDlPCDYAkhgwNZkBD48aE_5hPFVRXTfLkbTuqlMzlkAzSPmpgXKfhHYTpu16AE8Rg9uTP0L03fNbFnADitjSM109sY2rHvX-0m7aqv9Ox574Aj-hNueAEWqt4DzYrc4geEpjozFEYs-CVz"
+            />
+          </div>
+        </div>
+      </header>
+      <!-- Content Canvas -->
+      <div class="p-10 max-w-7xl mx-auto w-full flex flex-col gap-stack-gap-lg">
+        <!-- Page Header -->
+        <div class="flex justify-between items-end">
+          <div>
+            <h2 class="font-headline-lg text-headline-lg text-on-surface">
+              Nutrición
+            </h2>
+            <p class="font-body-md text-body-md text-on-surface-variant mt-1">
+              Alimenta tu cuerpo, alcanza tus objetivos.
+            </p>
+          </div>
+          <div
+            class="flex items-center gap-4 bg-surface-container rounded-xl p-1 border border-surface-stroke"
+          >
+            <button
+              class="p-2 hover:bg-surface-variant rounded-lg transition-colors"
+            >
+              <span class="material-symbols-outlined">chevron_left</span>
+            </button>
+            <div class="flex items-center gap-2 px-2">
+              <span class="material-symbols-outlined text-primary text-sm"
+                >calendar_today</span
+              >
+              <span class="font-label-md text-label-md font-bold"
+                >Domingo, 8 Junio 2025</span
+              >
+            </div>
+            <button
+              class="p-2 hover:bg-surface-variant rounded-lg transition-colors"
+            >
+              <span class="material-symbols-outlined">chevron_right</span>
+            </button>
+          </div>
+        </div>
+        <!-- Bento Grid - Key Metrics -->
+        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-gutter">
+          <!-- Calories Card -->
+          <div
+            class="glass-card p-card-padding rounded-xl flex flex-col justify-between"
+          >
+            <div class="flex justify-between items-start mb-4">
+              <span
+                class="text-[10px] font-bold tracking-widest text-on-surface-variant uppercase"
+                >Calorías</span
+              >
+              <span class="material-symbols-outlined text-primary"
+                >local_fire_department</span
+              >
+            </div>
+            <div class="flex items-baseline gap-1">
+              <span class="font-display-xl text-display-xl text-on-surface"
+                >2.110</span
+              >
+              <span class="font-body-md text-body-md text-on-surface-variant"
+                >/ 2.300 kcal</span
+              >
+            </div>
+            <div class="mt-6">
+              <div
+                class="h-2 w-full bg-surface-variant rounded-full overflow-hidden"
+              >
+                <div
+                  class="h-full bg-gradient-to-r from-primary to-secondary"
+                  style="width: 91%"
+                ></div>
+              </div>
+              <p class="text-xs text-on-surface-variant mt-2">
+                190 kcal restantes
+              </p>
+            </div>
+          </div>
+          <!-- Macros Chart Card -->
+          <div
+            class="glass-card p-card-padding rounded-xl md:col-span-2 flex items-center gap-8"
+          >
+            <div class="relative w-32 h-32 flex-shrink-0">
+              <svg class="w-full h-full -rotate-90" viewbox="0 0 36 36">
+                <circle
+                  class="stroke-surface-variant"
+                  cx="18"
+                  cy="18"
+                  fill="none"
+                  r="16"
+                  stroke-width="3"
+                ></circle>
+                <!-- Protein 30% -->
+                <circle
+                  class="stroke-primary"
+                  cx="18"
+                  cy="18"
+                  fill="none"
+                  r="16"
+                  stroke-dasharray="30 100"
+                  stroke-dashoffset="0"
+                  stroke-width="3"
+                ></circle>
+                <!-- Carbs 45% -->
+                <circle
+                  class="stroke-secondary"
+                  cx="18"
+                  cy="18"
+                  fill="none"
+                  r="16"
+                  stroke-dasharray="45 100"
+                  stroke-dashoffset="-30"
+                  stroke-width="3"
+                ></circle>
+                <!-- Fats 25% -->
+                <circle
+                  class="stroke-warning-amber"
+                  cx="18"
+                  cy="18"
+                  fill="none"
+                  r="16"
+                  stroke-dasharray="25 100"
+                  stroke-dashoffset="-75"
+                  stroke-width="3"
+                ></circle>
+              </svg>
+              <div
+                class="absolute inset-0 flex items-center justify-center flex-col"
+              >
+                <span class="font-headline-md text-headline-md">75%</span>
+                <span
+                  class="text-[8px] font-bold uppercase text-on-surface-variant"
+                  >Meta</span
+                >
+              </div>
+            </div>
+            <div class="flex-1 grid grid-cols-1 gap-3">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-primary"></span>
+                  <span class="font-label-md text-label-md">Proteínas</span>
+                </div>
+                <span class="font-label-md text-label-md">162g (30%)</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-secondary"></span>
+                  <span class="font-label-md text-label-md">Carbohidratos</span>
+                </div>
+                <span class="font-label-md text-label-md">236g (45%)</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-warning-amber"></span>
+                  <span class="font-label-md text-label-md">Grasas</span>
+                </div>
+                <span class="font-label-md text-label-md">68g (25%)</span>
+              </div>
+            </div>
+          </div>
+          <!-- Hydration Card -->
+          <div
+            class="glass-card p-card-padding rounded-xl flex flex-col justify-between"
+          >
+            <div class="flex justify-between items-start mb-4">
+              <span
+                class="text-[10px] font-bold tracking-widest text-on-surface-variant uppercase"
+                >Hidratación</span
+              >
+              <span class="material-symbols-outlined text-blue-400"
+                >water_drop</span
+              >
+            </div>
+            <div class="flex items-baseline gap-1">
+              <span class="font-display-xl text-display-xl text-on-surface"
+                >2.1</span
+              >
+              <span class="font-body-md text-body-md text-on-surface-variant"
+                >/ 2.5 L</span
+              >
+            </div>
+            <div class="flex gap-1 mt-4">
+              <span
+                class="material-symbols-outlined filled-icon text-blue-400 text-sm"
+                >local_drink</span
+              >
+              <span
+                class="material-symbols-outlined filled-icon text-blue-400 text-sm"
+                >local_drink</span
+              >
+              <span
+                class="material-symbols-outlined filled-icon text-blue-400 text-sm"
+                >local_drink</span
+              >
+              <span
+                class="material-symbols-outlined filled-icon text-blue-400 text-sm"
+                >local_drink</span
+              >
+              <span
+                class="material-symbols-outlined filled-icon text-blue-400 text-sm"
+                >local_drink</span
+              >
+              <span
+                class="material-symbols-outlined text-surface-variant text-sm"
+                >local_drink</span
+              >
+            </div>
+          </div>
+        </div>
+        <!-- Main Layout Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
+          <!-- Meals List (Left & Center) -->
+          <div class="lg:col-span-2 flex flex-col gap-stack-gap-md">
+            <div class="flex justify-between items-center mb-2">
+              <h3 class="font-headline-md text-headline-md text-on-surface">
+                Comidas del día
+              </h3>
+              <button
+                class="gradient-button px-6 py-2 rounded-full text-on-primary font-bold text-sm flex items-center gap-2"
+              >
+                <span class="material-symbols-outlined text-lg">add</span>
+                Registrar comida
+              </button>
+            </div>
+            <!-- Meal Card 1 -->
+            <div
+              class="glass-card p-4 rounded-xl flex items-center gap-6 group hover:border-primary/50 transition-colors cursor-pointer"
+            >
+              <div class="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0">
+                <img
+                  class="w-full h-full object-cover"
+                  data-alt="Close up gourmet food photography of a healthy breakfast bowl. Features creamy oatmeal topped with fresh blueberries, sliced strawberries, and a drizzle of honey. Shot with a shallow depth of field to make the fruit pop, with warm morning sunlight coming from the side. Vibrant colors and high contrast to match the elite fitness coach aesthetic."
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuCSvSY6Fcf9qWcwBDzB7ys8y3b81QgO_FbxiM41kW0cyZZIpGb1cP_Pmwn9bv7c_J-IfheaiuxFPwTJGhTGAz5SwdWM9NFMv7eu8Osn9c9rwgmauO2ByOso-KpJ1Ceny3ljzVhGhECuMtHzihV4aSmyZ4pMN1f4S2laWCDyMiWgJNOvkyu0WLtlLg1Duxx3FGFTl5uovQhB312WqLRAf-TwL3YHgy_-RhxIc7N2Uxk30MoA3ip651jy"
+                />
+              </div>
+              <div class="flex-1">
+                <div class="flex justify-between items-start">
+                  <div>
+                    <h4
+                      class="font-headline-md text-headline-md text-on-surface"
+                    >
+                      Desayuno
+                    </h4>
+                    <p class="text-xs text-on-surface-variant">
+                      Avena con proteína, plátano y frutos rojos
+                    </p>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs text-on-surface-variant">08:15</span>
+                    <div
+                      class="w-6 h-6 rounded-full bg-primary flex items-center justify-center"
+                    >
+                      <span
+                        class="material-symbols-outlined text-on-primary text-[16px] font-bold"
+                        >check</span
+                      >
+                    </div>
+                    <button
+                      class="text-on-surface-variant hover:text-on-surface"
+                    >
+                      <span class="material-symbols-outlined">more_vert</span>
+                    </button>
+                  </div>
+                </div>
+                <div class="flex gap-4 mt-3">
+                  <div class="flex gap-1 text-[11px]">
+                    <span class="text-primary font-bold">P</span>
+                    <span class="text-on-surface-variant">32g</span>
+                  </div>
+                  <div class="flex gap-1 text-[11px]">
+                    <span class="text-secondary font-bold">C</span>
+                    <span class="text-on-surface-variant">58g</span>
+                  </div>
+                  <div class="flex gap-1 text-[11px]">
+                    <span class="text-warning-amber font-bold">G</span>
+                    <span class="text-on-surface-variant">14g</span>
+                  </div>
+                  <div class="ml-auto text-[11px] font-bold text-on-surface">
+                    480 kcal
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Meal Card 2 -->
+            <div
+              class="glass-card p-4 rounded-xl flex items-center gap-6 group hover:border-primary/50 transition-colors cursor-pointer"
+            >
+              <div class="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0">
+                <img
+                  class="w-full h-full object-cover"
+                  data-alt="A top-down shot of a healthy snack: Greek yogurt in a minimalist white bowl topped with raw walnuts and a light honey drizzle. The photo has a clean, airy feeling with crisp shadows and a slightly dark, moody surrounding environment consistent with the FORMA app's visual style. High resolution and detailed texture of the nuts."
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuAopZfiyJEtRxBM3KthE8tg0R3M0bPRC8zuzN8ICEWUJLD157_Un0fuJkvGC3oBNxF10p1IZTZLWusfaqynK9BujvKJYdWZssPF6Ngg7L0id42_-6kNDNebNhVFtB4lVi2WTXK84FMf3mElmgKmLElZPmSsFdqeR90gJptMzVu1m4tFQF-T7FWeq0VKkYes4e-xkEXlEx655Ic0V8FjLRA1gnCIqJqIsaAy8EKWaWXz2Iutc_E9iFqE"
+                />
+              </div>
+              <div class="flex-1">
+                <div class="flex justify-between items-start">
+                  <div>
+                    <h4
+                      class="font-headline-md text-headline-md text-on-surface"
+                    >
+                      Media mañana
+                    </h4>
+                    <p class="text-xs text-on-surface-variant">
+                      Yogur natural con nueces y miel
+                    </p>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs text-on-surface-variant">11:30</span>
+                    <div
+                      class="w-6 h-6 rounded-full bg-primary flex items-center justify-center"
+                    >
+                      <span
+                        class="material-symbols-outlined text-on-primary text-[16px] font-bold"
+                        >check</span
+                      >
+                    </div>
+                    <button
+                      class="text-on-surface-variant hover:text-on-surface"
+                    >
+                      <span class="material-symbols-outlined">more_vert</span>
+                    </button>
+                  </div>
+                </div>
+                <div class="flex gap-4 mt-3">
+                  <div class="flex gap-1 text-[11px]">
+                    <span class="text-primary font-bold">P</span>
+                    <span class="text-on-surface-variant">18g</span>
+                  </div>
+                  <div class="flex gap-1 text-[11px]">
+                    <span class="text-secondary font-bold">C</span>
+                    <span class="text-on-surface-variant">25g</span>
+                  </div>
+                  <div class="flex gap-1 text-[11px]">
+                    <span class="text-warning-amber font-bold">G</span>
+                    <span class="text-on-surface-variant">10g</span>
+                  </div>
+                  <div class="ml-auto text-[11px] font-bold text-on-surface">
+                    240 kcal
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Meal Card 3 -->
+            <div
+              class="glass-card p-4 rounded-xl flex items-center gap-6 group hover:border-primary/50 transition-colors cursor-pointer"
+            >
+              <div class="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0">
+                <img
+                  class="w-full h-full object-cover"
+                  data-alt="Gourmet plated lunch featuring grilled chicken breast strips, brown rice, and steamed green vegetables like broccoli and asparagus. The lighting is professional and high-contrast, emphasizing the grilled texture of the chicken. The plate is dark ceramic, sitting on a slate background, reflecting an elite, data-driven lifestyle aesthetic."
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuDbbINyturgc1YlvPXZZXUFsxswiI_ZNafCN4Qebjvf-DoY3ttwdh2sgxk4lqJHxn0TGywsM5zTbqA9Frf2mSQwOPM4KvzaoAR6sOuIPHGTdd-UIuMfO0I998r8r4y76KxWS0CBfXAQq0n3YpZ4XjJhZe0_hupcClXWeJFD6qbIsl3bUvcoenBYs9TzK0rB1uM8WHLlLnfyemxhuLQYMDAT-EqnDrh_dsEl_5pMnUucJRv-X77mC5mJ"
+                />
+              </div>
+              <div class="flex-1">
+                <div class="flex justify-between items-start">
+                  <div>
+                    <h4
+                      class="font-headline-md text-headline-md text-on-surface"
+                    >
+                      Comida
+                    </h4>
+                    <p class="text-xs text-on-surface-variant">
+                      Pechuga de pollo, arroz integral y verduras
+                    </p>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs text-on-surface-variant">14:00</span>
+                    <div
+                      class="w-6 h-6 rounded-full bg-primary flex items-center justify-center"
+                    >
+                      <span
+                        class="material-symbols-outlined text-on-primary text-[16px] font-bold"
+                        >check</span
+                      >
+                    </div>
+                    <button
+                      class="text-on-surface-variant hover:text-on-surface"
+                    >
+                      <span class="material-symbols-outlined">more_vert</span>
+                    </button>
+                  </div>
+                </div>
+                <div class="flex gap-4 mt-3">
+                  <div class="flex gap-1 text-[11px]">
+                    <span class="text-primary font-bold">P</span>
+                    <span class="text-on-surface-variant">48g</span>
+                  </div>
+                  <div class="flex gap-1 text-[11px]">
+                    <span class="text-secondary font-bold">C</span>
+                    <span class="text-on-surface-variant">62g</span>
+                  </div>
+                  <div class="flex gap-1 text-[11px]">
+                    <span class="text-warning-amber font-bold">G</span>
+                    <span class="text-on-surface-variant">16g</span>
+                  </div>
+                  <div class="ml-auto text-[11px] font-bold text-on-surface">
+                    620 kcal
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Meal Card 4 -->
+            <div
+              class="glass-card p-4 rounded-xl flex items-center gap-6 group hover:border-primary/50 transition-colors cursor-pointer opacity-80"
+            >
+              <div
+                class="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 bg-surface-container flex items-center justify-center"
+              >
+                <img
+                  class="w-full h-full object-cover"
+                  data-alt="A smooth, delicious looking protein shake in a tall glass, garnished with a slice of banana. The shake is thick and creamy, with visible specks of real peanut butter. Studio lighting against a dark charcoal background creates a sleek, high-end feel. The overall mood is energizing and recovery-focused for an athlete."
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuCMsVaOaHnNnWhSezSpk8HY-Tq-t8_bGkuNYSj4yg1k-fUuV610H6gsJhYn2IuGZKnAYHoJEyA2frtPiYF7It9Tm-NjUaE3Ezw1aRQKH6A2Rv0Ko6wTsHf2J5RWaxPa2BHiagL5ZQYh4yE5s-SdGJL6REDnPTp-xqQWXLcvz64SaC7C26JrXD2eIyRtvCGr63ahO3ldkbAjsz1656zIWRH13DMlDcqMej_u3DAfoqNAXfSFI48SqdyV"
+                />
+              </div>
+              <div class="flex-1">
+                <div class="flex justify-between items-start">
+                  <div>
+                    <h4
+                      class="font-headline-md text-headline-md text-on-surface"
+                    >
+                      Merienda
+                    </h4>
+                    <p class="text-xs text-on-surface-variant">
+                      Batido de proteína con plátano y crema de cacahuete
+                    </p>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs text-on-surface-variant">17:30</span>
+                    <div
+                      class="w-6 h-6 rounded-full border-2 border-surface-stroke flex items-center justify-center"
+                    ></div>
+                    <button
+                      class="text-on-surface-variant hover:text-on-surface"
+                    >
+                      <span class="material-symbols-outlined">more_vert</span>
+                    </button>
+                  </div>
+                </div>
+                <div class="flex gap-4 mt-3">
+                  <div class="flex gap-1 text-[11px]">
+                    <span class="text-primary font-bold">P</span>
+                    <span class="text-on-surface-variant">30g</span>
+                  </div>
+                  <div class="flex gap-1 text-[11px]">
+                    <span class="text-secondary font-bold">C</span>
+                    <span class="text-on-surface-variant">35g</span>
+                  </div>
+                  <div class="flex gap-1 text-[11px]">
+                    <span class="text-warning-amber font-bold">G</span>
+                    <span class="text-on-surface-variant">8g</span>
+                  </div>
+                  <div class="ml-auto text-[11px] font-bold text-on-surface">
+                    320 kcal
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Secondary Column (Right) -->
+          <div class="flex flex-col gap-stack-gap-md">
+            <!-- Macronutrient Distribution Chart -->
+            <div class="glass-card p-card-padding rounded-xl">
+              <h3
+                class="font-headline-md text-headline-md text-on-surface mb-6"
+              >
+                Distribución de Macros
+              </h3>
+              <div class="flex items-end justify-between h-40 gap-4 mb-6">
+                <div class="flex-1 flex flex-col items-center gap-2">
+                  <div
+                    class="w-full flex justify-center items-end gap-1 h-full"
+                  >
+                    <div class="w-3 bg-primary/20 rounded-t-sm h-[70%]"></div>
+                    <div class="w-3 bg-primary rounded-t-sm h-[85%]"></div>
+                  </div>
+                  <span
+                    class="text-[10px] font-bold text-on-surface-variant uppercase"
+                    >Prot</span
+                  >
+                </div>
+                <div class="flex-1 flex flex-col items-center gap-2">
+                  <div
+                    class="w-full flex justify-center items-end gap-1 h-full"
+                  >
+                    <div class="w-3 bg-secondary/20 rounded-t-sm h-[90%]"></div>
+                    <div class="w-3 bg-secondary rounded-t-sm h-[80%]"></div>
+                  </div>
+                  <span
+                    class="text-[10px] font-bold text-on-surface-variant uppercase"
+                    >Carb</span
+                  >
+                </div>
+                <div class="flex-1 flex flex-col items-center gap-2">
+                  <div
+                    class="w-full flex justify-center items-end gap-1 h-full"
+                  >
+                    <div
+                      class="w-3 bg-warning-amber/20 rounded-t-sm h-[50%]"
+                    ></div>
+                    <div
+                      class="w-3 bg-warning-amber rounded-t-sm h-[60%]"
+                    ></div>
+                  </div>
+                  <span
+                    class="text-[10px] font-bold text-on-surface-variant uppercase"
+                    >Gras</span
+                  >
+                </div>
+              </div>
+              <div class="flex justify-center gap-4">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-surface-stroke"></span>
+                  <span class="text-[10px] text-on-surface-variant"
+                    >Objetivo</span
+                  >
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-primary"></span>
+                  <span class="text-[10px] text-on-surface-variant"
+                    >Actual</span
+                  >
+                </div>
+              </div>
+            </div>
+            <!-- Key Nutrients -->
+            <div class="glass-card p-card-padding rounded-xl">
+              <h3
+                class="font-headline-md text-headline-md text-on-surface mb-4"
+              >
+                Nutrientes Clave
+              </h3>
+              <div class="space-y-6">
+                <div>
+                  <div class="flex justify-between text-sm mb-2">
+                    <span class="text-on-surface-variant">Fibra</span>
+                    <span class="text-on-surface font-bold">28 / 30 g</span>
+                  </div>
+                  <div class="h-1.5 w-full bg-surface-variant rounded-full">
+                    <div
+                      class="h-full bg-primary rounded-full"
+                      style="width: 93%"
+                    ></div>
+                  </div>
+                </div>
+                <div>
+                  <div class="flex justify-between text-sm mb-2">
+                    <span class="text-on-surface-variant">Azúcares</span>
+                    <span class="text-on-surface font-bold">38 / 50 g</span>
+                  </div>
+                  <div class="h-1.5 w-full bg-surface-variant rounded-full">
+                    <div
+                      class="h-full bg-secondary rounded-full"
+                      style="width: 76%"
+                    ></div>
+                  </div>
+                </div>
+                <div>
+                  <div class="flex justify-between text-sm mb-2">
+                    <span class="text-on-surface-variant">Sodio</span>
+                    <span class="text-on-surface font-bold"
+                      >1.620 / 2.300 mg</span
+                    >
+                  </div>
+                  <div class="h-1.5 w-full bg-surface-variant rounded-full">
+                    <div
+                      class="h-full bg-warning-amber rounded-full"
+                      style="width: 70%"
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Quick Recommendations -->
+            <div
+              class="bg-primary/10 border border-primary/20 p-card-padding rounded-xl"
+            >
+              <div class="flex items-center gap-3 mb-3">
+                <span class="material-symbols-outlined text-primary"
+                  >tips_and_updates</span
+                >
+                <h4 class="font-label-md text-label-md font-bold text-primary">
+                  RECOMENDACIÓN DEL DÍA
+                </h4>
+              </div>
+              <p class="text-sm text-on-surface-variant leading-relaxed">
+                Vas por buen camino 💪. Intenta beber 0.4 L más de agua y añadir
+                una porción de verduras en la cena para alcanzar tu meta de
+                fibra diaria.
+              </p>
+            </div>
+            <!-- Shopping List Hook -->
+            <div
+              class="glass-card p-4 rounded-xl flex items-center justify-between group cursor-pointer hover:bg-surface-variant/30 transition-colors"
+            >
+              <div class="flex items-center gap-4">
+                <div
+                  class="w-10 h-10 bg-secondary/10 rounded-lg flex items-center justify-center"
+                >
+                  <span class="material-symbols-outlined text-secondary"
+                    >shopping_cart</span
+                  >
+                </div>
+                <div>
+                  <p class="font-label-md text-label-md font-bold">
+                    Lista de la compra
+                  </p>
+                  <p class="text-xs text-on-surface-variant">
+                    24 productos pendientes
+                  </p>
+                </div>
+              </div>
+              <span
+                class="material-symbols-outlined text-on-surface-variant group-hover:translate-x-1 transition-transform"
+                >chevron_right</span
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+    <!-- FAB for quick action (Mobile/Tablet centric but good for UX) -->
+    <button
+      class="fixed bottom-8 right-8 w-14 h-14 gradient-button rounded-full shadow-lg shadow-primary/20 flex items-center justify-center group z-30 lg:hidden"
+    >
+      <span
+        class="material-symbols-outlined text-on-primary text-3xl transition-transform group-hover:rotate-90"
+        >add</span
+      >
+    </button>
+    <script>
+      // Simple interaction script
+      document.querySelectorAll(".glass-card").forEach((card) => {
+        card.addEventListener("mouseenter", () => {
+          card.classList.add("scale-[1.01]");
+          card.style.transition = "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
+        });
+        card.addEventListener("mouseleave", () => {
+          card.classList.remove("scale-[1.01]");
+        });
+      });
+
+      // Search bar focus effect
+      const searchInput = document.querySelector('input[type="text"]');
+      searchInput.addEventListener("focus", () => {
+        searchInput.parentElement.classList.add("scale-[1.02]");
+      });
+      searchInput.addEventListener("blur", () => {
+        searchInput.parentElement.classList.remove("scale-[1.02]");
+      });
+    </script>
+  </body>
+</html>
