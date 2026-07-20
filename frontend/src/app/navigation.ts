@@ -35,7 +35,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { path: '/entrenamiento', label: 'Entrenamiento', icon: 'training', primary: true },
   { path: '/nutricion', label: 'Nutrición', icon: 'nutrition', primary: true },
   { path: '/lista-compra', label: 'Lista de compra', icon: 'shopping', primary: false },
-  { path: '/progreso', label: 'Progreso', icon: 'progress', primary: true },
+  { path: '/progreso', label: 'Progreso', icon: 'progress', primary: false },
   { path: '/objetivos', label: 'Objetivos', icon: 'goals', primary: false },
   { path: '/ajustes', label: 'Ajustes', icon: 'settings', primary: false, settings: true },
 ];

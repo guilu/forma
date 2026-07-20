@@ -129,6 +129,11 @@ describe('application shell', () => {
       screen.queryByRole('menuitem', { name: 'Objetivos', hidden: true }),
     ).not.toBeInTheDocument();
 
+    // FOR-164: the primary mobile bar is limited to Dashboard, Mediciones,
+    // Entrenamiento and Nutrición. Progreso moved behind "Más", so it is not a
+    // primary bar link.
+    expect(screen.queryByRole('link', { name: 'Progreso', hidden: true })).not.toBeInTheDocument();
+
     const more = screen.getByRole('button', { name: 'Más', hidden: true });
     expect(more).toHaveAttribute('aria-expanded', 'false');
     await user.click(more);
@@ -137,6 +142,9 @@ describe('application shell', () => {
     const menu = screen.getByRole('menu', { name: 'Más secciones', hidden: true });
     expect(
       within(menu).getByRole('menuitem', { name: 'Lista de compra', hidden: true }),
+    ).toBeInTheDocument();
+    expect(
+      within(menu).getByRole('menuitem', { name: 'Progreso', hidden: true }),
     ).toBeInTheDocument();
     expect(
       within(menu).getByRole('menuitem', { name: 'Objetivos', hidden: true }),
