@@ -31,11 +31,16 @@ export function Sidebar() {
         ))}
       </nav>
       <div className={styles.integration}>
-        <Icon name="heart" size={18} />
-        <span className={styles.integrationText}>
-          Withings
-          <span className={styles.integrationStatus}>Conectado</span>
-        </span>
+        <div className={styles.integrationHeader}>
+          <span className={styles.integrationLabel}>WITHINGS</span>
+          {/* Static status dot, not a live indicator. A real "sincronizado hace
+              X" timestamp needs the integrations sync backend, which does not
+              exist yet — follow-up story, not part of this change. */}
+          <span className={styles.integrationDot} aria-hidden="true" />
+        </div>
+        {/* "Conectado" reflects the current mock/static integration state only;
+            do not read it as a live sync confirmation (see comment above). */}
+        <p className={styles.integrationStatus}>Conectado</p>
       </div>
     </aside>
   );

@@ -6,6 +6,7 @@ import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { MobileNav } from './MobileNav';
 import { ThemeProvider } from '../theme/ThemeContext';
+import styles from './Sidebar.module.css';
 
 // FOR-120: ThemeProvider reads/persists the theme preference through this
 // module on mount. Mocked so these shell tests stay network-free; 'SYSTEM'
@@ -24,15 +25,36 @@ vi.mock('../api/profile', () => ({
  * from navigation on small screens.
  */
 describe('application shell', () => {
-  it('renders the Withings integration status in the sidebar footer', () => {
+  it('renders the Withings integration status as a card in the sidebar footer', () => {
     render(
       <MemoryRouter>
         <Sidebar />
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('Withings')).toBeInTheDocument();
+    // FOR-164: the footer moved from a plain icon+text row to a bordered card
+    // with an uppercase "WITHINGS" label; the status copy stays honest
+    // ("Conectado") since there is no real sync-timestamp backend yet.
+    expect(screen.getByText('WITHINGS')).toBeInTheDocument();
     expect(screen.getByText('Conectado')).toBeInTheDocument();
+  });
+
+  // FOR-164: nav items move from a solid active fill to a subtle tint + right
+  // border. The tint/border/radius are CSS-only and not meaningfully
+  // assertable in jsdom, but the CSS Module class wiring that drives them is —
+  // compare against the real compiled classnames instead of guessing hashes.
+  it('applies the active CSS module class only to the link matching the current route', () => {
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Sidebar />
+      </MemoryRouter>,
+    );
+
+    const activeLink = screen.getByRole('link', { name: 'Dashboard' });
+    const inactiveLink = screen.getByRole('link', { name: 'Mediciones' });
+
+    expect(activeLink.className.split(' ')).toContain(styles.active);
+    expect(inactiveLink.className.split(' ')).not.toContain(styles.active);
   });
 
   it('renders the account area and notifications in the topbar', () => {
