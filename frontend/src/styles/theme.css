@@ -1,8 +1,21 @@
 /*
- * FORMA design tokens (FOR-81).
- * Palette from docs/ui-guidelines.md: dark, technical dashboard with a
- * restrained neon-green accent. Tokens are the single source of truth; feature
- * pages must consume these variables instead of hardcoding colors.
+ * FORMA design tokens (FOR-81, reconciled with the mockup templates in
+ * FOR-163).
+ *
+ * FOR-163 folded the token set declared inline in the HTML mockup templates
+ * (`docs/1-dashboard.html` .. `docs/4-nutricion.html`, each carrying an
+ * identical `tailwind.config` token block) into this file, the existing
+ * single source of truth. The templates are a *reference* to translate, not
+ * a dependency to adopt: this app is CSS Modules, not Tailwind, and fonts are
+ * self-hosted (`@fontsource/*`, imported once in `main.tsx`) -- no CDN
+ * Tailwind, no CDN Google Fonts, ever.
+ *
+ * Every token below that changed value is documented with its template
+ * source role so a later reviewer can trace *why* the hex changed instead of
+ * just seeing a diff. Values with no template equivalent (e.g. the light
+ * theme's neutral surfaces) were left untouched -- the templates are
+ * dark-only, so there was nothing to reconcile them against.
+ *
  * Dark is the default theme; a light override is provided so later design-system
  * stories can toggle it without touching component code.
  */
@@ -11,23 +24,40 @@
 :root[data-theme='dark'] {
   color-scheme: dark;
 
-  /* Surfaces */
-  --color-bg: #050807;
-  --color-surface: #101613;
-  --color-card: #161f1a;
-  --color-border: #24342b;
+  /*
+   * Surfaces. FOR-163 reconciled these to the template's Material-You-style
+   * surface tier system, keeping this app's simpler 3-tier bg/surface/card
+   * model (darkest -> lightest) rather than adopting all ~15 template surface
+   * roles (surface-container-lowest..surface-bright): nothing in the app
+   * consumes more than 3 tiers today, and adding the rest now would be a
+   * speculative abstraction (AGENTS.md) with no consumer until FOR-164.
+   */
+  --color-bg: #10141a; /* template: background / surface / surface-dim (was #050807) */
+  --color-surface: #161b22; /* template: surface-elevated (was #101613) */
+  --color-card: #1c2026; /* template: surface-container (was #161f1a) */
+  --color-border: #30363d; /* template: surface-stroke (was #24342b) */
 
   /* Text */
-  --color-text: #f4fff7;
-  --color-text-muted: #98a89d;
+  --color-text: #dfe2eb; /* template: on-surface / on-background (was #f4fff7) */
+  --color-text-muted: #8b949e; /* template: text-dimmed (was #98a89d) */
 
-  /* Accent + status */
-  --color-accent: #9dff57;
-  --color-accent-contrast: #0a1206;
-  --color-warning: #ffd166;
-  --color-danger: #ff5f56;
+  /*
+   * Accent + status. `--color-accent` is the story's headline reconciliation:
+   * the old neon yellow-green (#9dff57) forked from the templates' actual
+   * green family. Template: primary (was #9dff57).
+   */
+  --color-accent: #4cdf97;
+  --color-accent-contrast: #003920; /* template: on-primary (was #0a1206) */
+  --color-warning: #ffab70; /* template: warning-amber (was #ffd166) */
+  --color-danger: #ff5757; /* template: error-pulse (was #ff5f56) */
 
-  /* Spacing scale */
+  /*
+   * Spacing scale. --space-2/4/5/6 already matched the template's
+   * base/stack-gap-sm (8px), stack-gap-md (16px), card-padding/gutter (24px)
+   * and stack-gap-lg (32px) 1:1 -- no change needed there. The template's
+   * page-level container margins had no current equivalent, so they are
+   * added as new tokens (not yet consumed by any layout file; for FOR-164).
+   */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -35,30 +65,73 @@
   --space-5: 24px;
   --space-6: 32px;
   --space-8: 48px;
+  --space-container-mobile: 20px; /* template: container-margin-mobile (new) */
+  --space-container-desktop: 40px; /* template: container-margin-desktop (new) */
 
-  /* Radii */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
+  /*
+   * Radii. Reconciled to the template's scale (DEFAULT/lg/xl); `--radius-full`
+   * is new (template: full, for pill-shaped controls) -- declared for FOR-164,
+   * no component consumes it yet.
+   */
+  --radius-sm: 4px; /* template: DEFAULT (was 6px) */
+  --radius-md: 8px; /* template: lg (was 10px) */
+  --radius-lg: 12px; /* template: xl (was 16px) */
+  --radius-full: 9999px; /* template: full (new) */
 
-  /* Typography */
-  --font-sans: 'Poppins', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /*
+   * Typography. The templates use two self-hosted Google fonts -- Montserrat
+   * for headlines, Be Vietnam Pro for body copy -- loaded via
+   * `@fontsource/montserrat` / `@fontsource/be-vietnam-pro` (imported once in
+   * `main.tsx`; weights 400/600/700/900 and 400/500/600 respectively -- no
+   * CDN link tag and no CSS import of a remote stylesheet). `--font-sans`
+   * (body) is reconciled to
+   * Be Vietnam Pro, replacing 'Poppins' which was never actually bundled or
+   * loaded by this app (it always silently fell back to `system-ui`).
+   * `--font-heading` is new, for FOR-164's headline treatments.
+   *
+   * Only `--font-size-base` had a real conflict with the template's body-md
+   * (16px) role; `--font-size-lg` (18px) and `--font-size-xl` (24px) already
+   * matched the template's body-lg / headline-lg-mobile sizes exactly, so
+   * they are unchanged. `--font-size-sm` has no direct template equivalent
+   * (nearest roles, label-sm 12px / label-md 14px, are ambiguous for its
+   * current broad "muted/meta text" usage) and is left as-is rather than
+   * guessed. The template's full display/headline type scale (display-xl,
+   * headline-lg, headline-md, label-sm/md, with their line-heights and
+   * letter-spacing) is deliberately NOT ported here: nothing in the app
+   * renders a distinct headline/display/label scale today, so adding it now
+   * would be speculative; FOR-164 should introduce it alongside the
+   * components that actually consume it.
+   */
+  --font-sans: 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-heading: 'Montserrat', var(--font-sans);
   --font-size-sm: 0.8125rem;
-  --font-size-base: 0.9375rem;
-  --font-size-lg: 1.125rem;
-  --font-size-xl: 1.5rem;
+  --font-size-base: 1rem; /* template: body-md (was 0.9375rem / 15px) */
+  --font-size-lg: 1.125rem; /* template: body-lg -- already matched */
+  --font-size-xl: 1.5rem; /* template: headline-lg-mobile -- already matched */
 
   /* Layout */
   --sidebar-width: 248px;
   --topbar-height: 64px;
 
-  /* Elevation */
+  /*
+   * Elevation. The templates express elevation through tonal surface
+   * layering (Material You surface tiers), not box-shadow -- there is no
+   * `boxShadow` key in any template's `tailwind.config`. `--shadow-card` is
+   * kept unchanged: it is still how this app's cards read as "raised" today,
+   * and replacing shadow-based elevation with pure tonal layering is a
+   * bigger visual/architectural call left for FOR-164 if it's wanted.
+   */
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 :root[data-theme='light'] {
   color-scheme: light;
 
+  /*
+   * No template light-mode values exist to reconcile against (the mockups are
+   * dark-only) and none of these neutrals conflict with a template role, so
+   * FOR-163 leaves them as-is.
+   */
   --color-bg: #f4f7f5;
   --color-surface: #ffffff;
   --color-card: #ffffff;
@@ -68,16 +141,32 @@
   --color-text-muted: #5c6b62;
 
   /*
-   * FOR-61 flagged the original #2f8f4e on --color-bg (#f4f7f5) at ~3.77:1,
-   * failing WCAG AA for normal text (4.5:1). FOR-62 makes light theme actually
-   * reachable via the toggle, so this darkened green fixes that: #1c6e37 on
-   * --color-bg is ~5.84:1, and white text on this accent (e.g. Button
-   * `primary`) is ~6.3:1 — both comfortably above AA while keeping the same
-   * green brand hue, just deeper. Dark theme's accent (#9dff57) is unaffected.
+   * FOR-163: the dark accent moved from #9dff57 to the template's `primary`
+   * (#4cdf97), so the FOR-61/FOR-62 light counterpart is re-derived from the
+   * *new* hue family rather than left pointing at the old one. Rather than
+   * inventing a value, this uses the template's own `inverse-primary`
+   * (#006d42) -- the M3 role Google's tooling generated specifically as
+   * "`primary` shown on an inverse/opposite-brightness surface", i.e. exactly
+   * this light-mode-on-dark-brand use case. Contrast: #006d42 on --color-bg
+   * (#f4f7f5) is ~5.96:1; white text on this accent (e.g. Button `primary`)
+   * is ~6.43:1 -- both comfortably above the WCAG AA 4.5:1 bar for normal
+   * text (FOR-61).
    */
-  --color-accent: #1c6e37;
+  --color-accent: #006d42;
   --color-accent-contrast: #ffffff;
-  --color-warning: #b7791f;
+  /*
+   * FOR-163: dark warning moved from #ffd166 to the template's warning-amber
+   * (#ffab70), a more orange hue. The light counterpart is re-derived at the
+   * same hue rather than left at the old yellow-tinted #b7791f, which also
+   * fixes a pre-existing AA failure: #b7791f on --color-bg was only ~3.38:1
+   * (below the 4.5:1 normal-text bar). #8f4d13 is ~6.01:1 on --color-bg.
+   */
+  --color-warning: #8f4d13;
+  /*
+   * FOR-163: dark danger moved from #ff5f56 to the template's error-pulse
+   * (#ff5757) -- a ~1% hue nudge. The existing light counterpart (#c0392b,
+   * ~5.04:1 on --color-bg) already passes AA and needs no change.
+   */
   --color-danger: #c0392b;
 
   --shadow-card: 0 1px 3px rgba(15, 26, 19, 0.08);
