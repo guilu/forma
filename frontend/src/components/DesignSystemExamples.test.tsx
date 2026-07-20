@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { axe } from '../test/axe';
 import { DesignSystemExamples } from './DesignSystemExamples';
 
 /**
@@ -47,5 +48,43 @@ describe('DesignSystemExamples', () => {
     expect(
       screen.getByRole('heading', { name: 'Evolución de peso', level: 2 }),
     ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Métricas', level: 2 })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Distribución de macros', level: 2 }),
+    ).toBeInTheDocument();
+  });
+
+  it('renders MetricCard examples with and without a trend sparkline (FOR-164)', () => {
+    render(<DesignSystemExamples />);
+
+    expect(screen.getByRole('heading', { name: 'Peso', level: 3 })).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        (_, element) => element?.tagName === 'P' && element.textContent === '82.4 kg',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Racha', level: 3 })).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        (_, element) => element?.tagName === 'P' && element.textContent === '12 días',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('renders a MacroRing example with its accessible summary (FOR-164)', () => {
+    render(<DesignSystemExamples />);
+
+    expect(
+      screen.getByRole('img', {
+        name: 'Objetivo de macronutrientes: proteínas 162 gramos, carbohidratos 236 gramos, grasas 68 gramos',
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Proteínas')).toBeInTheDocument();
+  });
+
+  it('has no detectable accessibility violations (FOR-61/FOR-164)', async () => {
+    const { container } = render(<DesignSystemExamples />);
+
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

@@ -3,6 +3,8 @@ import { Button, type ButtonVariant } from './Button';
 import { Card } from './Card';
 import { ChartContainer } from './ChartContainer';
 import { LineChart, type ChartPoint } from './LineChart';
+import { MacroRing } from './MacroRing';
+import { MetricCard } from './MetricCard';
 import { SelectField, TextField } from './FormField';
 import { StatusPill } from './StatusPill';
 
@@ -76,6 +78,26 @@ export function DesignSystemExamples() {
       <ChartContainer title="Sin datos" headingLevel={2} state="empty">
         <LineChart points={SAMPLE_POINTS} formatValue={(v) => v.toFixed(1)} ariaLabel="Peso" />
       </ChartContainer>
+
+      <Card title="Métricas" headingLevel={2}>
+        <MetricCard
+          label="Peso"
+          value="82.4"
+          unit="kg"
+          trend={
+            <LineChart
+              points={SAMPLE_POINTS}
+              formatValue={(v) => v.toFixed(1)}
+              ariaLabel="Tendencia de peso"
+            />
+          }
+        />
+        <MetricCard label="Racha" value="12" unit="días" />
+      </Card>
+
+      <Card title="Distribución de macros" headingLevel={2}>
+        <MacroRing proteinG={162} carbsG={236} fatG={68} />
+      </Card>
     </div>
   );
 }

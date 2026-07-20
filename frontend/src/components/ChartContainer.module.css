@@ -19,11 +19,15 @@
   height: 100%;
   min-height: 90px;
   border-radius: var(--radius-md);
+  /* FOR-164: ChartContainer always renders inside a Card, whose background is
+   * now --color-surface (reconciled in this story). Use --color-card as the
+   * shimmer's base tone so the skeleton keeps contrast against the card
+   * instead of blending into it. */
   background: linear-gradient(
     90deg,
-    var(--color-surface) 25%,
+    var(--color-card) 25%,
     var(--color-border) 50%,
-    var(--color-surface) 75%
+    var(--color-card) 75%
   );
   background-size: 200% 100%;
   animation: shimmer 1.4s ease-in-out infinite;

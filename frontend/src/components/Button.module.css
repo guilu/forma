@@ -5,11 +5,14 @@
   gap: var(--space-2);
   padding: var(--space-3) var(--space-5);
   font: inherit;
-  font-weight: 600;
+  font-weight: 700;
   border: 1px solid transparent;
   border-radius: var(--radius-md);
   /* Comfortable touch target on mobile (ui-guidelines mobile priority #2). */
   min-height: 44px;
+  transition:
+    transform 0.1s ease,
+    box-shadow 0.15s ease;
 }
 
 .button:disabled {
@@ -17,10 +20,31 @@
   cursor: default;
 }
 
+/* Templates give every active button a brief press affordance
+ * (`active:scale-95`); skip it for disabled/loading buttons, which never
+ * receive a pointerdown activation anyway. */
+.button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button {
+    transition: none;
+  }
+
+  .button:active:not(:disabled) {
+    transform: none;
+  }
+}
+
 .primary {
   color: var(--color-accent-contrast);
   background-color: var(--color-accent);
   border-color: var(--color-accent);
+  /* Templates give the primary CTA a soft accent-tinted glow
+   * (`shadow-lg shadow-primary/20`); derive it from the accent token instead
+   * of a hardcoded color so both themes stay correct. */
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--color-accent) 30%, transparent);
 }
 
 .secondary {
