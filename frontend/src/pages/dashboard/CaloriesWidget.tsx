@@ -1,25 +1,30 @@
 import { useEffect, useState } from 'react';
+import { Card } from '../../components/Card';
 import { ErrorState } from '../../components/ErrorState';
-import { MetricCard } from '../../components/MetricCard';
+import { ProgressRing } from '../../components/ProgressRing';
 import { WidgetLoading } from '../../components/WidgetLoading';
 import { getNutritionDay, type NutritionDay } from '../../api/nutrition';
+import styles from './CaloriesWidget.module.css';
 
 /**
  * "Calorías hoy" metrics tile (FOR-164 dashboard mockup). Shows today's calorie
- * *target* from the FOR-33 nutrition day (`GET /nutrition/days/{type}`).
+ * *target* from the FOR-33 nutrition day (`GET /nutrition/days/{type}`) and a
+ * consumed-vs-target ring.
  *
- * <p>The mockup renders a consumed-vs-target donut ("2.320 / 2.300 kcal ·
- * 78%"). Consumption is NOT backed — there is no calorie-logging endpoint (the
- * nutrition API returns only the day's targets and its planned meal template),
- * so this honestly shows the target alone rather than inventing an "eaten"
- * figure or a fake progress ring (ADR-006, same precedent as the other
- * documented dashboard gaps). Day type is hardcoded to `running`, matching
- * NutritionPage.
+ * <p><b>Hybrid data.</b> The target (and the "Objetivo" caption) is real; the
+ * consumed figure and the ring percentage are the SAME isolated placeholder the
+ * "Menú de hoy" widget uses ({@link PLACEHOLDER_CONSUMED}) — there is no
+ * calorie-logging endpoint, so consumption isn't backed. Kept obvious and
+ * consistent so both are removed together once a consumption API exists. Day
+ * type is hardcoded to `running`, matching NutritionPage.
  */
 type State =
   | { readonly status: 'loading' }
   | { readonly status: 'error' }
   | { readonly status: 'ready'; readonly day: NutritionDay };
+
+/** Placeholder "consumed so far" kcal — see the file doc comment. */
+const PLACEHOLDER_CONSUMED = 2120;
 
 const KCAL = new Intl.NumberFormat('es-ES');
 
@@ -47,12 +52,28 @@ export function CaloriesWidget() {
     return <ErrorState message="No se pudieron cargar tus calorías de hoy." />;
   }
 
+  const target = state.day.targets.calories;
+  const percent = target > 0 ? Math.round((PLACEHOLDER_CONSUMED / target) * 100) : 0;
+
   return (
-    <MetricCard
-      label="Calorías hoy"
-      value={KCAL.format(state.day.targets.calories)}
-      unit="kcal"
-      caption="objetivo diario"
-    />
+    <Card title="Calorías hoy">
+      <div className={styles.body}>
+        <div className={styles.text}>
+          <p className={styles.value}>
+            {KCAL.format(PLACEHOLDER_CONSUMED)}
+            <span className={styles.unit}> kcal</span>
+          </p>
+          <p className={styles.caption}>Objetivo: {KCAL.format(target)} kcal</p>
+        </div>
+        <ProgressRing
+          value={PLACEHOLDER_CONSUMED}
+          max={target}
+          label={`Calorías consumidas: ${percent}% del objetivo`}
+          size={72}
+        >
+          <span className={styles.ringText}>{percent}%</span>
+        </ProgressRing>
+      </div>
+    </Card>
   );
 }

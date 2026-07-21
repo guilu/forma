@@ -6,7 +6,8 @@ import { TrainingWidget } from './dashboard/TrainingWidget';
 import { NutritionWidget } from './dashboard/NutritionWidget';
 import { MacrosWidget } from './dashboard/MacrosWidget';
 import { TrendWidget } from './dashboard/TrendWidget';
-import { FirstSummaryWidget } from './dashboard/FirstSummaryWidget';
+import { ProgressSummaryWidget } from './dashboard/ProgressSummaryWidget';
+import { EvolutionWidget } from './dashboard/EvolutionWidget';
 import { ShoppingWidget } from './dashboard/ShoppingWidget';
 import { TipWidget } from './dashboard/TipWidget';
 import { PlanBanner } from './dashboard/PlanBanner';
@@ -78,7 +79,8 @@ export function DashboardPage() {
       </div>
 
       <div className={styles.rowThree}>
-        <FirstSummaryWidget />
+        <ProgressSummaryWidget />
+        <EvolutionWidget />
         <ShoppingWidget />
         <div className={styles.tipColumn}>
           <TipWidget />

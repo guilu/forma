@@ -28,6 +28,12 @@ interface WidgetSectionProps {
    * card surface isn't doubled.
    */
   readonly surface?: boolean;
+  /**
+   * Optional custom header control rendered on the right of the title (e.g. the
+   * Evolución metric selector). Mutually complementary with `linkTo`; when both
+   * are set the link renders after the action.
+   */
+  readonly action?: ReactNode;
   readonly children: ReactNode;
 }
 
@@ -38,6 +44,7 @@ export function WidgetSection({
   linkLabel = 'Ver más',
   titleHidden = false,
   surface = true,
+  action,
   children,
 }: WidgetSectionProps) {
   return (
@@ -49,6 +56,7 @@ export function WidgetSection({
         <h2 id={id} className={titleHidden ? styles.srOnly : styles.title}>
           {title}
         </h2>
+        {action}
         {linkTo && (
           <Link className={styles.link} to={linkTo}>
             {linkLabel}

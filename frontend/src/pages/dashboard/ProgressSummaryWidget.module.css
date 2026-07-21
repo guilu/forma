@@ -33,7 +33,7 @@
   color: var(--color-text);
 }
 
-.ringUnit {
+.ringHint {
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
 }

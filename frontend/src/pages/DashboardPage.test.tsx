@@ -6,6 +6,7 @@ import { listBodyMeasurements, type BodyMeasurement } from '../api/bodyMeasureme
 import { getTrainingWeek, type TrainingWeek } from '../api/training';
 import { getNutritionDay, type NutritionDay } from '../api/nutrition';
 import { getShoppingList, type ShoppingList } from '../api/shopping';
+import { listGoals, type Goal } from '../api/goals';
 import { axe } from '../test/axe';
 
 /**
@@ -19,11 +20,24 @@ vi.mock('../api/bodyMeasurements', () => ({ listBodyMeasurements: vi.fn() }));
 vi.mock('../api/training', () => ({ getTrainingWeek: vi.fn() }));
 vi.mock('../api/nutrition', () => ({ getNutritionDay: vi.fn() }));
 vi.mock('../api/shopping', () => ({ getShoppingList: vi.fn() }));
+vi.mock('../api/goals', () => ({ listGoals: vi.fn() }));
 
 const listMock = vi.mocked(listBodyMeasurements);
 const trainingMock = vi.mocked(getTrainingWeek);
 const nutritionMock = vi.mocked(getNutritionDay);
 const shoppingMock = vi.mocked(getShoppingList);
+const goalsMock = vi.mocked(listGoals);
+
+const goal: Goal = {
+  id: 'g1',
+  title: 'Bajar a 68 kg',
+  metric: 'WEIGHT_KG',
+  target: 68,
+  dueDate: '2026-09-01',
+  status: 'ACTIVE',
+  progress: { current: 69.2, target: 68, ratio: 0.78, source: 'BODY_MEASUREMENT' },
+  milestones: [],
+};
 
 const measurement: BodyMeasurement = {
   measuredAt: '2026-07-05T08:00:00Z',
@@ -93,6 +107,7 @@ function mockAllSuccess() {
   trainingMock.mockResolvedValue(trainingWeek);
   nutritionMock.mockResolvedValue(nutritionDay);
   shoppingMock.mockResolvedValue(shoppingList);
+  goalsMock.mockResolvedValue([goal]);
 }
 
 describe('DashboardPage', () => {
@@ -101,6 +116,8 @@ describe('DashboardPage', () => {
     trainingMock.mockReset();
     nutritionMock.mockReset();
     shoppingMock.mockReset();
+    goalsMock.mockReset();
+    goalsMock.mockResolvedValue([goal]);
   });
 
   it('shows the header greeting and renders the mockup panels', async () => {
@@ -118,7 +135,8 @@ describe('DashboardPage', () => {
     expect(screen.getByRole('heading', { name: 'Menú de hoy', level: 2 })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Macronutrientes', level: 2 })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Tendencia 30 días', level: 2 })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Tu primer resumen', level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Tu progreso', level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Evolución', level: 2 })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Lista de compra', level: 2 })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Consejo del día', level: 2 })).toBeInTheDocument();
 
@@ -149,7 +167,9 @@ describe('DashboardPage', () => {
 
     renderDashboard();
 
-    expect(await screen.findByText(/Aún no hay mediciones/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Aún no hay mediciones\. Registra tu primera medición/),
+    ).toBeInTheDocument();
     // Training widget still renders its next-session data.
     expect(screen.getByText('Running - Intervalos')).toBeInTheDocument();
   });

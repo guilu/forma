@@ -67,19 +67,24 @@ function renderContent(state: State) {
     );
   }
 
+  const remaining = state.list.items.length - PREVIEW_COUNT;
+
   return (
-    <ul className={styles.items}>
-      {state.list.items.slice(0, PREVIEW_COUNT).map((item) => (
-        <li key={item.id} className={styles.item}>
-          <span className={styles.itemIcon} aria-hidden="true">
-            <Icon name="shopping" size={16} />
-          </span>
-          <span className={styles.itemName}>{item.productName}</span>
-          <span className={styles.itemQty}>
-            {item.quantity} {unitLabel(item.unit)}
-          </span>
-        </li>
-      ))}
-    </ul>
+    <>
+      <ul className={styles.items}>
+        {state.list.items.slice(0, PREVIEW_COUNT).map((item) => (
+          <li key={item.id} className={styles.item}>
+            <span className={styles.itemIcon} aria-hidden="true">
+              <Icon name="shopping" size={16} />
+            </span>
+            <span className={styles.itemName}>{item.productName}</span>
+            <span className={styles.itemQty}>
+              {item.quantity} {unitLabel(item.unit)}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {remaining > 0 && <p className={styles.more}>+ {remaining} productos más</p>}
+    </>
   );
 }

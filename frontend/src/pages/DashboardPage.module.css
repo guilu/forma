@@ -72,10 +72,10 @@
   align-items: start;
 }
 
-/* Third row: first summary / shopping / (tip + plan banner). */
+/* Third row: progress / evolution / shopping / (tip + plan banner). */
 .rowThree {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-5);
   align-items: start;
 }
@@ -96,13 +96,14 @@
   }
 
   .rowThree {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 560px) {
   .metrics,
-  .rowFour {
+  .rowFour,
+  .rowThree {
     grid-template-columns: minmax(0, 1fr);
   }
 }
