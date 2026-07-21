@@ -1,11 +1,39 @@
-.tiles {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-  gap: var(--space-4);
+.items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
 
-.value {
-  margin: 0;
-  font-size: var(--font-size-xl);
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.itemIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  color: var(--color-accent);
+  background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  border-radius: var(--radius-md);
+}
+
+.itemName {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text);
+}
+
+.itemQty {
+  font-size: var(--font-size-sm);
   font-weight: 600;
+  color: var(--color-text-muted);
+  white-space: nowrap;
 }

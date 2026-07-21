@@ -1,27 +1,58 @@
 .widget {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-4);
+}
+
+/* Bordered card surface — each dashboard panel in the FOR-164 mockup. */
+.surface {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-card);
 }
 
 .header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
 }
 
+.headerHidden {
+  display: contents;
+}
+
 .title {
   margin: 0;
-  font-size: var(--font-size-base);
-  font-weight: 600;
-  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
 }
 
 .link {
   flex-shrink: 0;
   font-size: var(--font-size-sm);
+  font-weight: 600;
   color: var(--color-accent);
-  text-decoration: underline;
   white-space: nowrap;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

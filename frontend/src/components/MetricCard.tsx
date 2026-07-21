@@ -32,9 +32,23 @@ interface MetricCardProps {
    * visual (`aria-hidden`, like every {@link Icon}).
    */
   readonly icon?: IconName;
+  /**
+   * Optional muted caption under the value (FOR-164 dashboard mockup: each
+   * body-composition tile shows a small secondary line, e.g. "1 medición").
+   * Rendered above `trend` when present.
+   */
+  readonly caption?: string;
 }
 
-export function MetricCard({ label, value, unit, trend, headingLevel, icon }: MetricCardProps) {
+export function MetricCard({
+  label,
+  value,
+  unit,
+  trend,
+  headingLevel,
+  icon,
+  caption,
+}: MetricCardProps) {
   return (
     <Card
       title={label}
@@ -45,6 +59,7 @@ export function MetricCard({ label, value, unit, trend, headingLevel, icon }: Me
         {value}
         {unit && <span className={styles.unit}> {unit}</span>}
       </p>
+      {caption && <p className={styles.caption}>{caption}</p>}
       {trend && <div className={styles.trend}>{trend}</div>}
     </Card>
   );

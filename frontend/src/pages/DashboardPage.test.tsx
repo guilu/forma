@@ -6,27 +6,24 @@ import { listBodyMeasurements, type BodyMeasurement } from '../api/bodyMeasureme
 import { getTrainingWeek, type TrainingWeek } from '../api/training';
 import { getNutritionDay, type NutritionDay } from '../api/nutrition';
 import { getShoppingList, type ShoppingList } from '../api/shopping';
-import { getWeeklyInsights, type WeeklyInsights } from '../api/insights';
 import { axe } from '../test/axe';
 
 /**
- * Dashboard composition tests (FOR-51). Verifies the page composes all six MVP
- * widgets, that the insight widget's main recommendation renders, that each widget
- * links to its feature page, and that one widget failing does not take down the
- * others (spec `specs/FOR-51/tests.md`). Per-widget loading/empty/error coverage lives
+ * Dashboard composition tests (FOR-51, rebuilt for the FOR-164 mockup). Verifies
+ * the page composes its panels with the new mockup titles, that widgets link to
+ * their feature pages, and that one widget failing does not take down the others
+ * (spec `specs/FOR-51/tests.md`). Per-widget loading/empty/error coverage lives
  * in each widget's own test file.
  */
 vi.mock('../api/bodyMeasurements', () => ({ listBodyMeasurements: vi.fn() }));
 vi.mock('../api/training', () => ({ getTrainingWeek: vi.fn() }));
 vi.mock('../api/nutrition', () => ({ getNutritionDay: vi.fn() }));
 vi.mock('../api/shopping', () => ({ getShoppingList: vi.fn() }));
-vi.mock('../api/insights', () => ({ getWeeklyInsights: vi.fn() }));
 
 const listMock = vi.mocked(listBodyMeasurements);
 const trainingMock = vi.mocked(getTrainingWeek);
 const nutritionMock = vi.mocked(getNutritionDay);
 const shoppingMock = vi.mocked(getShoppingList);
-const insightsMock = vi.mocked(getWeeklyInsights);
 
 const measurement: BodyMeasurement = {
   measuredAt: '2026-07-05T08:00:00Z',
@@ -83,25 +80,6 @@ const shoppingList: ShoppingList = {
   budget: { weeklyEur: 103.8, monthlyEur: 451.2 },
 };
 
-const insights: WeeklyInsights = {
-  checkIn: {
-    weekStartDate: '2026-07-06',
-    plannedRunningSessions: 3,
-    completedRunningSessions: 3,
-    plannedStrengthSessions: 3,
-    completedStrengthSessions: 2,
-  },
-  main: {
-    category: 'BODY',
-    severity: 'ACTION',
-    message: 'El peso baja rápido; considera aumentar un poco las calorías.',
-    reason: 'El peso baja 1.5 kg en 7 días, por encima del 1% semanal recomendado.',
-    createdAt: '2026-07-10T08:00:00Z',
-  },
-  secondary: [],
-  generatedAt: '2026-07-10T08:00:00Z',
-};
-
 function renderDashboard() {
   return render(
     <MemoryRouter>
@@ -115,7 +93,6 @@ function mockAllSuccess() {
   trainingMock.mockResolvedValue(trainingWeek);
   nutritionMock.mockResolvedValue(nutritionDay);
   shoppingMock.mockResolvedValue(shoppingList);
-  insightsMock.mockResolvedValue(insights);
 }
 
 describe('DashboardPage', () => {
@@ -124,10 +101,9 @@ describe('DashboardPage', () => {
     trainingMock.mockReset();
     nutritionMock.mockReset();
     shoppingMock.mockReset();
-    insightsMock.mockReset();
   });
 
-  it('shows the header greeting and renders all six MVP widgets', async () => {
+  it('shows the header greeting and renders the mockup panels', async () => {
     mockAllSuccess();
 
     renderDashboard();
@@ -135,57 +111,33 @@ describe('DashboardPage', () => {
     expect(screen.getByRole('heading', { name: 'Hola Diego 👋', level: 1 })).toBeInTheDocument();
     expect(screen.getByText('Este es tu resumen de hoy')).toBeInTheDocument();
 
-    // FOR-112 full-page fixture: every WidgetSection heading is a <h2>
-    // (unchanged by this story — dashboard widgets already sit under a <h2>
-    // section heading, so their Card/MetricCard titles correctly stay at the
-    // default <h3>, verified below for one widget).
+    // Second- and third-row panels each render as a <h2> section heading.
     expect(
-      await screen.findByRole('heading', { name: 'Composición corporal', level: 2 }),
+      await screen.findByRole('heading', { name: 'Próximo entrenamiento', level: 2 }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Entrenamiento', level: 2 })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Nutrición de hoy', level: 2 })).toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', { name: 'Presupuesto de la compra', level: 2 }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', { name: 'Recomendación de la semana', level: 2 }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Integraciones', level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Menú de hoy', level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Macronutrientes', level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Tendencia 30 días', level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Tu primer resumen', level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Lista de compra', level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Consejo del día', level: 2 })).toBeInTheDocument();
 
-    // The metric cards inside "Composición corporal" (<h2>) correctly stay at
-    // the default <h3> — no skipped level, no headingLevel override needed.
-    expect(screen.getByRole('heading', { name: 'Peso', level: 3 })).toBeInTheDocument();
-  });
-
-  it('renders the insight main recommendation (message + reason)', async () => {
-    mockAllSuccess();
-
-    renderDashboard();
-
-    expect(
-      await screen.findByText('El peso baja rápido; considera aumentar un poco las calorías.'),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText('El peso baja 1.5 kg en 7 días, por encima del 1% semanal recomendado.'),
-    ).toBeInTheDocument();
+    // Metrics-row tiles are <h3> under the (sr-only) row <h2>, so heading order
+    // never skips a level (FOR-112).
+    expect(await screen.findByRole('heading', { name: 'Peso', level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Calorías hoy', level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Agua', level: 3 })).toBeInTheDocument();
   });
 
   it('links each widget to its feature page', async () => {
     mockAllSuccess();
 
     renderDashboard();
-    await screen.findByRole('heading', { name: 'Composición corporal' });
+    await screen.findByRole('heading', { name: 'Próximo entrenamiento' });
 
-    expect(
-      screen.getAllByRole('link', { name: 'Ver más' }).map((el) => el.getAttribute('href')),
-    ).toEqual(
-      expect.arrayContaining([
-        '/mediciones',
-        '/entrenamiento',
-        '/nutricion',
-        '/lista-compra',
-        '/ajustes/integraciones',
-      ]),
+    const hrefs = screen.getAllByRole('link').map((el) => el.getAttribute('href'));
+    expect(hrefs).toEqual(
+      expect.arrayContaining(['/entrenamiento', '/nutricion', '/lista-compra', '/objetivos']),
     );
   });
 
@@ -194,13 +146,11 @@ describe('DashboardPage', () => {
     trainingMock.mockResolvedValue(trainingWeek);
     nutritionMock.mockResolvedValue(nutritionDay);
     shoppingMock.mockResolvedValue(shoppingList);
-    insightsMock.mockResolvedValue(insights);
 
     renderDashboard();
 
     expect(await screen.findByText(/Aún no hay mediciones/)).toBeInTheDocument();
-    // Training widget still renders its next-session data, unaffected by the body
-    // widget's empty state.
+    // Training widget still renders its next-session data.
     expect(screen.getByText('Running - Intervalos')).toBeInTheDocument();
   });
 
@@ -209,29 +159,27 @@ describe('DashboardPage', () => {
     trainingMock.mockResolvedValue(trainingWeek);
     nutritionMock.mockResolvedValue(nutritionDay);
     shoppingMock.mockResolvedValue(shoppingList);
-    insightsMock.mockResolvedValue(insights);
 
     renderDashboard();
 
-    // The failing body widget shows its error state.
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'No se pudo cargar tu composición corporal',
-    );
-    // The other widgets still render their data.
+    // The body-measurement source fails, so the widgets reading it (body /
+    // trend / first-summary) show error states — assert the body one is among
+    // them.
+    const alerts = await screen.findAllByRole('alert');
+    expect(
+      alerts.some((a) => a.textContent?.includes('No se pudo cargar tu composición corporal')),
+    ).toBe(true);
+    // The widgets on other data sources still render their data.
     expect(await screen.findByText('Running - Intervalos')).toBeInTheDocument();
-    expect(screen.getByText('2300', { exact: false })).toBeInTheDocument();
+    expect(screen.getByText('Desayuno')).toBeInTheDocument();
   });
 
-  it('has no accessibility violations once all six widgets have settled (FOR-114)', async () => {
+  it('has no accessibility violations once the widgets have settled (FOR-114)', async () => {
     mockAllSuccess();
 
     const { container } = renderDashboard();
-    // Wait for every widget to leave its loading state before scanning: the
-    // full-page fixture is also this suite's representative multi-heading-level
-    // screen (page <h1>, section <h2>s, card <h3>s), so the axe "heading-order"
-    // rule here covers the FOR-112 heading-hierarchy fix.
-    await screen.findByRole('heading', { name: 'Composición corporal', level: 2 });
-    await screen.findByText('El peso baja rápido; considera aumentar un poco las calorías.');
+    await screen.findByRole('heading', { name: 'Próximo entrenamiento', level: 2 });
+    await screen.findByRole('heading', { name: 'Peso', level: 3 });
 
     expect(await axe(container)).toHaveNoViolations();
   });

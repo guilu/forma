@@ -26,4 +26,10 @@ describe('MetricCard', () => {
 
     expect(screen.getByRole('heading', { name: 'Peso', level: 2 })).toBeInTheDocument();
   });
+
+  it('renders an optional caption under the value (FOR-164)', () => {
+    render(<MetricCard label="Peso" value="73.6" unit="kg" caption="1 medición" />);
+
+    expect(screen.getByText('1 medición')).toBeInTheDocument();
+  });
 });

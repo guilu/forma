@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Card } from '../../components/Card';
+import { Link } from 'react-router-dom';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
+import { Icon } from '../../components/Icon';
 import { WidgetLoading } from '../../components/WidgetLoading';
 import { getTrainingWeek, type TrainingSession, type TrainingWeek } from '../../api/training';
 import { WidgetSection } from './WidgetSection';
@@ -57,7 +58,7 @@ export function TrainingWidget() {
   }, []);
 
   return (
-    <WidgetSection id="training-widget-title" title="Entrenamiento" linkTo="/entrenamiento">
+    <WidgetSection id="training-widget-title" title="Próximo entrenamiento">
       {renderContent(state)}
     </WidgetSection>
   );
@@ -90,23 +91,27 @@ function renderContent(state: State) {
 
   return (
     <div className={styles.content}>
-      <Card title="Próximo entrenamiento">
-        {next ? (
-          <p className={styles.next}>
-            <span className={styles.nextDay}>{DAY_LABELS[next.day] ?? next.day}</span>
-            <span className={styles.nextTitle}>{next.session.title}</span>
-            <span className={styles.nextDetail}>{next.session.detail}</span>
-          </p>
-        ) : (
-          <p className={styles.message}>No tienes entrenamientos pendientes esta semana.</p>
-        )}
-      </Card>
+      {next ? (
+        <div className={styles.next}>
+          <span className={styles.nextTitle}>
+            <Icon name="training" size={22} className={styles.nextIcon} />
+            {next.session.title}
+          </span>
+          <span className={styles.nextDay}>{DAY_LABELS[next.day] ?? next.day}</span>
+          <span className={styles.nextDetail}>{next.session.detail}</span>
+        </div>
+      ) : (
+        <p className={styles.message}>No tienes entrenamientos pendientes esta semana.</p>
+      )}
       <div className={styles.completion}>
         <span className={styles.completionLabel}>
           {completed} de {total} sesiones completadas
         </span>
         <ProgressBar value={completed} max={total} label="Sesiones completadas esta semana" />
       </div>
+      <Link className={styles.cta} to="/entrenamiento">
+        Ver plan completo
+      </Link>
     </div>
   );
 }

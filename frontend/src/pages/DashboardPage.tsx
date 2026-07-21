@@ -1,26 +1,35 @@
+import { Icon } from '../components/Icon';
+import { WaterTracker } from '../components/WaterTracker';
 import { BodyWidget } from './dashboard/BodyWidget';
+import { CaloriesWidget } from './dashboard/CaloriesWidget';
 import { TrainingWidget } from './dashboard/TrainingWidget';
 import { NutritionWidget } from './dashboard/NutritionWidget';
+import { MacrosWidget } from './dashboard/MacrosWidget';
+import { TrendWidget } from './dashboard/TrendWidget';
+import { FirstSummaryWidget } from './dashboard/FirstSummaryWidget';
 import { ShoppingWidget } from './dashboard/ShoppingWidget';
-import { InsightWidget } from './dashboard/InsightWidget';
-import { SyncWidget } from './dashboard/SyncWidget';
+import { TipWidget } from './dashboard/TipWidget';
+import { PlanBanner } from './dashboard/PlanBanner';
+import { WidgetSection } from './dashboard/WidgetSection';
 import styles from './DashboardPage.module.css';
 
 /**
- * Dashboard page (FOR-19, built out to the mockup by FOR-51). The daily entry point:
- * answers "what should I pay attention to today?" by composing widgets from existing
- * feature read models — body (FOR-17), training (FOR-26/27), nutrition (FOR-33),
- * shopping (FOR-39) and insights (FOR-45) — plus a static integration status chip. Each
- * widget owns its own loading/empty/error state so one failing widget never breaks the
- * others (spec `specs/FOR-51/spec.md` edge case). No domain calculations happen here or
- * in the widgets (ADR-006) — every widget renders API values as returned.
+ * Dashboard page (FOR-19, rebuilt to the FOR-164 mockup
+ * `docs/1-dashboard-1-medicion.png`). The daily entry point, composed from
+ * self-fetching widgets so one failing widget never breaks the others (spec
+ * `specs/FOR-51/spec.md`). No domain calculations happen here or in the widgets
+ * (ADR-006) — every widget renders API values as returned.
  *
- * <p>The mockup (`docs/1-dashboard.png`) also shows a prev/next date navigator and a
- * mobile Hoy/Semana/Mes tab switch. Neither is backed — every read model here only
- * exposes "the current week"/"today", with no date parameter — so the header shows
- * today's date as static text and the layout is a single ("Hoy") responsive view, per
- * `specs/FOR-51/ui.md`'s own recommendation ("Hoy for MVP unless weekly/month data is
- * available").
+ * <p>Layout mirrors the mockup: a metrics row (body-composition tiles +
+ * calories + hydration), a second row (next training / today's menu / macros /
+ * 30-day trend), and a third row (first-summary / shopping preview / tip + plan
+ * banner).
+ *
+ * <p>The header date navigator arrows are visual-only: no read model here takes
+ * a date parameter (every widget exposes "today"/"this week" only), so the
+ * arrows are inert decorative affordances and the label is today's date, per
+ * `specs/FOR-51/ui.md`. Hydration and per-meal calories are placeholder
+ * template data — see {@link WaterTracker} / {@link NutritionWidget}.
  */
 const TODAY = new Intl.DateTimeFormat('es-ES', {
   weekday: 'long',
@@ -41,17 +50,40 @@ export function DashboardPage() {
           <h1 className={styles.title}>Hola Diego 👋</h1>
           <p className={styles.subtitle}>Este es tu resumen de hoy</p>
         </div>
-        <p className={styles.date}>{capitalize(TODAY)}</p>
+        {/* Date navigator — visual only (no date-parameterised read model). */}
+        <div className={styles.dateNav} aria-hidden="true">
+          <span className={styles.dateArrow}>
+            <Icon name="chevron" size={16} className={styles.dateArrowPrev} />
+          </span>
+          <span className={styles.date}>{capitalize(TODAY)}</span>
+          <span className={styles.dateArrow}>
+            <Icon name="chevron" size={16} />
+          </span>
+        </div>
       </header>
 
-      <BodyWidget />
+      <WidgetSection id="metrics-row-title" title="Resumen de hoy" titleHidden surface={false}>
+        <div className={styles.metrics}>
+          <BodyWidget />
+          <CaloriesWidget />
+          <WaterTracker />
+        </div>
+      </WidgetSection>
 
-      <div className={styles.grid}>
+      <div className={styles.rowFour}>
         <TrainingWidget />
         <NutritionWidget />
+        <MacrosWidget />
+        <TrendWidget />
+      </div>
+
+      <div className={styles.rowThree}>
+        <FirstSummaryWidget />
         <ShoppingWidget />
-        <InsightWidget />
-        <SyncWidget />
+        <div className={styles.tipColumn}>
+          <TipWidget />
+          <PlanBanner />
+        </div>
       </div>
     </div>
   );
