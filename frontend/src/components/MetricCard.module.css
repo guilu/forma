@@ -20,3 +20,10 @@
 .trend {
   margin-top: var(--space-2);
 }
+
+/* FOR-164: muted glyph in the tile header, tinted with the brand accent so it
+   reads as a category marker without competing with the headline value. */
+.icon {
+  color: var(--color-accent);
+  flex-shrink: 0;
+}

@@ -15,11 +15,14 @@
  * rendered exactly as the backend returns it (ADR-006).
  */
 const UNIT_LABELS: ReadonlyMap<string, string> = new Map([
-  ['UD', 'ud'],
+  // FOR-164: labels match the shopping mockup's dedicated UNIDAD column
+  // (`unidades`, `g`, `kg`, `L`, `paquetes`) now that unit no longer renders
+  // inline with the quantity number.
+  ['UD', 'unidades'],
   ['G', 'g'],
   ['KG', 'kg'],
-  ['L', 'l'],
-  ['PAQUETE', 'paquete'],
+  ['L', 'L'],
+  ['PAQUETE', 'paquetes'],
 ]);
 
 /**
@@ -46,4 +49,15 @@ const generatedAtFormatter = new Intl.DateTimeFormat('es-ES', {
 /** Formats `ShoppingList.generatedAt` for the "Generada" tile. */
 export function formatGeneratedAt(iso: string): string {
   return generatedAtFormatter.format(new Date(iso));
+}
+
+/**
+ * Sums the per-item `servings` for the "Porciones" summary tile (FOR-164),
+ * skipping non-food items whose `servings` is `null`. This is a display-only
+ * aggregate of the numbers the backend already returns per line (ADR-006, no
+ * nutrition math here); items without servings simply don't contribute, so a
+ * list of only non-food items totals `0` rather than a fabricated figure.
+ */
+export function totalServings(items: readonly { readonly servings: number | null }[]): number {
+  return items.reduce((sum, item) => sum + (item.servings ?? 0), 0);
 }

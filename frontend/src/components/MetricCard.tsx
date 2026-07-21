@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Card, type HeadingLevel } from './Card';
+import { Icon, type IconName } from './Icon';
 import styles from './MetricCard.module.css';
 
 /**
@@ -24,11 +25,22 @@ interface MetricCardProps {
   readonly unit?: string;
   readonly trend?: ReactNode;
   readonly headingLevel?: HeadingLevel;
+  /**
+   * Optional decorative icon rendered top-right of the tile (FOR-164 shopping
+   * mockup: each summary tile carries a category glyph). Passed to {@link Card}
+   * as its header `action` so it aligns with the muted uppercase label; purely
+   * visual (`aria-hidden`, like every {@link Icon}).
+   */
+  readonly icon?: IconName;
 }
 
-export function MetricCard({ label, value, unit, trend, headingLevel }: MetricCardProps) {
+export function MetricCard({ label, value, unit, trend, headingLevel, icon }: MetricCardProps) {
   return (
-    <Card title={label} headingLevel={headingLevel}>
+    <Card
+      title={label}
+      headingLevel={headingLevel}
+      action={icon && <Icon name={icon} className={styles.icon} size={20} />}
+    >
       <p className={styles.value}>
         {value}
         {unit && <span className={styles.unit}> {unit}</span>}

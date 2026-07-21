@@ -26,10 +26,12 @@ import {
 import {
   ALL_CATEGORIES,
   buildCategoryTabs,
+  categoryIcon,
   categoryLabel,
   filterItemsByCategory,
+  groupItemsByCategory,
 } from './shoppingCategories';
-import { formatGeneratedAt, unitLabel } from './shoppingDisplay';
+import { formatGeneratedAt, totalServings, unitLabel } from './shoppingDisplay';
 import styles from './ShoppingPage.module.css';
 
 /**
@@ -217,13 +219,29 @@ export function ShoppingPage() {
           <p className={styles.subtitle}>Generada para tu plan nutricional semanal.</p>
         </div>
         {state.status === 'ready' && (
-          <Button
-            variant="secondary"
-            onClick={() => setConfirmRegenerate(true)}
-            disabled={pendingId !== undefined || regenerating}
-          >
-            Generar nueva lista
-          </Button>
+          <div className={styles.headerActions}>
+            {/* Week selector — visual only (FOR-164 mockup). There is no
+                per-week navigation endpoint yet, so the arrows are inert
+                decorative affordances (aria-hidden, not focusable) and the
+                label is static; wiring real week navigation is a separate,
+                backend-dependent story. */}
+            <div className={styles.weekSelector} aria-hidden="true">
+              <span className={styles.weekArrow}>
+                <Icon name="chevron" size={16} className={styles.weekArrowPrev} />
+              </span>
+              <span className={styles.weekLabel}>Semana del 8 - 14 Junio 2025</span>
+              <span className={styles.weekArrow}>
+                <Icon name="chevron" size={16} />
+              </span>
+            </div>
+            <Button
+              variant="secondary"
+              onClick={() => setConfirmRegenerate(true)}
+              disabled={pendingId !== undefined || regenerating}
+            >
+              Generar nueva lista
+            </Button>
+          </div>
         )}
       </header>
       {actionError && (
@@ -290,6 +308,7 @@ function renderContent(
   const { items, budget, generatedAt } = state.list;
   const tabs = buildCategoryTabs(items);
   const filteredItems = filterItemsByCategory(items, selectedCategory);
+  const groups = groupItemsByCategory(filteredItems);
 
   return (
     <>
@@ -297,23 +316,34 @@ function renderContent(
         <MetricCard
           label="Productos"
           headingLevel={2}
+          icon="shopping"
           value={String(items.length)}
           unit="productos únicos"
         />
         <MetricCard
           label="Total estimado"
           headingLevel={2}
+          icon="goals"
           value={EUR.format(budget.weeklyEur)}
           unit="precio aproximado"
         />
+        {/* "Porciones" aggregate tile (FOR-164 mockup): sums the per-item
+            servings the backend returns, skipping non-food items
+            (`servings: null`) rather than fabricating a figure. */}
         <MetricCard
-          label="Estimado mensual"
+          label="Porciones"
           headingLevel={2}
-          value={EUR.format(budget.monthlyEur)}
+          icon="nutrition"
+          value={String(totalServings(items))}
+          unit="para 7 días"
         />
-        {/* Restored mockup tile (FOR-117): list-level generation timestamp.
-            No "Porciones" aggregate tile — see the file doc comment. */}
-        <MetricCard label="Generada" headingLevel={2} value={formatGeneratedAt(generatedAt)} />
+        {/* List-level generation timestamp (FOR-117). */}
+        <MetricCard
+          label="Generada"
+          headingLevel={2}
+          icon="progress"
+          value={formatGeneratedAt(generatedAt)}
+        />
       </section>
 
       {/* Category filter tabs (FOR-111): one tab per distinct category present
@@ -338,92 +368,134 @@ function renderContent(
       ) : filteredItems.length === 0 ? (
         <EmptyState variant="filtered" title="No hay artículos en esta categoría." />
       ) : (
-        <Card title={categoryLabel(selectedCategory)} headingLevel={2}>
-          <ul className={styles.items}>
-            {filteredItems.map((item) => (
-              <li key={item.id} className={styles.item}>
-                <label className={styles.itemLabel}>
-                  <input
-                    type="checkbox"
-                    checked={item.checked}
-                    disabled={pendingId === item.id || regenerating}
-                    onChange={() => toggle(item)}
-                  />
-                  <span className={item.checked ? styles.checkedName : undefined}>
-                    {item.productName}
-                  </span>
-                </label>
-                <span className={styles.quantity}>
-                  {/* Quantity +/- controls (FOR-109/FOR-118): disabled during
-                      this item's own in-flight request (mirrors the checkbox
-                      pattern above) or while a regenerate is in flight, to
-                      avoid racing a per-item edit against a full-list
-                      rebuild. The decrement button is additionally disabled
-                      at quantity 1 (client-side guard mirroring the backend's
-                      `quantity >= 1` invariant) rather than sending a request
-                      that would fail. */}
-                  <span className={styles.quantityStepper}>
-                    <button
-                      type="button"
-                      className={styles.stepperButton}
-                      aria-label={`Disminuir cantidad de ${item.productName}`}
-                      disabled={item.quantity <= 1 || pendingId === item.id || regenerating}
-                      onClick={() => onChangeQuantity(item, -1)}
-                    >
-                      −
-                    </button>
-                    <span>
-                      {item.quantity} {unitLabel(item.unit)}
+        <Card className={styles.tableCard}>
+          {/* Sort control — visual only (FOR-164 mockup). The list is already
+              grouped by category; a real re-sort has no backing option yet, so
+              this is a static, inert affordance. */}
+          <div className={styles.sortRow} aria-hidden="true">
+            <span className={styles.sortLabel}>Ordenar por:</span>
+            <span className={styles.sortValue}>
+              Categoría
+              <Icon name="chevron" size={14} className={styles.sortChevron} />
+            </span>
+          </div>
+
+          {/* Column headers mirror the item-row grid below. Decorative
+              (aria-hidden): each item row already carries accessible labels on
+              its own controls, so the header text isn't announced twice. */}
+          <div className={styles.columns} aria-hidden="true">
+            <span>Producto</span>
+            <span className={styles.colCenter}>Cantidad</span>
+            <span className={styles.colCenter}>Unidad</span>
+            <span className={styles.colRight}>Precio</span>
+            <span className={styles.colRight}>Acciones</span>
+          </div>
+
+          {/* Section heading for the visible slice (a11y/FOR-112): the table
+              region needs an <h2> in the heading order; the visible structure
+              is the column headers + category groups, so this label is
+              sr-only. */}
+          <h2 className={styles.srOnly}>{categoryLabel(selectedCategory)}</h2>
+
+          {groups.map((group) => (
+            <div key={group.key} className={styles.group}>
+              <div className={styles.groupHeader}>
+                <Icon name={categoryIcon(group.key)} size={18} className={styles.groupIcon} />
+                <span className={styles.groupLabel}>{group.label}</span>
+              </div>
+              <ul className={styles.items}>
+                {group.items.map((item) => (
+                  <li key={item.id} className={styles.item}>
+                    <span className={styles.product}>
+                      <span className={item.checked ? styles.checkedName : styles.productName}>
+                        {item.productName}
+                      </span>
+                      {/* Servings detail (FOR-108/FOR-117): omitted for non-food
+                          items (`servings: null`), never fabricated. */}
+                      {item.servings != null && (
+                        <span className={styles.servings}>{item.servings} raciones</span>
+                      )}
                     </span>
-                    <button
-                      type="button"
-                      className={styles.stepperButton}
-                      aria-label={`Aumentar cantidad de ${item.productName}`}
-                      disabled={pendingId === item.id || regenerating}
-                      onClick={() => onChangeQuantity(item, 1)}
-                    >
-                      +
-                    </button>
-                  </span>
-                  {/* Servings detail (FOR-108/FOR-117): omitted for non-food
-                      items (`servings: null`), never fabricated. Renders
-                      inside this item's own row/label, not a separate
-                      unlabeled element (ui.md accessibility note). */}
-                  {item.servings != null && (
-                    <span className={styles.servings}>{item.servings} raciones</span>
-                  )}
-                </span>
-                <span className={styles.cost}>{EUR.format(item.estimatedCostEur)}</span>
-                <span className={styles.itemActions}>
-                  {/* Provider link-out (FOR-108/FOR-109/FOR-118): a real link,
-                      not a button, so it's a native navigable control; opens
-                      in a new tab with an accessible "opens in a new tab"
-                      indication baked into the label. Omitted (not disabled)
-                      when the item has no productUrl — same precedent as the
-                      rest of this page (file doc comment). */}
-                  {item.productUrl && (
-                    <a
-                      href={item.productUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={styles.linkOut}
-                      aria-label={`${item.productName} (se abre en una nueva pestaña)`}
-                    >
-                      <Icon name="externalLink" size={16} />
-                    </a>
-                  )}
-                  <button
-                    type="button"
-                    className={styles.editButton}
-                    onClick={() => onEdit(item)}
-                    aria-label={`Editar producto ${item.productName}`}
-                  >
-                    <Icon name="edit" size={16} />
-                  </button>
-                </span>
-              </li>
-            ))}
-          </ul>
+
+                    {/* Quantity +/- controls (FOR-109/FOR-118): disabled during
+                        this item's own in-flight request or while a regenerate
+                        is in flight, to avoid racing a per-item edit against a
+                        full-list rebuild. The decrement is additionally
+                        disabled at quantity 1 (client-side guard mirroring the
+                        backend's `quantity >= 1` invariant). */}
+                    <span className={styles.quantityStepper}>
+                      <button
+                        type="button"
+                        className={styles.stepperButton}
+                        aria-label={`Disminuir cantidad de ${item.productName}`}
+                        disabled={item.quantity <= 1 || pendingId === item.id || regenerating}
+                        onClick={() => onChangeQuantity(item, -1)}
+                      >
+                        −
+                      </button>
+                      <span className={styles.quantityValue}>{item.quantity}</span>
+                      <button
+                        type="button"
+                        className={styles.stepperButton}
+                        aria-label={`Aumentar cantidad de ${item.productName}`}
+                        disabled={pendingId === item.id || regenerating}
+                        onClick={() => onChangeQuantity(item, 1)}
+                      >
+                        +
+                      </button>
+                    </span>
+
+                    <span className={styles.unit}>{unitLabel(item.unit)}</span>
+
+                    <span className={styles.cost}>{EUR.format(item.estimatedCostEur)}</span>
+
+                    <span className={styles.itemActions}>
+                      {/* Edit product price/URL (FOR-36). */}
+                      <button
+                        type="button"
+                        className={styles.actionButton}
+                        onClick={() => onEdit(item)}
+                        aria-label={`Editar producto ${item.productName}`}
+                      >
+                        <Icon name="edit" size={16} />
+                      </button>
+                      {/* Provider link-out (FOR-108/FOR-109/FOR-118): a real
+                          link opening in a new tab; omitted (not disabled) when
+                          the item has no productUrl. */}
+                      {item.productUrl && (
+                        <a
+                          href={item.productUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={styles.actionButton}
+                          aria-label={`${item.productName} (se abre en una nueva pestaña)`}
+                        >
+                          <Icon name="externalLink" size={16} />
+                        </a>
+                      )}
+                      {/* Checked toggle (FOR-63): a real checkbox styled as the
+                          mockup's green "done" square; its accessible name is
+                          the product name. */}
+                      <input
+                        type="checkbox"
+                        className={styles.checkToggle}
+                        aria-label={item.productName}
+                        checked={item.checked}
+                        disabled={pendingId === item.id || regenerating}
+                        onChange={() => toggle(item)}
+                      />
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+
+          {/* Full-list CTA — visual only (FOR-164 mockup): every item is already
+              rendered, so this is a static footer affordance, not a paginator. */}
+          <button type="button" className={styles.fullListButton}>
+            Ver lista completa ({items.length} productos)
+          </button>
         </Card>
       )}
     </>
