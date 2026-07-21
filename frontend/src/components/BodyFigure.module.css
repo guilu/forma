@@ -1,0 +1,10 @@
+/* Placeholder silhouette fill — muted by default, accent when "active".
+   Swap this component's SVG for the real asset pack later (see BodyFigure.tsx). */
+.figure {
+  fill: var(--color-border);
+  flex-shrink: 0;
+}
+
+.active {
+  fill: var(--color-accent);
+}
