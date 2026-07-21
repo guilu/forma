@@ -83,8 +83,13 @@
  *
  * `margin-bottom` opens a visible gap from the bar below it now that the bar
  * is a detached floating pill rather than a flush edge-to-edge bar; matches
- * the bar's own glass treatment (translucent fill + blur, solid fallback,
- * full border + rounded corners) so the two read as one floating system.
+ * the bar's border + rounded corners so the two read as one floating system.
+ *
+ * Unlike the bar, this menu uses a FULLY OPAQUE `--color-surface` fill (no
+ * translucent glass override): the bar floats over the empty dark strip at
+ * the bottom of the viewport, but this menu expands over busy page content,
+ * so the same 72% tint that reads as solid on the bar bleeds text on the
+ * menu. Opaque fill keeps its items as readable as the bar's buttons.
  */
 .moreMenu {
   position: absolute;
@@ -94,20 +99,10 @@
   margin-bottom: var(--space-2);
   display: flex;
   flex-direction: column;
-  /* Same fill as the pill (--color-surface, not --color-card) so the menu is
-   * not more transparent than the bar it extends. */
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
-}
-
-@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
-  .moreMenu {
-    background-color: color-mix(in srgb, var(--color-surface) 72%, transparent);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-  }
 }
 
 .moreMenu .link {
