@@ -6,6 +6,14 @@
 
 .header {
   display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.titles {
+  display: flex;
   flex-direction: column;
   gap: var(--space-1);
 }
@@ -17,6 +25,34 @@
 .subtitle {
   margin: 0;
   color: var(--color-text-muted);
+}
+
+.dateNav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.dateArrow {
+  display: flex;
+  align-items: center;
+  color: var(--color-text-muted);
+}
+
+.dateArrowPrev {
+  transform: rotate(180deg);
+}
+
+.dateLabel {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--color-text);
+  text-transform: capitalize;
 }
 
 .selector {
@@ -49,16 +85,103 @@
 }
 
 .calories {
-  margin: 0;
+  margin: 0 0 var(--space-3);
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
 }
 
 .caloriesValue {
+  font-family: var(--font-heading);
   font-size: var(--font-size-xl);
-  font-weight: 600;
+  font-weight: 700;
+  line-height: 1.1;
 }
 
 .caloriesUnit {
   color: var(--color-text-muted);
+  font-size: var(--font-size-base);
+}
+
+.caloriesTarget {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.caloriesNote {
+  margin: var(--space-2) 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+/* Two-column main (meals) + side (key nutrients). */
+.mainSide {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.mealPhoto {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  color: var(--color-accent);
+  background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  border-radius: var(--radius-md);
+}
+
+.mealHeaderText {
+  flex: 1;
+  min-width: 0;
+}
+
+.mealMacros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: var(--space-3) 0 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.mealKcal {
+  margin-left: auto;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.nutrients {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.nutrientHead {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+  font-size: var(--font-size-sm);
+}
+
+.nutrientValue {
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+@media (min-width: 900px) {
+  .mainSide {
+    grid-template-columns: 2fr 1fr;
+  }
 }
 
 .explanation {

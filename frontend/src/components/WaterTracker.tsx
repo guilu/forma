@@ -1,4 +1,4 @@
-import { Card } from './Card';
+import { Card, type HeadingLevel } from './Card';
 import styles from './WaterTracker.module.css';
 
 /**
@@ -22,12 +22,12 @@ const PLACEHOLDER = {
 
 const NUM = new Intl.NumberFormat('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
-export function WaterTracker() {
+export function WaterTracker({ headingLevel }: { readonly headingLevel?: HeadingLevel } = {}) {
   const { currentL, goalL, glassesTotal, glassesFilled } = PLACEHOLDER;
   const percent = Math.round((currentL / goalL) * 100);
 
   return (
-    <Card title="Agua">
+    <Card title="Agua" headingLevel={headingLevel}>
       <p className={styles.value}>
         {NUM.format(currentL)}
         <span className={styles.goal}> / {NUM.format(goalL)} L</span>

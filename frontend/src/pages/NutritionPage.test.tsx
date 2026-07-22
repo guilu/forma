@@ -123,6 +123,23 @@ describe('NutritionPage', () => {
     expect(screen.getByText('150 g')).toBeInTheDocument();
   });
 
+  it('renders the FOR-164 tiles: real calorie target + placeholder consumed, water, and key nutrients', async () => {
+    getDayMock.mockResolvedValue(runningDay);
+
+    renderPage();
+
+    // Real target still present (1940); placeholder consumed shown alongside it.
+    expect(await screen.findByText('1940')).toBeInTheDocument();
+    expect(screen.getByText(/kcal restantes/)).toBeInTheDocument();
+    // Placeholder hydration tile.
+    expect(screen.getByRole('heading', { name: 'Agua', level: 2 })).toBeInTheDocument();
+    // Placeholder key-nutrients card.
+    expect(screen.getByRole('heading', { name: 'Nutrientes clave', level: 2 })).toBeInTheDocument();
+    expect(screen.getByText('Fibra')).toBeInTheDocument();
+    // Placeholder per-meal kcal chip on the first meal.
+    expect(screen.getByText('480 kcal')).toBeInTheDocument();
+  });
+
   it('switches between day types via the selector and refetches the plan', async () => {
     getDayMock.mockImplementation((type: string) =>
       Promise.resolve(type === 'strength' ? strengthDay : runningDay),
