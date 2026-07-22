@@ -44,8 +44,9 @@ describe('sidebar navigation', () => {
       </MemoryRouter>,
     );
 
-    // Starts on the Dashboard.
-    expect(screen.getByRole('heading', { name: 'Hola Diego 👋' })).toBeInTheDocument();
+    // Starts on the Dashboard (generic greeting — no profile is mocked here, so
+    // the name stays unset, FOR-169 empty first-run).
+    expect(screen.getByRole('heading', { name: 'Hola 👋' })).toBeInTheDocument();
 
     // "Objetivos" is a secondary section, so it appears once (sidebar only).
     const link = screen.getByRole('link', { name: 'Objetivos' });

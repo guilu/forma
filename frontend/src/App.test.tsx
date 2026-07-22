@@ -50,7 +50,9 @@ describe('App', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole('heading', { name: 'Hola Diego 👋' })).toBeInTheDocument();
+    // Generic greeting: no profile mocked here, so the name stays unset
+    // (FOR-169 empty first-run).
+    expect(screen.getByRole('heading', { name: 'Hola 👋' })).toBeInTheDocument();
     // The persistent shell navigation is present.
     expect(screen.getAllByRole('navigation').length).toBeGreaterThan(0);
   });
