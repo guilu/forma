@@ -57,14 +57,80 @@
   gap: var(--space-4);
 }
 
-.chartTableRow {
+.historyRow {
   display: grid;
   grid-template-columns: 1fr;
   gap: var(--space-4);
+  align-items: start;
 }
 
 .panel {
   min-width: 0;
+}
+
+/* Distribución corporal (FOR-164): figure + composition legend. */
+.distribution {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.distributionLegend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  min-width: 8rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.distributionItem {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  column-gap: var(--space-2);
+}
+
+.distributionDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.dotMuscle {
+  background-color: var(--color-accent);
+}
+
+.dotFat {
+  background-color: var(--color-warning);
+}
+
+.dotBone {
+  background-color: var(--color-text-muted);
+}
+
+.dotWater {
+  background-color: var(--color-info, #3b82f6);
+}
+
+.distributionLabel {
+  color: var(--color-text);
+}
+
+.distributionValue {
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.detailLink {
+  display: inline-block;
+  margin-top: var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-accent);
 }
 
 .rangeSelector {
@@ -128,9 +194,8 @@
 }
 
 @media (min-width: 900px) {
-  .chartTableRow {
+  .historyRow {
     grid-template-columns: 2fr 1fr;
-    align-items: start;
   }
 }
 
@@ -140,10 +205,6 @@
 @media (max-width: 768px) {
   .tabs {
     display: flex;
-  }
-
-  .chartTableRow {
-    display: contents;
   }
 
   .panel {

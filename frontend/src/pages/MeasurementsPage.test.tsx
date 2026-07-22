@@ -142,6 +142,30 @@ describe('MeasurementsPage', () => {
     expect(screen.queryByText(/semana pasada/i)).not.toBeInTheDocument();
   });
 
+  it('renders the placeholder water tile and the body-distribution card (real muscle/fat, placeholder bone/water)', async () => {
+    listMock.mockResolvedValue(SINGLE);
+    render(<MeasurementsPage />);
+
+    // Placeholder "Agua corporal" tile — no "vs semana pasada" delta.
+    expect(
+      await screen.findByRole('heading', { name: 'Agua corporal', level: 2 }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('58.0')).toBeInTheDocument();
+
+    // Distribución corporal: real muscle (leanMassKg) + fat (fatMassKg), and
+    // placeholder bone/water values.
+    const distribution = screen
+      .getByRole('heading', { name: 'Distribución corporal', level: 2 })
+      .closest('section') as HTMLElement;
+    expect(within(distribution).getByText('64.1 kg')).toBeInTheDocument(); // leanMassKg
+    expect(within(distribution).getByText('14.3 kg')).toBeInTheDocument(); // fatMassKg
+    expect(within(distribution).getByText('3.2 kg')).toBeInTheDocument(); // placeholder bone
+    expect(within(distribution).getByRole('link', { name: 'Ver análisis detallado' })).toHaveAttribute(
+      'href',
+      '/progreso',
+    );
+  });
+
   // The Resumen/Evolución/Historial tab bar is CSS-hidden at the jsdom desktop
   // viewport (shown only <=768px, same pattern as layout/MobileNav), so these
   // query with `hidden: true` to exercise the mobile tab-switching logic.
