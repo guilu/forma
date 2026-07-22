@@ -92,7 +92,9 @@ function renderContent(state: State, metric: MetricKey) {
     return <ErrorState message="No se pudo cargar tu evolución. Inténtalo de nuevo más tarde." />;
   }
   if (state.status === 'empty') {
-    return <EmptyState variant="filtered" title="Aún no hay mediciones para mostrar tu evolución." />;
+    return (
+      <EmptyState variant="filtered" title="Aún no hay mediciones para mostrar tu evolución." />
+    );
   }
 
   const { label, unit, select } = METRICS[metric];

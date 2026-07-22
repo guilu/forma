@@ -127,7 +127,6 @@ const PLACEHOLDER = {
   ],
 } as const;
 
-
 /** JS `Date#getDay()` (0 = Sunday) indexed to the backend's `dayOfWeek` names. */
 const JS_DAY_TO_ENUM = [
   'SUNDAY',
@@ -535,8 +534,20 @@ function WeeklyDistribution({ days }: { readonly days: readonly TrainingDay[] })
   };
 
   const legend = [
-    { key: 'strength', label: 'Fuerza', count: strength, unit: 'sesiones', className: styles.dotStrength },
-    { key: 'running', label: 'Carreras', count: running, unit: 'sesiones', className: styles.dotRunning },
+    {
+      key: 'strength',
+      label: 'Fuerza',
+      count: strength,
+      unit: 'sesiones',
+      className: styles.dotStrength,
+    },
+    {
+      key: 'running',
+      label: 'Carreras',
+      count: running,
+      unit: 'sesiones',
+      className: styles.dotRunning,
+    },
     { key: 'rest', label: 'Descanso', count: restDays, unit: 'días', className: styles.dotRest },
   ];
   const balanced = strength > 0 && running > 0;
@@ -559,7 +570,14 @@ function WeeklyDistribution({ days }: { readonly days: readonly TrainingDay[] })
               <span className={styles.distributionLabel}>{item.label}</span>
               <span className={styles.distributionPercent}>{pct(item.count)}%</span>
               <span className={styles.distributionCount}>
-                {item.count} {item.unit === 'días' ? (item.count === 1 ? 'día' : 'días') : item.count === 1 ? 'sesión' : 'sesiones'}
+                {item.count}{' '}
+                {item.unit === 'días'
+                  ? item.count === 1
+                    ? 'día'
+                    : 'días'
+                  : item.count === 1
+                    ? 'sesión'
+                    : 'sesiones'}
               </span>
             </li>
           ))}
@@ -567,7 +585,9 @@ function WeeklyDistribution({ days }: { readonly days: readonly TrainingDay[] })
       </div>
       <p className={styles.distributionNote}>
         <Icon name="check" size={16} className={styles.distributionNoteIcon} />
-        {balanced ? 'Equilibrio adecuado. Buen balance entre fuerza y cardio.' : 'Añade variedad para equilibrar fuerza y cardio.'}
+        {balanced
+          ? 'Equilibrio adecuado. Buen balance entre fuerza y cardio.'
+          : 'Añade variedad para equilibrar fuerza y cardio.'}
       </p>
     </Card>
   );

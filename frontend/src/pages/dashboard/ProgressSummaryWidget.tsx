@@ -33,9 +33,7 @@ const METRIC_UNIT: Record<GoalMetric, string> = {
 /** Picks the goal to feature: first ACTIVE (weight preferred), else the first. */
 function primaryGoal(goals: readonly Goal[]): Goal | undefined {
   const active = goals.filter((g) => g.status === 'ACTIVE');
-  return (
-    active.find((g) => g.metric === 'WEIGHT_KG') ?? active[0] ?? goals[0] ?? undefined
-  );
+  return active.find((g) => g.metric === 'WEIGHT_KG') ?? active[0] ?? goals[0] ?? undefined;
 }
 
 export function ProgressSummaryWidget() {

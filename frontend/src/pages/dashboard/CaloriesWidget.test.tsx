@@ -46,6 +46,8 @@ describe('CaloriesWidget', () => {
 
     render(<CaloriesWidget />);
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('No se pudieron cargar tus calorías');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'No se pudieron cargar tus calorías',
+    );
   });
 });

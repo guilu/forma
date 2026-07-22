@@ -134,7 +134,9 @@ describe('DashboardPage', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Menú de hoy', level: 2 })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Macronutrientes', level: 2 })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Tendencia 30 días', level: 2 })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Tendencia 30 días', level: 2 }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Tu progreso', level: 2 })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Evolución', level: 2 })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Lista de compra', level: 2 })).toBeInTheDocument();

@@ -75,9 +75,7 @@ function renderContent(state: State) {
     return <WidgetLoading label="Cargando tu menú de hoy…" rows={2} />;
   }
   if (state.status === 'error') {
-    return (
-      <ErrorState message="No se pudo cargar tu menú de hoy. Inténtalo de nuevo más tarde." />
-    );
+    return <ErrorState message="No se pudo cargar tu menú de hoy. Inténtalo de nuevo más tarde." />;
   }
   if (state.status === 'empty') {
     return <EmptyState variant="filtered" title="No hay un plan de comidas para hoy todavía." />;

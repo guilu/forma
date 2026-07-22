@@ -347,10 +347,38 @@ function MeasurementsDashboard({ measurements, activeTab, setActiveTab }: Dashbo
  */
 function BodyDistributionCard({ latest }: { readonly latest: BodyMeasurement }) {
   const rows = [
-    { key: 'muscle', label: 'Músculo', value: latest.leanMassKg, unit: 'kg', dot: styles.dotMuscle, real: true },
-    { key: 'fat', label: 'Grasa', value: latest.fatMassKg, unit: 'kg', dot: styles.dotFat, real: true },
-    { key: 'bone', label: 'Hueso', value: PLACEHOLDER.boneKg, unit: 'kg', dot: styles.dotBone, real: false },
-    { key: 'water', label: 'Agua', value: PLACEHOLDER.waterKg, unit: 'kg', dot: styles.dotWater, real: false },
+    {
+      key: 'muscle',
+      label: 'Músculo',
+      value: latest.leanMassKg,
+      unit: 'kg',
+      dot: styles.dotMuscle,
+      real: true,
+    },
+    {
+      key: 'fat',
+      label: 'Grasa',
+      value: latest.fatMassKg,
+      unit: 'kg',
+      dot: styles.dotFat,
+      real: true,
+    },
+    {
+      key: 'bone',
+      label: 'Hueso',
+      value: PLACEHOLDER.boneKg,
+      unit: 'kg',
+      dot: styles.dotBone,
+      real: false,
+    },
+    {
+      key: 'water',
+      label: 'Agua',
+      value: PLACEHOLDER.waterKg,
+      unit: 'kg',
+      dot: styles.dotWater,
+      real: false,
+    },
   ];
 
   return (

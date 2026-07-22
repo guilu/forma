@@ -17,7 +17,10 @@ const base: BodyMeasurement = {
   bmi: 21.3,
 };
 
-const history = [base, { ...base, measuredAt: '2026-06-28T08:00:00Z', weightKg: 70.5, bodyFatPercentage: 13.0 }];
+const history = [
+  base,
+  { ...base, measuredAt: '2026-06-28T08:00:00Z', weightKg: 70.5, bodyFatPercentage: 13.0 },
+];
 
 describe('EvolutionWidget', () => {
   beforeEach(() => {
@@ -53,7 +56,9 @@ describe('EvolutionWidget', () => {
 
     render(<EvolutionWidget />);
 
-    expect(await screen.findByText(/Aún no hay mediciones para mostrar tu evolución/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Aún no hay mediciones para mostrar tu evolución/),
+    ).toBeInTheDocument();
   });
 
   it('shows an error state when the request fails', async () => {

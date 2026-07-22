@@ -91,9 +91,7 @@ export function filterItemsByCategory(
  * actually present in `items` produce a group; each group carries its display
  * label so the caller doesn't re-resolve it.
  */
-export function groupItemsByCategory(
-  items: readonly ShoppingItem[],
-): ReadonlyArray<{
+export function groupItemsByCategory(items: readonly ShoppingItem[]): ReadonlyArray<{
   readonly key: string;
   readonly label: string;
   readonly items: readonly ShoppingItem[];

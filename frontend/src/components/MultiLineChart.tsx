@@ -66,11 +66,7 @@ export function MultiLineChart({ series, startLabel, endLabel, ariaLabel }: Mult
           const last = s.points[s.points.length - 1];
           return (
             <g key={s.label}>
-              <polyline
-                className={styles.line}
-                points={polyline}
-                style={{ stroke: s.color }}
-              />
+              <polyline className={styles.line} points={polyline} style={{ stroke: s.color }} />
               {last && (
                 <circle cx={mapX(last.t)} cy={mapY(last.y)} r={3} style={{ fill: s.color }} />
               )}
@@ -87,7 +83,11 @@ export function MultiLineChart({ series, startLabel, endLabel, ariaLabel }: Mult
       <ul className={styles.legend}>
         {series.map((s) => (
           <li key={s.label} className={styles.legendItem}>
-            <span className={styles.legendDot} style={{ backgroundColor: s.color }} aria-hidden="true" />
+            <span
+              className={styles.legendDot}
+              style={{ backgroundColor: s.color }}
+              aria-hidden="true"
+            />
             {s.label}
           </li>
         ))}

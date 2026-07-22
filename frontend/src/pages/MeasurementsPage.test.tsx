@@ -160,10 +160,9 @@ describe('MeasurementsPage', () => {
     expect(within(distribution).getByText('64.1 kg')).toBeInTheDocument(); // leanMassKg
     expect(within(distribution).getByText('14.3 kg')).toBeInTheDocument(); // fatMassKg
     expect(within(distribution).getByText('3.2 kg')).toBeInTheDocument(); // placeholder bone
-    expect(within(distribution).getByRole('link', { name: 'Ver análisis detallado' })).toHaveAttribute(
-      'href',
-      '/progreso',
-    );
+    expect(
+      within(distribution).getByRole('link', { name: 'Ver análisis detallado' }),
+    ).toHaveAttribute('href', '/progreso');
   });
 
   // The Resumen/Evolución/Historial tab bar is CSS-hidden at the jsdom desktop

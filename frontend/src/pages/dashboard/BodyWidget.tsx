@@ -119,7 +119,12 @@ function renderContent(state: State) {
   const caption = `${history.length} ${history.length === 1 ? 'medición' : 'mediciones'}`;
 
   const tiles = [
-    { label: 'Peso', value: format(latest.weightKg), unit: 'kg', select: (m: BodyMeasurement) => m.weightKg },
+    {
+      label: 'Peso',
+      value: format(latest.weightKg),
+      unit: 'kg',
+      select: (m: BodyMeasurement) => m.weightKg,
+    },
     {
       label: 'Grasa corporal',
       value: format(latest.bodyFatPercentage),
@@ -132,7 +137,12 @@ function renderContent(state: State) {
       unit: 'kg',
       select: (m: BodyMeasurement) => m.leanMassKg,
     },
-    { label: 'IMC', value: format(latest.bmi), unit: undefined, select: (m: BodyMeasurement) => m.bmi },
+    {
+      label: 'IMC',
+      value: format(latest.bmi),
+      unit: undefined,
+      select: (m: BodyMeasurement) => m.bmi,
+    },
   ];
 
   return (
