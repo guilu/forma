@@ -27,7 +27,7 @@ type MetricKey = 'weight' | 'fat' | 'lean';
 
 const METRICS: Record<
   MetricKey,
-  { label: string; unit: string; select: (m: BodyMeasurement) => number }
+  { label: string; unit: string; select: (m: BodyMeasurement) => number | undefined }
 > = {
   weight: { label: 'Peso', unit: 'kg', select: (m) => m.weightKg },
   fat: { label: 'Grasa', unit: '%', select: (m) => m.bodyFatPercentage },
@@ -97,18 +97,19 @@ function renderContent(state: State, metric: MetricKey) {
 
   const { label, unit, select } = METRICS[metric];
   const chrono = [...state.history].reverse();
-  const latest = state.history[0];
 
-  const points: ChartPoint[] = chrono.map((m) => ({
-    t: Date.parse(m.measuredAt),
-    y: select(m),
-    dateLabel: formatDate(m.measuredAt),
-  }));
+  const points: ChartPoint[] = chrono.flatMap((m) => {
+    const value = select(m);
+    return value === undefined
+      ? []
+      : [{ t: Date.parse(m.measuredAt), y: value, dateLabel: formatDate(m.measuredAt) }];
+  });
+  const latest = points[points.length - 1];
 
   return (
     <div className={styles.card}>
       <p className={styles.value}>
-        {select(latest).toFixed(1)}
+        {latest ? latest.y.toFixed(1) : '—'}
         <span className={styles.unit}> {unit}</span>
       </p>
       {points.length >= 2 ? (

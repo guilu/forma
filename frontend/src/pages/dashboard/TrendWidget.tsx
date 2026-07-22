@@ -20,6 +20,16 @@ type State =
 
 const WINDOW = 30;
 
+function toPoints(
+  measurements: readonly BodyMeasurement[],
+  select: (m: BodyMeasurement) => number | undefined,
+) {
+  return measurements.flatMap((m) => {
+    const value = select(m);
+    return value === undefined ? [] : [{ t: Date.parse(m.measuredAt), y: value }];
+  });
+}
+
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 }
@@ -72,19 +82,19 @@ function renderContent(state: State) {
     {
       label: 'Peso (kg)',
       color: 'var(--color-accent)',
-      points: window.map((m) => ({ t: Date.parse(m.measuredAt), y: m.weightKg })),
+      points: toPoints(window, (m) => m.weightKg),
     },
     {
       label: 'Grasa (%)',
       color: 'var(--color-warning)',
-      points: window.map((m) => ({ t: Date.parse(m.measuredAt), y: m.bodyFatPercentage })),
+      points: toPoints(window, (m) => m.bodyFatPercentage),
     },
     {
       label: 'Músculo (kg)',
       color: 'var(--color-info, #3b82f6)',
-      points: window.map((m) => ({ t: Date.parse(m.measuredAt), y: m.leanMassKg })),
+      points: toPoints(window, (m) => m.leanMassKg),
     },
-  ];
+  ].filter((s) => s.points.length > 0);
 
   return (
     <MultiLineChart
