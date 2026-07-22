@@ -1,43 +1,71 @@
 .card {
-  background-color: var(--color-card);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-5);
-  box-shadow: var(--shadow-card);
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
 }
 
-.calories {
-  margin: 0;
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-}
-
-.caloriesValue {
-  font-size: var(--font-size-xl);
-  font-weight: 600;
-}
-
-.caloriesUnit {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
-}
-
-.macros {
+.meals {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-3);
 }
 
-.macro {
+.meal {
   display: flex;
-  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.mealIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  color: var(--color-accent);
+  background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  border-radius: var(--radius-md);
+}
+
+.mealText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.mealName {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.mealTime {
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
+}
+
+.mealKcal {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-accent);
+  white-space: nowrap;
+}
+
+.total {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.totalLabel {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text);
 }

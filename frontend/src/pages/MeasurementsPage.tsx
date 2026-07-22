@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { BodyFigure } from '../components/BodyFigure';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { ChartContainer } from '../components/ChartContainer';
@@ -61,6 +62,20 @@ const TABS: ReadonlyArray<{ key: TabKey; label: string }> = [
 const SPARKLINE_WINDOW = 8;
 const HISTORY_PREVIEW_ROWS = 5;
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * FOR-164 hybrid placeholders (`docs/2-mediciones.png`). Body-water % and the
+ * bone/water breakdown of the composition figure are NOT modeled on
+ * `BodyMeasurement` (specs/FOR-15 defers body water; there is no bone field) —
+ * shown as isolated, clearly-labelled template scaffolding so they're obvious
+ * and easy to replace once those fields exist. Muscle (leanMassKg) and fat
+ * (fatMassKg) in the figure are REAL, read straight from the measurement.
+ */
+const PLACEHOLDER = {
+  waterPercentage: 58.0,
+  boneKg: 3.2,
+  waterKg: 42.7,
+} as const;
 
 interface MetricConfig {
   readonly key: string;
@@ -285,31 +300,107 @@ function MeasurementsDashboard({ measurements, activeTab, setActiveTab }: Dashbo
               />
             );
           })}
+          {/* Agua corporal — placeholder (no body-water field on the API yet,
+              see PLACEHOLDER). No "vs semana pasada" delta (not backed). */}
+          <MetricCard
+            label="Agua corporal"
+            headingLevel={2}
+            value={PLACEHOLDER.waterPercentage.toFixed(1)}
+            unit="%"
+            caption="Estimación"
+          />
         </div>
       </section>
 
-      <div className={styles.chartTableRow}>
-        <section
-          id="panel-evolucion"
-          role="tabpanel"
-          aria-labelledby="tab-evolucion"
-          data-active={activeTab === 'evolucion'}
-          className={styles.panel}
-        >
-          <WeightEvolutionChart measurements={measurements} />
-        </section>
+      <section
+        id="panel-evolucion"
+        role="tabpanel"
+        aria-labelledby="tab-evolucion"
+        data-active={activeTab === 'evolucion'}
+        className={styles.panel}
+      >
+        <WeightEvolutionChart measurements={measurements} />
+      </section>
 
-        <section
-          id="panel-historial"
-          role="tabpanel"
-          aria-labelledby="tab-historial"
-          data-active={activeTab === 'historial'}
-          className={styles.panel}
-        >
+      <section
+        id="panel-historial"
+        role="tabpanel"
+        aria-labelledby="tab-historial"
+        data-active={activeTab === 'historial'}
+        className={styles.panel}
+      >
+        <div className={styles.historyRow}>
           <HistoryTable measurements={measurements} />
-        </section>
-      </div>
+          <BodyDistributionCard latest={latest} />
+        </div>
+      </section>
     </>
+  );
+}
+
+/**
+ * "Distribución corporal" card (FOR-164 mockup): a placeholder body figure plus
+ * a composition legend. Músculo (`leanMassKg`) and Grasa (`fatMassKg`) are REAL
+ * when the measurement carries them; Hueso and Agua are isolated placeholders
+ * (no such fields on the API — see {@link PLACEHOLDER}). Swap {@link BodyFigure}
+ * for the real asset pack later.
+ */
+function BodyDistributionCard({ latest }: { readonly latest: BodyMeasurement }) {
+  const rows = [
+    {
+      key: 'muscle',
+      label: 'Músculo',
+      value: latest.leanMassKg,
+      unit: 'kg',
+      dot: styles.dotMuscle,
+      real: true,
+    },
+    {
+      key: 'fat',
+      label: 'Grasa',
+      value: latest.fatMassKg,
+      unit: 'kg',
+      dot: styles.dotFat,
+      real: true,
+    },
+    {
+      key: 'bone',
+      label: 'Hueso',
+      value: PLACEHOLDER.boneKg,
+      unit: 'kg',
+      dot: styles.dotBone,
+      real: false,
+    },
+    {
+      key: 'water',
+      label: 'Agua',
+      value: PLACEHOLDER.waterKg,
+      unit: 'kg',
+      dot: styles.dotWater,
+      real: false,
+    },
+  ];
+
+  return (
+    <Card title="Distribución corporal" headingLevel={2}>
+      <div className={styles.distribution}>
+        <BodyFigure variant="strength" active size={168} label="Composición corporal" />
+        <ul className={styles.distributionLegend}>
+          {rows.map((row) => (
+            <li key={row.key} className={styles.distributionItem}>
+              <span className={`${styles.distributionDot} ${row.dot}`} aria-hidden="true" />
+              <span className={styles.distributionLabel}>{row.label}</span>
+              <span className={styles.distributionValue}>
+                {row.value === undefined ? '—' : `${row.value.toFixed(1)} ${row.unit}`}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <a className={styles.detailLink} href="/progreso">
+        Ver análisis detallado
+      </a>
+    </Card>
   );
 }
 

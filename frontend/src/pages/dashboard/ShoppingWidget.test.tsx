@@ -36,12 +36,7 @@ const list: ShoppingList = {
   budget: { weeklyEur: 103.8, monthlyEur: 451.2 },
 };
 
-/** Matches on digits + currency symbol, tolerant of the non-breaking space Intl.NumberFormat inserts. */
-function matchesAmount(expectedDigits: string) {
-  return (text: string) => text.includes(expectedDigits) && text.includes('€');
-}
-
-describe('ShoppingWidget', () => {
+describe('ShoppingWidget (Lista de compra)', () => {
   beforeEach(() => {
     shoppingMock.mockReset();
   });
@@ -51,18 +46,17 @@ describe('ShoppingWidget', () => {
 
     renderWidget();
 
-    expect(screen.getByRole('status')).toHaveTextContent('Cargando tu presupuesto');
+    expect(screen.getByRole('status')).toHaveTextContent('Cargando tu lista de compra');
   });
 
-  it('renders the weekly total and monthly estimate', async () => {
+  it('renders a preview of the list items with product name and quantity + unit', async () => {
     shoppingMock.mockResolvedValue(list);
 
     renderWidget();
 
-    expect(await screen.findByRole('heading', { name: 'Presupuesto semanal' })).toBeInTheDocument();
-    expect(screen.getByText(matchesAmount('103,80'))).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Estimado mensual' })).toBeInTheDocument();
-    expect(screen.getByText(matchesAmount('451,20'))).toBeInTheDocument();
+    expect(await screen.findByText('Avena')).toBeInTheDocument();
+    // UD renders as "unidades" (FOR-164 unit labels).
+    expect(screen.getByText('1 unidades')).toBeInTheDocument();
   });
 
   it('shows an empty state when the list has no items', async () => {
@@ -89,12 +83,12 @@ describe('ShoppingWidget', () => {
     );
   });
 
-  it('links to the shopping feature page', async () => {
+  it('links to the shopping feature page via "Ver lista completa"', async () => {
     shoppingMock.mockResolvedValue(list);
 
     renderWidget();
 
-    expect(await screen.findByRole('link', { name: 'Ver más' })).toHaveAttribute(
+    expect(await screen.findByRole('link', { name: 'Ver lista completa' })).toHaveAttribute(
       'href',
       '/lista-compra',
     );

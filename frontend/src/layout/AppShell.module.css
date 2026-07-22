@@ -1,5 +1,19 @@
+/*
+ * FOR-164: the shell is now bounded to the viewport (`height`, not
+ * `min-height`) so the grid's `1fr` content row is bounded too. Previously
+ * `min-height: 100vh` let the whole grid grow with page content, which
+ * scrolled the sidebar (spanning both grid rows) away with the page instead
+ * of it staying put like the template. `overflow: hidden` here plus
+ * `overflow-y: auto` on `.content` below moves scrolling into just the
+ * content row; the sidebar and topbar rows never grow past their own size.
+ * `100dvh` accounts for mobile browser chrome (address bar) collapsing;
+ * `100vh` is kept as the fallback for browsers/environments without `dvh`
+ * support, since this codebase has no prior `dvh` usage to match.
+ */
 .shell {
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   display: grid;
   grid-template-columns: var(--sidebar-width) 1fr;
   grid-template-rows: var(--topbar-height) 1fr;
@@ -37,18 +51,37 @@
   top: var(--space-4);
 }
 
-/* Single column with a bottom nav bar on small screens. */
+/*
+ * Single column on small screens; no `mobilenav` grid row/area anymore.
+ * FOR-164 turned `MobileNav` into a floating, translucent "glass" pill
+ * (`position: fixed`, see MobileNav.module.css) that hovers over the content
+ * instead of sitting pinned in its own grid row, so it's out of the grid
+ * flow entirely here -- just `topbar` + `content`, same shape as desktop.
+ */
 @media (max-width: 768px) {
   .shell {
     grid-template-columns: 1fr;
-    grid-template-rows: var(--topbar-height) 1fr auto;
+    grid-template-rows: var(--topbar-height) 1fr;
     grid-template-areas:
       'topbar'
-      'content'
-      'mobilenav';
+      'content';
   }
 
   .content {
     padding: var(--space-4);
+    /*
+     * Extra bottom clearance so scrolled content never reads as tucked under
+     * the floating nav -- unlike the previous grid-pinned bar, the pill now
+     * *overlaps* the content row (it's `position: fixed`, not a sibling grid
+     * row), so this is real occlusion to compensate for, not just breathing
+     * room. Sized as (estimated pill content height) + 2 * var(--space-4):
+     * one `--space-4` for the pill's own `bottom` offset from the viewport,
+     * one more for clearance between the last content and the pill's top
+     * edge. The 56px is the bar's own height with no dedicated token to pull
+     * from: `--space-2` padding top+bottom (16px) + the primary items' 22px
+     * icon + 2px icon/label gap + the ~0.6875rem label line (~14px) ≈ 54px,
+     * rounded up to 56px.
+     */
+    padding-bottom: calc(56px + var(--space-4) * 2);
   }
 }

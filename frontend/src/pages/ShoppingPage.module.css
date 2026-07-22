@@ -27,16 +27,46 @@
   color: var(--color-text-muted);
 }
 
+/* Header right column: week selector stacked above the regenerate button,
+   matching the mockup's top-right cluster. */
+.headerActions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.weekSelector {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-text-muted);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.weekArrow {
+  display: flex;
+  align-items: center;
+}
+
+.weekArrowPrev {
+  transform: rotate(180deg);
+}
+
+.weekLabel {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--color-text);
+}
+
 .tiles {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
   gap: var(--space-4);
-}
-
-.tileValue {
-  margin: 0;
-  font-size: var(--font-size-xl);
-  font-weight: 600;
 }
 
 .tabs {
@@ -61,53 +91,132 @@
   border-color: var(--color-accent);
 }
 
+/* The item table lives inside a Card surface (no visible title). */
+.tableCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.sortRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.sortValue {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.sortChevron {
+  transform: rotate(90deg);
+}
+
+/* Shared column grid for the header row and every item row. */
+.columns,
+.item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto auto;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.columns {
+  padding: 0 var(--space-1) var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.colCenter {
+  text-align: center;
+}
+
+.colRight {
+  text-align: right;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+}
+
+.groupHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-1) var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.groupIcon {
+  color: var(--color-accent);
+  flex-shrink: 0;
+}
+
 .items {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
 }
 
 .item {
-  display: grid;
-  grid-template-columns: 1fr auto auto auto;
-  align-items: center;
-  gap: var(--space-3);
+  padding: var(--space-3) var(--space-1);
+  border-top: 1px solid var(--color-border);
 }
 
-.itemActions {
+.product {
   display: flex;
-  align-items: center;
-  gap: var(--space-2);
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
-.editButton,
-.linkOut {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  color: var(--color-text-muted);
-  background: none;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-}
-
-.editButton:hover,
-.linkOut:hover {
+.productName {
+  font-weight: 500;
   color: var(--color-text);
-  border-color: var(--color-accent);
 }
 
-/* Quantity +/- controls (FOR-118): compact stepper alongside the existing
-   quantity/unit text, comfortable touch target on mobile. */
+.checkedName {
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+}
+
+.servings {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+/* Quantity +/- stepper (CANTIDAD column). */
 .quantityStepper {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: var(--space-2);
+}
+
+.quantityValue {
+  min-width: 2.5rem;
+  text-align: center;
+  font-weight: 600;
+  color: var(--color-text);
 }
 
 .stepperButton {
@@ -134,6 +243,105 @@
   opacity: 0.5;
 }
 
+.unit {
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.cost {
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.itemActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+/* Edit + link-out share a compact square affordance. */
+.actionButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  color: var(--color-accent);
+  background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
+  border-radius: var(--radius-sm);
+}
+
+.actionButton:hover {
+  background-color: color-mix(in srgb, var(--color-accent) 22%, transparent);
+  border-color: var(--color-accent);
+}
+
+/* Checked toggle styled as the mockup's filled green "done" square. */
+.checkToggle {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  width: 34px;
+  height: 34px;
+  margin: 0;
+  cursor: pointer;
+  background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
+  border-radius: var(--radius-sm);
+}
+
+.checkToggle:hover:not(:disabled) {
+  border-color: var(--color-accent);
+}
+
+.checkToggle:checked {
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+/* Check glyph drawn with a rotated border (no icon dependency inside the
+   native control). Only shown when checked. */
+.checkToggle:checked::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 12px;
+  width: 7px;
+  height: 12px;
+  border: solid var(--color-accent-contrast);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.checkToggle:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.checkToggle:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Full-width footer CTA (visual only). */
+.fullListButton {
+  margin-top: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  width: 100%;
+  font-weight: 600;
+  color: var(--color-accent-contrast);
+  background-color: var(--color-accent);
+  border: none;
+  border-radius: var(--radius-md);
+}
+
+.fullListButton:hover {
+  background-color: color-mix(in srgb, var(--color-accent) 88%, black);
+}
+
 .editForm {
   display: flex;
   flex-direction: column;
@@ -151,43 +359,6 @@
   gap: var(--space-3);
 }
 
-.itemLabel {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  /* Comfortable touch target on mobile (ui-guidelines: shopping checklist). */
-  min-height: 44px;
-  cursor: pointer;
-}
-
-.itemLabel input {
-  width: 20px;
-  height: 20px;
-}
-
-.checkedName {
-  color: var(--color-text-muted);
-  text-decoration: line-through;
-}
-
-.quantity {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-  color: var(--color-text-muted);
-}
-
-.servings {
-  font-size: var(--font-size-sm);
-}
-
-.cost {
-  font-weight: 600;
-  min-width: 4rem;
-  text-align: right;
-}
-
 .actionError {
   margin: 0;
   padding: var(--space-3);
@@ -197,16 +368,40 @@
   border-radius: var(--radius-md);
 }
 
-/* Below ~480px, wrap quantity/price/actions onto a second row instead of
-   shrinking the grid — avoids horizontal scroll (ui-guidelines: shopping
-   checklist is a mobile priority). */
-@media (max-width: 480px) {
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Below ~600px the five-column grid can't hold: collapse to product + actions
+   on the first row, with quantity/unit/price wrapping onto a second row —
+   avoids horizontal scroll (ui-guidelines: shopping checklist is mobile-first). */
+@media (max-width: 600px) {
+  .columns {
+    display: none;
+  }
+
   .item {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     row-gap: var(--space-2);
   }
 
-  .itemLabel {
+  .product {
     grid-column: 1 / -1;
+  }
+
+  .quantityStepper {
+    justify-content: flex-start;
+  }
+
+  .unit {
+    text-align: left;
   }
 }

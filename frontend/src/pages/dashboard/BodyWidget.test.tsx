@@ -96,14 +96,13 @@ describe('BodyWidget', () => {
     );
   });
 
-  it('links to the measurements feature page', async () => {
+  it('captions each tile with the measurement count (FOR-164: honest count, not an invented delta)', async () => {
     listMock.mockResolvedValue([latest]);
 
     renderWidget();
 
-    expect(await screen.findByRole('link', { name: 'Ver más' })).toHaveAttribute(
-      'href',
-      '/mediciones',
-    );
+    await screen.findByRole('heading', { name: 'Peso' });
+    // One caption per tile (4), all reading "1 medición".
+    expect(screen.getAllByText('1 medición')).toHaveLength(4);
   });
 });

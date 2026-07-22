@@ -9,9 +9,10 @@ import styles from './MobileNav.module.css';
  * mobile frame in the mockups. Shows the primary sections plus a "Más" overflow
  * so every MVP section is reachable from navigation on mobile — not just by URL.
  *
- * The primary items stay a flat, readable bar; the secondary items (Lista de
- * compra, Objetivos, Ajustes) live behind a "Más" disclosure that expands above
- * the bar and collapses on selection.
+ * The primary bar is limited to four sections (Dashboard, Mediciones,
+ * Entrenamiento, Nutrición); the secondary items (Lista de compra, Progreso,
+ * Objetivos, Ajustes) live behind a "Más" disclosure that expands above the bar
+ * and collapses on selection.
  */
 export function MobileNav() {
   const primary = NAV_ITEMS.filter((item) => item.primary);

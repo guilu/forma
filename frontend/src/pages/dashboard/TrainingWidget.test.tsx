@@ -94,12 +94,12 @@ describe('TrainingWidget', () => {
     );
   });
 
-  it('links to the training feature page', async () => {
+  it('links to the training feature page via the "Ver plan completo" CTA', async () => {
     trainingMock.mockResolvedValue(week);
 
     renderWidget();
 
-    expect(await screen.findByRole('link', { name: 'Ver más' })).toHaveAttribute(
+    expect(await screen.findByRole('link', { name: 'Ver plan completo' })).toHaveAttribute(
       'href',
       '/entrenamiento',
     );

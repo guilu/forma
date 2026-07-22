@@ -17,7 +17,11 @@
   position: absolute;
   inset: 14px;
   border-radius: 50%;
-  background-color: var(--color-card);
+  /* FOR-164: MacroRing is always rendered inside a Card (e.g. NutritionPage's
+   * "Distribución de macros"); match Card's own background (--color-surface,
+   * reconciled in this story) so the ring's center reads as a punch-through
+   * rather than a mismatched tile. */
+  background-color: var(--color-surface);
 }
 
 .legend {

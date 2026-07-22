@@ -1,0 +1,46 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.value {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--color-text);
+}
+
+.goal {
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.percent {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.glasses {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.glass,
+.glassFilled {
+  width: 20px;
+  height: 26px;
+  border: 1.5px solid var(--color-border);
+  /* Slightly tapered glass silhouette. */
+  border-radius: 0 0 6px 6px;
+  clip-path: polygon(12% 0, 88% 0, 78% 100%, 22% 100%);
+}
+
+.glassFilled {
+  border-color: var(--color-accent);
+  background-color: var(--color-accent);
+}

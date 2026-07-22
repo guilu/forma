@@ -1,7 +1,12 @@
 .value {
   margin: 0;
+  /* FOR-164: templates render the headline metric in the display/headline
+   * font family at a bold weight (e.g. text-4xl font-bold / text-3xl
+   * font-black); reuse the existing --font-heading token (added in FOR-163
+   * for this story) instead of the body font. */
+  font-family: var(--font-heading);
   font-size: var(--font-size-xl);
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.1;
   color: var(--color-text);
 }
@@ -12,6 +17,19 @@
   color: var(--color-text-muted);
 }
 
+.caption {
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
 .trend {
   margin-top: var(--space-2);
+}
+
+/* FOR-164: muted glyph in the tile header, tinted with the brand accent so it
+   reads as a category marker without competing with the headline value. */
+.icon {
+  color: var(--color-accent);
+  flex-shrink: 0;
 }

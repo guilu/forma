@@ -15,6 +15,25 @@ interface WidgetSectionProps {
   readonly title: string;
   readonly linkTo?: string;
   readonly linkLabel?: string;
+  /**
+   * When true the heading stays in the accessibility tree (so heading order
+   * never skips a level) but is visually hidden — for mockup rows that group
+   * tiles without a visible section title (FOR-164 metrics row).
+   */
+  readonly titleHidden?: boolean;
+  /**
+   * When true (default) the section renders as a bordered card surface, as in
+   * the FOR-164 mockup where each dashboard panel is its own card. Set false
+   * for rows that only group already-carded tiles (the metrics row), so the
+   * card surface isn't doubled.
+   */
+  readonly surface?: boolean;
+  /**
+   * Optional custom header control rendered on the right of the title (e.g. the
+   * Evolución metric selector). Mutually complementary with `linkTo`; when both
+   * are set the link renders after the action.
+   */
+  readonly action?: ReactNode;
   readonly children: ReactNode;
 }
 
@@ -23,14 +42,21 @@ export function WidgetSection({
   title,
   linkTo,
   linkLabel = 'Ver más',
+  titleHidden = false,
+  surface = true,
+  action,
   children,
 }: WidgetSectionProps) {
   return (
-    <section className={styles.widget} aria-labelledby={id}>
-      <div className={styles.header}>
-        <h2 id={id} className={styles.title}>
+    <section
+      className={[styles.widget, surface ? styles.surface : ''].filter(Boolean).join(' ')}
+      aria-labelledby={id}
+    >
+      <div className={titleHidden ? styles.headerHidden : styles.header}>
+        <h2 id={id} className={titleHidden ? styles.srOnly : styles.title}>
           {title}
         </h2>
+        {action}
         {linkTo && (
           <Link className={styles.link} to={linkTo}>
             {linkLabel}

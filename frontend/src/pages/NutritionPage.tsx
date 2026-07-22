@@ -4,10 +4,13 @@ import { Badge } from '../components/Badge';
 import { Card } from '../components/Card';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
+import { Icon } from '../components/Icon';
 import { LoadingState } from '../components/LoadingState';
 import { MacroRing } from '../components/MacroRing';
+import { WaterTracker } from '../components/WaterTracker';
 import { getNutritionDay, type NutritionDay, type NutritionMeal } from '../api/nutrition';
 import { getShoppingList } from '../api/shopping';
+import { ProgressBar } from './dashboard/ProgressBar';
 import styles from './NutritionPage.module.css';
 
 /**
@@ -57,6 +60,47 @@ const DAY_TYPES: ReadonlyArray<{ readonly key: DayType; readonly label: string }
   { key: 'rest', label: 'Descanso' },
 ];
 
+/**
+ * FOR-164 hybrid placeholders (`docs/4-nutricion.png`). None is backed: there
+ * is no consumption-logging endpoint (so no "consumed" calories, no per-meal
+ * macro/kcal figures), and fibre/sugar/sodium/saturated-fat are not modeled at
+ * all. Kept isolated and clearly labelled so they're obvious and easy to remove
+ * once those endpoints exist. Per the FOR-164 decision these are *numeric*
+ * placeholders only — no fabricated user behaviour (no "meal completed" checks,
+ * no non-functional "Registrar comida" action). Macro/calorie TARGETS and the
+ * meals themselves are real, read straight from the API.
+ */
+const PLACEHOLDER = {
+  /** Fraction of the calorie target shown as "consumed" (visual only). */
+  consumedRatio: 0.917,
+  /** Per-meal macro/kcal chips, cycled by meal index. */
+  mealMacros: [
+    { p: 32, c: 58, g: 14, kcal: 480 },
+    { p: 18, c: 25, g: 10, kcal: 240 },
+    { p: 48, c: 62, g: 16, kcal: 620 },
+    { p: 30, c: 35, g: 8, kcal: 320 },
+    { p: 34, c: 56, g: 20, kcal: 450 },
+  ],
+  keyNutrients: [
+    { label: 'Fibra', current: 28, target: 30, unit: 'g' },
+    { label: 'Azúcares', current: 38, target: 50, unit: 'g' },
+    { label: 'Sodio', current: 1620, target: 2300, unit: 'mg' },
+    { label: 'Grasas saturadas', current: 18, target: 23, unit: 'g' },
+  ],
+} as const;
+
+/** Static date label for the visual-only navigator (no date-parameterised API). */
+const TODAY_LABEL = new Intl.DateTimeFormat('es-ES', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+}).format(new Date());
+
+function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 export function NutritionPage() {
   const [dayType, setDayType] = useState<DayType>('running');
   const [retryToken, setRetryToken] = useState(0);
@@ -102,8 +146,20 @@ export function NutritionPage() {
   return (
     <div className={styles.wrapper}>
       <header className={styles.header}>
-        <h1 className={styles.title}>Nutrición</h1>
-        <p className={styles.subtitle}>Alimenta tu cuerpo, alcanza tus objetivos.</p>
+        <div className={styles.titles}>
+          <h1 className={styles.title}>Nutrición</h1>
+          <p className={styles.subtitle}>Alimenta tu cuerpo, alcanza tus objetivos.</p>
+        </div>
+        {/* Date navigator — visual only (no date-parameterised nutrition API). */}
+        <div className={styles.dateNav} aria-hidden="true">
+          <span className={styles.dateArrow}>
+            <Icon name="chevron" size={16} className={styles.dateArrowPrev} />
+          </span>
+          <span className={styles.dateLabel}>{capitalize(TODAY_LABEL)}</span>
+          <span className={styles.dateArrow}>
+            <Icon name="chevron" size={16} />
+          </span>
+        </div>
       </header>
 
       <DayTypeSelector value={dayType} onChange={setDayType} />
@@ -163,15 +219,25 @@ function renderContent(state: State, dayType: DayType, retry: () => void) {
   }
 
   const { day } = state;
+  const target = day.targets.calories;
+  const consumed = Math.round(target * PLACEHOLDER.consumedRatio);
+  const restantes = Math.max(target - consumed, 0);
 
   return (
     <>
       <section className={styles.summary} aria-label="Resumen de macronutrientes">
         <Card title="Calorías" headingLevel={2}>
+          {/* Consumed is placeholder (no logging endpoint); the target is real.
+              Target stays a standalone node so it reads cleanly. */}
           <p className={styles.calories}>
-            <span className={styles.caloriesValue}>{day.targets.calories}</span>
-            <span className={styles.caloriesUnit}> kcal objetivo</span>
+            <span className={styles.caloriesValue}>{consumed}</span>
+            <span className={styles.caloriesUnit}>
+              {' / '}
+              <span className={styles.caloriesTarget}>{target}</span> kcal
+            </span>
           </p>
+          <ProgressBar value={consumed} max={target} label="Calorías consumidas" />
+          <p className={styles.caloriesNote}>{restantes} kcal restantes</p>
         </Card>
         <Card title="Distribución de macros" headingLevel={2}>
           <MacroRing
@@ -180,33 +246,42 @@ function renderContent(state: State, dayType: DayType, retry: () => void) {
             fatG={day.targets.fatG}
           />
         </Card>
+        <WaterTracker headingLevel={2} />
       </section>
 
       {dayType === 'running' && <RunningGuidance meals={day.meals} />}
 
-      <Card title="Comidas del día" headingLevel={2}>
-        <ol className={styles.meals}>
-          {day.meals.map((meal) => (
-            <li key={`${meal.mealType}-${meal.preferredTime}`}>
-              <MealCard meal={meal} />
-            </li>
-          ))}
-        </ol>
-      </Card>
+      <div className={styles.mainSide}>
+        <Card title="Comidas del día" headingLevel={2}>
+          <ol className={styles.meals}>
+            {day.meals.map((meal, index) => (
+              <li key={`${meal.mealType}-${meal.preferredTime}`}>
+                <MealCard meal={meal} index={index} />
+              </li>
+            ))}
+          </ol>
+        </Card>
+
+        <KeyNutrientsCard />
+      </div>
 
       <RecoveryRecommendation meals={day.meals} />
     </>
   );
 }
 
-function MealCard({ meal }: { readonly meal: NutritionMeal }) {
+function MealCard({ meal, index }: { readonly meal: NutritionMeal; readonly index: number }) {
+  const macros = PLACEHOLDER.mealMacros[index % PLACEHOLDER.mealMacros.length];
   return (
     <Card>
       <div className={styles.mealHeader}>
-        <div>
+        {/* Photo placeholder — no meal image data on the API. */}
+        <span className={styles.mealPhoto} aria-hidden="true">
+          <Icon name="nutrition" size={20} />
+        </span>
+        <div className={styles.mealHeaderText}>
           <p className={styles.mealTime}>{meal.preferredTime}</p>
-          {/* FOR-112: was a hardcoded <h4>; "Comidas del día" above is now an
-              <h2>, so this must be an <h3> to avoid skipping a level. */}
+          {/* FOR-112: <h3> under the <h2> "Comidas del día". */}
           <h3 className={styles.mealName}>{meal.name}</h3>
         </div>
         {meal.optional && <Badge tone="warning">Opcional</Badge>}
@@ -216,6 +291,37 @@ function MealCard({ meal }: { readonly meal: NutritionMeal }) {
           <li key={item.food} className={styles.item}>
             <span className={styles.food}>{item.food}</span>
             <span className={styles.quantity}>{item.quantityG} g</span>
+          </li>
+        ))}
+      </ul>
+      {/* Per-meal macros + kcal are placeholder (not returned by the API). */}
+      <p className={styles.mealMacros}>
+        <span>P {macros.p} g</span>
+        <span>C {macros.c} g</span>
+        <span>G {macros.g} g</span>
+        <span className={styles.mealKcal}>{macros.kcal} kcal</span>
+      </p>
+    </Card>
+  );
+}
+
+/**
+ * "Nutrientes clave" card — entirely placeholder (fibre/sugar/sodium/saturated
+ * fat are not modeled on the API). See {@link PLACEHOLDER}.
+ */
+function KeyNutrientsCard() {
+  return (
+    <Card title="Nutrientes clave" headingLevel={2}>
+      <ul className={styles.nutrients}>
+        {PLACEHOLDER.keyNutrients.map((n) => (
+          <li key={n.label} className={styles.nutrient}>
+            <div className={styles.nutrientHead}>
+              <span>{n.label}</span>
+              <span className={styles.nutrientValue}>
+                {n.current} / {n.target} {n.unit}
+              </span>
+            </div>
+            <ProgressBar value={n.current} max={n.target} label={n.label} />
           </li>
         ))}
       </ul>

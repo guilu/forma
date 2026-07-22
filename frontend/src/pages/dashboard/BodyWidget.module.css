@@ -1,13 +1,29 @@
-.grid {
+/*
+ * Body tiles occupy the first four columns of the dashboard metrics row
+ * (FOR-164); on their own they form a 4-up grid that collapses responsively.
+ * The parent metrics grid (DashboardPage) places this block via `grid-column`.
+ */
+.body {
+  grid-column: span 4;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-4);
 }
 
-.sparkline {
-  background-color: var(--color-card);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-4) var(--space-5);
-  box-shadow: var(--shadow-card);
+/* Loading / error / empty span the whole body block instead of one tile. */
+.full {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 1100px) {
+  .body {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .body {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

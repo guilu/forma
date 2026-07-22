@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Badge } from '../components/Badge';
+import { BodyFigure } from '../components/BodyFigure';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
+import { Icon, type IconName } from '../components/Icon';
 import { LoadingState } from '../components/LoadingState';
 import { MetricCard } from '../components/MetricCard';
 import { Modal } from '../components/Modal';
 import { useNotify } from '../components/NotificationProvider';
+import { ProgressRing } from '../components/ProgressRing';
 import { StatusPill } from '../components/StatusPill';
 import { WidgetLoading } from '../components/WidgetLoading';
 import { ApiRequestError } from '../api/client';
@@ -94,6 +98,35 @@ const KIND_LABELS: Record<TrainingSession['kind'], string> = {
 
 const MARK_ERROR = 'No se pudo actualizar la sesión. Inténtalo de nuevo.';
 
+/**
+ * FOR-164 hybrid placeholders (`docs/3-entrenamiento-dash.png`). None of these
+ * has a backing field in the training domain or API (verified: no volume /
+ * duration / calories / per-exercise / estimated-duration / "focus" data
+ * anywhere) — kept isolated here, clearly labelled, so they're obvious and
+ * easy to rip out once endpoints exist. Real, backed data (session tallies,
+ * distribution %, muscle map, streak, weekly history) is computed/fetched, not
+ * taken from here.
+ */
+const PLACEHOLDER = {
+  today: { durationMin: 55, focus: 'Pecho, Hombros, Tríceps', exercisesDone: 4, exercisesTotal: 6 },
+  stats: {
+    volume: '12.450',
+    volumeDelta: '↑8% vs semana anterior',
+    duration: '48:32',
+    durationDelta: '↑5 min vs semana anterior',
+    calories: '2.120',
+    caloriesDelta: '↑12% vs semana anterior',
+  },
+  muscleGroups: [
+    { label: 'Pecho', quality: 'Excelente' },
+    { label: 'Espalda', quality: 'Bueno' },
+    { label: 'Hombros', quality: 'Excelente' },
+    { label: 'Brazos', quality: 'Bueno' },
+    { label: 'Piernas', quality: 'Bueno' },
+    { label: 'Core', quality: 'Excelente' },
+  ],
+} as const;
+
 /** JS `Date#getDay()` (0 = Sunday) indexed to the backend's `dayOfWeek` names. */
 const JS_DAY_TO_ENUM = [
   'SUNDAY',
@@ -176,7 +209,18 @@ export function TrainingPage() {
           <h1 className={styles.title}>Entrenamiento</h1>
           <p className={styles.subtitle}>Sigue tu plan y mejora cada día.</p>
         </div>
-        <p className={styles.dateLabel}>{formatToday()}</p>
+        {/* Date navigator — visual only: the composed week has no dates / week
+            navigation (docs/api/training-week.md), so the arrows are inert
+            decorative affordances and the label is today's real date. */}
+        <div className={styles.dateNav}>
+          <span className={styles.dateArrow} aria-hidden="true">
+            <Icon name="chevron" size={16} className={styles.dateArrowPrev} />
+          </span>
+          <span className={styles.dateLabel}>{formatToday()}</span>
+          <span className={styles.dateArrow} aria-hidden="true">
+            <Icon name="chevron" size={16} />
+          </span>
+        </div>
       </header>
 
       {actionError && (
@@ -231,9 +275,12 @@ function renderContent(
       <div className={styles.main}>
         <TodaySessionCard day={today} mark={mark} pendingId={pendingId} openDetail={openDetail} />
         <WeeklyCalendar days={state.week.days} openDetail={openDetail} />
+        <StatsRow days={state.week.days} />
+        <MuscleGroupsSection />
       </div>
       <div className={styles.side}>
         <WeeklySummary days={state.week.days} />
+        <WeeklyDistribution days={state.week.days} />
         <StreakCard />
         <WeeklyHistoryCard />
       </div>
@@ -273,62 +320,74 @@ function TodaySessionCard({
 
   return (
     <Card title="Entrenamiento de hoy" headingLevel={2}>
-      <ul className={styles.todaySessions}>
-        {day.sessions.map((session) => (
-          <li key={session.id} className={styles.todaySession}>
-            <div className={styles.todaySessionHeader}>
-              <Badge tone={session.kind === 'RUNNING' ? 'accent' : 'neutral'}>
-                {KIND_LABELS[session.kind]}
-              </Badge>
-              <StatusPill kind="training" value={session.status} />
-            </div>
-            <p className={styles.todaySessionTitle}>{session.title}</p>
-            <p className={styles.sessionDetail}>{session.detail}</p>
-            <div className={styles.actions}>
-              {session.status !== 'COMPLETED' && (
+      <div className={styles.todayLayout}>
+        <ul className={styles.todaySessions}>
+          {day.sessions.map((session) => (
+            <li key={session.id} className={styles.todaySession}>
+              <div className={styles.todaySessionHeader}>
+                <p className={styles.todaySessionTitle}>{session.title}</p>
+                <StatusPill kind="training" value={session.status} />
+              </div>
+              {/* Placeholder estimated duration + focus (see PLACEHOLDER). */}
+              <p className={styles.sessionDetail}>
+                Duración estimada: {PLACEHOLDER.today.durationMin} min
+              </p>
+              <p className={styles.sessionDetail}>Enfoque: {PLACEHOLDER.today.focus}</p>
+              <p className={styles.sessionDetail}>{session.detail}</p>
+              <div className={styles.actions}>
+                {session.status !== 'COMPLETED' && (
+                  <Button
+                    type="button"
+                    disabled={pendingId === session.id}
+                    loading={pendingId === session.id}
+                    onClick={() => mark(session.id, 'COMPLETED')}
+                  >
+                    Iniciar entrenamiento
+                  </Button>
+                )}
+                {session.status !== 'SKIPPED' && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={pendingId === session.id}
+                    onClick={() => mark(session.id, 'SKIPPED')}
+                  >
+                    Saltar
+                  </Button>
+                )}
                 <Button
                   type="button"
-                  disabled={pendingId === session.id}
-                  loading={pendingId === session.id}
-                  onClick={() => mark(session.id, 'COMPLETED')}
+                  variant="ghost"
+                  onClick={() => openDetail({ dayOfWeek: day.dayOfWeek, session })}
                 >
-                  Iniciar entrenamiento
+                  Ver detalle
                 </Button>
-              )}
-              {session.status !== 'SKIPPED' && (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={pendingId === session.id}
-                  onClick={() => mark(session.id, 'SKIPPED')}
-                >
-                  Saltar
-                </Button>
-              )}
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => openDetail({ dayOfWeek: day.dayOfWeek, session })}
-              >
-                Ver detalle
-              </Button>
-            </div>
-          </li>
-        ))}
-      </ul>
-      <div className={styles.progressWrap}>
-        <span className={styles.progressText}>
-          {completed} de {planned} sesiones completadas hoy
-        </span>
-        <div
-          className={styles.progressTrack}
-          role="progressbar"
-          aria-label="Progreso de hoy"
-          aria-valuenow={percent}
-          aria-valuemin={0}
-          aria-valuemax={100}
-        >
-          <div className={styles.progressFill} style={{ width: `${percent}%` }} />
+              </div>
+            </li>
+          ))}
+        </ul>
+
+        <div className={styles.todayVisual}>
+          <div className={styles.todayRing}>
+            {/* Ring shows today's real session completion; the "N/M ejercicios"
+                figure below it is placeholder (per-exercise data isn't backed). */}
+            <ProgressRing
+              value={completed}
+              max={Math.max(planned, 1)}
+              label={`${completed} de ${planned} sesiones completadas hoy`}
+              size={110}
+            >
+              <span className={styles.ringPercent}>{percent}%</span>
+            </ProgressRing>
+            <p className={styles.ringCaption}>
+              {PLACEHOLDER.today.exercisesDone} / {PLACEHOLDER.today.exercisesTotal} ejercicios
+              completados
+            </p>
+          </div>
+          <div className={styles.todayFigures}>
+            <BodyFigure view="front" variant="strength" active size={132} />
+            <BodyFigure view="back" variant="strength" size={132} />
+          </div>
         </div>
       </div>
     </Card>
@@ -342,16 +401,26 @@ function WeeklyCalendar({
   readonly days: readonly TrainingDay[];
   readonly openDetail: (target: DetailTarget) => void;
 }) {
+  const todayEnum = todayDayOfWeek();
+
   return (
     <Card title="Calendario semanal" headingLevel={2}>
       <ul className={styles.calendarGrid} aria-label="Calendario semanal de entrenamiento">
         {days.map((day) => (
-          <li key={day.dayOfWeek} className={styles.calendarDay}>
+          <li
+            key={day.dayOfWeek}
+            className={[styles.calendarDay, day.dayOfWeek === todayEnum ? styles.calendarToday : '']
+              .filter(Boolean)
+              .join(' ')}
+          >
             <h3 className={styles.calendarDayTitle}>
               {DAY_LABELS[day.dayOfWeek] ?? day.dayOfWeek}
             </h3>
             {day.rest ? (
-              <p className={styles.rest}>Descanso</p>
+              <div className={styles.calendarRest}>
+                <Badge tone="neutral">Descanso</Badge>
+                <BodyFigure variant="rest" size={72} />
+              </div>
             ) : (
               <ul className={styles.calendarSessions}>
                 {day.sessions.map((session) => (
@@ -365,6 +434,11 @@ function WeeklyCalendar({
                         {KIND_LABELS[session.kind]}
                       </Badge>
                       <span className={styles.calendarSessionTitle}>{session.title}</span>
+                      <BodyFigure
+                        variant={session.kind === 'RUNNING' ? 'running' : 'strength'}
+                        active={session.status === 'COMPLETED'}
+                        size={72}
+                      />
                       <StatusPill kind="training" value={session.status} />
                     </button>
                   </li>
@@ -374,28 +448,221 @@ function WeeklyCalendar({
           </li>
         ))}
       </ul>
+      <ul className={styles.calendarLegend} aria-hidden="true">
+        <li>
+          <span className={`${styles.legendDot} ${styles.legendDone}`} /> Completado
+        </li>
+        <li>
+          <span className={`${styles.legendDot} ${styles.legendToday}`} /> Hoy
+        </li>
+        <li>
+          <span className={`${styles.legendDot} ${styles.legendPending}`} /> Pendiente
+        </li>
+        <li>
+          <span className={`${styles.legendDot} ${styles.legendRest}`} /> Descanso
+        </li>
+      </ul>
     </Card>
   );
 }
 
+function summaryPercent({ completed, planned }: { completed: number; planned: number }): number {
+  return planned > 0 ? Math.round((completed / planned) * 100) : 0;
+}
+
 function WeeklySummary({ days }: { readonly days: readonly TrainingDay[] }) {
   const sessions = days.flatMap((day) => day.sessions);
-  const running = sessions.filter((s) => s.kind === 'RUNNING');
-  const strength = sessions.filter((s) => s.kind === 'STRENGTH');
   const total = tally(sessions);
-  const runningTally = tally(running);
-  const strengthTally = tally(strength);
+  const runningTally = tally(sessions.filter((s) => s.kind === 'RUNNING'));
+  const strengthTally = tally(sessions.filter((s) => s.kind === 'STRENGTH'));
+
+  const rows: { label: string; icon: IconName; t: { completed: number; planned: number } }[] = [
+    { label: 'Sesiones totales', icon: 'measurements', t: total },
+    { label: 'Carrera', icon: 'activity', t: runningTally },
+    { label: 'Fuerza', icon: 'training', t: strengthTally },
+  ];
 
   return (
     <Card title="Resumen semanal" headingLevel={2} className={styles.summary}>
-      <div className={styles.summaryGrid}>
-        <MetricCard label="Sesiones totales" value={`${total.completed}/${total.planned}`} />
-        <MetricCard label="Carrera" value={`${runningTally.completed}/${runningTally.planned}`} />
-        <MetricCard label="Fuerza" value={`${strengthTally.completed}/${strengthTally.planned}`} />
+      <ul className={styles.summaryList}>
+        {rows.map((row) => (
+          <li key={row.label} className={styles.summaryRow}>
+            <MetricCard
+              label={row.label}
+              icon={row.icon}
+              value={`${row.t.completed}/${row.t.planned}`}
+            />
+            <ProgressRing
+              value={row.t.completed}
+              max={Math.max(row.t.planned, 1)}
+              label={`${row.label}: ${row.t.completed} de ${row.t.planned}`}
+              size={60}
+            >
+              <span className={styles.summaryRingText}>{summaryPercent(row.t)}%</span>
+            </ProgressRing>
+          </li>
+        ))}
+      </ul>
+      <Link className={styles.summaryLink} to="/progreso">
+        Ver estadísticas completas
+      </Link>
+    </Card>
+  );
+}
+
+/**
+ * "Distribución semanal" donut (FOR-164 mockup). Real split of this week's
+ * sessions by kind (strength / running) plus rest days, computed from the
+ * FOR-26 week — display aggregation only (ADR-006), not the FOR-28
+ * `WeeklyTrainingSummary`. The "balance" note is a small static heuristic on
+ * the real ratio, not a backend signal.
+ */
+function WeeklyDistribution({ days }: { readonly days: readonly TrainingDay[] }) {
+  const sessions = days.flatMap((day) => day.sessions);
+  const strength = sessions.filter((s) => s.kind === 'STRENGTH').length;
+  const running = sessions.filter((s) => s.kind === 'RUNNING').length;
+  const restDays = days.filter((day) => day.rest).length;
+  const totalParts = strength + running + restDays;
+  const pct = (n: number) => (totalParts > 0 ? Math.round((n / totalParts) * 100) : 0);
+  const strengthDeg = totalParts > 0 ? (strength / totalParts) * 360 : 0;
+  const runningDeg = totalParts > 0 ? (running / totalParts) * 360 : 0;
+
+  const ringStyle = {
+    background: `conic-gradient(var(--color-warning) 0deg ${strengthDeg}deg, var(--color-accent) ${strengthDeg}deg ${
+      strengthDeg + runningDeg
+    }deg, var(--color-border) ${strengthDeg + runningDeg}deg 360deg)`,
+  };
+
+  const legend = [
+    {
+      key: 'strength',
+      label: 'Fuerza',
+      count: strength,
+      unit: 'sesiones',
+      className: styles.dotStrength,
+    },
+    {
+      key: 'running',
+      label: 'Carreras',
+      count: running,
+      unit: 'sesiones',
+      className: styles.dotRunning,
+    },
+    { key: 'rest', label: 'Descanso', count: restDays, unit: 'días', className: styles.dotRest },
+  ];
+  const balanced = strength > 0 && running > 0;
+
+  return (
+    <Card title="Distribución semanal" headingLevel={2}>
+      <div className={styles.distribution}>
+        <div
+          className={styles.distributionRing}
+          style={ringStyle}
+          role="img"
+          aria-label={`Distribución semanal: ${strength} de fuerza, ${running} de carrera, ${restDays} de descanso`}
+        >
+          <div className={styles.distributionHole} aria-hidden="true" />
+        </div>
+        <ul className={styles.distributionLegend}>
+          {legend.map((item) => (
+            <li key={item.key} className={styles.distributionItem}>
+              <span className={`${styles.distributionDot} ${item.className}`} aria-hidden="true" />
+              <span className={styles.distributionLabel}>{item.label}</span>
+              <span className={styles.distributionPercent}>{pct(item.count)}%</span>
+              <span className={styles.distributionCount}>
+                {item.count}{' '}
+                {item.unit === 'días'
+                  ? item.count === 1
+                    ? 'día'
+                    : 'días'
+                  : item.count === 1
+                    ? 'sesión'
+                    : 'sesiones'}
+              </span>
+            </li>
+          ))}
+        </ul>
       </div>
-      <p className={styles.summaryNote}>
-        Duración y volumen totales no están disponibles todavía en la API.
+      <p className={styles.distributionNote}>
+        <Icon name="check" size={16} className={styles.distributionNoteIcon} />
+        {balanced
+          ? 'Equilibrio adecuado. Buen balance entre fuerza y cardio.'
+          : 'Añade variedad para equilibrar fuerza y cardio.'}
       </p>
+    </Card>
+  );
+}
+
+/**
+ * "Estadísticas de la semana" tiles (FOR-164 mockup): SESIONES COMPLETADAS is
+ * the real week tally; VOLUMEN / DURACIÓN / CALORÍAS are isolated placeholders
+ * (no such fields exist in the training domain or API — see {@link PLACEHOLDER}).
+ */
+function StatsRow({ days }: { readonly days: readonly TrainingDay[] }) {
+  const total = tally(days.flatMap((day) => day.sessions));
+  return (
+    <div className={styles.statsRow}>
+      <MetricCard
+        label="Volumen total"
+        icon="training"
+        value={PLACEHOLDER.stats.volume}
+        unit="kg"
+        caption={PLACEHOLDER.stats.volumeDelta}
+      />
+      <MetricCard
+        label="Duración total"
+        icon="activity"
+        value={PLACEHOLDER.stats.duration}
+        unit="min"
+        caption={PLACEHOLDER.stats.durationDelta}
+      />
+      <MetricCard
+        label="Sesiones completadas"
+        icon="check"
+        value={`${total.completed} / ${total.planned}`}
+        caption="Esta semana"
+      />
+      <MetricCard
+        label="Calorías estimadas"
+        icon="heart"
+        value={PLACEHOLDER.stats.calories}
+        unit="kcal"
+        caption={PLACEHOLDER.stats.caloriesDelta}
+      />
+    </div>
+  );
+}
+
+/**
+ * "Grupos musculares trabajados esta semana" (FOR-164 mockup). Placeholder
+ * quality labels + figures for now (the FOR-136 muscle map is per-session; a
+ * real weekly aggregate would need a fetch per strength session — deferred).
+ * Swap {@link BodyFigure} for the real asset pack later.
+ */
+function MuscleGroupsSection() {
+  return (
+    <Card title="Grupos musculares trabajados esta semana" headingLevel={2}>
+      <div className={styles.muscleGroups}>
+        <ul className={styles.muscleGroupGrid}>
+          {PLACEHOLDER.muscleGroups.map((group) => (
+            <li key={group.label} className={styles.muscleGroup}>
+              <span className={styles.muscleGroupName}>{group.label}</span>
+              <BodyFigure variant="strength" active size={84} />
+              <span className={styles.muscleGroupQuality}>{group.quality}</span>
+            </li>
+          ))}
+        </ul>
+        <div className={styles.encourage}>
+          <span className={styles.encourageIcon} aria-hidden="true">
+            🏆
+          </span>
+          <p className={styles.encourageTitle}>¡Sigue así!</p>
+          <p className={styles.encourageText}>Vas por buen camino para alcanzar tu objetivo.</p>
+          <Link className={styles.encourageLink} to="/progreso">
+            Ver progreso
+          </Link>
+        </div>
+      </div>
     </Card>
   );
 }
@@ -450,10 +717,16 @@ function StreakCard() {
       )}
       {state.status === 'ready' && (
         <div className={styles.streak}>
-          <p className={styles.streakValue}>{state.streak.currentStreakDays}</p>
-          <p className={styles.streakUnit}>
-            {state.streak.currentStreakDays === 1 ? 'día' : 'días'}
-          </p>
+          <div className={styles.streakHeadline}>
+            <span className={styles.streakFire} aria-hidden="true">
+              🔥
+            </span>
+            <p className={styles.streakValue}>{state.streak.currentStreakDays}</p>
+            <span className={styles.streakUnit}>
+              {state.streak.currentStreakDays === 1 ? 'día' : 'días'}
+            </span>
+          </div>
+          <p className={styles.streakCheer}>¡Sigue así!</p>
           <p className={styles.streakNote}>
             Récord: {state.streak.longestStreakDays}{' '}
             {state.streak.longestStreakDays === 1 ? 'día' : 'días'}

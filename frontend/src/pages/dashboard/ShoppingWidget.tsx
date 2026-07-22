@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react';
-import { Card } from '../../components/Card';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
+import { Icon } from '../../components/Icon';
 import { WidgetLoading } from '../../components/WidgetLoading';
 import { getShoppingList, type ShoppingList } from '../../api/shopping';
+import { unitLabel } from '../shoppingDisplay';
 import { WidgetSection } from './WidgetSection';
 import styles from './ShoppingWidget.module.css';
 
 /**
- * Shopping budget summary widget (FOR-51): weekly total + monthly estimate from the
- * FOR-39 shopping list read model. Renders the API values as returned (ADR-006) — the
- * budget numbers are backend-computed, never recomputed here.
+ * "Lista de compra" preview widget (FOR-51, rebuilt for the FOR-164 dashboard
+ * mockup): the first few items of this week's FOR-39 shopping list — real
+ * product name + quantity + unit — with a "Ver lista completa" link. Renders
+ * API values as returned (ADR-006).
  */
 type State =
   | { readonly status: 'loading' }
@@ -18,7 +20,7 @@ type State =
   | { readonly status: 'empty' }
   | { readonly status: 'ready'; readonly list: ShoppingList };
 
-const EUR = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' });
+const PREVIEW_COUNT = 5;
 
 export function ShoppingWidget() {
   const [state, setState] = useState<State>({ status: 'loading' });
@@ -31,9 +33,7 @@ export function ShoppingWidget() {
         setState(list.items.length === 0 ? { status: 'empty' } : { status: 'ready', list });
       })
       .catch(() => {
-        if (active) {
-          setState({ status: 'error' });
-        }
+        if (active) setState({ status: 'error' });
       });
     return () => {
       active = false;
@@ -43,8 +43,9 @@ export function ShoppingWidget() {
   return (
     <WidgetSection
       id="shopping-widget-title"
-      title="Presupuesto de la compra"
+      title="Lista de compra"
       linkTo="/lista-compra"
+      linkLabel="Ver lista completa"
     >
       {renderContent(state)}
     </WidgetSection>
@@ -53,31 +54,37 @@ export function ShoppingWidget() {
 
 function renderContent(state: State) {
   if (state.status === 'loading') {
-    return <WidgetLoading label="Cargando tu presupuesto…" rows={2} />;
+    return <WidgetLoading label="Cargando tu lista de compra…" rows={2} />;
   }
-
   if (state.status === 'error') {
     return (
       <ErrorState message="No se pudo cargar tu lista de compra. Inténtalo de nuevo más tarde." />
     );
   }
-
   if (state.status === 'empty') {
     return (
       <EmptyState variant="filtered" title="Aún no hay una lista de compra generada esta semana." />
     );
   }
 
-  const { budget } = state.list;
+  const remaining = state.list.items.length - PREVIEW_COUNT;
 
   return (
-    <div className={styles.tiles}>
-      <Card title="Presupuesto semanal">
-        <p className={styles.value}>{EUR.format(budget.weeklyEur)}</p>
-      </Card>
-      <Card title="Estimado mensual">
-        <p className={styles.value}>{EUR.format(budget.monthlyEur)}</p>
-      </Card>
-    </div>
+    <>
+      <ul className={styles.items}>
+        {state.list.items.slice(0, PREVIEW_COUNT).map((item) => (
+          <li key={item.id} className={styles.item}>
+            <span className={styles.itemIcon} aria-hidden="true">
+              <Icon name="shopping" size={16} />
+            </span>
+            <span className={styles.itemName}>{item.productName}</span>
+            <span className={styles.itemQty}>
+              {item.quantity} {unitLabel(item.unit)}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {remaining > 0 && <p className={styles.more}>+ {remaining} productos más</p>}
+    </>
   );
 }

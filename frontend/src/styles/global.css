@@ -13,6 +13,31 @@ body,
   height: 100%;
 }
 
+/*
+ * Thin accent scrollbar (matches diegobarrioh.dev). Firefox uses the
+ * standard `scrollbar-*` properties; WebKit/Blink use the `::-webkit-*`
+ * pseudo-elements. Transparent track keeps only the accent thumb visible;
+ * the thumb picks up the theme's `--color-accent` so it flips with light/dark.
+ */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-accent) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--color-accent);
+  border-radius: var(--radius-full, 999px);
+}
+
 body {
   margin: 0;
   font-family: var(--font-sans);

@@ -1,0 +1,18 @@
+.ring {
+  position: relative;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+}
+
+.hole {
+  position: absolute;
+  inset: 12px;
+  border-radius: 50%;
+  background-color: var(--color-surface);
+  display: grid;
+  place-items: center;
+  text-align: center;
+  line-height: 1.1;
+}

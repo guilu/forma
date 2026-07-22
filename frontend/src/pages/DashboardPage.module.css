@@ -6,10 +6,10 @@
 
 .header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: var(--space-2);
+  gap: var(--space-3);
 }
 
 .titles {
@@ -28,17 +28,82 @@
   color: var(--color-text-muted);
 }
 
-.date {
-  margin: 0;
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
+/* Visual-only date navigator. */
+.dateNav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
 }
 
-.grid {
+.dateArrow {
+  display: flex;
+  align-items: center;
+  color: var(--color-text-muted);
+}
+
+.dateArrowPrev {
+  transform: rotate(180deg);
+}
+
+.date {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--color-text);
+}
+
+/* Metrics row: body tiles (span 4) + calories + hydration = 6 across. */
+.metrics {
   display: grid;
-  /* Mobile-first: widgets stack in a single ("Hoy") column, then flow into a
-   * responsive multi-column layout on wider screens (docs/1-dashboard.png). */
-  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
+
+/* Second row: next training / menu / macros / trend. */
+.rowFour {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-5);
   align-items: start;
+}
+
+/* Third row: progress / evolution / shopping / (tip + plan banner). */
+.rowThree {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.tipColumn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+@media (max-width: 1100px) {
+  .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .rowFour {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .rowThree {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .metrics,
+  .rowFour,
+  .rowThree {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

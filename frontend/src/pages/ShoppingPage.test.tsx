@@ -3,7 +3,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ShoppingPage } from './ShoppingPage';
 import { buildCategoryTabs, filterItemsByCategory } from './shoppingCategories';
-import { formatGeneratedAt, unitLabel } from './shoppingDisplay';
+import { formatGeneratedAt, totalServings, unitLabel } from './shoppingDisplay';
 import { NotificationProvider } from '../components/NotificationProvider';
 import { ApiRequestError } from '../api/client';
 import {
@@ -176,19 +176,21 @@ describe('ShoppingPage', () => {
     expect(screen.getByRole('tab', { name: /Lácteos y huevos/ })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /Otros/ })).toBeInTheDocument();
 
-    // Per-item row: quantity + unit + servings + price, scoped to the Avena
-    // row (FOR-117: quantity now renders with its unit, plus a servings
-    // detail when present).
+    // Per-item row (FOR-164): quantity number and unit now live in separate
+    // CANTIDAD/UNIDAD columns; servings detail + price alongside, scoped to
+    // the Avena row.
     const avenaRow = avenaCheckbox.closest('li') as HTMLElement;
-    expect(within(avenaRow).getByText('2 kg')).toBeInTheDocument();
+    expect(within(avenaRow).getByText('2')).toBeInTheDocument();
+    expect(within(avenaRow).getByText('kg')).toBeInTheDocument();
     expect(within(avenaRow).getByText('4 raciones')).toBeInTheDocument();
     expect(within(avenaRow).getByText(/3,90/)).toBeInTheDocument();
 
-    // Detergente (non-food, servings: null) shows quantity+unit only, no
-    // servings detail (tests.md edge case).
+    // Detergente (non-food, servings: null) shows quantity + unit only, no
+    // servings detail (tests.md edge case). UD renders as "unidades" (FOR-164).
     const detergenteCheckbox = screen.getByRole('checkbox', { name: /Detergente/ });
     const detergenteRow = detergenteCheckbox.closest('li') as HTMLElement;
-    expect(within(detergenteRow).getByText('1 ud')).toBeInTheDocument();
+    expect(within(detergenteRow).getByText('1')).toBeInTheDocument();
+    expect(within(detergenteRow).getByText('unidades')).toBeInTheDocument();
     expect(within(detergenteRow).queryByText(/raciones/)).not.toBeInTheDocument();
 
     // Unrecognized unit value ("BOLSA") renders as raw text instead of
@@ -201,11 +203,10 @@ describe('ShoppingPage', () => {
     expect(lechePackRow).toBeDefined();
     expect(within(lechePackRow as HTMLElement).getByText(/BOLSA/)).toBeInTheDocument();
 
-    // Budget summary: product count, weekly total, monthly estimate (EUR, es-ES comma).
+    // Budget summary: product count + weekly total (EUR, es-ES comma).
     expect(screen.getByText('Productos')).toBeInTheDocument();
     expect(screen.getByText(/productos únicos/)).toBeInTheDocument();
     expect(screen.getByText(/24,60/)).toBeInTheDocument();
-    expect(screen.getByText(/106,52/)).toBeInTheDocument();
 
     // The budget tiles are direct siblings of the page <h1> (no intervening
     // <h2>), so per FOR-112 they must render as <h2>.
@@ -216,11 +217,11 @@ describe('ShoppingPage', () => {
     expect(screen.getByRole('heading', { name: 'Generada', level: 2 })).toBeInTheDocument();
     expect(screen.getByText(formatGeneratedAt(list.generatedAt))).toBeInTheDocument();
 
-    // No list-level "Porciones" aggregate tile: this fixture mixes food
-    // items (with servings) and a non-food item (Detergente, servings:
-    // null), so a summed aggregate would not be meaningful — documented
-    // decision (spec.md Open Questions), servings render per item only.
-    expect(screen.queryByRole('heading', { name: 'Porciones' })).not.toBeInTheDocument();
+    // "Porciones" aggregate tile (FOR-164): sums per-item servings, skipping
+    // non-food items (Detergente / second Leche row, servings: null) —
+    // 4 + 6 + 8 = 18 for this fixture.
+    expect(screen.getByRole('heading', { name: 'Porciones', level: 2 })).toBeInTheDocument();
+    expect(screen.getByText('18')).toBeInTheDocument();
   });
 
   it('filters the rendered items when a category tab is selected; aria-selected updates accordingly', async () => {
@@ -399,7 +400,7 @@ describe('ShoppingPage', () => {
     );
 
     await waitFor(() => expect(updateQuantityMock).toHaveBeenCalledWith('i1', 3));
-    expect(await within(avenaRow).findByText('3 kg')).toBeInTheDocument();
+    expect(await within(avenaRow).findByText('3')).toBeInTheDocument();
     expect(within(avenaRow).getByText(/5,85/)).toBeInTheDocument();
   });
 
@@ -436,7 +437,7 @@ describe('ShoppingPage', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/No se pudo actualizar/);
     // Reverted (never changed): still shows the original quantity.
-    expect(within(avenaRow).getByText('2 kg')).toBeInTheDocument();
+    expect(within(avenaRow).getByText('2')).toBeInTheDocument();
     // Not stuck pending: the control is usable again.
     expect(increment).not.toBeDisabled();
   });
@@ -817,12 +818,12 @@ describe('category filtering helpers (FOR-111)', () => {
 });
 
 describe('item display helpers (FOR-117)', () => {
-  it('maps known ShoppingUnit values to their display label', () => {
-    expect(unitLabel('UD')).toBe('ud');
+  it('maps known ShoppingUnit values to their display label (FOR-164: dedicated UNIDAD column)', () => {
+    expect(unitLabel('UD')).toBe('unidades');
     expect(unitLabel('G')).toBe('g');
     expect(unitLabel('KG')).toBe('kg');
-    expect(unitLabel('L')).toBe('l');
-    expect(unitLabel('PAQUETE')).toBe('paquete');
+    expect(unitLabel('L')).toBe('L');
+    expect(unitLabel('PAQUETE')).toBe('paquetes');
   });
 
   it('falls back to the raw value for an unrecognized unit instead of crashing or hiding it', () => {
@@ -839,5 +840,16 @@ describe('item display helpers (FOR-117)', () => {
 
   it('formats a pre-migration/backfilled generatedAt as a valid date, not blank text', () => {
     expect(formatGeneratedAt('2026-07-06T00:00:00Z')).not.toBe('');
+  });
+
+  it('sums per-item servings for the Porciones tile, skipping non-food items (servings: null)', () => {
+    expect(
+      totalServings([{ servings: 4 }, { servings: 6 }, { servings: null }, { servings: 8 }]),
+    ).toBe(18);
+  });
+
+  it('totals 0 for an empty list or a list of only non-food items, never a fabricated figure', () => {
+    expect(totalServings([])).toBe(0);
+    expect(totalServings([{ servings: null }, { servings: null }])).toBe(0);
   });
 });

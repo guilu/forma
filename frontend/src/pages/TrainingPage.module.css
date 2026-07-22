@@ -27,11 +27,33 @@
   color: var(--color-text-muted);
 }
 
+.dateNav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.dateArrow {
+  display: flex;
+  align-items: center;
+  color: var(--color-text-muted);
+}
+
+.dateArrowPrev {
+  transform: rotate(180deg);
+}
+
 .dateLabel {
   margin: 0;
   font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
+  font-weight: 600;
+  color: var(--color-text);
   text-transform: capitalize;
+  white-space: nowrap;
 }
 
 .message {
@@ -367,6 +389,349 @@
   display: flex;
   align-items: center;
   gap: var(--space-1);
+}
+
+/* ── Today card (FOR-164) ────────────────────────────────────────────── */
+.todayLayout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-5);
+}
+
+.todayLayout .todaySessions {
+  flex: 1;
+  min-width: 14rem;
+}
+
+.todaySessionHeader {
+  justify-content: flex-start;
+}
+
+.todayVisual {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.todayRing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ringPercent {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.ringCaption {
+  margin: 0;
+  max-width: 8rem;
+  text-align: center;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.todayFigures {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* ── Weekly calendar (FOR-164) ──────────────────────────────────────── */
+.calendarToday {
+  border-color: var(--color-accent);
+}
+
+.calendarRest {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.calendarSessionButton {
+  align-items: center;
+}
+
+.calendarLegend {
+  list-style: none;
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.calendarLegend li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.legendDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--color-border);
+}
+
+.legendDone {
+  background-color: var(--color-accent);
+}
+
+.legendToday {
+  background-color: var(--color-info, #3b82f6);
+}
+
+.legendPending {
+  background-color: var(--color-border);
+}
+
+.legendRest {
+  background-color: transparent;
+  border: 1px solid var(--color-border);
+}
+
+/* ── Stats row (FOR-164) ────────────────────────────────────────────── */
+.statsRow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+@media (max-width: 720px) {
+  .statsRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ── Muscle groups (FOR-164) ────────────────────────────────────────── */
+.muscleGroups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: stretch;
+}
+
+.muscleGroupGrid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  min-width: 16rem;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+@media (max-width: 720px) {
+  .muscleGroupGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.muscleGroup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  text-align: center;
+}
+
+.muscleGroupName {
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+}
+
+.muscleGroupQuality {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.encourage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  text-align: center;
+  min-width: 12rem;
+  padding: var(--space-4);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.encourageIcon {
+  font-size: 1.5rem;
+}
+
+.encourageTitle {
+  margin: 0;
+  font-weight: 700;
+}
+
+.encourageText {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.encourageLink {
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  font-weight: 600;
+  color: var(--color-accent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
+  border-radius: var(--radius-md);
+}
+
+/* ── Weekly summary rows (FOR-164) ──────────────────────────────────── */
+.summaryList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.summaryRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.summaryRow > :first-child {
+  flex: 1;
+}
+
+.summaryRingText {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.summaryLink {
+  display: inline-block;
+  margin-top: var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+/* ── Distribution donut (FOR-164) ───────────────────────────────────── */
+.distribution {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.distributionRing {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.distributionHole {
+  position: absolute;
+  inset: 14px;
+  border-radius: 50%;
+  background-color: var(--color-surface);
+}
+
+.distributionLegend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  min-width: 10rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.distributionItem {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  column-gap: var(--space-2);
+}
+
+.distributionDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.dotStrength {
+  background-color: var(--color-warning);
+}
+
+.dotRunning {
+  background-color: var(--color-accent);
+}
+
+.dotRest {
+  background-color: var(--color-border);
+}
+
+.distributionLabel {
+  color: var(--color-text);
+}
+
+.distributionPercent {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.distributionCount {
+  grid-column: 2 / -1;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.distributionNote {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-4) 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.distributionNoteIcon {
+  color: var(--color-accent);
+  flex-shrink: 0;
+}
+
+/* ── Streak (FOR-164) ───────────────────────────────────────────────── */
+.streakHeadline {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.streakFire {
+  font-size: 1.5rem;
+}
+
+.streakCheer {
+  margin: 0;
+  font-weight: 600;
+  color: var(--color-accent);
 }
 
 @media (min-width: 900px) {

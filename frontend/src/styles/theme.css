@@ -109,8 +109,14 @@
   --font-size-lg: 1.125rem; /* template: body-lg -- already matched */
   --font-size-xl: 1.5rem; /* template: headline-lg-mobile -- already matched */
 
-  /* Layout */
-  --sidebar-width: 248px;
+  /*
+   * Layout. FOR-164: sidebar widened from 248px to 272px (~17rem) so nav
+   * labels and the active tint/border pill breathe like the template's
+   * `w-64` (256px) sidebar plus its `px-3`/`px-4` inner padding -- our sidebar
+   * carries its padding on `.sidebar` itself (not nested like the template),
+   * so a touch wider keeps the same visual breathing room end to end.
+   */
+  --sidebar-width: 272px;
   --topbar-height: 64px;
 
   /*

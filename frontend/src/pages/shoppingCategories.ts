@@ -8,6 +8,7 @@
  * module for page-local, non-component logic.
  */
 import type { ShoppingItem } from '../api/shopping';
+import type { IconName } from '../components/Icon';
 
 /** Sentinel tab key for "show every category". */
 export const ALL_CATEGORIES = 'ALL';
@@ -81,4 +82,43 @@ export function filterItemsByCategory(
     return items;
   }
   return items.filter((item) => normalizeCategory(item.category) === categoryKey);
+}
+
+/**
+ * Groups items under their category, in the canonical `CATEGORY_LABELS` order,
+ * for the FOR-164 grouped table (the mockup renders a category header row —
+ * icon + uppercase label — before each cluster of item rows). Only categories
+ * actually present in `items` produce a group; each group carries its display
+ * label so the caller doesn't re-resolve it.
+ */
+export function groupItemsByCategory(items: readonly ShoppingItem[]): ReadonlyArray<{
+  readonly key: string;
+  readonly label: string;
+  readonly items: readonly ShoppingItem[];
+}> {
+  return CATEGORY_LABELS.map(([key, label]) => ({
+    key,
+    label,
+    items: items.filter((item) => normalizeCategory(item.category) === key),
+  })).filter((group) => group.items.length > 0);
+}
+
+/**
+ * Decorative glyph for a category header (FOR-164). Maps the closed
+ * `ShoppingCategory` enum onto the shell's existing {@link IconName} set — no
+ * new icons, no per-product emoji (there's no backing data for that); food
+ * categories share the nutrition glyph, "Otros" reuses the shopping basket.
+ */
+const CATEGORY_ICONS: ReadonlyMap<string, IconName> = new Map([
+  ['FRUTAS_Y_VERDURAS', 'nutrition'],
+  ['PROTEINAS', 'activity'],
+  ['LACTEOS_Y_HUEVOS', 'nutrition'],
+  ['CEREALES_Y_LEGUMBRES', 'nutrition'],
+  ['GRASAS_Y_ACEITES', 'nutrition'],
+  ['OTROS', 'shopping'],
+]);
+
+/** Icon for a category header row; falls back to the shopping glyph. */
+export function categoryIcon(categoryKey: string): IconName {
+  return CATEGORY_ICONS.get(categoryKey) ?? 'shopping';
 }
