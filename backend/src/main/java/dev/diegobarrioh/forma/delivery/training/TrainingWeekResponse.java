@@ -2,6 +2,8 @@ package dev.diegobarrioh.forma.delivery.training;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import dev.diegobarrioh.forma.application.WeeklyTrainingSchedule;
+import java.time.DayOfWeek;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -41,6 +43,19 @@ public record TrainingWeekResponse(List<Day> days) {
                                         entry.status(),
                                         entry.notes()))
                             .toList()))
+            .toList();
+    return new TrainingWeekResponse(days);
+  }
+
+  /**
+   * Empty week for the first-run gate (FOR-169): Monday–Sunday, every day a rest day with no
+   * sessions, so a pre-onboarding user sees no "active" training plan. The frontend treats a week
+   * with no sessions as its empty state.
+   */
+  public static TrainingWeekResponse empty() {
+    List<Day> days =
+        Arrays.stream(DayOfWeek.values())
+            .map(dayOfWeek -> new Day(dayOfWeek.name(), true, List.of()))
             .toList();
     return new TrainingWeekResponse(days);
   }

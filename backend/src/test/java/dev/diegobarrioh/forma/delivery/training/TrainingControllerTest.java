@@ -14,6 +14,7 @@ import dev.diegobarrioh.forma.application.MuscleWorkedMapService;
 import dev.diegobarrioh.forma.application.NotFoundException;
 import dev.diegobarrioh.forma.application.StoredSessionStatus;
 import dev.diegobarrioh.forma.application.TrainingSessionStatusService;
+import dev.diegobarrioh.forma.application.UserProfileService;
 import dev.diegobarrioh.forma.application.WeeklyTrainingSchedule;
 import dev.diegobarrioh.forma.application.WeeklyTrainingSchedule.TrainingDay;
 import dev.diegobarrioh.forma.application.WeeklyTrainingSchedule.TrainingEntry;
@@ -43,6 +44,25 @@ class TrainingControllerTest {
   @MockBean private TrainingSessionStatusService statusService;
   @MockBean private WeeklyTrainingSummaryService summaryService;
   @MockBean private MuscleWorkedMapService muscleWorkedMapService;
+  @MockBean private UserProfileService profileService;
+
+  /** Default to a completed first run so the plan is served; individual tests override. */
+  @org.junit.jupiter.api.BeforeEach
+  void onboardingCompletedByDefault() {
+    when(profileService.firstRunCompleted()).thenReturn(true);
+  }
+
+  @Test
+  void returnsAnEmptyWeekBeforeOnboardingFirstRunGate() throws Exception {
+    when(profileService.firstRunCompleted()).thenReturn(false);
+
+    mockMvc
+        .perform(get("/api/v1/training/week"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.days.length()").value(7))
+        .andExpect(jsonPath("$.days[0].rest").value(true))
+        .andExpect(jsonPath("$.days[0].sessions").isEmpty());
+  }
 
   @Test
   void returnsTheWeekWithSessionIdsAndRestDays() throws Exception {

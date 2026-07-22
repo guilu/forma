@@ -28,7 +28,11 @@ class EmptyFirstRunMigrationTest {
   @Test
   void freshDatabaseHasNoActiveUserDataAfterV23() throws Exception {
     String url = "jdbc:h2:mem:for169_fresh_empty;MODE=PostgreSQL;DB_CLOSE_DELAY=-1";
-    Flyway.configure().dataSource(url, "sa", "").locations("classpath:db/migration").load().migrate();
+    Flyway.configure()
+        .dataSource(url, "sa", "")
+        .locations("classpath:db/migration")
+        .load()
+        .migrate();
 
     try (Connection connection = DriverManager.getConnection(url, "sa", "")) {
       // Seeds removed by V23.
@@ -48,7 +52,8 @@ class EmptyFirstRunMigrationTest {
   void existingInstallRealDataIsPreservedOnlyKnownSeedsRemoved() throws Exception {
     String url = "jdbc:h2:mem:for169_preserve_real;MODE=PostgreSQL;DB_CLOSE_DELAY=-1";
 
-    // Migrate up to V22: the seeds (Diego profile + 23 Mercadona products + active list) are present.
+    // Migrate up to V22: the seeds (Diego profile + 23 Mercadona products + active list) are
+    // present.
     Flyway.configure()
         .dataSource(url, "sa", "")
         .locations("classpath:db/migration")

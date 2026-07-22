@@ -10,6 +10,7 @@ import dev.diegobarrioh.forma.application.HydrationService;
 import dev.diegobarrioh.forma.application.MealLogService;
 import dev.diegobarrioh.forma.application.NutritionCalculationService;
 import dev.diegobarrioh.forma.application.NutritionDayCatalogService;
+import dev.diegobarrioh.forma.application.UserProfileService;
 import dev.diegobarrioh.forma.domain.MealItem;
 import dev.diegobarrioh.forma.domain.MealTemplate;
 import dev.diegobarrioh.forma.domain.MealType;
@@ -43,6 +44,24 @@ class NutritionControllerTest {
   @MockBean private NutritionDayCatalogService service;
   @MockBean private MealLogService mealLogService;
   @MockBean private HydrationService hydrationService;
+  @MockBean private UserProfileService profileService;
+
+  /** Default to a completed first run so the plan is served; individual tests override. */
+  @org.junit.jupiter.api.BeforeEach
+  void onboardingCompletedByDefault() {
+    when(profileService.firstRunCompleted()).thenReturn(true);
+  }
+
+  @Test
+  void returnsAnEmptyDayBeforeOnboardingFirstRunGate() throws Exception {
+    when(profileService.firstRunCompleted()).thenReturn(false);
+
+    mockMvc
+        .perform(get("/api/v1/nutrition/days/running"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.type").value("RUNNING"))
+        .andExpect(jsonPath("$.meals").isEmpty());
+  }
 
   private static NutritionDay runningDay() {
     NutritionDayTemplate template =
