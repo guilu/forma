@@ -34,9 +34,14 @@ class UserProfilePersonalTargetsExistingProfileMigrationTest {
           """);
     }
 
+    // Pinned to V22: FOR-169's V23 cleanup would delete this default-user row
+    // (it matches the seed and first_run_completed stays false), so validate
+    // V20's merge into an existing profile at its own version. The V23 removal
+    // is covered by EmptyFirstRunMigrationTest.
     Flyway.configure()
         .dataSource(JDBC_URL, "sa", "")
         .locations("classpath:db/migration")
+        .target("22")
         .load()
         .migrate();
 

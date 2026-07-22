@@ -33,10 +33,13 @@ class UserProfilePersonalTargetsSeedTest {
 
   @BeforeAll
   static void migrate() throws Exception {
+    // Pinned to V22: FOR-169's V23 removes this seed (empty first-run). The
+    // post-cleanup empty state is covered by EmptyFirstRunMigrationTest.
     flyway =
         Flyway.configure()
             .dataSource(JDBC_URL, "sa", "")
             .locations("classpath:db/migration")
+            .target("22")
             .load();
     flyway.migrate();
     connection = DriverManager.getConnection(JDBC_URL, "sa", "");
