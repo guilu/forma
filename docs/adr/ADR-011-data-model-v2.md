@@ -61,13 +61,19 @@ erDiagram
         varchar name
         varchar modality "STRENGTH|RUNNING|(CYCLING)"
         varchar movement_pattern "STRENGTH nullable"
-        varchar muscle_group "STRENGTH nullable"
         varchar equipment "STRENGTH nullable"
         integer default_sets "STRENGTH nullable"
         varchar default_reps "STRENGTH nullable"
         numeric default_distance_km "RUNNING nullable"
         varchar default_pace_min_per_km "RUNNING nullable"
         varchar session_kind "RUNNING nullable"
+        text instructions "STRENGTH nullable"
+    }
+    exercise_catalog_muscle {
+        uuid id PK
+        varchar exercise_id FK
+        varchar muscle
+        integer ordinal
     }
     food_catalog {
         varchar id PK
@@ -177,6 +183,7 @@ erDiagram
     training_plan ||--o{ training_session : contains
     training_session ||--o{ training_session_exercise : contains
     exercise_catalog ||--o{ training_session_exercise : referenced_by
+    exercise_catalog ||--o{ exercise_catalog_muscle : has
     nutrition_plan ||--o{ nutrition_plan_day : contains
     nutrition_plan_day ||--o{ nutrition_plan_meal : contains
     nutrition_plan_meal ||--o{ nutrition_plan_meal_item : contains
@@ -210,16 +217,27 @@ Types are Postgres, chosen H2-compatible (plain typed columns, no JSONB). All
 | name | VARCHAR(200) | NOT NULL | |
 | modality | VARCHAR(32) | NOT NULL | STRENGTH \| RUNNING \| (future CYCLING/SWIMMING) |
 | movement_pattern | VARCHAR(32) | NULL | STRENGTH: PUSH/PULL/SQUAT/HINGE/CORE |
-| muscle_group | VARCHAR(64) | NULL | STRENGTH hint |
 | equipment | VARCHAR(32) | NULL | STRENGTH: DUMBBELL/BENCH/BAND/PULL_UP_BAR/BODYWEIGHT |
 | default_sets | INTEGER | NULL | STRENGTH sets hint |
 | default_reps | VARCHAR(16) | NULL | STRENGTH reps hint, e.g. "8-12" |
 | default_distance_km | NUMERIC(5,2) | NULL | RUNNING distance hint |
 | default_pace_min_per_km | VARCHAR(8) | NULL | RUNNING "mm:ss" text (matches `weekly_tracking_record`) |
-| session_kind | VARCHAR(32) | NULL | RUNNING: EASY/INTERVAL/LONG/TEMPO/RECOVERY |
+| session_kind | VARCHAR(32) | NULL | RUNNING: EASY/LONG_RUN/INTERVALS/RECOVERY (verbatim `SessionType.name()`) |
+| instructions | TEXT | NULL | STRENGTH authored cues (ES); NULL for RUNNING |
 | created_at | TIMESTAMP WITH TIME ZONE | NOT NULL | default CURRENT_TIMESTAMP |
 
 Index: `CREATE INDEX idx_exercise_catalog_modality ON exercise_catalog (modality);`
+
+**exercise_catalog_muscle** (child of `exercise_catalog`; FOR-172 amendment — preserves the multi-muscle list that `MuscleWorkedMapService` consumes, which a single scalar `muscle_group` would have regressed)
+
+| column | type | null | notes |
+|---|---|---|---|
+| id | UUID | PK | |
+| exercise_id | VARCHAR(64) | NOT NULL | FK→`exercise_catalog(id)` |
+| muscle | VARCHAR(64) | NOT NULL | one primary muscle (verbatim from `Exercise.primaryMuscles()`) |
+| ordinal | INTEGER | NOT NULL | order within the exercise's muscle list |
+
+Index: `CREATE INDEX idx_exercise_catalog_muscle_exercise ON exercise_catalog_muscle (exercise_id);`
 
 **food_catalog** (global; PK reuses `FoodCatalog` ids verbatim → makes
 `shopping_products.linked_food_item_id` FK-able)
@@ -290,7 +308,7 @@ Indexes: `CREATE UNIQUE INDEX idx_training_session_slot ON training_session (tra
 | distance_km | NUMERIC(5,2) | NULL | RUNNING prescription |
 | target_pace | VARCHAR(8) | NULL | RUNNING "mm:ss" |
 | rpe | INTEGER | NULL | RUNNING rate of perceived exertion |
-| running_session_kind | VARCHAR(32) | NULL | RUNNING: EASY/INTERVAL/LONG/TEMPO |
+| running_session_kind | VARCHAR(32) | NULL | RUNNING: EASY/LONG_RUN/INTERVALS/RECOVERY (verbatim `SessionType.name()`) |
 
 Index: `CREATE INDEX idx_tse_session ON training_session_exercise (training_session_id);`
 
@@ -465,8 +483,11 @@ schema-breaking. This is the concrete payoff of Decision 1 over JSONB
   `shopping_products.linked_food_item_id` (seeded V22) 1:1, seeding turns the
   existing soft-link into a real FK with ZERO shopping-side data migration.
 - **exercise_catalog:** 16 STRENGTH rows from `ExerciseCatalog.java` (ids
-  verbatim, movement_pattern/equipment mapped to nullable columns) + RUNNING
-  exercise rows for the running sessions.
+  verbatim, movement_pattern/equipment/instructions mapped to nullable columns;
+  each exercise's `primaryMuscles()` list → `exercise_catalog_muscle` child
+  rows) + 4 RUNNING rows keyed by `SessionType.name()`
+  (EASY/LONG_RUN/INTERVALS/RECOVERY), distance/pace NULL (domain uses RPE, not
+  pace).
 - **RunningPlanGenerator (48 sessions, 16 weeks × 3):** it is an ALGORITHM, not
   rows. Materialize `sixteenWeekPlan()` output ONCE by running it
   programmatically (a one-off tool/test that prints INSERT statements — do NOT
@@ -525,7 +546,7 @@ confirmation — see Open points):
 
 | Order | Slice | Flyway version | FOR story (tentative) |
 |---|---|---|---|
-| 1 | Catalogs + seed (first-consumer validator) | V24 | FOR-172 (tentative — confirm) |
+| 1 | Catalogs + seed (first-consumer validator) | V24 | FOR-172 (confirmed first consumer) |
 | 2 | Shopping FK (food_catalog) | V25 | FOR-173 |
 | 3 | Plan parent | V26 | FOR-174 |
 | 4 | Plan children (training_plan, nutrition_plan) | V27 | FOR-175 |
@@ -630,9 +651,12 @@ user row. This must be written into FOR-145's spec.
 
 ## Open points
 
-- Confirm the exact FOR-172..FOR-184 → Flyway-version mapping and pin the
-  first-consumer catalog-seed story (tentatively FOR-172 — see the mapping
-  table above).
+- ~~Pin the first-consumer catalog-seed story~~ **Resolved (FOR-172 amendment):**
+  FOR-172 is the confirmed first consumer, pinned to Flyway V24 (mapping table
+  above). Its exploration validated this schema against the real code and
+  produced amendments A1 (`exercise_catalog_muscle` child table), A2
+  (`instructions`), A3 (`session_kind` values). The rest of the FOR-173..FOR-184
+  → version mapping stays indicative pending each story.
 - Product confirmation: fixed materialized running plan (default assumed
   here) vs. user-parameterized generator.
 - FOR-145's spec must adopt `users.id UUID PRIMARY KEY` and the placeholder
