@@ -7,6 +7,7 @@ import { getTrainingWeek, type TrainingWeek } from '../api/training';
 import { getNutritionDay, type NutritionDay } from '../api/nutrition';
 import { getShoppingList, type ShoppingList } from '../api/shopping';
 import { listGoals, type Goal } from '../api/goals';
+import { getProfile } from '../api/profile';
 import { axe } from '../test/axe';
 
 /**
@@ -21,12 +22,14 @@ vi.mock('../api/training', () => ({ getTrainingWeek: vi.fn() }));
 vi.mock('../api/nutrition', () => ({ getNutritionDay: vi.fn() }));
 vi.mock('../api/shopping', () => ({ getShoppingList: vi.fn() }));
 vi.mock('../api/goals', () => ({ listGoals: vi.fn() }));
+vi.mock('../api/profile', () => ({ getProfile: vi.fn() }));
 
 const listMock = vi.mocked(listBodyMeasurements);
 const trainingMock = vi.mocked(getTrainingWeek);
 const nutritionMock = vi.mocked(getNutritionDay);
 const shoppingMock = vi.mocked(getShoppingList);
 const goalsMock = vi.mocked(listGoals);
+const profileMock = vi.mocked(getProfile);
 
 const goal: Goal = {
   id: 'g1',
@@ -118,6 +121,9 @@ describe('DashboardPage', () => {
     shoppingMock.mockReset();
     goalsMock.mockReset();
     goalsMock.mockResolvedValue([goal]);
+    profileMock.mockReset();
+    // A saved profile with a name → the greeting personalises to it.
+    profileMock.mockResolvedValue({ name: 'Diego', firstRunCompleted: true } as never);
   });
 
   it('shows the header greeting and renders the mockup panels', async () => {
@@ -125,7 +131,9 @@ describe('DashboardPage', () => {
 
     renderDashboard();
 
-    expect(screen.getByRole('heading', { name: 'Hola Diego 👋', level: 1 })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Hola Diego 👋', level: 1 }),
+    ).toBeInTheDocument();
     expect(screen.getByText('Este es tu resumen de hoy')).toBeInTheDocument();
 
     // Second- and third-row panels each render as a <h2> section heading.

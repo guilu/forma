@@ -2,6 +2,7 @@ package dev.diegobarrioh.forma.delivery.training;
 
 import dev.diegobarrioh.forma.application.MuscleWorkedMapService;
 import dev.diegobarrioh.forma.application.TrainingSessionStatusService;
+import dev.diegobarrioh.forma.application.UserProfileService;
 import dev.diegobarrioh.forma.application.WeeklyTrainingScheduleService;
 import dev.diegobarrioh.forma.application.WeeklyTrainingSummaryService;
 import dev.diegobarrioh.forma.delivery.ApiPaths;
@@ -31,21 +32,31 @@ public class TrainingController {
   private final TrainingSessionStatusService statusService;
   private final WeeklyTrainingSummaryService summaryService;
   private final MuscleWorkedMapService muscleWorkedMapService;
+  private final UserProfileService profileService;
 
   public TrainingController(
       WeeklyTrainingScheduleService scheduleService,
       TrainingSessionStatusService statusService,
       WeeklyTrainingSummaryService summaryService,
-      MuscleWorkedMapService muscleWorkedMapService) {
+      MuscleWorkedMapService muscleWorkedMapService,
+      UserProfileService profileService) {
     this.scheduleService = scheduleService;
     this.statusService = statusService;
     this.summaryService = summaryService;
     this.muscleWorkedMapService = muscleWorkedMapService;
+    this.profileService = profileService;
   }
 
-  /** Returns the current week's training calendar (Monday through Sunday). */
+  /**
+   * Returns the current week's training calendar (Monday through Sunday). First-run gate (FOR-169):
+   * before onboarding the in-code training plan is not exposed as the user's active week — the
+   * endpoint returns an empty (all-rest) week so the UI shows its empty state.
+   */
   @GetMapping("/week")
   public TrainingWeekResponse week() {
+    if (!profileService.firstRunCompleted()) {
+      return TrainingWeekResponse.empty();
+    }
     return TrainingWeekResponse.from(scheduleService.currentWeek());
   }
 

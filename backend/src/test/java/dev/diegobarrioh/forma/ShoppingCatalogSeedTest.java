@@ -21,6 +21,10 @@ import org.junit.jupiter.api.Test;
  * freshly migrated database, isolated from the shared {@code application-test.yml} H2 instance
  * other {@code @SpringBootTest} classes reuse and mutate — matching {@code
  * UserProfilePersonalTargetsSeedTest}'s style (plain Flyway + JDBC, no Spring context).
+ *
+ * <p>Pinned to {@code target("22")}: FOR-169's V23 cleanup migration removes this very seed as part
+ * of the empty first-run mode, so this test keeps validating V22's reseed at its own version. The
+ * post-cleanup empty end state is verified separately by {@code EmptyFirstRunMigrationTest}.
  */
 class ShoppingCatalogSeedTest {
 
@@ -36,6 +40,7 @@ class ShoppingCatalogSeedTest {
         Flyway.configure()
             .dataSource(JDBC_URL, "sa", "")
             .locations("classpath:db/migration")
+            .target("22")
             .load();
     flyway.migrate();
     connection = DriverManager.getConnection(JDBC_URL, "sa", "");

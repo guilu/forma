@@ -14,6 +14,7 @@ import dev.diegobarrioh.forma.application.MealLogService;
 import dev.diegobarrioh.forma.application.NutritionCalculationService;
 import dev.diegobarrioh.forma.application.NutritionDayCatalogService;
 import dev.diegobarrioh.forma.application.StoredWaterIntakeEntry;
+import dev.diegobarrioh.forma.application.UserProfileService;
 import dev.diegobarrioh.forma.application.ValidationException;
 import dev.diegobarrioh.forma.domain.WaterIntakeEntry;
 import java.time.LocalDate;
@@ -39,6 +40,7 @@ class HydrationControllerTest {
   @MockBean private MealLogService mealLogService;
   @MockBean private NutritionDayCatalogService nutritionDayCatalogService;
   @MockBean private NutritionCalculationService nutritionCalculationService;
+  @MockBean private UserProfileService profileService;
 
   @Test
   void logsAVolumeAndReturns201WithTheStoredEntry() throws Exception {

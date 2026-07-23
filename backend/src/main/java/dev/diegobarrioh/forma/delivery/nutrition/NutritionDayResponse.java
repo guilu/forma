@@ -4,6 +4,7 @@ import dev.diegobarrioh.forma.application.NutritionCalculationService;
 import dev.diegobarrioh.forma.domain.FoodCatalog;
 import dev.diegobarrioh.forma.domain.MealType;
 import dev.diegobarrioh.forma.domain.NutritionDay;
+import dev.diegobarrioh.forma.domain.NutritionDayType;
 import dev.diegobarrioh.forma.domain.NutritionTotals;
 import java.util.List;
 
@@ -58,6 +59,20 @@ public record NutritionDayResponse(
       List<Item> items) {}
 
   public record Item(String food, int quantityG) {}
+
+  /**
+   * Empty day for the first-run gate (FOR-169): the requested type with zeroed targets/totals and
+   * no meals, so a pre-onboarding user sees no "active" plan. The frontend treats an empty {@code
+   * meals} list as its empty state.
+   */
+  public static NutritionDayResponse empty(NutritionDayType type) {
+    return new NutritionDayResponse(
+        type.name(),
+        new Targets(0, 0, 0, 0),
+        new Totals(0, 0, 0, 0),
+        new TargetComparison(false, false, false, false),
+        List.of());
+  }
 
   /**
    * Maps a seeded nutrition day to its API read model, delegating macro totals and the target

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Icon } from '../components/Icon';
 import { WaterTracker } from '../components/WaterTracker';
 import { BodyWidget } from './dashboard/BodyWidget';
@@ -12,6 +13,7 @@ import { ShoppingWidget } from './dashboard/ShoppingWidget';
 import { TipWidget } from './dashboard/TipWidget';
 import { PlanBanner } from './dashboard/PlanBanner';
 import { WidgetSection } from './dashboard/WidgetSection';
+import { getProfile } from '../api/profile';
 import styles from './DashboardPage.module.css';
 
 /**
@@ -44,11 +46,29 @@ function capitalize(text: string): string {
 }
 
 export function DashboardPage() {
+  // Greeting name comes from the profile (FOR-169): on an empty first-run there
+  // is no saved profile, so the greeting stays generic ("Hola 👋") rather than
+  // leaking a seeded persona. A failed/absent profile also falls back to generic.
+  const [name, setName] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    let active = true;
+    getProfile()
+      .then((profile) => {
+        if (active) setName(profile.name?.trim() || undefined);
+      })
+      .catch(() => {
+        // Greeting stays generic if the profile can't load.
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <div className={styles.wrapper}>
       <header className={styles.header}>
         <div className={styles.titles}>
-          <h1 className={styles.title}>Hola Diego 👋</h1>
+          <h1 className={styles.title}>{name ? `Hola ${name} 👋` : 'Hola 👋'}</h1>
           <p className={styles.subtitle}>Este es tu resumen de hoy</p>
         </div>
         {/* Date navigator — visual only (no date-parameterised read model). */}

@@ -43,6 +43,15 @@ public class UserProfileService {
   }
 
   /**
+   * Whether the user has completed onboarding at least once (FOR-169 first-run gate). Defaults to
+   * {@code false} on a fresh install (no saved profile), so read models can withhold catalog-backed
+   * plans/lists until the user has actually configured the app.
+   */
+  public boolean firstRunCompleted() {
+    return current().firstRunCompleted();
+  }
+
+  /**
    * Updates the "Profile fields" section (name, email, birthDate, sex, heightCm, activityLevel,
    * mainGoal). A {@code null} argument leaves the corresponding stored field unchanged.
    */

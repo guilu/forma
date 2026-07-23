@@ -14,6 +14,7 @@ import dev.diegobarrioh.forma.application.MealLogService;
 import dev.diegobarrioh.forma.application.NutritionCalculationService;
 import dev.diegobarrioh.forma.application.NutritionDayCatalogService;
 import dev.diegobarrioh.forma.application.StoredMealLogEntry;
+import dev.diegobarrioh.forma.application.UserProfileService;
 import dev.diegobarrioh.forma.application.ValidationException;
 import dev.diegobarrioh.forma.domain.KeyNutrientTotals;
 import dev.diegobarrioh.forma.domain.MealLogEntry;
@@ -46,6 +47,7 @@ class MealLogControllerTest {
   @MockBean private NutritionDayCatalogService nutritionDayCatalogService;
   @MockBean private NutritionCalculationService nutritionCalculationService;
   @MockBean private HydrationService hydrationService;
+  @MockBean private UserProfileService profileService;
 
   @Test
   void logsACatalogEntryAndReturns201WithTheStoredMacros() throws Exception {

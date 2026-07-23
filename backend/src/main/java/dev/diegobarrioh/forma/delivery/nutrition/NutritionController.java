@@ -5,6 +5,7 @@ import dev.diegobarrioh.forma.application.MealLogService;
 import dev.diegobarrioh.forma.application.NotFoundException;
 import dev.diegobarrioh.forma.application.NutritionCalculationService;
 import dev.diegobarrioh.forma.application.NutritionDayCatalogService;
+import dev.diegobarrioh.forma.application.UserProfileService;
 import dev.diegobarrioh.forma.delivery.ApiPaths;
 import dev.diegobarrioh.forma.domain.NutritionDayType;
 import jakarta.validation.Valid;
@@ -45,22 +46,32 @@ public class NutritionController {
   private final NutritionCalculationService calculationService;
   private final MealLogService mealLogService;
   private final HydrationService hydrationService;
+  private final UserProfileService profileService;
 
   public NutritionController(
       NutritionDayCatalogService service,
       NutritionCalculationService calculationService,
       MealLogService mealLogService,
-      HydrationService hydrationService) {
+      HydrationService hydrationService,
+      UserProfileService profileService) {
     this.service = service;
     this.calculationService = calculationService;
     this.mealLogService = mealLogService;
     this.hydrationService = hydrationService;
+    this.profileService = profileService;
   }
 
-  /** Returns the seeded nutrition day for the given type (e.g. {@code running}). */
+  /**
+   * Returns the seeded nutrition day for the given type (e.g. {@code running}). First-run gate
+   * (FOR-169): before onboarding, the in-code day catalog is not exposed as the user's active plan
+   * — the endpoint returns an empty day so the UI shows its "configure your plan" empty state.
+   */
   @GetMapping("/days/{type}")
   public NutritionDayResponse day(@PathVariable String type) {
     NutritionDayType dayType = parseType(type);
+    if (!profileService.firstRunCompleted()) {
+      return NutritionDayResponse.empty(dayType);
+    }
     return service
         .findByType(dayType)
         .map(day -> NutritionDayResponse.from(day, calculationService))
