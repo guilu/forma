@@ -17,6 +17,7 @@ import dev.diegobarrioh.forma.domain.MealType;
 import dev.diegobarrioh.forma.domain.NutritionDay;
 import dev.diegobarrioh.forma.domain.NutritionDayTemplate;
 import dev.diegobarrioh.forma.domain.NutritionDayType;
+import dev.diegobarrioh.forma.support.WebMvcAuthTestConfig;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
@@ -37,7 +38,7 @@ import org.springframework.test.web.servlet.MockMvc;
  * through the controller rather than stubbing its output.
  */
 @WebMvcTest(NutritionController.class)
-@Import(NutritionCalculationService.class)
+@Import({NutritionCalculationService.class, WebMvcAuthTestConfig.class})
 class NutritionControllerTest {
 
   @Autowired private MockMvc mockMvc;

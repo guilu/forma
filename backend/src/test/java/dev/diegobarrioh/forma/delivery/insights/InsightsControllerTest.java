@@ -13,6 +13,7 @@ import dev.diegobarrioh.forma.domain.RecommendationCategory;
 import dev.diegobarrioh.forma.domain.RecommendationSeverity;
 import dev.diegobarrioh.forma.domain.WeeklyCheckIn;
 import dev.diegobarrioh.forma.domain.WeeklyCheckInDeltas;
+import dev.diegobarrioh.forma.support.WebMvcAuthTestConfig;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -20,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
@@ -28,6 +30,7 @@ import org.springframework.test.web.servlet.MockMvc;
  * FOR-110 week-over-week deltas + history endpoint.
  */
 @WebMvcTest(InsightsController.class)
+@Import(WebMvcAuthTestConfig.class)
 class InsightsControllerTest {
 
   private static final Instant NOW = Instant.parse("2026-07-10T08:00:00Z");

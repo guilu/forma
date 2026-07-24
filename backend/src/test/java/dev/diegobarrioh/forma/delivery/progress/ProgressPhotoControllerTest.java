@@ -16,12 +16,14 @@ import dev.diegobarrioh.forma.application.ProgressPhotoMetadata;
 import dev.diegobarrioh.forma.application.ProgressPhotoService;
 import dev.diegobarrioh.forma.application.ValidationException;
 import dev.diegobarrioh.forma.delivery.error.GlobalExceptionHandler;
+import dev.diegobarrioh.forma.support.WebMvcAuthTestConfig;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
@@ -38,6 +40,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
  * field in any response is a public/static/durable URL").
  */
 @WebMvcTest(ProgressPhotoController.class)
+@Import(WebMvcAuthTestConfig.class)
 class ProgressPhotoControllerTest {
 
   @Autowired private MockMvc mockMvc;

@@ -11,12 +11,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import dev.diegobarrioh.forma.application.NotFoundException;
 import dev.diegobarrioh.forma.application.WeeklyTrackingRecordService;
 import dev.diegobarrioh.forma.domain.WeeklyTrackingRecord;
+import dev.diegobarrioh.forma.support.WebMvcAuthTestConfig;
 import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -27,6 +29,7 @@ import org.springframework.test.web.servlet.MockMvc;
  * BodyMeasurementControllerTest} (ADR-007).
  */
 @WebMvcTest(WeeklyTrackingRecordController.class)
+@Import(WebMvcAuthTestConfig.class)
 class WeeklyTrackingRecordControllerTest {
 
   private static final String PATH = "/api/v1/tracking/weekly";

@@ -17,12 +17,14 @@ import dev.diegobarrioh.forma.application.StoredWaterIntakeEntry;
 import dev.diegobarrioh.forma.application.UserProfileService;
 import dev.diegobarrioh.forma.application.ValidationException;
 import dev.diegobarrioh.forma.domain.WaterIntakeEntry;
+import dev.diegobarrioh.forma.support.WebMvcAuthTestConfig;
 import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -33,6 +35,7 @@ import org.springframework.test.web.servlet.MockMvc;
  * mocked, mirroring {@code MealLogControllerTest} (FOR-127).
  */
 @WebMvcTest(NutritionController.class)
+@Import(WebMvcAuthTestConfig.class)
 class HydrationControllerTest {
 
   @Autowired private MockMvc mockMvc;

@@ -18,10 +18,12 @@ import dev.diegobarrioh.forma.domain.ProfileBaseline;
 import dev.diegobarrioh.forma.domain.ThemeMode;
 import dev.diegobarrioh.forma.domain.UnitPreferences;
 import dev.diegobarrioh.forma.domain.UserProfile;
+import dev.diegobarrioh.forma.support.WebMvcAuthTestConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -32,6 +34,7 @@ import org.springframework.test.web.servlet.MockMvc;
  * the merge-without-clobbering behavior itself is covered by {@code UserProfileServiceTest}.
  */
 @WebMvcTest(UserProfileController.class)
+@Import(WebMvcAuthTestConfig.class)
 class UserProfileControllerTest {
 
   @Autowired private MockMvc mockMvc;

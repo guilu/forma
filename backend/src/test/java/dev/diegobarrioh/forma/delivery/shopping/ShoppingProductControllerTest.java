@@ -14,12 +14,14 @@ import dev.diegobarrioh.forma.application.ShoppingProductService;
 import dev.diegobarrioh.forma.application.StoredShoppingProduct;
 import dev.diegobarrioh.forma.domain.ShoppingCategory;
 import dev.diegobarrioh.forma.domain.ShoppingProduct;
+import dev.diegobarrioh.forma.support.WebMvcAuthTestConfig;
 import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -28,6 +30,7 @@ import org.springframework.test.web.servlet.MockMvc;
  * and not-found handling.
  */
 @WebMvcTest(ShoppingProductController.class)
+@Import(WebMvcAuthTestConfig.class)
 class ShoppingProductControllerTest {
 
   @Autowired private MockMvc mockMvc;

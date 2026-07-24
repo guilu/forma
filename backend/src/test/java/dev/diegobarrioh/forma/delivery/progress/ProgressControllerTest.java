@@ -20,6 +20,7 @@ import dev.diegobarrioh.forma.domain.AdherenceCategory;
 import dev.diegobarrioh.forma.domain.CategoryAdherence;
 import dev.diegobarrioh.forma.domain.Streak;
 import dev.diegobarrioh.forma.domain.WeeklyHistoryBucket;
+import dev.diegobarrioh.forma.support.WebMvcAuthTestConfig;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -27,6 +28,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
@@ -36,6 +38,7 @@ import org.springframework.test.web.servlet.MockMvc;
  * MealLogControllerTest} (FOR-127).
  */
 @WebMvcTest(ProgressController.class)
+@Import(WebMvcAuthTestConfig.class)
 class ProgressControllerTest {
 
   @Autowired private MockMvc mockMvc;
