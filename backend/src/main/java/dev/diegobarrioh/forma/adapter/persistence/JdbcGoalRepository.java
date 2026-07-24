@@ -27,6 +27,12 @@ import org.springframework.stereotype.Repository;
  * each with ordered child milestone rows. Milestone completion is updated in place by id (never
  * delete-and-reinsert) since this slice's PATCH only ever toggles existing milestones, never adds
  * or removes one ({@code GoalService}).
+ *
+ * <p><b>owner_id -&gt; user_id (FOR-145b-1, migration V27).</b> All reads/writes now scope by the
+ * real {@code user_id UUID} column. The legacy {@code owner_id VARCHAR} column is kept alive (not
+ * yet dropped — a later contract migration will drop it) and is written on insert as {@code
+ * userId.toString()} purely so it stays populated/non-null for existing rows' shape; it is never
+ * read by this adapter anymore.
  */
 @Repository
 public class JdbcGoalRepository implements GoalRepository {
@@ -56,24 +62,25 @@ public class JdbcGoalRepository implements GoalRepository {
   }
 
   @Override
-  public List<StoredGoal> findAllByOwner(String ownerId) {
+  public List<StoredGoal> findAllByOwner(UUID userId) {
     List<GoalRow> rows =
         jdbcTemplate.query(
             "SELECT id, title, metric, target, due_date, status FROM goal"
-                + " WHERE owner_id = ? ORDER BY id",
+                + " WHERE user_id = ? ORDER BY id",
             GOAL_ROW_MAPPER,
-            ownerId);
+            userId);
     return rows.stream().map(this::toStoredGoal).toList();
   }
 
   @Override
-  public StoredGoal create(String ownerId, Goal goal) {
+  public StoredGoal create(UUID userId, Goal goal) {
     UUID goalId = UUID.randomUUID();
     jdbcTemplate.update(
-        "INSERT INTO goal (id, owner_id, title, metric, target, due_date, status)"
-            + " VALUES (?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO goal (id, owner_id, user_id, title, metric, target, due_date, status)"
+            + " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         goalId,
-        ownerId,
+        userId.toString(),
+        userId,
         goal.title(),
         goal.metric().name(),
         BigDecimal.valueOf(goal.target()),
@@ -92,7 +99,7 @@ public class JdbcGoalRepository implements GoalRepository {
   }
 
   @Override
-  public Optional<StoredGoal> findById(String ownerId, String goalId) {
+  public Optional<StoredGoal> findById(UUID userId, String goalId) {
     UUID id;
     try {
       id = UUID.fromString(goalId);
@@ -103,10 +110,10 @@ public class JdbcGoalRepository implements GoalRepository {
       GoalRow row =
           jdbcTemplate.queryForObject(
               "SELECT id, title, metric, target, due_date, status FROM goal"
-                  + " WHERE id = ? AND owner_id = ?",
+                  + " WHERE id = ? AND user_id = ?",
               GOAL_ROW_MAPPER,
               id,
-              ownerId);
+              userId);
       return Optional.of(toStoredGoal(row));
     } catch (EmptyResultDataAccessException ex) {
       return Optional.empty();
@@ -114,18 +121,18 @@ public class JdbcGoalRepository implements GoalRepository {
   }
 
   @Override
-  public Optional<StoredGoal> update(String ownerId, String goalId, Goal goal) {
+  public Optional<StoredGoal> update(UUID userId, String goalId, Goal goal) {
     UUID id = UUID.fromString(goalId);
     int updated =
         jdbcTemplate.update(
             "UPDATE goal SET title = ?, target = ?, due_date = ?, status = ?"
-                + " WHERE id = ? AND owner_id = ?",
+                + " WHERE id = ? AND user_id = ?",
             goal.title(),
             BigDecimal.valueOf(goal.target()),
             goal.dueDate() == null ? null : Date.valueOf(goal.dueDate()),
             goal.status().name(),
             id,
-            ownerId);
+            userId);
     if (updated == 0) {
       return Optional.empty();
     }
@@ -138,7 +145,7 @@ public class JdbcGoalRepository implements GoalRepository {
             id);
       }
     }
-    return findById(ownerId, goalId);
+    return findById(userId, goalId);
   }
 
   private StoredGoal toStoredGoal(GoalRow row) {

@@ -52,27 +52,27 @@ public class JdbcWeeklyTrackingRecordRepository implements WeeklyTrackingRecordR
   }
 
   @Override
-  public List<WeeklyTrackingRecord> findAllByOwner(String ownerId) {
+  public List<WeeklyTrackingRecord> findAllByOwner(UUID userId) {
     return jdbcTemplate.query(
         "SELECT "
             + SELECT_COLUMNS
             + " FROM weekly_tracking_record"
-            + " WHERE owner_id = ? ORDER BY week DESC",
+            + " WHERE user_id = ? ORDER BY week DESC",
         ROW_MAPPER,
-        ownerId);
+        userId);
   }
 
   @Override
-  public Optional<WeeklyTrackingRecord> findByOwnerAndWeek(String ownerId, int week) {
+  public Optional<WeeklyTrackingRecord> findByOwnerAndWeek(UUID userId, int week) {
     try {
       WeeklyTrackingRecord record =
           jdbcTemplate.queryForObject(
               "SELECT "
                   + SELECT_COLUMNS
                   + " FROM weekly_tracking_record"
-                  + " WHERE owner_id = ? AND week = ?",
+                  + " WHERE user_id = ? AND week = ?",
               ROW_MAPPER,
-              ownerId,
+              userId,
               week);
       return Optional.ofNullable(record);
     } catch (EmptyResultDataAccessException ex) {
@@ -81,14 +81,14 @@ public class JdbcWeeklyTrackingRecordRepository implements WeeklyTrackingRecordR
   }
 
   @Override
-  public WeeklyTrackingRecord upsert(String ownerId, WeeklyTrackingRecord record) {
+  public WeeklyTrackingRecord upsert(UUID userId, WeeklyTrackingRecord record) {
     int updated =
         jdbcTemplate.update(
             """
             UPDATE weekly_tracking_record
             SET record_date = ?, weight_kg = ?, body_fat_percentage = ?, bmi = ?,
                 running_km = ?, pace_4km_min_per_km = ?, recommended_kcal = ?, comment = ?
-            WHERE owner_id = ? AND week = ?
+            WHERE user_id = ? AND week = ?
             """,
             Date.valueOf(record.date()),
             toNullableBigDecimal(record.weightKg()),
@@ -98,18 +98,19 @@ public class JdbcWeeklyTrackingRecordRepository implements WeeklyTrackingRecordR
             record.pace4kmMinPerKm(),
             toNullableBigDecimal(record.recommendedKcal()),
             record.comment(),
-            ownerId,
+            userId,
             record.week());
     if (updated == 0) {
       jdbcTemplate.update(
           """
           INSERT INTO weekly_tracking_record
-            (id, owner_id, week, record_date, weight_kg, body_fat_percentage, bmi, running_km,
-             pace_4km_min_per_km, recommended_kcal, comment)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (id, owner_id, user_id, week, record_date, weight_kg, body_fat_percentage, bmi,
+             running_km, pace_4km_min_per_km, recommended_kcal, comment)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           """,
           UUID.randomUUID(),
-          ownerId,
+          userId.toString(),
+          userId,
           record.week(),
           Date.valueOf(record.date()),
           toNullableBigDecimal(record.weightKg()),
@@ -120,7 +121,7 @@ public class JdbcWeeklyTrackingRecordRepository implements WeeklyTrackingRecordR
           toNullableBigDecimal(record.recommendedKcal()),
           record.comment());
     }
-    return findByOwnerAndWeek(ownerId, record.week()).orElseThrow();
+    return findByOwnerAndWeek(userId, record.week()).orElseThrow();
   }
 
   private static Double toNullableDouble(BigDecimal value) {

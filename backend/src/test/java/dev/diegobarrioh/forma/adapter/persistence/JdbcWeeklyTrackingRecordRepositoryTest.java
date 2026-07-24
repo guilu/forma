@@ -3,10 +3,13 @@ package dev.diegobarrioh.forma.adapter.persistence;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.diegobarrioh.forma.application.WeeklyTrackingRecordRepository;
+import dev.diegobarrioh.forma.bootstrap.LegacyUserBootstrap;
 import dev.diegobarrioh.forma.domain.WeeklyTrackingRecord;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,13 +21,16 @@ import org.springframework.test.context.ActiveProfiles;
  * Integration test for {@link JdbcWeeklyTrackingRecordRepository} (FOR-155). Runs against the
  * in-memory PostgreSQL-mode H2 with Flyway migrations applied (see application-test.yml), following
  * {@code JdbcBodyMeasurementRepositoryTest} / {@code JdbcGoalRepository}'s pattern (ADR-007).
+ *
+ * <p>FOR-145b-1 (migration V27): {@code weekly_tracking_record.user_id} FK-references {@code
+ * users(id)}, so {@code OTHER_OWNER_ID} must be a real seeded row.
  */
 @SpringBootTest
 @ActiveProfiles("test")
 class JdbcWeeklyTrackingRecordRepositoryTest {
 
-  private static final String OWNER_ID = "default-user";
-  private static final String OTHER_OWNER_ID = "someone-else";
+  private static final UUID OWNER_ID = LegacyUserBootstrap.PLACEHOLDER_USER_ID;
+  private static final UUID OTHER_OWNER_ID = UUID.randomUUID();
 
   @Autowired private WeeklyTrackingRecordRepository repository;
   @Autowired private JdbcTemplate jdbcTemplate;
@@ -32,6 +38,24 @@ class JdbcWeeklyTrackingRecordRepositoryTest {
   @BeforeEach
   void clearTable() {
     jdbcTemplate.update("DELETE FROM weekly_tracking_record");
+    jdbcTemplate.update("DELETE FROM users WHERE id = ?", OTHER_OWNER_ID);
+    jdbcTemplate.update(
+        "INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)",
+        OTHER_OWNER_ID,
+        "weeklytracking-other-owner@test.local",
+        "!");
+  }
+
+  /**
+   * Leaves no live {@code weekly_tracking_record} rows referencing {@code OTHER_OWNER_ID} after the
+   * last test in this class runs (ADR-007 shared named in-memory H2 across the whole test run) —
+   * otherwise a later test class that blanket-deletes non-placeholder {@code users} rows (e.g.
+   * {@code AuthenticationFlowIntegrationTest#clearTestUsers}) would hit an FK violation.
+   */
+  @AfterEach
+  void cleanUpOtherOwner() {
+    jdbcTemplate.update("DELETE FROM weekly_tracking_record");
+    jdbcTemplate.update("DELETE FROM users WHERE id = ?", OTHER_OWNER_ID);
   }
 
   @Test

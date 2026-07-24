@@ -44,10 +44,10 @@ import org.springframework.test.web.servlet.MockMvc;
  * <p>Privacy is the primary property under test (spec FOR-140):
  *
  * <ul>
- *   <li>Cross-owner access is denied with 403, never silently 404 (a photo seeded for another owner
- *       directly via {@link ProgressPhotoRepository}, bypassing the fixed single-user {@code
- *       OWNER_ID}, simulates the boundary the same way {@code JdbcGoalRepositoryTest}'s {@code
- *       OTHER_OWNER} does).
+ *   <li>FOR-145b-1 (ADR-012): cross-owner access is now denied with 404 (no existence leak),
+ *       replacing the pre-145b 403 behavior (a photo seeded for another real, FK-valid owner
+ *       directly via {@link ProgressPhotoRepository} simulates the boundary the same way {@code
+ *       JdbcGoalRepositoryTest}'s {@code OTHER_OWNER} does).
  *   <li>{@link #photoBytesAndStoragePathNeverAppearInAnyLogLine()} is the first-class no-content-
  *       in-logs assertion required by spec FOR-140 tests.md: a Logback {@link ListAppender}
  *       attached to the application's root logger at {@code TRACE} captures every log event across
@@ -62,7 +62,7 @@ import org.springframework.test.web.servlet.MockMvc;
 @Import(WebMvcAuthTestConfig.class)
 class ProgressPhotoEndToEndTest {
 
-  private static final String OTHER_OWNER = "someone-else";
+  private static final UUID OTHER_OWNER = UUID.randomUUID();
 
   @TempDir static Path storageDir;
 
@@ -79,6 +79,12 @@ class ProgressPhotoEndToEndTest {
   @BeforeEach
   void clearTable() {
     jdbcTemplate.update("DELETE FROM progress_photo");
+    jdbcTemplate.update("DELETE FROM users WHERE id = ?", OTHER_OWNER);
+    jdbcTemplate.update(
+        "INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)",
+        OTHER_OWNER,
+        "progressphoto-other-owner@test.local",
+        "!");
   }
 
   @Test
@@ -124,11 +130,11 @@ class ProgressPhotoEndToEndTest {
     repository.create(
         id, OTHER_OWNER, "image/jpeg", 10L, id, Instant.parse("2026-07-18T10:00:00Z"));
 
-    mockMvc.perform(get("/api/v1/progress/photos/" + id)).andExpect(status().isForbidden());
-    mockMvc.perform(delete("/api/v1/progress/photos/" + id)).andExpect(status().isForbidden());
+    mockMvc.perform(get("/api/v1/progress/photos/" + id)).andExpect(status().isNotFound());
+    mockMvc.perform(delete("/api/v1/progress/photos/" + id)).andExpect(status().isNotFound());
 
-    // Never deleted by the denied attempt.
-    assertThat(repository.findById(id)).isPresent();
+    // Never deleted by the denied attempt (still visible to its real owner).
+    assertThat(repository.findById(OTHER_OWNER, id)).isPresent();
   }
 
   @Test
@@ -176,5 +182,10 @@ class ProgressPhotoEndToEndTest {
   @AfterEach
   void cleanUp() {
     jdbcTemplate.update("DELETE FROM progress_photo");
+    // Leaves no OTHER_OWNER row after the last test (ADR-007 shared named in-memory H2 across the
+    // whole test run) -- otherwise a later test class that blanket-deletes non-placeholder {@code
+    // users} rows (e.g. AuthenticationFlowIntegrationTest#clearTestUsers) would hit an FK
+    // violation.
+    jdbcTemplate.update("DELETE FROM users WHERE id = ?", OTHER_OWNER);
   }
 }

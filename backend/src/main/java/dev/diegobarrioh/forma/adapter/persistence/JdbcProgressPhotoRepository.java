@@ -18,8 +18,10 @@ import org.springframework.stereotype.Repository;
  * here; the binary lives behind {@link
  * dev.diegobarrioh.forma.adapter.storage.FilesystemProgressPhotoStore}.
  *
- * <p>{@link #findById} is deliberately NOT owner-scoped at the SQL level — see the port javadoc for
- * why: the service needs to distinguish an unknown id (404) from another owner's photo (403).
+ * <p>FOR-145b-1 (migration V27): {@link #findById} is now owner-scoped at the SQL level (WHERE id =
+ * ? AND user_id = ?) -- a cross-owner id and an unknown id are now indistinguishable, so the
+ * service maps both to 404 (no existence leak), replacing the pre-145b 403-vs-404 split. Legacy
+ * {@code owner_id VARCHAR} column stays populated (userId.toString()) but is never read here.
  */
 @Repository
 public class JdbcProgressPhotoRepository implements ProgressPhotoRepository {
@@ -28,7 +30,7 @@ public class JdbcProgressPhotoRepository implements ProgressPhotoRepository {
       (rs, rowNum) ->
           new ProgressPhotoMetadata(
               rs.getString("id"),
-              rs.getString("owner_id"),
+              (UUID) rs.getObject("user_id"),
               rs.getString("content_type"),
               rs.getLong("size_bytes"),
               rs.getObject("created_at", OffsetDateTime.class).toInstant(),
@@ -43,40 +45,48 @@ public class JdbcProgressPhotoRepository implements ProgressPhotoRepository {
   @Override
   public ProgressPhotoMetadata create(
       String id,
-      String ownerId,
+      UUID userId,
       String contentType,
       long sizeBytes,
       String storageRef,
       Instant createdAt) {
     jdbcTemplate.update(
-        "INSERT INTO progress_photo (id, owner_id, content_type, size_bytes, storage_ref,"
-            + " created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO progress_photo (id, owner_id, user_id, content_type, size_bytes,"
+            + " storage_ref, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
         UUID.fromString(id),
-        ownerId,
+        userId.toString(),
+        userId,
         contentType,
         sizeBytes,
         storageRef,
         OffsetDateTime.ofInstant(createdAt, ZoneOffset.UTC));
-    return new ProgressPhotoMetadata(id, ownerId, contentType, sizeBytes, createdAt, storageRef);
+    return new ProgressPhotoMetadata(id, userId, contentType, sizeBytes, createdAt, storageRef);
   }
 
   @Override
-  public List<ProgressPhotoMetadata> findAllByOwner(String ownerId) {
+  public List<ProgressPhotoMetadata> findAllByOwner(UUID userId) {
     return jdbcTemplate.query(
-        "SELECT id, owner_id, content_type, size_bytes, storage_ref, created_at FROM"
-            + " progress_photo WHERE owner_id = ? ORDER BY created_at, id",
+        "SELECT id, user_id, content_type, size_bytes, storage_ref, created_at FROM"
+            + " progress_photo WHERE user_id = ? ORDER BY created_at, id",
         ROW_MAPPER,
-        ownerId);
+        userId);
   }
 
   @Override
-  public Optional<ProgressPhotoMetadata> findById(String id) {
+  public Optional<ProgressPhotoMetadata> findById(UUID userId, String id) {
+    UUID photoId;
+    try {
+      photoId = UUID.fromString(id);
+    } catch (IllegalArgumentException ex) {
+      return Optional.empty();
+    }
     List<ProgressPhotoMetadata> found =
         jdbcTemplate.query(
-            "SELECT id, owner_id, content_type, size_bytes, storage_ref, created_at FROM"
-                + " progress_photo WHERE id = ?",
+            "SELECT id, user_id, content_type, size_bytes, storage_ref, created_at FROM"
+                + " progress_photo WHERE id = ? AND user_id = ?",
             ROW_MAPPER,
-            UUID.fromString(id));
+            photoId,
+            userId);
     return found.stream().findFirst();
   }
 

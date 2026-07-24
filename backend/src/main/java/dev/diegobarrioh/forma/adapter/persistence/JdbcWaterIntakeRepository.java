@@ -39,22 +39,24 @@ public class JdbcWaterIntakeRepository implements WaterIntakeRepository {
   }
 
   @Override
-  public List<StoredWaterIntakeEntry> findByOwnerAndDate(String ownerId, LocalDate date) {
+  public List<StoredWaterIntakeEntry> findByOwnerAndDate(UUID userId, LocalDate date) {
     return jdbcTemplate.query(
         "SELECT id, log_date, volume_ml FROM water_intake_entry"
-            + " WHERE owner_id = ? AND log_date = ? ORDER BY logged_at, id",
+            + " WHERE user_id = ? AND log_date = ? ORDER BY logged_at, id",
         ROW_MAPPER,
-        ownerId,
+        userId,
         Date.valueOf(date));
   }
 
   @Override
-  public StoredWaterIntakeEntry save(String ownerId, WaterIntakeEntry entry) {
+  public StoredWaterIntakeEntry save(UUID userId, WaterIntakeEntry entry) {
     UUID id = UUID.randomUUID();
     jdbcTemplate.update(
-        "INSERT INTO water_intake_entry (id, owner_id, log_date, volume_ml) VALUES (?, ?, ?, ?)",
+        "INSERT INTO water_intake_entry (id, owner_id, user_id, log_date, volume_ml)"
+            + " VALUES (?, ?, ?, ?, ?)",
         id,
-        ownerId,
+        userId.toString(),
+        userId,
         Date.valueOf(entry.date()),
         entry.volumeMl());
     return new StoredWaterIntakeEntry(id.toString(), entry);

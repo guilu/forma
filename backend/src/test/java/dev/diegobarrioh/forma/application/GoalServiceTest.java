@@ -28,11 +28,14 @@ import org.junit.jupiter.api.Test;
  */
 class GoalServiceTest {
 
+  private static final UUID USER_ID = UUID.randomUUID();
+
   private final RecordingGoalRepository goalRepository = new RecordingGoalRepository();
   private final RecordingBodyMeasurementRepository bodyMeasurementRepository =
       new RecordingBodyMeasurementRepository();
   private final GoalService service =
-      new GoalService(goalRepository, new WeeklyBodySummaryService(bodyMeasurementRepository));
+      new GoalService(
+          goalRepository, new WeeklyBodySummaryService(bodyMeasurementRepository), () -> USER_ID);
 
   @Test
   void listIsEmptyWhenNoGoalsExistYet() {
@@ -182,12 +185,12 @@ class GoalServiceTest {
     final Map<String, StoredGoal> rows = new LinkedHashMap<>();
 
     @Override
-    public List<StoredGoal> findAllByOwner(String ownerId) {
-      return rows.values().stream().filter(g -> owns(ownerId, g)).toList();
+    public List<StoredGoal> findAllByOwner(UUID userId) {
+      return rows.values().stream().filter(g -> owns(userId, g)).toList();
     }
 
     @Override
-    public StoredGoal create(String ownerId, Goal goal) {
+    public StoredGoal create(UUID userId, Goal goal) {
       String id = UUID.randomUUID().toString();
       List<Milestone> withIds = new ArrayList<>();
       for (Milestone m : goal.milestones()) {
@@ -198,31 +201,31 @@ class GoalServiceTest {
           new Goal(
               goal.title(), goal.metric(), goal.target(), goal.dueDate(), goal.status(), withIds);
       StoredGoal stored = new StoredGoal(id, persisted);
-      rows.put(key(ownerId, id), stored);
+      rows.put(key(userId, id), stored);
       return stored;
     }
 
     @Override
-    public Optional<StoredGoal> findById(String ownerId, String goalId) {
-      return Optional.ofNullable(rows.get(key(ownerId, goalId)));
+    public Optional<StoredGoal> findById(UUID userId, String goalId) {
+      return Optional.ofNullable(rows.get(key(userId, goalId)));
     }
 
     @Override
-    public Optional<StoredGoal> update(String ownerId, String goalId, Goal goal) {
-      if (!rows.containsKey(key(ownerId, goalId))) {
+    public Optional<StoredGoal> update(UUID userId, String goalId, Goal goal) {
+      if (!rows.containsKey(key(userId, goalId))) {
         return Optional.empty();
       }
       StoredGoal updated = new StoredGoal(goalId, goal);
-      rows.put(key(ownerId, goalId), updated);
+      rows.put(key(userId, goalId), updated);
       return Optional.of(updated);
     }
 
-    private static boolean owns(String ownerId, StoredGoal stored) {
+    private static boolean owns(UUID userId, StoredGoal stored) {
       return true; // this fake keys rows by owner already; kept simple for the test double
     }
 
-    private static String key(String ownerId, String goalId) {
-      return ownerId + ":" + goalId;
+    private static String key(UUID userId, String goalId) {
+      return userId + ":" + goalId;
     }
   }
 

@@ -67,40 +67,41 @@ public class JdbcMealLogRepository implements MealLogRepository {
   }
 
   @Override
-  public List<StoredMealLogEntry> findByOwnerAndDate(String ownerId, LocalDate date) {
+  public List<StoredMealLogEntry> findByOwnerAndDate(UUID userId, LocalDate date) {
     return jdbcTemplate.query(
         "SELECT id, log_date, meal_type, food_item_id, name, kcal, protein_g, carbs_g, fat_g,"
             + " fiber_g, sugars_g, sodium_mg, saturated_fat_g"
-            + " FROM meal_log_entry WHERE owner_id = ? AND log_date = ? ORDER BY logged_at, id",
+            + " FROM meal_log_entry WHERE user_id = ? AND log_date = ? ORDER BY logged_at, id",
         ROW_MAPPER,
-        ownerId,
+        userId,
         Date.valueOf(date));
   }
 
   @Override
-  public StoredMealLogEntry save(String ownerId, MealLogEntry entry) {
+  public StoredMealLogEntry save(UUID userId, MealLogEntry entry) {
     UUID id = UUID.randomUUID();
     KeyNutrientTotals keyNutrients = entry.keyNutrients();
     jdbcTemplate.update(
         "INSERT INTO meal_log_entry"
-            + " (id, owner_id, log_date, meal_type, food_item_id, name, kcal, protein_g, carbs_g,"
-            + " fat_g, fiber_g, sugars_g, sodium_mg, saturated_fat_g)"
-            + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            + " (id, owner_id, user_id, log_date, meal_type, food_item_id, name, kcal, protein_g,"
+            + " carbs_g, fat_g, fiber_g, sugars_g, sodium_mg, saturated_fat_g)"
+            + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (ps) -> {
           ps.setObject(1, id);
-          ps.setString(2, ownerId);
-          ps.setDate(3, Date.valueOf(entry.date()));
-          ps.setString(4, entry.mealType().name());
-          ps.setString(5, entry.foodItemId());
-          ps.setString(6, entry.name());
-          ps.setInt(7, entry.totals().calories());
-          ps.setBigDecimal(8, BigDecimal.valueOf(entry.totals().proteinG()));
-          ps.setBigDecimal(9, BigDecimal.valueOf(entry.totals().carbsG()));
-          ps.setBigDecimal(10, BigDecimal.valueOf(entry.totals().fatG()));
-          setNullableDouble(ps, 11, keyNutrients.fiberG());
-          setNullableDouble(ps, 12, keyNutrients.sugarsG());
-          setNullableInteger(ps, 13, keyNutrients.sodiumMg());
-          setNullableDouble(ps, 14, keyNutrients.saturatedFatG());
+          ps.setString(2, userId.toString());
+          ps.setObject(3, userId);
+          ps.setDate(4, Date.valueOf(entry.date()));
+          ps.setString(5, entry.mealType().name());
+          ps.setString(6, entry.foodItemId());
+          ps.setString(7, entry.name());
+          ps.setInt(8, entry.totals().calories());
+          ps.setBigDecimal(9, BigDecimal.valueOf(entry.totals().proteinG()));
+          ps.setBigDecimal(10, BigDecimal.valueOf(entry.totals().carbsG()));
+          ps.setBigDecimal(11, BigDecimal.valueOf(entry.totals().fatG()));
+          setNullableDouble(ps, 12, keyNutrients.fiberG());
+          setNullableDouble(ps, 13, keyNutrients.sugarsG());
+          setNullableInteger(ps, 14, keyNutrients.sodiumMg());
+          setNullableDouble(ps, 15, keyNutrients.saturatedFatG());
         });
     return new StoredMealLogEntry(id.toString(), entry);
   }

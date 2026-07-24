@@ -29,7 +29,7 @@ class WeeklyHistoryServiceTest {
 
   private final FakeMealLogRepository mealLogRepository = new FakeMealLogRepository();
   private final WeeklyHistoryService service =
-      new WeeklyHistoryService(mealLogRepository, FIXED_CLOCK);
+      new WeeklyHistoryService(mealLogRepository, FIXED_CLOCK, () -> LEGACY_OWNER_UUID);
 
   @Test
   void seriesEndsWithTheCurrentWeekMondayThroughSunday() {
@@ -69,7 +69,7 @@ class WeeklyHistoryServiceTest {
   @Test
   void onlyCountsTheOwnersLoggedDays() {
     mealLogRepository.save(
-        "other-owner",
+        UUID.randomUUID(),
         MealLogEntry.freeEntry(
             LocalDate.of(2026, 7, 13),
             MealType.LUNCH,
@@ -91,9 +91,22 @@ class WeeklyHistoryServiceTest {
     assertThatThrownBy(() -> service.compute(53)).isInstanceOf(ValidationException.class);
   }
 
+  @Test
+  void aNonPlaceholderAuthenticatedCallerGets404NeverTheLegacyOwnersWeeklyHistory() {
+    WeeklyHistoryService otherUserService =
+        new WeeklyHistoryService(mealLogRepository, FIXED_CLOCK, UUID::randomUUID);
+
+    assertThatThrownBy(() -> otherUserService.compute(8)).isInstanceOf(NotFoundException.class);
+  }
+
+  // FOR-145b-1: matches WeeklyHistoryService's internal LEGACY_OWNER_UUID compile-compat shim (the
+  // UUID equivalent of the legacy OWNER_ID = "default-user" string).
+  private static final UUID LEGACY_OWNER_UUID =
+      UUID.fromString("00000000-0000-0000-0000-000000000000");
+
   private void log(LocalDate date) {
     mealLogRepository.save(
-        WeeklyHistoryService.OWNER_ID,
+        LEGACY_OWNER_UUID,
         MealLogEntry.freeEntry(
             date, MealType.LUNCH, "X", new NutritionTotals(100, 10.0, 10.0, 10.0)));
   }
@@ -103,20 +116,20 @@ class WeeklyHistoryServiceTest {
     private final List<OwnedEntry> rows = new ArrayList<>();
 
     @Override
-    public List<StoredMealLogEntry> findByOwnerAndDate(String ownerId, LocalDate date) {
+    public List<StoredMealLogEntry> findByOwnerAndDate(UUID userId, LocalDate date) {
       return rows.stream()
-          .filter(r -> r.ownerId.equals(ownerId) && r.stored.entry().date().equals(date))
+          .filter(r -> r.userId.equals(userId) && r.stored.entry().date().equals(date))
           .map(r -> r.stored)
           .toList();
     }
 
     @Override
-    public StoredMealLogEntry save(String ownerId, MealLogEntry entry) {
+    public StoredMealLogEntry save(UUID userId, MealLogEntry entry) {
       StoredMealLogEntry stored = new StoredMealLogEntry(UUID.randomUUID().toString(), entry);
-      rows.add(new OwnedEntry(ownerId, stored));
+      rows.add(new OwnedEntry(userId, stored));
       return stored;
     }
 
-    private record OwnedEntry(String ownerId, StoredMealLogEntry stored) {}
+    private record OwnedEntry(UUID userId, StoredMealLogEntry stored) {}
   }
 }

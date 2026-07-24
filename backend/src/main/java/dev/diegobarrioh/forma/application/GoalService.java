@@ -19,40 +19,37 @@ import org.springframework.stereotype.Service;
  * history, FOR-16) for progress derivation rather than re-deriving body metrics here — see {@link
  * dev.diegobarrioh.forma.domain.GoalProgress#derive}.
  *
- * <p>Single-user MVP (ADR-002): every use case operates on the one {@link #OWNER_ID} row, mirroring
- * {@link UserProfileService#OWNER_ID} (FOR-107). A dedicated shared "current account" abstraction
- * does not exist yet in this codebase; introducing one now would be a speculative abstraction
- * beyond this slice, so the constant is duplicated here and will collapse onto a real account id
- * once authentication lands.
+ * <p>Real multi-user auth (FOR-145b-1, ADR-012): every use case resolves the caller's account id
+ * via {@link CurrentUserProvider} instead of the old fixed {@code OWNER_ID = "default-user"}
+ * constant (removed by this slice).
  */
 @Service
 public class GoalService {
 
-  /**
-   * Fixed single-user owner id for the MVP (ADR-002), mirroring {@link
-   * UserProfileService#OWNER_ID}.
-   */
-  public static final String OWNER_ID = "default-user";
-
   private final GoalRepository repository;
   private final WeeklyBodySummaryService weeklyBodySummaryService;
+  private final CurrentUserProvider currentUserProvider;
 
-  public GoalService(GoalRepository repository, WeeklyBodySummaryService weeklyBodySummaryService) {
+  public GoalService(
+      GoalRepository repository,
+      WeeklyBodySummaryService weeklyBodySummaryService,
+      CurrentUserProvider currentUserProvider) {
     this.repository = repository;
     this.weeklyBodySummaryService = weeklyBodySummaryService;
+    this.currentUserProvider = currentUserProvider;
   }
 
   /** Lists the owner's goals with freshly derived progress. Empty when none exist yet. */
   public List<GoalView> list() {
     WeeklyBodySummary summary = weeklyBodySummaryService.currentSummary();
-    return repository.findAllByOwner(OWNER_ID).stream()
+    return repository.findAllByOwner(currentUserProvider.currentUserId()).stream()
         .map(stored -> toView(stored, summary))
         .toList();
   }
 
   /** Creates a goal (with its milestones) for the owner and returns it with derived progress. */
   public GoalView create(Goal goal) {
-    StoredGoal stored = repository.create(OWNER_ID, goal);
+    StoredGoal stored = repository.create(currentUserProvider.currentUserId(), goal);
     return toView(stored, weeklyBodySummaryService.currentSummary());
   }
 
@@ -71,9 +68,10 @@ public class GoalService {
       LocalDate dueDate,
       GoalStatus status,
       List<MilestonePatch> milestonePatches) {
+    var userId = currentUserProvider.currentUserId();
     StoredGoal current =
         repository
-            .findById(OWNER_ID, goalId)
+            .findById(userId, goalId)
             .orElseThrow(() -> new NotFoundException("No existe el objetivo: " + goalId));
     Goal existing = current.goal();
 
@@ -103,7 +101,7 @@ public class GoalService {
 
     StoredGoal updated =
         repository
-            .update(OWNER_ID, goalId, merged)
+            .update(userId, goalId, merged)
             .orElseThrow(() -> new NotFoundException("No existe el objetivo: " + goalId));
     return toView(updated, weeklyBodySummaryService.currentSummary());
   }

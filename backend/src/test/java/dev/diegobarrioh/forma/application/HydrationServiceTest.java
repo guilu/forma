@@ -30,12 +30,14 @@ class HydrationServiceTest {
       Clock.fixed(Instant.parse("2026-07-15T12:00:00Z"), ZoneOffset.UTC);
   private static final LocalDate TODAY = LocalDate.of(2026, 7, 15);
 
+  private static final UUID USER_ID = UUID.randomUUID();
+
   private final RecordingWaterIntakeRepository repository = new RecordingWaterIntakeRepository();
   private final RecordingUserProfileRepository profileRepository =
       new RecordingUserProfileRepository();
   private final UserProfileService userProfileService = new UserProfileService(profileRepository);
   private final HydrationService service =
-      new HydrationService(repository, userProfileService, FIXED_CLOCK);
+      new HydrationService(repository, userProfileService, FIXED_CLOCK, () -> USER_ID);
 
   @Test
   void logsAPositiveVolumeForTheOwner() {
@@ -47,7 +49,7 @@ class HydrationServiceTest {
     assertThat(stored.entry().date()).isEqualTo(TODAY);
     assertThat(stored.entry().volumeMl()).isEqualTo(500.0);
     assertThat(repository.rows).hasSize(1);
-    assertThat(repository.rows.get(0).ownerId).isEqualTo(HydrationService.OWNER_ID);
+    assertThat(repository.rows.get(0).ownerId).isEqualTo(USER_ID);
   }
 
   @Test
@@ -129,7 +131,7 @@ class HydrationServiceTest {
   void hydrationProgressOnlyReflectsTheOwnersEntries() {
     repository.rows.add(
         new OwnedEntry(
-            "other-user",
+            UUID.randomUUID(),
             new StoredWaterIntakeEntry(
                 UUID.randomUUID().toString(), new WaterIntakeEntry(TODAY, 9999.0))));
 
@@ -163,23 +165,23 @@ class HydrationServiceTest {
     final List<OwnedEntry> rows = new ArrayList<>();
 
     @Override
-    public List<StoredWaterIntakeEntry> findByOwnerAndDate(String ownerId, LocalDate date) {
+    public List<StoredWaterIntakeEntry> findByOwnerAndDate(UUID userId, LocalDate date) {
       return rows.stream()
-          .filter(r -> r.ownerId.equals(ownerId) && r.stored.entry().date().equals(date))
+          .filter(r -> r.ownerId.equals(userId) && r.stored.entry().date().equals(date))
           .map(r -> r.stored)
           .toList();
     }
 
     @Override
-    public StoredWaterIntakeEntry save(String ownerId, WaterIntakeEntry entry) {
+    public StoredWaterIntakeEntry save(UUID userId, WaterIntakeEntry entry) {
       StoredWaterIntakeEntry stored =
           new StoredWaterIntakeEntry(UUID.randomUUID().toString(), entry);
-      rows.add(new OwnedEntry(ownerId, stored));
+      rows.add(new OwnedEntry(userId, stored));
       return stored;
     }
   }
 
-  private record OwnedEntry(String ownerId, StoredWaterIntakeEntry stored) {}
+  private record OwnedEntry(UUID ownerId, StoredWaterIntakeEntry stored) {}
 
   /** In-memory fake, matching {@code UserProfileServiceTest}'s {@code RecordingRepository}. */
   private static class RecordingUserProfileRepository implements UserProfileRepository {
