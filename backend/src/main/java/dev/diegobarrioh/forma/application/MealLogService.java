@@ -21,9 +21,10 @@ import org.springframework.stereotype.Service;
  * since FOR-134, consumed key nutrients (fibra/azúcares/sodio/grasas saturadas); hydration is a
  * separate FOR-102 slice.
  *
- * <p>Single-user MVP (ADR-002): every use case operates on the one {@link #OWNER_ID} row, mirroring
- * {@link GoalService#OWNER_ID}/{@link UserProfileService#OWNER_ID} (FOR-107/125). Never logs entry
- * contents (personal health data) — see method javadoc.
+ * <p>Real multi-user auth (FOR-145b-1, ADR-012): every use case resolves the caller's account id
+ * via {@link CurrentUserProvider} instead of the old fixed {@code OWNER_ID = "default-user"}
+ * constant (removed by this slice). Never logs entry contents (personal health data) — see method
+ * javadoc.
  *
  * <p><b>Plan-target resolution (FOR-128).</b> {@link #consumption} resolves {@code date} to a
  * {@link NutritionDayType} via {@link NutritionDayTypeResolver} (which itself reuses the shared
@@ -42,15 +43,15 @@ import org.springframework.stereotype.Service;
 @Service
 public class MealLogService {
 
-  /** Fixed single-user owner id for the MVP (ADR-002), mirroring {@link GoalService#OWNER_ID}. */
-  public static final String OWNER_ID = "default-user";
-
   private final MealLogRepository repository;
   private final Clock clock;
+  private final CurrentUserProvider currentUserProvider;
 
-  public MealLogService(MealLogRepository repository, Clock clock) {
+  public MealLogService(
+      MealLogRepository repository, Clock clock, CurrentUserProvider currentUserProvider) {
     this.repository = repository;
     this.clock = clock;
+    this.currentUserProvider = currentUserProvider;
   }
 
   /**
@@ -124,7 +125,7 @@ public class MealLogService {
           "Provide either foodItemId+portions or free-item macros (name + kcal/proteinG/carbsG/fatG)");
     }
 
-    return repository.save(OWNER_ID, entry);
+    return repository.save(currentUserProvider.currentUserId(), entry);
   }
 
   /**
@@ -137,7 +138,7 @@ public class MealLogService {
    */
   public DayConsumption consumption(LocalDate date) {
     validateDate(date);
-    var stored = repository.findByOwnerAndDate(OWNER_ID, date);
+    var stored = repository.findByOwnerAndDate(currentUserProvider.currentUserId(), date);
     MealLog log =
         stored.stream()
             .map(StoredMealLogEntry::entry)

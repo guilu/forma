@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.diegobarrioh.forma.application.GoalRepository;
 import dev.diegobarrioh.forma.application.StoredGoal;
+import dev.diegobarrioh.forma.bootstrap.LegacyUserBootstrap;
 import dev.diegobarrioh.forma.domain.Goal;
 import dev.diegobarrioh.forma.domain.GoalMetric;
 import dev.diegobarrioh.forma.domain.GoalStatus;
@@ -11,6 +12,8 @@ import dev.diegobarrioh.forma.domain.Milestone;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,13 +25,17 @@ import org.springframework.test.context.ActiveProfiles;
  * Integration test for {@link JdbcGoalRepository} (FOR-125). Runs against the in-memory
  * PostgreSQL-mode H2 with Flyway migrations applied (ADR-007, V11), like the FOR-107/FOR-39 tests.
  * Covers the round-trip and empty-database fixtures from tests.md.
+ *
+ * <p>FOR-145b-1 (migration V27): {@code goal.user_id} FK-references {@code users(id)}, so {@code
+ * OTHER_OWNER} must be a real seeded row (unlike the pre-145b arbitrary {@code "someone-else"}
+ * string). {@code OWNER} reuses the always-present legacy placeholder account.
  */
 @SpringBootTest
 @ActiveProfiles("test")
 class JdbcGoalRepositoryTest {
 
-  private static final String OWNER = "default-user";
-  private static final String OTHER_OWNER = "someone-else";
+  private static final UUID OWNER = LegacyUserBootstrap.PLACEHOLDER_USER_ID;
+  private static final UUID OTHER_OWNER = UUID.randomUUID();
 
   @Autowired private GoalRepository repository;
   @Autowired private JdbcTemplate jdbcTemplate;
@@ -37,6 +44,25 @@ class JdbcGoalRepositoryTest {
   void clearTables() {
     jdbcTemplate.update("DELETE FROM goal_milestone");
     jdbcTemplate.update("DELETE FROM goal");
+    jdbcTemplate.update("DELETE FROM users WHERE id = ?", OTHER_OWNER);
+    jdbcTemplate.update(
+        "INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)",
+        OTHER_OWNER,
+        "goal-other-owner@test.local",
+        "!");
+  }
+
+  /**
+   * Leaves no live {@code goal} rows referencing {@code OTHER_OWNER} after the last test in this
+   * class runs — otherwise a later test class sharing the same named in-memory H2 DB (ADR-007) that
+   * blanket-deletes non-placeholder {@code users} rows (e.g. {@code
+   * AuthenticationFlowIntegrationTest#clearTestUsers}) would hit an FK violation.
+   */
+  @AfterEach
+  void cleanUpOtherOwner() {
+    jdbcTemplate.update("DELETE FROM goal_milestone");
+    jdbcTemplate.update("DELETE FROM goal");
+    jdbcTemplate.update("DELETE FROM users WHERE id = ?", OTHER_OWNER);
   }
 
   @Test

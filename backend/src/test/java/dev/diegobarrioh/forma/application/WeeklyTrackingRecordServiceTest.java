@@ -8,6 +8,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -16,8 +17,11 @@ import org.junit.jupiter.api.Test;
  */
 class WeeklyTrackingRecordServiceTest {
 
+  private static final UUID USER_ID = UUID.randomUUID();
+
   private final RecordingRepository repository = new RecordingRepository();
-  private final WeeklyTrackingRecordService service = new WeeklyTrackingRecordService(repository);
+  private final WeeklyTrackingRecordService service =
+      new WeeklyTrackingRecordService(repository, () -> USER_ID);
 
   @Test
   void listDelegatesToRepositoryOwnerScoped() {
@@ -27,7 +31,7 @@ class WeeklyTrackingRecordServiceTest {
     repository.byWeek.put(1, stored);
 
     assertThat(service.list()).containsExactly(stored);
-    assertThat(repository.lastOwnerId).isEqualTo(WeeklyTrackingRecordService.OWNER_ID);
+    assertThat(repository.lastOwnerId).isEqualTo(USER_ID);
   }
 
   @Test
@@ -46,7 +50,7 @@ class WeeklyTrackingRecordServiceTest {
 
     assertThat(result).isEqualTo(record);
     assertThat(repository.upserted).containsExactly(record);
-    assertThat(repository.lastOwnerId).isEqualTo(WeeklyTrackingRecordService.OWNER_ID);
+    assertThat(repository.lastOwnerId).isEqualTo(USER_ID);
   }
 
   @Test
@@ -68,23 +72,23 @@ class WeeklyTrackingRecordServiceTest {
   private static final class RecordingRepository implements WeeklyTrackingRecordRepository {
     private final java.util.Map<Integer, WeeklyTrackingRecord> byWeek = new java.util.HashMap<>();
     private final List<WeeklyTrackingRecord> upserted = new ArrayList<>();
-    private String lastOwnerId;
+    private UUID lastOwnerId;
 
     @Override
-    public List<WeeklyTrackingRecord> findAllByOwner(String ownerId) {
-      lastOwnerId = ownerId;
+    public List<WeeklyTrackingRecord> findAllByOwner(UUID userId) {
+      lastOwnerId = userId;
       return List.copyOf(byWeek.values());
     }
 
     @Override
-    public Optional<WeeklyTrackingRecord> findByOwnerAndWeek(String ownerId, int week) {
-      lastOwnerId = ownerId;
+    public Optional<WeeklyTrackingRecord> findByOwnerAndWeek(UUID userId, int week) {
+      lastOwnerId = userId;
       return Optional.ofNullable(byWeek.get(week));
     }
 
     @Override
-    public WeeklyTrackingRecord upsert(String ownerId, WeeklyTrackingRecord record) {
-      lastOwnerId = ownerId;
+    public WeeklyTrackingRecord upsert(UUID userId, WeeklyTrackingRecord record) {
+      lastOwnerId = userId;
       upserted.add(record);
       byWeek.put(record.week(), record);
       return record;

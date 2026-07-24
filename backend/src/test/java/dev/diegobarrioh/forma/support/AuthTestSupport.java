@@ -3,6 +3,8 @@ package dev.diegobarrioh.forma.support;
 import dev.diegobarrioh.forma.bootstrap.LegacyUserBootstrap;
 import dev.diegobarrioh.forma.delivery.security.FormaUserPrincipal;
 import java.util.UUID;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
@@ -29,5 +31,27 @@ public final class AuthTestSupport {
    */
   public static RequestPostProcessor asPlaceholderUser() {
     return asUser(LegacyUserBootstrap.PLACEHOLDER_USER_ID, "legacy@forma.local");
+  }
+
+  /**
+   * Sets {@code SecurityContextHolder} directly for tests that call application services on the
+   * current thread WITHOUT going through {@code MockMvc} (FOR-145b-1: {@code @SpringBootTest}
+   * classes autowiring a service directly, e.g. {@code MealLogConsumptionPersistenceTest}) — {@link
+   * #asUser}/{@link #asPlaceholderUser} only affect requests dispatched through {@code MockMvc}'s
+   * request post-processor chain, never a direct in-process method call. Callers MUST clear it in
+   * an {@code @AfterEach} via {@link SecurityContextHolder#clearContext()} to avoid leaking the
+   * authentication across tests.
+   */
+  public static void authenticateThreadAs(UUID id, String email) {
+    FormaUserPrincipal principal = new FormaUserPrincipal(id, email, "{noop}unused", true);
+    SecurityContextHolder.getContext()
+        .setAuthentication(
+            new UsernamePasswordAuthenticationToken(
+                principal, principal.getPassword(), principal.getAuthorities()));
+  }
+
+  /** Same-thread equivalent of {@link #asPlaceholderUser()} — see {@link #authenticateThreadAs}. */
+  public static void authenticateThreadAsPlaceholderUser() {
+    authenticateThreadAs(LegacyUserBootstrap.PLACEHOLDER_USER_ID, "legacy@forma.local");
   }
 }

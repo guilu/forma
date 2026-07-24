@@ -29,7 +29,8 @@ class StreakServiceTest {
   private static final LocalDate TODAY = LocalDate.of(2026, 7, 15);
 
   private final FakeMealLogRepository mealLogRepository = new FakeMealLogRepository();
-  private final StreakService service = new StreakService(mealLogRepository, FIXED_CLOCK);
+  private final StreakService service =
+      new StreakService(mealLogRepository, FIXED_CLOCK, () -> LEGACY_OWNER_UUID);
 
   @Test
   void currentStreakCountsConsecutiveLoggedDaysEndingToday() {
@@ -79,7 +80,7 @@ class StreakServiceTest {
 
   @Test
   void onlyCountsTheOwnersLoggedDays() {
-    logForOwner("other-owner", TODAY);
+    logForOwner(UUID.randomUUID(), TODAY);
 
     Streak streak = service.compute(30);
 
@@ -106,13 +107,26 @@ class StreakServiceTest {
     assertThatThrownBy(() -> service.compute(366)).isInstanceOf(ValidationException.class);
   }
 
-  private void log(LocalDate date) {
-    logForOwner(StreakService.OWNER_ID, date);
+  @Test
+  void aNonPlaceholderAuthenticatedCallerGets404NeverTheLegacyOwnersStreak() {
+    StreakService otherUserService =
+        new StreakService(mealLogRepository, FIXED_CLOCK, UUID::randomUUID);
+
+    assertThatThrownBy(() -> otherUserService.compute(30)).isInstanceOf(NotFoundException.class);
   }
 
-  private void logForOwner(String ownerId, LocalDate date) {
+  // FOR-145b-1: matches StreakService's internal LEGACY_OWNER_UUID compile-compat shim (the UUID
+  // equivalent of the legacy OWNER_ID = "default-user" string).
+  private static final UUID LEGACY_OWNER_UUID =
+      UUID.fromString("00000000-0000-0000-0000-000000000000");
+
+  private void log(LocalDate date) {
+    logForOwner(LEGACY_OWNER_UUID, date);
+  }
+
+  private void logForOwner(UUID userId, LocalDate date) {
     mealLogRepository.save(
-        ownerId,
+        userId,
         MealLogEntry.freeEntry(
             date, MealType.LUNCH, "X", new NutritionTotals(100, 10.0, 10.0, 10.0)));
   }
@@ -122,20 +136,20 @@ class StreakServiceTest {
     private final List<OwnedEntry> rows = new ArrayList<>();
 
     @Override
-    public List<StoredMealLogEntry> findByOwnerAndDate(String ownerId, LocalDate date) {
+    public List<StoredMealLogEntry> findByOwnerAndDate(UUID userId, LocalDate date) {
       return rows.stream()
-          .filter(r -> r.ownerId.equals(ownerId) && r.stored.entry().date().equals(date))
+          .filter(r -> r.userId.equals(userId) && r.stored.entry().date().equals(date))
           .map(r -> r.stored)
           .toList();
     }
 
     @Override
-    public StoredMealLogEntry save(String ownerId, MealLogEntry entry) {
+    public StoredMealLogEntry save(UUID userId, MealLogEntry entry) {
       StoredMealLogEntry stored = new StoredMealLogEntry(UUID.randomUUID().toString(), entry);
-      rows.add(new OwnedEntry(ownerId, stored));
+      rows.add(new OwnedEntry(userId, stored));
       return stored;
     }
 
-    private record OwnedEntry(String ownerId, StoredMealLogEntry stored) {}
+    private record OwnedEntry(UUID userId, StoredMealLogEntry stored) {}
   }
 }

@@ -4,12 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.diegobarrioh.forma.domain.KeyNutrientTotals;
 import dev.diegobarrioh.forma.domain.MealType;
+import dev.diegobarrioh.forma.support.AuthTestSupport;
 import java.time.LocalDate;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 
 /**
@@ -34,6 +37,12 @@ class MealLogConsumptionPersistenceTest {
   @BeforeEach
   void clearTable() {
     jdbcTemplate.update("DELETE FROM meal_log_entry");
+    AuthTestSupport.authenticateThreadAsPlaceholderUser();
+  }
+
+  @AfterEach
+  void clearAuth() {
+    SecurityContextHolder.clearContext();
   }
 
   @Test

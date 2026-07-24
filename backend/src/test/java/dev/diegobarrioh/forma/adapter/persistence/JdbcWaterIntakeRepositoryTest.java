@@ -4,9 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.diegobarrioh.forma.application.StoredWaterIntakeEntry;
 import dev.diegobarrioh.forma.application.WaterIntakeRepository;
+import dev.diegobarrioh.forma.bootstrap.LegacyUserBootstrap;
 import dev.diegobarrioh.forma.domain.WaterIntakeEntry;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,13 +21,16 @@ import org.springframework.test.context.ActiveProfiles;
  * Integration test for {@link JdbcWaterIntakeRepository} (FOR-130). Runs against the in-memory
  * PostgreSQL-mode H2 with Flyway migrations applied (ADR-007, V14), like the FOR-127 {@code
  * JdbcMealLogRepositoryTest}. Covers the round-trip and empty-database fixtures from tests.md.
+ *
+ * <p>FOR-145b-1 (migration V27): {@code water_intake_entry.user_id} FK-references {@code
+ * users(id)}, so {@code OTHER_OWNER} must be a real seeded row.
  */
 @SpringBootTest
 @ActiveProfiles("test")
 class JdbcWaterIntakeRepositoryTest {
 
-  private static final String OWNER = "default-user";
-  private static final String OTHER_OWNER = "someone-else";
+  private static final UUID OWNER = LegacyUserBootstrap.PLACEHOLDER_USER_ID;
+  private static final UUID OTHER_OWNER = UUID.randomUUID();
   private static final LocalDate DAY = LocalDate.of(2026, 7, 15);
   private static final LocalDate OTHER_DAY = LocalDate.of(2026, 7, 16);
 
@@ -34,6 +40,24 @@ class JdbcWaterIntakeRepositoryTest {
   @BeforeEach
   void clearTable() {
     jdbcTemplate.update("DELETE FROM water_intake_entry");
+    jdbcTemplate.update("DELETE FROM users WHERE id = ?", OTHER_OWNER);
+    jdbcTemplate.update(
+        "INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)",
+        OTHER_OWNER,
+        "waterintake-other-owner@test.local",
+        "!");
+  }
+
+  /**
+   * Leaves no live {@code water_intake_entry} rows referencing {@code OTHER_OWNER} after the last
+   * test in this class runs (ADR-007 shared named in-memory H2 across the whole test run) —
+   * otherwise a later test class that blanket-deletes non-placeholder {@code users} rows (e.g.
+   * {@code AuthenticationFlowIntegrationTest#clearTestUsers}) would hit an FK violation.
+   */
+  @AfterEach
+  void cleanUpOtherOwner() {
+    jdbcTemplate.update("DELETE FROM water_intake_entry");
+    jdbcTemplate.update("DELETE FROM users WHERE id = ?", OTHER_OWNER);
   }
 
   @Test

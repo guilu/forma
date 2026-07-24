@@ -6,24 +6,27 @@ import org.springframework.stereotype.Service;
 
 /**
  * Application use cases for the weekly tracking record (FOR-155, epic FOR-148 slice 7): create
- * (upsert)/list/read the *Seguimiento* weekly rows. Owner-scoped (ADR-002), single-user MVP,
- * mirroring {@code GoalService}'s fixed-owner pattern.
+ * (upsert)/list/read the *Seguimiento* weekly rows. Owner-scoped (ADR-002).
+ *
+ * <p>Real multi-user auth (FOR-145b-1, ADR-012): every use case resolves the caller's account id
+ * via {@link CurrentUserProvider} instead of the old fixed {@code OWNER_ID = "default-user"}
+ * constant (removed by this slice).
  */
 @Service
 public class WeeklyTrackingRecordService {
 
-  /** Fixed single-user owner id for the MVP (ADR-002), mirroring {@code GoalService#OWNER_ID}. */
-  public static final String OWNER_ID = "default-user";
-
   private final WeeklyTrackingRecordRepository repository;
+  private final CurrentUserProvider currentUserProvider;
 
-  public WeeklyTrackingRecordService(WeeklyTrackingRecordRepository repository) {
+  public WeeklyTrackingRecordService(
+      WeeklyTrackingRecordRepository repository, CurrentUserProvider currentUserProvider) {
     this.repository = repository;
+    this.currentUserProvider = currentUserProvider;
   }
 
   /** Lists the owner's weekly tracking records, most recent week first. Empty when none exist. */
   public List<WeeklyTrackingRecord> list() {
-    return repository.findAllByOwner(OWNER_ID);
+    return repository.findAllByOwner(currentUserProvider.currentUserId());
   }
 
   /**
@@ -31,7 +34,7 @@ public class WeeklyTrackingRecordService {
    * "Create/upsert a weekly record for a given week") and returns the persisted record.
    */
   public WeeklyTrackingRecord save(WeeklyTrackingRecord record) {
-    return repository.upsert(OWNER_ID, record);
+    return repository.upsert(currentUserProvider.currentUserId(), record);
   }
 
   /**
@@ -41,7 +44,7 @@ public class WeeklyTrackingRecordService {
    */
   public WeeklyTrackingRecord getByWeek(int week) {
     return repository
-        .findByOwnerAndWeek(OWNER_ID, week)
+        .findByOwnerAndWeek(currentUserProvider.currentUserId(), week)
         .orElseThrow(
             () -> new NotFoundException("No existe registro semanal para la semana: " + week));
   }

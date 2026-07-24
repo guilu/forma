@@ -36,8 +36,10 @@ class MealLogServiceTest {
   private static final LocalDate A_SATURDAY = LocalDate.of(2026, 7, 11); // RUNNING (not future)
   private static final LocalDate A_FRIDAY = LocalDate.of(2026, 7, 10); // REST (not future)
 
+  private static final UUID USER_ID = UUID.randomUUID();
+
   private final RecordingMealLogRepository repository = new RecordingMealLogRepository();
-  private final MealLogService service = new MealLogService(repository, FIXED_CLOCK);
+  private final MealLogService service = new MealLogService(repository, FIXED_CLOCK, () -> USER_ID);
 
   @Test
   void logsACatalogEntryResolvingFoodAndPortionsToMacrosViaTheCalculator() {
@@ -179,7 +181,7 @@ class MealLogServiceTest {
   void consumptionOnlyReflectsTheOwnersEntries() {
     repository.rows.add(
         new OwnedEntry(
-            "other-user",
+            UUID.randomUUID(),
             new StoredMealLogEntry(
                 UUID.randomUUID().toString(),
                 MealLogEntry.freeEntry(
@@ -284,20 +286,20 @@ class MealLogServiceTest {
     final List<OwnedEntry> rows = new ArrayList<>();
 
     @Override
-    public List<StoredMealLogEntry> findByOwnerAndDate(String ownerId, LocalDate date) {
+    public List<StoredMealLogEntry> findByOwnerAndDate(UUID userId, LocalDate date) {
       return rows.stream()
-          .filter(r -> r.ownerId.equals(ownerId) && r.stored.entry().date().equals(date))
+          .filter(r -> r.userId.equals(userId) && r.stored.entry().date().equals(date))
           .map(r -> r.stored)
           .toList();
     }
 
     @Override
-    public StoredMealLogEntry save(String ownerId, MealLogEntry entry) {
+    public StoredMealLogEntry save(UUID userId, MealLogEntry entry) {
       StoredMealLogEntry stored = new StoredMealLogEntry(UUID.randomUUID().toString(), entry);
-      rows.add(new OwnedEntry(ownerId, stored));
+      rows.add(new OwnedEntry(userId, stored));
       return stored;
     }
   }
 
-  private record OwnedEntry(String ownerId, StoredMealLogEntry stored) {}
+  private record OwnedEntry(UUID userId, StoredMealLogEntry stored) {}
 }

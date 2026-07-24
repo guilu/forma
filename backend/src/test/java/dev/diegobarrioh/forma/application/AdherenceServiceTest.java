@@ -40,6 +40,11 @@ class AdherenceServiceTest {
       Clock.fixed(Instant.parse("2026-07-15T12:00:00Z"), ZoneOffset.UTC);
   private static final LocalDate TODAY = LocalDate.of(2026, 7, 15);
 
+  // FOR-145b-1: matches AdherenceService's internal LEGACY_OWNER_UUID compile-compat shim (the
+  // UUID equivalent of the legacy OWNER_ID = "default-user" string).
+  private static final UUID LEGACY_OWNER_UUID =
+      UUID.fromString("00000000-0000-0000-0000-000000000000");
+
   private final FakeStatusRepository statusRepository = new FakeStatusRepository();
   private final WeeklyTrainingScheduleService scheduleService =
       new WeeklyTrainingScheduleService(
@@ -49,7 +54,11 @@ class AdherenceServiceTest {
       new FakeBodyMeasurementRepository();
   private final AdherenceService service =
       new AdherenceService(
-          scheduleService, mealLogRepository, bodyMeasurementRepository, FIXED_CLOCK);
+          scheduleService,
+          mealLogRepository,
+          bodyMeasurementRepository,
+          FIXED_CLOCK,
+          () -> LEGACY_OWNER_UUID);
 
   @Test
   void windowSpansTodayMinusDaysPlusOneThroughToday() {
@@ -80,11 +89,11 @@ class AdherenceServiceTest {
 
   @Test
   void nutritionCompletedIsDaysWithAtLeastOneLoggedEntryPlannedIsDaysInWindow() {
-    log(mealLogRepository, AdherenceService.OWNER_ID, LocalDate.of(2026, 7, 9));
-    log(mealLogRepository, AdherenceService.OWNER_ID, LocalDate.of(2026, 7, 11));
-    log(mealLogRepository, AdherenceService.OWNER_ID, LocalDate.of(2026, 7, 15));
+    log(mealLogRepository, LEGACY_OWNER_UUID, LocalDate.of(2026, 7, 9));
+    log(mealLogRepository, LEGACY_OWNER_UUID, LocalDate.of(2026, 7, 11));
+    log(mealLogRepository, LEGACY_OWNER_UUID, LocalDate.of(2026, 7, 15));
     // Outside the window -- must not be counted.
-    log(mealLogRepository, AdherenceService.OWNER_ID, LocalDate.of(2026, 7, 1));
+    log(mealLogRepository, LEGACY_OWNER_UUID, LocalDate.of(2026, 7, 1));
 
     Adherence adherence = service.compute(7);
 
@@ -96,7 +105,7 @@ class AdherenceServiceTest {
 
   @Test
   void nutritionOnlyCountsTheOwnersLoggedDays() {
-    log(mealLogRepository, "other-owner", LocalDate.of(2026, 7, 9));
+    log(mealLogRepository, UUID.randomUUID(), LocalDate.of(2026, 7, 9));
 
     Adherence adherence = service.compute(7);
 
@@ -125,7 +134,11 @@ class AdherenceServiceTest {
     Clock fridayClock = Clock.fixed(Instant.parse("2026-07-17T12:00:00Z"), ZoneOffset.UTC);
     AdherenceService fridayService =
         new AdherenceService(
-            scheduleService, mealLogRepository, bodyMeasurementRepository, fridayClock);
+            scheduleService,
+            mealLogRepository,
+            bodyMeasurementRepository,
+            fridayClock,
+            () -> LEGACY_OWNER_UUID);
 
     Adherence adherence = fridayService.compute(1);
 
@@ -157,6 +170,19 @@ class AdherenceServiceTest {
     assertThatThrownBy(() -> service.compute(366)).isInstanceOf(ValidationException.class);
   }
 
+  @Test
+  void aNonPlaceholderAuthenticatedCallerGets404NeverTheLegacyOwnersAdherenceData() {
+    AdherenceService otherUserService =
+        new AdherenceService(
+            scheduleService,
+            mealLogRepository,
+            bodyMeasurementRepository,
+            FIXED_CLOCK,
+            UUID::randomUUID);
+
+    assertThatThrownBy(() -> otherUserService.compute(7)).isInstanceOf(NotFoundException.class);
+  }
+
   private static CategoryAdherence byCategory(Adherence adherence, AdherenceCategory category) {
     return adherence.categories().stream()
         .filter(c -> c.category() == category)
@@ -164,9 +190,9 @@ class AdherenceServiceTest {
         .orElseThrow();
   }
 
-  private static void log(FakeMealLogRepository repository, String ownerId, LocalDate date) {
+  private static void log(FakeMealLogRepository repository, UUID userId, LocalDate date) {
     repository.save(
-        ownerId,
+        userId,
         MealLogEntry.freeEntry(
             date, MealType.LUNCH, "X", new NutritionTotals(100, 10.0, 10.0, 10.0)));
   }
@@ -200,21 +226,21 @@ class AdherenceServiceTest {
     private final List<OwnedEntry> rows = new ArrayList<>();
 
     @Override
-    public List<StoredMealLogEntry> findByOwnerAndDate(String ownerId, LocalDate date) {
+    public List<StoredMealLogEntry> findByOwnerAndDate(UUID userId, LocalDate date) {
       return rows.stream()
-          .filter(r -> r.ownerId.equals(ownerId) && r.stored.entry().date().equals(date))
+          .filter(r -> r.userId.equals(userId) && r.stored.entry().date().equals(date))
           .map(r -> r.stored)
           .toList();
     }
 
     @Override
-    public StoredMealLogEntry save(String ownerId, MealLogEntry entry) {
+    public StoredMealLogEntry save(UUID userId, MealLogEntry entry) {
       StoredMealLogEntry stored = new StoredMealLogEntry(UUID.randomUUID().toString(), entry);
-      rows.add(new OwnedEntry(ownerId, stored));
+      rows.add(new OwnedEntry(userId, stored));
       return stored;
     }
 
-    private record OwnedEntry(String ownerId, StoredMealLogEntry stored) {}
+    private record OwnedEntry(UUID userId, StoredMealLogEntry stored) {}
   }
 
   /** In-memory {@link BodyMeasurementRepository}. */

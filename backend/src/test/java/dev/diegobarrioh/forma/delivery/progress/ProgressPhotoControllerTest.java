@@ -9,7 +9,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import dev.diegobarrioh.forma.application.ForbiddenException;
 import dev.diegobarrioh.forma.application.NotFoundException;
 import dev.diegobarrioh.forma.application.ProgressPhotoContent;
 import dev.diegobarrioh.forma.application.ProgressPhotoMetadata;
@@ -19,6 +18,7 @@ import dev.diegobarrioh.forma.delivery.error.GlobalExceptionHandler;
 import dev.diegobarrioh.forma.support.WebMvcAuthTestConfig;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -52,7 +52,7 @@ class ProgressPhotoControllerTest {
     when(service.upload(any()))
         .thenReturn(
             new ProgressPhotoMetadata(
-                "photo-1", "default-user", "image/jpeg", 4L, createdAt, "photo-1"));
+                "photo-1", UUID.randomUUID(), "image/jpeg", 4L, createdAt, "photo-1"));
     MockMultipartFile file =
         new MockMultipartFile("file", "photo.jpg", "image/jpeg", "abcd".getBytes());
 
@@ -95,7 +95,7 @@ class ProgressPhotoControllerTest {
             List.of(
                 new ProgressPhotoMetadata(
                     "photo-1",
-                    "default-user",
+                    UUID.randomUUID(),
                     "image/png",
                     10L,
                     Instant.parse("2026-07-18T10:00:00Z"),
@@ -133,13 +133,15 @@ class ProgressPhotoControllerTest {
   }
 
   @Test
-  void retrieveOfAnotherOwnersPhotoReturnsForbidden() throws Exception {
-    when(service.retrieve("other-owner-photo")).thenThrow(new ForbiddenException("No autorizado"));
+  void retrieveOfAnotherOwnersPhotoReturnsNotFound() throws Exception {
+    // FOR-145b-1 (ADR-012): cross-owner access is now indistinguishable from unknown-id --
+    // ProgressPhotoService maps both to NotFoundException (no existence leak).
+    when(service.retrieve("other-owner-photo")).thenThrow(new NotFoundException("No existe"));
 
     mockMvc
         .perform(get("/api/v1/progress/photos/other-owner-photo"))
-        .andExpect(status().isForbidden())
-        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("NOT_FOUND"));
   }
 
   @Test
@@ -158,14 +160,15 @@ class ProgressPhotoControllerTest {
   }
 
   @Test
-  void deleteOfAnotherOwnersPhotoReturnsForbidden() throws Exception {
-    org.mockito.Mockito.doThrow(new ForbiddenException("No autorizado"))
+  void deleteOfAnotherOwnersPhotoReturnsNotFound() throws Exception {
+    // FOR-145b-1 (ADR-012): cross-owner access is now indistinguishable from unknown-id.
+    org.mockito.Mockito.doThrow(new NotFoundException("No existe"))
         .when(service)
         .delete("other-owner-photo");
 
     mockMvc
         .perform(delete("/api/v1/progress/photos/other-owner-photo"))
-        .andExpect(status().isForbidden())
-        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("NOT_FOUND"));
   }
 }

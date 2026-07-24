@@ -10,6 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 
@@ -18,20 +19,22 @@ import org.springframework.mock.web.MockMultipartFile;
  * FOR-104): owner-scoped upload/list/retrieve/delete, using hand-rolled in-memory fakes (no Spring,
  * no Mockito), matching {@code GoalServiceTest}/{@code UserProfileServiceTest} (ADR-007).
  *
- * <p>Privacy is the primary property under test here (spec FOR-140): a photo owned by another owner
- * is denied with {@link ForbiddenException} (403), never silently 404'd, mirroring the distinction
- * {@code GoalRepository} does not need to make. {@link ProgressPhotoMetadata} itself has no URL
- * field, so there is structurally no way for this service to leak a public/durable link.
+ * <p>Privacy is the primary property under test here (spec FOR-140): FOR-145b-1 (ADR-012) made a
+ * photo owned by another owner indistinguishable from an unknown id, so both are denied with {@link
+ * NotFoundException} (404) — never a 403 (no existence leak). {@link ProgressPhotoMetadata} itself
+ * has no URL field, so there is structurally no way for this service to leak a public/durable link.
  */
 class ProgressPhotoServiceTest {
 
   private static final Instant FIXED_NOW = Instant.parse("2026-07-18T10:00:00Z");
-  private static final String OTHER_OWNER = "someone-else";
+  private static final UUID USER_ID = UUID.randomUUID();
+  private static final UUID OTHER_OWNER = UUID.randomUUID();
 
   private final InMemoryProgressPhotoRepository repository = new InMemoryProgressPhotoRepository();
   private final InMemoryProgressPhotoStore store = new InMemoryProgressPhotoStore();
   private final ProgressPhotoService service =
-      new ProgressPhotoService(repository, store, Clock.fixed(FIXED_NOW, ZoneOffset.UTC));
+      new ProgressPhotoService(
+          repository, store, Clock.fixed(FIXED_NOW, ZoneOffset.UTC), () -> USER_ID);
 
   @Test
   void uploadStoresBinaryViaTheStoreWritesMetadataAndReturnsAPrivateReferenceId() {
@@ -81,13 +84,13 @@ class ProgressPhotoServiceTest {
   }
 
   @Test
-  void retrievalOfAnotherOwnersPhotoIsDeniedWithForbidden() {
+  void retrievalOfAnotherOwnersPhotoIsDeniedWithNotFound() {
     repository.seed(
         new ProgressPhotoMetadata(
             "other-owner-photo", OTHER_OWNER, "image/jpeg", 10L, FIXED_NOW, "other-owner-photo"));
 
     assertThatThrownBy(() -> service.retrieve("other-owner-photo"))
-        .isInstanceOf(ForbiddenException.class);
+        .isInstanceOf(NotFoundException.class);
   }
 
   @Test
@@ -109,15 +112,15 @@ class ProgressPhotoServiceTest {
   }
 
   @Test
-  void deleteOfAnotherOwnersPhotoIsDeniedWithForbiddenAndDoesNotDeleteIt() {
+  void deleteOfAnotherOwnersPhotoIsDeniedWithNotFoundAndDoesNotDeleteIt() {
     repository.seed(
         new ProgressPhotoMetadata(
             "other-owner-photo", OTHER_OWNER, "image/jpeg", 10L, FIXED_NOW, "other-owner-photo"));
     store.blobs.put("other-owner-photo", "still-there".getBytes());
 
     assertThatThrownBy(() -> service.delete("other-owner-photo"))
-        .isInstanceOf(ForbiddenException.class);
-    assertThat(repository.findById("other-owner-photo")).isPresent();
+        .isInstanceOf(NotFoundException.class);
+    assertThat(repository.findById(OTHER_OWNER, "other-owner-photo")).isPresent();
     assertThat(store.blobs).containsKey("other-owner-photo");
   }
 
@@ -155,25 +158,25 @@ class ProgressPhotoServiceTest {
     @Override
     public ProgressPhotoMetadata create(
         String id,
-        String ownerId,
+        UUID userId,
         String contentType,
         long sizeBytes,
         String storageRef,
         Instant createdAt) {
       ProgressPhotoMetadata metadata =
-          new ProgressPhotoMetadata(id, ownerId, contentType, sizeBytes, createdAt, storageRef);
+          new ProgressPhotoMetadata(id, userId, contentType, sizeBytes, createdAt, storageRef);
       rows.put(id, metadata);
       return metadata;
     }
 
     @Override
-    public List<ProgressPhotoMetadata> findAllByOwner(String ownerId) {
-      return rows.values().stream().filter(m -> m.ownerId().equals(ownerId)).toList();
+    public List<ProgressPhotoMetadata> findAllByOwner(UUID userId) {
+      return rows.values().stream().filter(m -> m.ownerId().equals(userId)).toList();
     }
 
     @Override
-    public Optional<ProgressPhotoMetadata> findById(String id) {
-      return Optional.ofNullable(rows.get(id));
+    public Optional<ProgressPhotoMetadata> findById(UUID userId, String id) {
+      return Optional.ofNullable(rows.get(id)).filter(m -> m.ownerId().equals(userId));
     }
 
     @Override

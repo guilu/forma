@@ -1,6 +1,7 @@
 package dev.diegobarrioh.forma.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.diegobarrioh.forma.domain.BodyMeasurement;
 import dev.diegobarrioh.forma.domain.Goal;
@@ -35,6 +36,10 @@ class AchievementServiceTest {
       Clock.fixed(Instant.parse("2026-07-17T10:00:00Z"), ZoneOffset.UTC);
   private static final String OTHER_OWNER = "someone-else";
 
+  // FOR-145b-1: matches AchievementService's internal LEGACY_OWNER_UUID compile-compat shim.
+  private static final UUID LEGACY_OWNER_UUID =
+      UUID.fromString("00000000-0000-0000-0000-000000000000");
+
   private final FakeBodyMeasurementRepository bodyMeasurementRepository =
       new FakeBodyMeasurementRepository();
   private final FakeGoalRepository goalRepository = new FakeGoalRepository();
@@ -46,7 +51,8 @@ class AchievementServiceTest {
           bodyMeasurementRepository,
           goalRepository,
           integrationRepository,
-          FIXED_CLOCK);
+          FIXED_CLOCK,
+          () -> LEGACY_OWNER_UUID);
 
   @Test
   void emptyDataReturnsNoEarnedAndTheFullAvailableCatalog() {
@@ -186,6 +192,20 @@ class AchievementServiceTest {
     assertThat(view.earned()).isEmpty();
   }
 
+  @Test
+  void aNonPlaceholderAuthenticatedCallerGets404NeverTheLegacyOwnersAchievements() {
+    AchievementService otherUserService =
+        new AchievementService(
+            achievementRepository,
+            bodyMeasurementRepository,
+            goalRepository,
+            integrationRepository,
+            FIXED_CLOCK,
+            UUID::randomUUID);
+
+    assertThatThrownBy(otherUserService::evaluate).isInstanceOf(NotFoundException.class);
+  }
+
   private static BodyMeasurement measurement() {
     return new BodyMeasurement(
         Instant.parse("2026-07-01T08:00:00Z"),
@@ -216,13 +236,13 @@ class AchievementServiceTest {
     final Map<String, StoredGoal> rows = new LinkedHashMap<>();
 
     @Override
-    public List<StoredGoal> findAllByOwner(String ownerId) {
+    public List<StoredGoal> findAllByOwner(UUID userId) {
       // This fake is single-owner for simplicity, mirroring RecordingGoalRepository.
       return List.copyOf(rows.values());
     }
 
     @Override
-    public StoredGoal create(String ownerId, Goal goal) {
+    public StoredGoal create(UUID userId, Goal goal) {
       String id = UUID.randomUUID().toString();
       StoredGoal stored = new StoredGoal(id, goal);
       rows.put(id, stored);
@@ -230,12 +250,12 @@ class AchievementServiceTest {
     }
 
     @Override
-    public Optional<StoredGoal> findById(String ownerId, String goalId) {
+    public Optional<StoredGoal> findById(UUID userId, String goalId) {
       return Optional.ofNullable(rows.get(goalId));
     }
 
     @Override
-    public Optional<StoredGoal> update(String ownerId, String goalId, Goal goal) {
+    public Optional<StoredGoal> update(UUID userId, String goalId, Goal goal) {
       if (!rows.containsKey(goalId)) {
         return Optional.empty();
       }

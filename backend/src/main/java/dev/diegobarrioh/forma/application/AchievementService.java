@@ -12,6 +12,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
@@ -39,23 +40,41 @@ public class AchievementService {
   /** Fixed single-user owner id for the MVP (ADR-002), mirroring {@link GoalService#OWNER_ID}. */
   public static final String OWNER_ID = "default-user";
 
+  /**
+   * FOR-145b-1 compile-compat shim: {@link GoalRepository} (Class A, migration V27) now takes a
+   * real {@code UUID}. {@code AchievementService} itself stays on the legacy String {@link
+   * #OWNER_ID} (Class B, {@code earned_achievement.owner_id} is part of its PK; deferred to
+   * 145b-2's PK reconstruction) — this constant is ONLY the UUID equivalent of that same legacy
+   * owner, used solely for the {@link #goalRepository} call below. It is not a new behavior: {@code
+   * OWNER_ID = "default-user"} and this UUID both resolve to the identical legacy account.
+   *
+   * <p><b>Security fix (mandatory review of 145b-1, HIGH cross-account disclosure):</b> also used
+   * by {@link #evaluate()}'s ownership guard below — any authenticated caller other than this
+   * placeholder id is rejected before touching the legacy owner's data.
+   */
+  private static final UUID LEGACY_OWNER_UUID =
+      UUID.fromString("00000000-0000-0000-0000-000000000000");
+
   private final AchievementRepository achievementRepository;
   private final BodyMeasurementRepository bodyMeasurementRepository;
   private final GoalRepository goalRepository;
   private final IntegrationRepository integrationRepository;
   private final Clock clock;
+  private final CurrentUserProvider currentUserProvider;
 
   public AchievementService(
       AchievementRepository achievementRepository,
       BodyMeasurementRepository bodyMeasurementRepository,
       GoalRepository goalRepository,
       IntegrationRepository integrationRepository,
-      Clock clock) {
+      Clock clock,
+      CurrentUserProvider currentUserProvider) {
     this.achievementRepository = achievementRepository;
     this.bodyMeasurementRepository = bodyMeasurementRepository;
     this.goalRepository = goalRepository;
     this.integrationRepository = integrationRepository;
     this.clock = clock;
+    this.currentUserProvider = currentUserProvider;
   }
 
   /**
@@ -63,10 +82,16 @@ public class AchievementService {
    * rule that isn't already earned, then returns the full split of earned/available. Idempotent: a
    * rule already earned is never re-awarded or duplicated (the {@code AchievementRepository} PK,
    * migration V18, is the ultimate guarantee under concurrent evaluation; this method also skips
-   * rules already in the pre-fetched earned set as a fast path). Never 404s — an owner with no data
-   * yet gets an empty {@code earned} and the full {@code available} catalog (spec FOR-135 api.md).
+   * rules already in the pre-fetched earned set as a fast path). Never 404s for the legacy
+   * placeholder owner — an owner with no data yet gets an empty {@code earned} and the full {@code
+   * available} catalog (spec FOR-135 api.md).
+   *
+   * <p><b>Interim security guard (mandatory review of 145b-1, HIGH cross-account disclosure):</b>
+   * any other authenticated caller gets a {@link NotFoundException} (404) before any data is
+   * touched — see {@link #requireLegacyOwner()}.
    */
   public AchievementsView evaluate() {
+    requireLegacyOwner();
     AchievementData data = loadData();
 
     Map<String, Instant> earnedBeforeAward = earnedById();
@@ -92,6 +117,21 @@ public class AchievementService {
     return new AchievementsView(earned, available);
   }
 
+  /**
+   * Interim security guard (mandatory review of 145b-1, HIGH cross-account disclosure): this
+   * service still reads/writes only the legacy placeholder owner's data ({@link #OWNER_ID}/{@link
+   * #LEGACY_OWNER_UUID}, see class javadoc). Until 145b-2 wires a real per-user owner here, any
+   * authenticated caller other than the placeholder account must get a 404, never the legacy
+   * owner's achievements.
+   *
+   * @throws NotFoundException if the caller is not the legacy placeholder account
+   */
+  private void requireLegacyOwner() {
+    if (!currentUserProvider.currentUserId().equals(LEGACY_OWNER_UUID)) {
+      throw new NotFoundException("No existen datos de progreso para este usuario");
+    }
+  }
+
   private Map<String, Instant> earnedById() {
     return achievementRepository.findAllByOwner(OWNER_ID).stream()
         .collect(Collectors.toMap(EarnedAchievement::achievementId, EarnedAchievement::earnedAt));
@@ -100,7 +140,7 @@ public class AchievementService {
   private AchievementData loadData() {
     List<BodyMeasurement> measurements = bodyMeasurementRepository.list();
     List<Goal> goals =
-        goalRepository.findAllByOwner(OWNER_ID).stream().map(StoredGoal::goal).toList();
+        goalRepository.findAllByOwner(LEGACY_OWNER_UUID).stream().map(StoredGoal::goal).toList();
     boolean withingsSyncCompleted =
         integrationRepository
             .findByOwnerAndProvider(OWNER_ID, IntegrationProvider.WITHINGS)

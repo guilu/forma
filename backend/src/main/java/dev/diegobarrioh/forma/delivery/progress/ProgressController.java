@@ -25,9 +25,16 @@ import org.springframework.web.bind.annotation.RestController;
  * NutritionController}'s one-controller-per-URL-prefix, multiple-services shape. A non-numeric
  * {@code days}/{@code weeks} is rejected by Spring's binder before reaching the service; an
  * out-of-range value is rejected by the service's {@code compute} method. Both map to {@code
- * VALIDATION_ERROR} (400) via the FOR-88 {@code GlobalExceptionHandler}. {@code achievements},
- * {@code streak} and {@code weekly-history} never 404 — an owner with no history yet still gets a
- * zeroed/empty read model (spec FOR-135/FOR-139 api.md).
+ * VALIDATION_ERROR} (400) via the FOR-88 {@code GlobalExceptionHandler}. For the legacy placeholder
+ * owner, {@code achievements}, {@code streak} and {@code weekly-history} never 404 — an owner with
+ * no history yet still gets a zeroed/empty read model (spec FOR-135/FOR-139 api.md).
+ *
+ * <p><b>Interim security guard (mandatory review of 145b-1, HIGH cross-account disclosure):</b>
+ * {@link AdherenceService}, {@link AchievementService}, {@link StreakService} and {@link
+ * WeeklyHistoryService} still read only the legacy placeholder owner's data (their per-user wiring
+ * is deferred to 145b-2/145c). Until then, all four reject any authenticated caller other than the
+ * placeholder account with a 404 ({@code NotFoundException}), so a real self-registered user can
+ * never read the legacy owner's private health data through these endpoints.
  *
  * <p>Single-user MVP (ADR-002): mirrors {@code GoalController}'s documented limitation — no
  * account/owner path segment or auth header is accepted yet.

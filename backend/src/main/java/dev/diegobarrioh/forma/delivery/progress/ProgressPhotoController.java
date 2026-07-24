@@ -28,10 +28,11 @@ import org.springframework.web.multipart.MultipartFile;
  * ProgressPhotoResponse}/{@link ProgressPhotoListResponse} carry no URL field (spec FOR-140
  * api.md).
  *
- * <p>Single-user MVP (ADR-002): mirrors {@code GoalController}'s documented limitation — no
- * account/owner path segment or auth header is accepted yet; the owner boundary is nonetheless
- * enforced server-side in {@link ProgressPhotoService} (403 on another owner's photo), never
- * bypassed because there is currently only one real account.
+ * <p>Real multi-user auth (FOR-145b-1, ADR-012): no account/owner path segment or auth header is
+ * accepted here — the caller is resolved from the session by {@link ProgressPhotoService} via
+ * {@code CurrentUserProvider}. The owner boundary is enforced server-side by scoping every query to
+ * the caller's {@code user_id}; another owner's photo id is indistinguishable from an unknown id
+ * and both surface as 404 (no existence leak).
  *
  * <p><b>No content in logs:</b> this controller never logs a request/response body. Any unexpected
  * exception is logged only by {@link dev.diegobarrioh.forma.delivery.error.GlobalExceptionHandler},
@@ -65,9 +66,9 @@ public class ProgressPhotoController {
   }
 
   /**
-   * Owner-scoped, access-controlled binary retrieval. 403 if {@code id} belongs to another owner,
-   * 404 if unknown — both mapped by {@link
-   * dev.diegobarrioh.forma.delivery.error.GlobalExceptionHandler} from the exceptions {@link
+   * Owner-scoped, access-controlled binary retrieval. 404 if {@code id} is unknown OR belongs to
+   * another owner (FOR-145b-1: the two are indistinguishable — no existence leak), mapped by {@link
+   * dev.diegobarrioh.forma.delivery.error.GlobalExceptionHandler} from the exception {@link
    * ProgressPhotoService#retrieve} throws.
    */
   @GetMapping("/{id}")
@@ -78,7 +79,7 @@ public class ProgressPhotoController {
         .body(content.content());
   }
 
-  /** Owner-scoped delete of metadata + binary. 403/404 mirror {@link #retrieve}'s mapping. */
+  /** Owner-scoped delete of metadata + binary. 404 mirrors {@link #retrieve}'s mapping. */
   @DeleteMapping("/{id}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void delete(@PathVariable String id) {
