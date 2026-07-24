@@ -4,9 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.diegobarrioh.forma.application.AchievementRepository;
 import dev.diegobarrioh.forma.application.EarnedAchievement;
+import dev.diegobarrioh.forma.bootstrap.LegacyUserBootstrap;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,20 +22,42 @@ import org.springframework.test.context.ActiveProfiles;
  * PostgreSQL-mode H2 with Flyway migrations applied (ADR-007, V18), like the FOR-130 {@code
  * JdbcWaterIntakeRepositoryTest}. Covers the round-trip, PK duplicate-prevention (idempotency) and
  * empty-database fixtures from tests.md.
+ *
+ * <p>FOR-145b-2 (migration V28): {@code earned_achievement.user_id} FK-references {@code
+ * users(id)}, so {@code OTHER_OWNER} must be a real seeded row (matching {@code
+ * JdbcGoalRepositoryTest}'s pattern for Class-A tables). {@code OWNER} reuses the always-present
+ * legacy placeholder account.
  */
 @SpringBootTest
 @ActiveProfiles("test")
 class JdbcAchievementRepositoryTest {
 
-  private static final String OWNER = "default-user";
-  private static final String OTHER_OWNER = "someone-else";
+  private static final UUID OWNER = LegacyUserBootstrap.PLACEHOLDER_USER_ID;
+  private static final UUID OTHER_OWNER = UUID.randomUUID();
 
   @Autowired private AchievementRepository repository;
   @Autowired private JdbcTemplate jdbcTemplate;
 
   @BeforeEach
-  void clearTable() {
+  void seedTables() {
     jdbcTemplate.update("DELETE FROM earned_achievement");
+    jdbcTemplate.update("DELETE FROM users WHERE id = ?", OTHER_OWNER);
+    jdbcTemplate.update(
+        "INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)",
+        OTHER_OWNER,
+        "achievement-other-owner@test.local",
+        "!");
+  }
+
+  /**
+   * Leaves no live {@code earned_achievement} rows referencing {@code OTHER_OWNER} after the last
+   * test in this class runs (ADR-007 shared named in-memory H2) — otherwise a later test class that
+   * blanket-deletes non-placeholder {@code users} rows would hit an FK violation.
+   */
+  @AfterEach
+  void cleanUpOtherOwner() {
+    jdbcTemplate.update("DELETE FROM earned_achievement");
+    jdbcTemplate.update("DELETE FROM users WHERE id = ?", OTHER_OWNER);
   }
 
   @Test
@@ -71,7 +96,7 @@ class JdbcAchievementRepositoryTest {
   @Test
   void aDirectDuplicateInsertAttemptNeverCorruptsTheTable() {
     // Simulates the concurrent-evaluation edge case (spec FOR-135) at the raw SQL level: the
-    // (owner_id,
+    // (user_id,
     // achievement_id) primary key itself — not just application-level "check then insert" — is what
     // prevents a duplicate row.
     Instant earnedAt = Instant.parse("2026-07-10T08:00:00Z");
@@ -80,7 +105,7 @@ class JdbcAchievementRepositoryTest {
     org.assertj.core.api.Assertions.assertThatThrownBy(
             () ->
                 jdbcTemplate.update(
-                    "INSERT INTO earned_achievement (owner_id, achievement_id, earned_at) VALUES (?, ?, ?)",
+                    "INSERT INTO earned_achievement (user_id, achievement_id, earned_at) VALUES (?, ?, ?)",
                     OWNER,
                     "FIRST_MEASUREMENT",
                     java.sql.Timestamp.from(earnedAt)))

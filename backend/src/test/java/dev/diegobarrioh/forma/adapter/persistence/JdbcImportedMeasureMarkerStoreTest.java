@@ -3,9 +3,12 @@ package dev.diegobarrioh.forma.adapter.persistence;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.diegobarrioh.forma.application.ImportedMeasureMarkerStore;
+import dev.diegobarrioh.forma.bootstrap.LegacyUserBootstrap;
 import dev.diegobarrioh.forma.domain.IntegrationProvider;
 import java.time.Instant;
 import java.util.Set;
+import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,21 +25,37 @@ import org.springframework.test.context.ActiveProfiles;
  * tests.md}'s "Dedup keyed on Withings grpid" — marking the same group twice must never throw or
  * duplicate the row, since {@link dev.diegobarrioh.forma.application.IntegrationService#sync} calls
  * {@code markImported} once per newly-imported group with no separate "already exists" check.
+ *
+ * <p>FOR-145b-2 (migration V28): {@code integration_measure_marker.user_id} FK-references {@code
+ * users(id)}, so {@code OTHER_OWNER} must be a real seeded row. {@code OWNER} reuses the
+ * always-present legacy placeholder account.
  */
 @SpringBootTest
 @ActiveProfiles("test")
 class JdbcImportedMeasureMarkerStoreTest {
 
-  private static final String OWNER = "default-user";
-  private static final String OTHER_OWNER = "someone-else";
+  private static final UUID OWNER = LegacyUserBootstrap.PLACEHOLDER_USER_ID;
+  private static final UUID OTHER_OWNER = UUID.randomUUID();
   private static final Instant IMPORTED_AT = Instant.parse("2026-07-16T12:00:00Z");
 
   @Autowired private ImportedMeasureMarkerStore markerStore;
   @Autowired private JdbcTemplate jdbcTemplate;
 
   @BeforeEach
-  void clearTable() {
+  void seedTables() {
     jdbcTemplate.update("DELETE FROM integration_measure_marker");
+    jdbcTemplate.update("DELETE FROM users WHERE id = ?", OTHER_OWNER);
+    jdbcTemplate.update(
+        "INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)",
+        OTHER_OWNER,
+        "measure-marker-other-owner@test.local",
+        "!");
+  }
+
+  @AfterEach
+  void cleanUpOtherOwner() {
+    jdbcTemplate.update("DELETE FROM integration_measure_marker");
+    jdbcTemplate.update("DELETE FROM users WHERE id = ?", OTHER_OWNER);
   }
 
   @Test
@@ -73,7 +92,7 @@ class JdbcImportedMeasureMarkerStoreTest {
     Integer rowCount =
         jdbcTemplate.queryForObject(
             "SELECT COUNT(*) FROM integration_measure_marker "
-                + "WHERE owner_id = ? AND provider = ? AND grpid = ?",
+                + "WHERE user_id = ? AND provider = ? AND grpid = ?",
             Integer.class,
             OWNER,
             IntegrationProvider.WITHINGS.name(),

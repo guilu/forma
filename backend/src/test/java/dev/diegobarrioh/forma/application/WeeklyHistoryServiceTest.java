@@ -27,9 +27,11 @@ class WeeklyHistoryServiceTest {
   private static final Clock FIXED_CLOCK =
       Clock.fixed(Instant.parse("2026-07-15T12:00:00Z"), ZoneOffset.UTC);
 
+  private static final UUID USER_ID = UUID.randomUUID();
+
   private final FakeMealLogRepository mealLogRepository = new FakeMealLogRepository();
   private final WeeklyHistoryService service =
-      new WeeklyHistoryService(mealLogRepository, FIXED_CLOCK, () -> LEGACY_OWNER_UUID);
+      new WeeklyHistoryService(mealLogRepository, FIXED_CLOCK, () -> USER_ID);
 
   @Test
   void seriesEndsWithTheCurrentWeekMondayThroughSunday() {
@@ -91,22 +93,25 @@ class WeeklyHistoryServiceTest {
     assertThatThrownBy(() -> service.compute(53)).isInstanceOf(ValidationException.class);
   }
 
+  /**
+   * FOR-145b-2: real per-user wiring (the 145b-1 interim {@code requireLegacyOwner()} guard was
+   * removed). A different authenticated user's {@code compute()} call returns 200 with THEIR OWN
+   * (zeroed) weekly history — never a 404, and never {@code USER_ID}'s logged days.
+   */
   @Test
-  void aNonPlaceholderAuthenticatedCallerGets404NeverTheLegacyOwnersWeeklyHistory() {
+  void aDifferentAuthenticatedUserSeesTheirOwnZeroedWeeklyHistoryNeverTheOtherUsers() {
+    log(LocalDate.of(2026, 7, 13));
     WeeklyHistoryService otherUserService =
         new WeeklyHistoryService(mealLogRepository, FIXED_CLOCK, UUID::randomUUID);
 
-    assertThatThrownBy(() -> otherUserService.compute(8)).isInstanceOf(NotFoundException.class);
-  }
+    WeeklyHistory history = otherUserService.compute(1);
 
-  // FOR-145b-1: matches WeeklyHistoryService's internal LEGACY_OWNER_UUID compile-compat shim (the
-  // UUID equivalent of the legacy OWNER_ID = "default-user" string).
-  private static final UUID LEGACY_OWNER_UUID =
-      UUID.fromString("00000000-0000-0000-0000-000000000000");
+    assertThat(history.weeks().get(0).completed()).isZero();
+  }
 
   private void log(LocalDate date) {
     mealLogRepository.save(
-        LEGACY_OWNER_UUID,
+        USER_ID,
         MealLogEntry.freeEntry(
             date, MealType.LUNCH, "X", new NutritionTotals(100, 10.0, 10.0, 10.0)));
   }

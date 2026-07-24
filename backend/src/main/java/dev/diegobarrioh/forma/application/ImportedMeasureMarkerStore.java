@@ -3,6 +3,7 @@ package dev.diegobarrioh.forma.application;
 import dev.diegobarrioh.forma.domain.IntegrationProvider;
 import java.time.Instant;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * Port for the idempotent duplicate-detection markers a real provider sync writes (FOR-132,
@@ -19,12 +20,12 @@ import java.util.Set;
 public interface ImportedMeasureMarkerStore {
 
   /**
-   * All measure-group ids already imported for {@code ownerId}/{@code provider}, so {@link
+   * All measure-group ids already imported for {@code userId}/{@code provider}, so {@link
    * IntegrationService#sync} can skip them without a per-group round trip (the expected per-user
    * history is small, matching {@code IntegrationRepository}'s "tiny per-user connection set"
    * assumption).
    */
-  Set<Long> findImportedGroupIds(String ownerId, IntegrationProvider provider);
+  Set<Long> findImportedGroupIds(UUID userId, IntegrationProvider provider);
 
   /**
    * Records that {@code groupId} was imported at {@code importedAt}, so a later sync of the same
@@ -32,5 +33,5 @@ public interface ImportedMeasureMarkerStore {
    * duplicatesSkipped = N — NO duplicate BodyMeasurements created"). Idempotent: marking an
    * already-marked group again is a safe no-op.
    */
-  void markImported(String ownerId, IntegrationProvider provider, long groupId, Instant importedAt);
+  void markImported(UUID userId, IntegrationProvider provider, long groupId, Instant importedAt);
 }

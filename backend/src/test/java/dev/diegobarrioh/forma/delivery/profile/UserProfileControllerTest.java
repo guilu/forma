@@ -19,6 +19,7 @@ import dev.diegobarrioh.forma.domain.ThemeMode;
 import dev.diegobarrioh.forma.domain.UnitPreferences;
 import dev.diegobarrioh.forma.domain.UserProfile;
 import dev.diegobarrioh.forma.support.WebMvcAuthTestConfig;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -37,12 +38,14 @@ import org.springframework.test.web.servlet.MockMvc;
 @Import(WebMvcAuthTestConfig.class)
 class UserProfileControllerTest {
 
+  private static final UUID OWNER_ID = UUID.randomUUID();
+
   @Autowired private MockMvc mockMvc;
   @MockBean private UserProfileService service;
 
   private static UserProfile profile(String name, ThemeMode themeMode, boolean firstRunCompleted) {
     return new UserProfile(
-        "default-user",
+        OWNER_ID,
         name,
         null,
         null,
@@ -61,7 +64,7 @@ class UserProfileControllerTest {
 
   @Test
   void getBeforeAnyWriteReturnsDefaultPayload() throws Exception {
-    when(service.get()).thenReturn(UserProfile.defaults("default-user"));
+    when(service.get()).thenReturn(UserProfile.defaults(OWNER_ID));
 
     mockMvc
         .perform(get("/api/v1/profile"))
@@ -80,7 +83,7 @@ class UserProfileControllerTest {
   void getReturnsSeededPersonalTargetsMatchingThePerfilSheet() throws Exception {
     UserProfile withTargets =
         new UserProfile(
-            "default-user",
+            OWNER_ID,
             "Diego",
             null,
             null,
@@ -114,7 +117,7 @@ class UserProfileControllerTest {
 
   @Test
   void getForAnUnseededProfileReturnsNullTargetsNot404() throws Exception {
-    when(service.get()).thenReturn(UserProfile.defaults("default-user"));
+    when(service.get()).thenReturn(UserProfile.defaults(OWNER_ID));
 
     mockMvc
         .perform(get("/api/v1/profile"))
@@ -201,7 +204,7 @@ class UserProfileControllerTest {
   void patchObjectivesReturnsUpdatedPayload() throws Exception {
     UserProfile updated =
         new UserProfile(
-            "default-user",
+            OWNER_ID,
             null,
             null,
             null,
@@ -231,7 +234,7 @@ class UserProfileControllerTest {
   void patchOnboardingReflectsFirstRunCompletedAndAnswers() throws Exception {
     UserProfile completed =
         new UserProfile(
-            "default-user",
+            OWNER_ID,
             null,
             null,
             null,

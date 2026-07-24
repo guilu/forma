@@ -3,6 +3,7 @@ package dev.diegobarrioh.forma.domain;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -11,7 +12,7 @@ import org.junit.jupiter.api.Test;
  */
 class UserProfileTest {
 
-  private static final String OWNER_ID = "default-user";
+  private static final UUID OWNER_ID = UUID.randomUUID();
 
   @Test
   void defaultsYieldDarkThemeMetricUnitsAndIncompleteOnboarding() {

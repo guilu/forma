@@ -35,7 +35,8 @@ class HydrationServiceTest {
   private final RecordingWaterIntakeRepository repository = new RecordingWaterIntakeRepository();
   private final RecordingUserProfileRepository profileRepository =
       new RecordingUserProfileRepository();
-  private final UserProfileService userProfileService = new UserProfileService(profileRepository);
+  private final UserProfileService userProfileService =
+      new UserProfileService(profileRepository, () -> USER_ID);
   private final HydrationService service =
       new HydrationService(repository, userProfileService, FIXED_CLOCK, () -> USER_ID);
 
@@ -108,7 +109,7 @@ class HydrationServiceTest {
 
   @Test
   void hydrationProgressReadsTheGoalFromTheProfilesDefaultObjectives() {
-    profileRepository.rows.put(UserProfileService.OWNER_ID, profileWithDailyWaterMl(2500.0));
+    profileRepository.rows.put(USER_ID, profileWithDailyWaterMl(2500.0));
     service.log(new LogWaterIntakeCommand(TODAY, 1250.0));
 
     HydrationProgress progress = service.hydrationProgress(TODAY);
@@ -143,7 +144,7 @@ class HydrationServiceTest {
 
   private static UserProfile profileWithDailyWaterMl(double dailyWaterMl) {
     return new UserProfile(
-        UserProfileService.OWNER_ID,
+        USER_ID,
         null,
         null,
         null,
@@ -185,11 +186,11 @@ class HydrationServiceTest {
 
   /** In-memory fake, matching {@code UserProfileServiceTest}'s {@code RecordingRepository}. */
   private static class RecordingUserProfileRepository implements UserProfileRepository {
-    final Map<String, UserProfile> rows = new HashMap<>();
+    final Map<UUID, UserProfile> rows = new HashMap<>();
 
     @Override
-    public Optional<UserProfile> find(String ownerId) {
-      return Optional.ofNullable(rows.get(ownerId));
+    public Optional<UserProfile> find(UUID userId) {
+      return Optional.ofNullable(rows.get(userId));
     }
 
     @Override

@@ -1,5 +1,6 @@
 package dev.diegobarrioh.forma.application;
 
+import dev.diegobarrioh.forma.bootstrap.LegacyUserBootstrap;
 import dev.diegobarrioh.forma.domain.Achievement;
 import dev.diegobarrioh.forma.domain.AchievementCatalog;
 import dev.diegobarrioh.forma.domain.AchievementData;
@@ -30,30 +31,30 @@ import org.springframework.stereotype.Service;
  * MealLogRepository}/{@code WaterIntakeRepository} are deliberately not used here (only per-date
  * queries exist on those ports, not cheap for an all-time rule).
  *
- * <p>Single-user MVP (ADR-002): every use case operates on the one {@link #OWNER_ID} row, mirroring
- * {@link GoalService#OWNER_ID}/{@link MealLogService#OWNER_ID}. Duplicated here rather than a
- * shared abstraction, for the same documented reason as {@link GoalService}.
+ * <p>Real multi-user auth (FOR-145b-2, ADR-012, migration V28): every use case resolves the
+ * caller's account id via {@link CurrentUserProvider} instead of the old fixed {@code OWNER_ID =
+ * "default-user"} constant (removed by this slice, alongside the 145b-1 interim {@code
+ * requireLegacyOwner()} guard) — {@code earned_achievement}'s composite primary key was rebuilt
+ * from the legacy {@code owner_id VARCHAR} column to {@code user_id UUID}. {@link
+ * #bodyMeasurementRepository} is NOT scoped here: {@code body_measurements} is a 145c "gap table"
+ * (no {@code user_id} column at all yet, see {@code AdherenceService}'s documented limitation).
+ *
+ * <p><b>INTERIM security guard (post-145b-2 security review, 🟠 MEDIUM cross-account signal
+ * leak).</b> Evaluating measurement-based rules (e.g. {@code FIRST_MEASUREMENT}, {@code
+ * TEN_MEASUREMENTS_LOGGED}) against the global, unscoped {@code body_measurements} table for a
+ * real, non-placeholder caller would let that caller false-positive-earn achievements from every
+ * other account's measurement history. Until 145c adds {@code user_id} to {@code
+ * body_measurements}, {@link #loadData(UUID)} only loads measurements — and therefore only
+ * evaluates measurement-based rules — for the seeded legacy placeholder account ({@link
+ * LegacyUserBootstrap#PLACEHOLDER_USER_ID}); every other caller gets an empty measurement list (the
+ * global repository is not consulted at all for that caller), so measurement-based rules simply
+ * never fire for them, while goal-based and integration-based rules (properly {@code
+ * user_id}-scoped since 145b-1/145b-2) are still evaluated normally. <b>Remove this guard in
+ * 145c</b> once {@code body_measurements} carries {@code user_id} and can be scoped like the other
+ * rule inputs already are.
  */
 @Service
 public class AchievementService {
-
-  /** Fixed single-user owner id for the MVP (ADR-002), mirroring {@link GoalService#OWNER_ID}. */
-  public static final String OWNER_ID = "default-user";
-
-  /**
-   * FOR-145b-1 compile-compat shim: {@link GoalRepository} (Class A, migration V27) now takes a
-   * real {@code UUID}. {@code AchievementService} itself stays on the legacy String {@link
-   * #OWNER_ID} (Class B, {@code earned_achievement.owner_id} is part of its PK; deferred to
-   * 145b-2's PK reconstruction) — this constant is ONLY the UUID equivalent of that same legacy
-   * owner, used solely for the {@link #goalRepository} call below. It is not a new behavior: {@code
-   * OWNER_ID = "default-user"} and this UUID both resolve to the identical legacy account.
-   *
-   * <p><b>Security fix (mandatory review of 145b-1, HIGH cross-account disclosure):</b> also used
-   * by {@link #evaluate()}'s ownership guard below — any authenticated caller other than this
-   * placeholder id is rejected before touching the legacy owner's data.
-   */
-  private static final UUID LEGACY_OWNER_UUID =
-      UUID.fromString("00000000-0000-0000-0000-000000000000");
 
   private final AchievementRepository achievementRepository;
   private final BodyMeasurementRepository bodyMeasurementRepository;
@@ -82,27 +83,22 @@ public class AchievementService {
    * rule that isn't already earned, then returns the full split of earned/available. Idempotent: a
    * rule already earned is never re-awarded or duplicated (the {@code AchievementRepository} PK,
    * migration V18, is the ultimate guarantee under concurrent evaluation; this method also skips
-   * rules already in the pre-fetched earned set as a fast path). Never 404s for the legacy
-   * placeholder owner — an owner with no data yet gets an empty {@code earned} and the full {@code
-   * available} catalog (spec FOR-135 api.md).
-   *
-   * <p><b>Interim security guard (mandatory review of 145b-1, HIGH cross-account disclosure):</b>
-   * any other authenticated caller gets a {@link NotFoundException} (404) before any data is
-   * touched — see {@link #requireLegacyOwner()}.
+   * rules already in the pre-fetched earned set as a fast path). Never 404s — a caller with no data
+   * yet gets an empty {@code earned} and the full {@code available} catalog (spec FOR-135 api.md).
    */
   public AchievementsView evaluate() {
-    requireLegacyOwner();
-    AchievementData data = loadData();
+    UUID userId = currentUserProvider.currentUserId();
+    AchievementData data = loadData(userId);
 
-    Map<String, Instant> earnedBeforeAward = earnedById();
+    Map<String, Instant> earnedBeforeAward = earnedById(userId);
     Instant now = clock.instant();
     for (Achievement achievement : AchievementCatalog.all()) {
       if (!earnedBeforeAward.containsKey(achievement.id()) && achievement.rule().isMet(data)) {
-        achievementRepository.awardIfNotEarned(OWNER_ID, achievement.id(), now);
+        achievementRepository.awardIfNotEarned(userId, achievement.id(), now);
       }
     }
 
-    Map<String, Instant> earnedAfterAward = earnedById();
+    Map<String, Instant> earnedAfterAward = earnedById(userId);
     List<AchievementView> earned =
         AchievementCatalog.all().stream()
             .filter(achievement -> earnedAfterAward.containsKey(achievement.id()))
@@ -117,33 +113,25 @@ public class AchievementService {
     return new AchievementsView(earned, available);
   }
 
-  /**
-   * Interim security guard (mandatory review of 145b-1, HIGH cross-account disclosure): this
-   * service still reads/writes only the legacy placeholder owner's data ({@link #OWNER_ID}/{@link
-   * #LEGACY_OWNER_UUID}, see class javadoc). Until 145b-2 wires a real per-user owner here, any
-   * authenticated caller other than the placeholder account must get a 404, never the legacy
-   * owner's achievements.
-   *
-   * @throws NotFoundException if the caller is not the legacy placeholder account
-   */
-  private void requireLegacyOwner() {
-    if (!currentUserProvider.currentUserId().equals(LEGACY_OWNER_UUID)) {
-      throw new NotFoundException("No existen datos de progreso para este usuario");
-    }
-  }
-
-  private Map<String, Instant> earnedById() {
-    return achievementRepository.findAllByOwner(OWNER_ID).stream()
+  private Map<String, Instant> earnedById(UUID userId) {
+    return achievementRepository.findAllByOwner(userId).stream()
         .collect(Collectors.toMap(EarnedAchievement::achievementId, EarnedAchievement::earnedAt));
   }
 
-  private AchievementData loadData() {
-    List<BodyMeasurement> measurements = bodyMeasurementRepository.list();
+  private AchievementData loadData(UUID userId) {
+    // 145c TODO: body_measurements has no user_id column yet (gap table) -- this list() is global,
+    // unscoped by owner, see class javadoc. INTERIM security guard: only the legacy placeholder
+    // account reads it; every other caller gets an empty list so measurement-based rules never fire
+    // from other accounts' data (post-145b-2 security review, 🟠 MEDIUM leak).
+    List<BodyMeasurement> measurements =
+        LegacyUserBootstrap.PLACEHOLDER_USER_ID.equals(userId)
+            ? bodyMeasurementRepository.list()
+            : List.of();
     List<Goal> goals =
-        goalRepository.findAllByOwner(LEGACY_OWNER_UUID).stream().map(StoredGoal::goal).toList();
+        goalRepository.findAllByOwner(userId).stream().map(StoredGoal::goal).toList();
     boolean withingsSyncCompleted =
         integrationRepository
-            .findByOwnerAndProvider(OWNER_ID, IntegrationProvider.WITHINGS)
+            .findByOwnerAndProvider(userId, IntegrationProvider.WITHINGS)
             .map(AchievementService::isSuccessfulSync)
             .orElse(false);
     return new AchievementData(measurements, goals, withingsSyncCompleted);

@@ -58,6 +58,12 @@ class ClassACrossUserIsolationEndToEndTest {
     jdbcTemplate.update("DELETE FROM meal_log_entry");
     jdbcTemplate.update("DELETE FROM water_intake_entry");
     jdbcTemplate.update("DELETE FROM weekly_tracking_record");
+    // FOR-145b-2: earned_achievement.user_id now FK-references users(id) too -- a real
+    // achievements-endpoint call (see the deferred-endpoints test below) can insert a row for
+    // USER_A/USER_B (FIRST_MEASUREMENT fires off the still-unscoped 145c body_measurements gap
+    // table, see AchievementService's documented limitation), which must be cleared before the
+    // FK-constrained user delete below.
+    jdbcTemplate.update("DELETE FROM earned_achievement WHERE user_id IN (?, ?)", USER_A, USER_B);
     jdbcTemplate.update("DELETE FROM users WHERE id IN (?, ?)", USER_A, USER_B);
     jdbcTemplate.update(
         "INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)",
@@ -84,6 +90,7 @@ class ClassACrossUserIsolationEndToEndTest {
     jdbcTemplate.update("DELETE FROM meal_log_entry");
     jdbcTemplate.update("DELETE FROM water_intake_entry");
     jdbcTemplate.update("DELETE FROM weekly_tracking_record");
+    jdbcTemplate.update("DELETE FROM earned_achievement WHERE user_id IN (?, ?)", USER_A, USER_B);
     jdbcTemplate.update("DELETE FROM users WHERE id IN (?, ?)", USER_A, USER_B);
   }
 
@@ -250,17 +257,20 @@ class ClassACrossUserIsolationEndToEndTest {
   }
 
   /**
-   * Mandatory security review of 145b-1 (HIGH cross-account disclosure, fixed same slice): {@code
-   * AchievementService}/{@code AdherenceService}/{@code StreakService}/{@code WeeklyHistoryService}
-   * were deferred to 145b-2 and still read only the legacy placeholder owner's data via a hardcoded
-   * shim. Since {@code POST /api/v1/auth/register} is public, any self-registered real user could
-   * call these 4 read endpoints and receive the placeholder account's private health data. Proven
-   * here end to end over the real Spring Security filter chain (real beans, no mocking): a
-   * non-placeholder authenticated caller gets 404 on all four, while the placeholder account's
-   * behavior is unchanged (200, as before this slice).
+   * FOR-145b-2 (real per-user wiring, ADR-012): {@code AchievementService}/{@code
+   * AdherenceService}/{@code StreakService}/{@code WeeklyHistoryService} — deferred by 145b-1's
+   * interim {@code requireLegacyOwner()} guard (mandatory review, HIGH cross-account disclosure,
+   * proven fixed at the time by the same guard returning 404 for non-placeholder callers) — now
+   * resolve the caller's real account id via {@code CurrentUserProvider} and return THEIR OWN
+   * (possibly empty) data. Proven here end to end over the real Spring Security filter chain (real
+   * beans, no mocking): a non-placeholder authenticated caller gets 200 with empty/zeroed data on
+   * all four endpoints — never a 404 (the 145b-1 interim behavior), and never the placeholder
+   * account's data. The placeholder account's own behavior is unchanged (200, unaffected by this
+   * slice).
    */
   @Test
-  void userBCannotReadTheLegacyPlaceholderOwnersDeferredProgressEndpoints() throws Exception {
+  void userBSeesTheirOwnEmptyProgressDataOnTheFormerlyDeferredEndpointsNeverTheLegacyOwners()
+      throws Exception {
     for (String path :
         List.of(
             "/api/v1/progress/achievements",
@@ -272,8 +282,7 @@ class ClassACrossUserIsolationEndToEndTest {
               get(path)
                   .with(AuthTestSupport.asUser(USER_B, "isolation-user-b@test.local"))
                   .with(csrf()))
-          .andExpect(status().isNotFound())
-          .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+          .andExpect(status().isOk());
 
       // The legacy placeholder account is unaffected -- unchanged 200 behavior.
       mockMvc

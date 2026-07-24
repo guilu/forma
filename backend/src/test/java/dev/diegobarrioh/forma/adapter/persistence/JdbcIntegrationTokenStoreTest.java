@@ -4,9 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.diegobarrioh.forma.application.ExchangedTokens;
 import dev.diegobarrioh.forma.application.IntegrationTokenStore;
+import dev.diegobarrioh.forma.bootstrap.LegacyUserBootstrap;
 import dev.diegobarrioh.forma.domain.IntegrationProvider;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,21 +26,37 @@ import org.springframework.test.context.ActiveProfiles;
  * "Token store round-trip is encrypted at rest — the stored bytes are NOT the plaintext token" — it
  * reads the raw columns directly with {@link JdbcTemplate}, bypassing the port entirely, so a
  * regression that accidentally stored plaintext cannot hide behind the port's own decrypt-on-read.
+ *
+ * <p>FOR-145b-2 (migration V28): {@code integration_token.user_id} FK-references {@code users(id)},
+ * so {@code OTHER_OWNER} must be a real seeded row. {@code OWNER} reuses the always-present legacy
+ * placeholder account.
  */
 @SpringBootTest
 @ActiveProfiles("test")
 class JdbcIntegrationTokenStoreTest {
 
-  private static final String OWNER = "default-user";
-  private static final String OTHER_OWNER = "someone-else";
+  private static final UUID OWNER = LegacyUserBootstrap.PLACEHOLDER_USER_ID;
+  private static final UUID OTHER_OWNER = UUID.randomUUID();
   private static final Instant EXPIRES_AT = Instant.parse("2026-07-16T12:00:00Z");
 
   @Autowired private IntegrationTokenStore tokenStore;
   @Autowired private JdbcTemplate jdbcTemplate;
 
   @BeforeEach
-  void clearTable() {
+  void seedTables() {
     jdbcTemplate.update("DELETE FROM integration_token");
+    jdbcTemplate.update("DELETE FROM users WHERE id = ?", OTHER_OWNER);
+    jdbcTemplate.update(
+        "INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)",
+        OTHER_OWNER,
+        "integration-token-other-owner@test.local",
+        "!");
+  }
+
+  @AfterEach
+  void cleanUpOtherOwner() {
+    jdbcTemplate.update("DELETE FROM integration_token");
+    jdbcTemplate.update("DELETE FROM users WHERE id = ?", OTHER_OWNER);
   }
 
   @Test
@@ -70,7 +89,7 @@ class JdbcIntegrationTokenStoreTest {
     var row =
         jdbcTemplate.queryForMap(
             "SELECT access_token_ciphertext, refresh_token_ciphertext FROM integration_token "
-                + "WHERE owner_id = ? AND provider = ?",
+                + "WHERE user_id = ? AND provider = ?",
             OWNER,
             IntegrationProvider.WITHINGS.name());
     byte[] accessCiphertext = (byte[]) row.get("access_token_ciphertext");
@@ -94,7 +113,7 @@ class JdbcIntegrationTokenStoreTest {
 
     Integer rowCount =
         jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM integration_token WHERE owner_id = ? AND provider = ?",
+            "SELECT COUNT(*) FROM integration_token WHERE user_id = ? AND provider = ?",
             Integer.class,
             OWNER,
             IntegrationProvider.WITHINGS.name());

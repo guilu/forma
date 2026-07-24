@@ -28,9 +28,11 @@ class StreakServiceTest {
       Clock.fixed(Instant.parse("2026-07-15T12:00:00Z"), ZoneOffset.UTC);
   private static final LocalDate TODAY = LocalDate.of(2026, 7, 15);
 
+  private static final UUID USER_ID = UUID.randomUUID();
+
   private final FakeMealLogRepository mealLogRepository = new FakeMealLogRepository();
   private final StreakService service =
-      new StreakService(mealLogRepository, FIXED_CLOCK, () -> LEGACY_OWNER_UUID);
+      new StreakService(mealLogRepository, FIXED_CLOCK, () -> USER_ID);
 
   @Test
   void currentStreakCountsConsecutiveLoggedDaysEndingToday() {
@@ -107,21 +109,24 @@ class StreakServiceTest {
     assertThatThrownBy(() -> service.compute(366)).isInstanceOf(ValidationException.class);
   }
 
+  /**
+   * FOR-145b-2: real per-user wiring (the 145b-1 interim {@code requireLegacyOwner()} guard was
+   * removed). A different authenticated user's {@code compute()} call returns 200 with THEIR OWN
+   * (empty) streak — never a 404, and never {@code USER_ID}'s logged days.
+   */
   @Test
-  void aNonPlaceholderAuthenticatedCallerGets404NeverTheLegacyOwnersStreak() {
+  void aDifferentAuthenticatedUserSeesTheirOwnEmptyStreakNeverTheOtherUsers() {
+    log(TODAY);
     StreakService otherUserService =
         new StreakService(mealLogRepository, FIXED_CLOCK, UUID::randomUUID);
 
-    assertThatThrownBy(() -> otherUserService.compute(30)).isInstanceOf(NotFoundException.class);
+    Streak streak = otherUserService.compute(30);
+
+    assertThat(streak.currentStreakDays()).isZero();
   }
 
-  // FOR-145b-1: matches StreakService's internal LEGACY_OWNER_UUID compile-compat shim (the UUID
-  // equivalent of the legacy OWNER_ID = "default-user" string).
-  private static final UUID LEGACY_OWNER_UUID =
-      UUID.fromString("00000000-0000-0000-0000-000000000000");
-
   private void log(LocalDate date) {
-    logForOwner(LEGACY_OWNER_UUID, date);
+    logForOwner(USER_ID, date);
   }
 
   private void logForOwner(UUID userId, LocalDate date) {

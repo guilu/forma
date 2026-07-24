@@ -2,6 +2,7 @@ package dev.diegobarrioh.forma.domain;
 
 import java.time.LocalDate;
 import java.util.Objects;
+import java.util.UUID;
 
 /**
  * The single-user profile & preferences aggregate (FOR-107): profile fields, unit preferences,
@@ -23,9 +24,13 @@ import java.util.Objects;
  * a real account id once authentication lands.
  *
  * <p>All profile fields ({@code name} through {@code mainGoal}) are nullable: a fresh {@link
- * #defaults(String)} aggregate (no row saved yet) carries no profile data, only the default
+ * #defaults(UUID)} aggregate (no row saved yet) carries no profile data, only the default
  * preferences (spec FOR-107 Edge Cases: "First call before any profile row exists → return
  * defaults... not a 404").
+ *
+ * <p><b>Real multi-user auth (FOR-145b-2, ADR-012, migration V28).</b> {@code ownerId} is now a
+ * real {@code UUID} — {@code user_profile}'s primary key was rebuilt from the legacy {@code
+ * owner_id VARCHAR} column to {@code user_id UUID}, FK-referencing {@code users(id)}.
  *
  * @param ownerId the owning account's identifier; required (ADR-002 account-scoping)
  * @param name display name; optional
@@ -51,7 +56,7 @@ import java.util.Objects;
  *     {@code null}
  */
 public record UserProfile(
-    String ownerId,
+    UUID ownerId,
     String name,
     String email,
     LocalDate birthDate,
@@ -94,7 +99,7 @@ public record UserProfile(
    * (spec FOR-107 Edge Cases): no profile fields set, metric unit preferences, no default
    * objectives, dark theme, empty onboarding answers, onboarding not completed.
    */
-  public static UserProfile defaults(String ownerId) {
+  public static UserProfile defaults(UUID ownerId) {
     return new UserProfile(
         ownerId,
         null,

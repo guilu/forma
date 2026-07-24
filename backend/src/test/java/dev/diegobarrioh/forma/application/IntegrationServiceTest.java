@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -35,6 +36,8 @@ class IntegrationServiceTest {
 
   private static final Instant NOW = Instant.parse("2026-07-16T08:00:00Z");
   private static final Instant LATER = Instant.parse("2026-07-16T09:00:00Z");
+  private static final UUID USER_ID = UUID.randomUUID();
+  private static final UUID OTHER_USER_ID = UUID.randomUUID();
 
   private final RecordingIntegrationRepository repository = new RecordingIntegrationRepository();
   private final FakeOAuthStateStore stateStore = new FakeOAuthStateStore();
@@ -53,7 +56,8 @@ class IntegrationServiceTest {
           markerStore,
           bodyMeasurementRepository,
           List.of(withingsGateway),
-          List.of(withingsMeasuresGateway));
+          List.of(withingsMeasuresGateway),
+          () -> USER_ID);
 
   // --- status (FOR-126, unaffected by FOR-131) ---------------------------------------------
 
@@ -77,7 +81,7 @@ class IntegrationServiceTest {
     assertThat(result.connection().connectedAt()).isNotNull();
     assertThat(
             repository
-                .findByOwnerAndProvider(IntegrationService.OWNER_ID, IntegrationProvider.GOOGLE_FIT)
+                .findByOwnerAndProvider(USER_ID, IntegrationProvider.GOOGLE_FIT)
                 .orElseThrow()
                 .status())
         .isEqualTo(IntegrationStatus.CONNECTED);
@@ -97,7 +101,7 @@ class IntegrationServiceTest {
   void connectIsOwnerScoped() {
     service.connect(IntegrationProvider.WITHINGS);
 
-    assertThat(repository.findByOwnerAndProvider("someone-else", IntegrationProvider.WITHINGS))
+    assertThat(repository.findByOwnerAndProvider(OTHER_USER_ID, IntegrationProvider.WITHINGS))
         .isEmpty();
   }
 
@@ -110,9 +114,7 @@ class IntegrationServiceTest {
     assertThat(result.connection()).isNull();
     assertThat(result.authorizationUrl()).isNotBlank();
     IntegrationConnection stored =
-        repository
-            .findByOwnerAndProvider(IntegrationService.OWNER_ID, IntegrationProvider.WITHINGS)
-            .orElseThrow();
+        repository.findByOwnerAndProvider(USER_ID, IntegrationProvider.WITHINGS).orElseThrow();
     assertThat(stored.status()).isEqualTo(IntegrationStatus.PENDING);
     assertThat(stored.connectedAt()).isNull();
   }
@@ -125,9 +127,7 @@ class IntegrationServiceTest {
 
     assertThat(reauth.authorizationUrl()).isNotBlank();
     IntegrationConnection stored =
-        repository
-            .findByOwnerAndProvider(IntegrationService.OWNER_ID, IntegrationProvider.WITHINGS)
-            .orElseThrow();
+        repository.findByOwnerAndProvider(USER_ID, IntegrationProvider.WITHINGS).orElseThrow();
     assertThat(stored.status()).isEqualTo(IntegrationStatus.CONNECTED);
   }
 
@@ -147,7 +147,7 @@ class IntegrationServiceTest {
     assertThat(withingsGateway.lastExchangedCode).isEqualTo("withings-auth-code");
     assertThat(withingsGateway.lastExchangedVerifier)
         .isEqualTo(stateStore.lastIssuedCodeVerifier(IntegrationProvider.WITHINGS));
-    assertThat(tokenStore.find(IntegrationService.OWNER_ID, IntegrationProvider.WITHINGS))
+    assertThat(tokenStore.find(USER_ID, IntegrationProvider.WITHINGS))
         .contains(withingsGateway.tokensToReturn);
   }
 
@@ -161,12 +161,11 @@ class IntegrationServiceTest {
 
     assertThat(
             repository
-                .findByOwnerAndProvider(IntegrationService.OWNER_ID, IntegrationProvider.WITHINGS)
+                .findByOwnerAndProvider(USER_ID, IntegrationProvider.WITHINGS)
                 .orElseThrow()
                 .status())
         .isEqualTo(IntegrationStatus.PENDING);
-    assertThat(tokenStore.find(IntegrationService.OWNER_ID, IntegrationProvider.WITHINGS))
-        .isEmpty();
+    assertThat(tokenStore.find(USER_ID, IntegrationProvider.WITHINGS)).isEmpty();
   }
 
   @Test
@@ -201,12 +200,11 @@ class IntegrationServiceTest {
 
     assertThat(
             repository
-                .findByOwnerAndProvider(IntegrationService.OWNER_ID, IntegrationProvider.WITHINGS)
+                .findByOwnerAndProvider(USER_ID, IntegrationProvider.WITHINGS)
                 .orElseThrow()
                 .status())
         .isEqualTo(IntegrationStatus.PENDING);
-    assertThat(tokenStore.find(IntegrationService.OWNER_ID, IntegrationProvider.WITHINGS))
-        .isEmpty();
+    assertThat(tokenStore.find(USER_ID, IntegrationProvider.WITHINGS)).isEmpty();
   }
 
   @Test
@@ -221,14 +219,12 @@ class IntegrationServiceTest {
   @Test
   void disconnectRemovesStoredTokensAndMarksDisconnected() {
     connectAndCompleteWithingsCallback();
-    assertThat(tokenStore.find(IntegrationService.OWNER_ID, IntegrationProvider.WITHINGS))
-        .isPresent();
+    assertThat(tokenStore.find(USER_ID, IntegrationProvider.WITHINGS)).isPresent();
 
     IntegrationConnection disconnected = service.disconnect(IntegrationProvider.WITHINGS);
 
     assertThat(disconnected.status()).isEqualTo(IntegrationStatus.DISCONNECTED);
-    assertThat(tokenStore.find(IntegrationService.OWNER_ID, IntegrationProvider.WITHINGS))
-        .isEmpty();
+    assertThat(tokenStore.find(USER_ID, IntegrationProvider.WITHINGS)).isEmpty();
   }
 
   @Test
@@ -246,8 +242,7 @@ class IntegrationServiceTest {
     IntegrationConnection disconnected = service.disconnect(IntegrationProvider.WITHINGS);
 
     assertThat(disconnected.status()).isEqualTo(IntegrationStatus.DISCONNECTED);
-    assertThat(tokenStore.find(IntegrationService.OWNER_ID, IntegrationProvider.WITHINGS))
-        .isEmpty();
+    assertThat(tokenStore.find(USER_ID, IntegrationProvider.WITHINGS)).isEmpty();
   }
 
   // --- refreshTokenIfNeeded ----------------------------------------------------------------
@@ -262,8 +257,7 @@ class IntegrationServiceTest {
     service.refreshTokenIfNeeded(IntegrationProvider.WITHINGS, LATER.plusSeconds(1));
 
     assertThat(withingsGateway.refreshCalled).isTrue();
-    assertThat(tokenStore.find(IntegrationService.OWNER_ID, IntegrationProvider.WITHINGS))
-        .contains(refreshed);
+    assertThat(tokenStore.find(USER_ID, IntegrationProvider.WITHINGS)).contains(refreshed);
   }
 
   @Test
@@ -273,7 +267,7 @@ class IntegrationServiceTest {
     service.refreshTokenIfNeeded(IntegrationProvider.WITHINGS, NOW);
 
     assertThat(withingsGateway.refreshCalled).isFalse();
-    assertThat(tokenStore.find(IntegrationService.OWNER_ID, IntegrationProvider.WITHINGS))
+    assertThat(tokenStore.find(USER_ID, IntegrationProvider.WITHINGS))
         .contains(withingsGateway.tokensToReturn);
   }
 
@@ -297,7 +291,7 @@ class IntegrationServiceTest {
     assertThat(result.connectedAt()).isNotNull();
     assertThat(
             repository
-                .findByOwnerAndProvider(IntegrationService.OWNER_ID, IntegrationProvider.WITHINGS)
+                .findByOwnerAndProvider(USER_ID, IntegrationProvider.WITHINGS)
                 .orElseThrow()
                 .status())
         .isEqualTo(IntegrationStatus.NEEDS_REAUTH);
@@ -323,9 +317,7 @@ class IntegrationServiceTest {
     service.sync(IntegrationProvider.GOOGLE_FIT);
 
     IntegrationConnection stored =
-        repository
-            .findByOwnerAndProvider(IntegrationService.OWNER_ID, IntegrationProvider.GOOGLE_FIT)
-            .orElseThrow();
+        repository.findByOwnerAndProvider(USER_ID, IntegrationProvider.GOOGLE_FIT).orElseThrow();
     assertThat(stored.lastSyncOutcome().result()).isEqualTo(SyncResult.OK);
   }
 
@@ -336,10 +328,7 @@ class IntegrationServiceTest {
     assertThat(synced.status()).isEqualTo(IntegrationStatus.DISCONNECTED);
     assertThat(synced.lastSyncOutcome().result()).isEqualTo(SyncResult.NOT_CONNECTED);
     assertThat(synced.lastSyncOutcome().importedCount()).isZero();
-    assertThat(
-            repository.findByOwnerAndProvider(
-                IntegrationService.OWNER_ID, IntegrationProvider.WITHINGS))
-        .isEmpty();
+    assertThat(repository.findByOwnerAndProvider(USER_ID, IntegrationProvider.WITHINGS)).isEmpty();
   }
 
   @Test
@@ -369,9 +358,7 @@ class IntegrationServiceTest {
     assertThat(synced.lastSyncOutcome().importedCount()).isEqualTo(2);
     assertThat(synced.lastSyncOutcome().duplicatesSkipped()).isZero();
     assertThat(bodyMeasurementRepository.saved).hasSize(2);
-    assertThat(
-            markerStore.findImportedGroupIds(
-                IntegrationService.OWNER_ID, IntegrationProvider.WITHINGS))
+    assertThat(markerStore.findImportedGroupIds(USER_ID, IntegrationProvider.WITHINGS))
         .containsExactlyInAnyOrder(1L, 2L);
   }
 
@@ -428,7 +415,7 @@ class IntegrationServiceTest {
     // An expiry deep in the past guarantees the refresh branch runs regardless of real wall-clock
     // time at test execution (IntegrationService#sync evaluates expiry against Instant.now()).
     tokenStore.store(
-        IntegrationService.OWNER_ID,
+        USER_ID,
         IntegrationProvider.WITHINGS,
         new ExchangedTokens(
             "fake-access-token", "fake-refresh-token", Instant.parse("2000-01-01T00:00:00Z")));
@@ -443,7 +430,7 @@ class IntegrationServiceTest {
     assertThat(bodyMeasurementRepository.saved).isEmpty();
     assertThat(
             repository
-                .findByOwnerAndProvider(IntegrationService.OWNER_ID, IntegrationProvider.WITHINGS)
+                .findByOwnerAndProvider(USER_ID, IntegrationProvider.WITHINGS)
                 .orElseThrow()
                 .status())
         .isEqualTo(IntegrationStatus.NEEDS_REAUTH);
@@ -522,7 +509,7 @@ class IntegrationServiceTest {
     final Map<String, IntegrationConnection> rows = new LinkedHashMap<>();
 
     @Override
-    public List<IntegrationConnection> findAllByOwner(String ownerId) {
+    public List<IntegrationConnection> findAllByOwner(UUID ownerId) {
       return rows.entrySet().stream()
           .filter(e -> e.getKey().startsWith(ownerId + ":"))
           .map(Map.Entry::getValue)
@@ -531,17 +518,17 @@ class IntegrationServiceTest {
 
     @Override
     public Optional<IntegrationConnection> findByOwnerAndProvider(
-        String ownerId, IntegrationProvider provider) {
+        UUID ownerId, IntegrationProvider provider) {
       return Optional.ofNullable(rows.get(key(ownerId, provider)));
     }
 
     @Override
-    public IntegrationConnection save(String ownerId, IntegrationConnection connection) {
+    public IntegrationConnection save(UUID ownerId, IntegrationConnection connection) {
       rows.put(key(ownerId, connection.provider()), connection);
       return connection;
     }
 
-    private static String key(String ownerId, IntegrationProvider provider) {
+    private static String key(UUID ownerId, IntegrationProvider provider) {
       return ownerId + ":" + provider;
     }
   }
@@ -559,7 +546,7 @@ class IntegrationServiceTest {
     boolean forceExpired = false;
 
     @Override
-    public OAuthChallenge create(String ownerId, IntegrationProvider provider, Instant now) {
+    public OAuthChallenge create(UUID ownerId, IntegrationProvider provider, Instant now) {
       OAuthChallenge challenge =
           new OAuthChallenge(
               "state-" + provider + "-" + now.toEpochMilli(),
@@ -573,7 +560,7 @@ class IntegrationServiceTest {
 
     @Override
     public Optional<OAuthChallenge> consume(
-        String ownerId, IntegrationProvider provider, String state, Instant now) {
+        UUID ownerId, IntegrationProvider provider, String state, Instant now) {
       OAuthChallenge challenge = challenges.get(key(ownerId, provider));
       if (challenge == null
           || !challenge.state().equals(state)
@@ -585,14 +572,14 @@ class IntegrationServiceTest {
     }
 
     String lastIssuedState(IntegrationProvider provider) {
-      return lastIssued.get(key(IntegrationService.OWNER_ID, provider)).state();
+      return lastIssued.get(key(USER_ID, provider)).state();
     }
 
     String lastIssuedCodeVerifier(IntegrationProvider provider) {
-      return lastIssued.get(key(IntegrationService.OWNER_ID, provider)).codeVerifier();
+      return lastIssued.get(key(USER_ID, provider)).codeVerifier();
     }
 
-    private static String key(String ownerId, IntegrationProvider provider) {
+    private static String key(UUID ownerId, IntegrationProvider provider) {
       return ownerId + ":" + provider;
     }
   }
@@ -602,22 +589,21 @@ class IntegrationServiceTest {
     private final Map<String, ExchangedTokens> tokens = new LinkedHashMap<>();
 
     @Override
-    public void store(
-        String ownerId, IntegrationProvider provider, ExchangedTokens exchangedTokens) {
+    public void store(UUID ownerId, IntegrationProvider provider, ExchangedTokens exchangedTokens) {
       tokens.put(key(ownerId, provider), exchangedTokens);
     }
 
     @Override
-    public Optional<ExchangedTokens> find(String ownerId, IntegrationProvider provider) {
+    public Optional<ExchangedTokens> find(UUID ownerId, IntegrationProvider provider) {
       return Optional.ofNullable(tokens.get(key(ownerId, provider)));
     }
 
     @Override
-    public void forget(String ownerId, IntegrationProvider provider) {
+    public void forget(UUID ownerId, IntegrationProvider provider) {
       tokens.remove(key(ownerId, provider));
     }
 
-    private static String key(String ownerId, IntegrationProvider provider) {
+    private static String key(UUID ownerId, IntegrationProvider provider) {
       return ownerId + ":" + provider;
     }
   }
@@ -671,11 +657,11 @@ class IntegrationServiceTest {
     private final Set<String> marked = new LinkedHashSet<>();
 
     @Override
-    public Set<Long> findImportedGroupIds(String ownerId, IntegrationProvider provider) {
+    public Set<Long> findImportedGroupIds(UUID ownerId, IntegrationProvider provider) {
       Set<Long> ids = new LinkedHashSet<>();
       for (String entry : marked) {
         String[] parts = entry.split(":", 3);
-        if (parts[0].equals(ownerId) && parts[1].equals(provider.name())) {
+        if (parts[0].equals(ownerId.toString()) && parts[1].equals(provider.name())) {
           ids.add(Long.valueOf(parts[2]));
         }
       }
@@ -684,7 +670,7 @@ class IntegrationServiceTest {
 
     @Override
     public void markImported(
-        String ownerId, IntegrationProvider provider, long groupId, Instant importedAt) {
+        UUID ownerId, IntegrationProvider provider, long groupId, Instant importedAt) {
       marked.add(ownerId + ":" + provider.name() + ":" + groupId);
     }
   }

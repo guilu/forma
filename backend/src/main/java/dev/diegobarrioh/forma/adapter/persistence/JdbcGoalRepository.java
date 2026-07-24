@@ -28,11 +28,10 @@ import org.springframework.stereotype.Repository;
  * delete-and-reinsert) since this slice's PATCH only ever toggles existing milestones, never adds
  * or removes one ({@code GoalService}).
  *
- * <p><b>owner_id -&gt; user_id (FOR-145b-1, migration V27).</b> All reads/writes now scope by the
- * real {@code user_id UUID} column. The legacy {@code owner_id VARCHAR} column is kept alive (not
- * yet dropped — a later contract migration will drop it) and is written on insert as {@code
- * userId.toString()} purely so it stays populated/non-null for existing rows' shape; it is never
- * read by this adapter anymore.
+ * <p><b>owner_id -&gt; user_id (FOR-145b-1, migration V27; owner_id dropped by FOR-145b-2,
+ * migration V29).</b> All reads/writes scope by the real {@code user_id UUID} column. The legacy
+ * {@code owner_id VARCHAR} column has been fully dropped from the {@code goal} table — it is no
+ * longer written or read anywhere in this adapter.
  */
 @Repository
 public class JdbcGoalRepository implements GoalRepository {
@@ -76,10 +75,9 @@ public class JdbcGoalRepository implements GoalRepository {
   public StoredGoal create(UUID userId, Goal goal) {
     UUID goalId = UUID.randomUUID();
     jdbcTemplate.update(
-        "INSERT INTO goal (id, owner_id, user_id, title, metric, target, due_date, status)"
-            + " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO goal (id, user_id, title, metric, target, due_date, status)"
+            + " VALUES (?, ?, ?, ?, ?, ?, ?)",
         goalId,
-        userId.toString(),
         userId,
         goal.title(),
         goal.metric().name(),

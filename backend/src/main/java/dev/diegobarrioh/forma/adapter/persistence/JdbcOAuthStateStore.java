@@ -13,6 +13,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Base64;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
@@ -27,6 +28,10 @@ import org.springframework.stereotype.Repository;
  * requirement. {@code code_challenge} is the S256 method: {@code BASE64URL(SHA256(code_verifier))}.
  * Single-use is enforced by deleting the row on a successful {@link #consume}, not by a schema flag
  * — a replayed {@code state} finds no row and is rejected.
+ *
+ * <p><b>owner_id -&gt; user_id (FOR-145b-2, migration V28).</b> {@code integration_oauth_state}'s
+ * composite primary key was rebuilt from the legacy {@code owner_id VARCHAR} column to {@code
+ * user_id UUID}, FK-referencing {@code users(id)}.
  */
 @Repository
 public class JdbcOAuthStateStore implements OAuthStateStore {
@@ -40,25 +45,25 @@ public class JdbcOAuthStateStore implements OAuthStateStore {
       """
       SELECT state, code_verifier, code_challenge, expires_at
       FROM integration_oauth_state
-      WHERE owner_id = ? AND provider = ?
+      WHERE user_id = ? AND provider = ?
       """;
 
   private static final String UPDATE_SQL =
       """
       UPDATE integration_oauth_state SET
         state = ?, code_verifier = ?, code_challenge = ?, expires_at = ?
-      WHERE owner_id = ? AND provider = ?
+      WHERE user_id = ? AND provider = ?
       """;
 
   private static final String INSERT_SQL =
       """
       INSERT INTO integration_oauth_state
-        (owner_id, provider, state, code_verifier, code_challenge, expires_at)
+        (user_id, provider, state, code_verifier, code_challenge, expires_at)
       VALUES (?, ?, ?, ?, ?, ?)
       """;
 
   private static final String DELETE_SQL =
-      "DELETE FROM integration_oauth_state WHERE owner_id = ? AND provider = ?";
+      "DELETE FROM integration_oauth_state WHERE user_id = ? AND provider = ?";
 
   private final JdbcTemplate jdbcTemplate;
   private final SecureRandom secureRandom = new SecureRandom();
@@ -68,7 +73,7 @@ public class JdbcOAuthStateStore implements OAuthStateStore {
   }
 
   @Override
-  public OAuthChallenge create(String ownerId, IntegrationProvider provider, Instant now) {
+  public OAuthChallenge create(UUID userId, IntegrationProvider provider, Instant now) {
     String state = randomUrlSafeToken();
     String codeVerifier = randomUrlSafeToken();
     String codeChallenge = pkceS256(codeVerifier);
@@ -82,24 +87,18 @@ public class JdbcOAuthStateStore implements OAuthStateStore {
             codeVerifier,
             codeChallenge,
             expiresAtColumn,
-            ownerId,
+            userId,
             provider.name());
     if (updated == 0) {
       jdbcTemplate.update(
-          INSERT_SQL,
-          ownerId,
-          provider.name(),
-          state,
-          codeVerifier,
-          codeChallenge,
-          expiresAtColumn);
+          INSERT_SQL, userId, provider.name(), state, codeVerifier, codeChallenge, expiresAtColumn);
     }
     return new OAuthChallenge(state, codeVerifier, codeChallenge, expiresAt);
   }
 
   @Override
   public Optional<OAuthChallenge> consume(
-      String ownerId, IntegrationProvider provider, String state, Instant now) {
+      UUID userId, IntegrationProvider provider, String state, Instant now) {
     RowMapper<OAuthChallenge> rowMapper =
         (rs, rowNum) ->
             new OAuthChallenge(
@@ -108,7 +107,7 @@ public class JdbcOAuthStateStore implements OAuthStateStore {
                 rs.getString("code_challenge"),
                 rs.getObject("expires_at", OffsetDateTime.class).toInstant());
     Optional<OAuthChallenge> stored =
-        jdbcTemplate.query(FIND_SQL, rowMapper, ownerId, provider.name()).stream().findFirst();
+        jdbcTemplate.query(FIND_SQL, rowMapper, userId, provider.name()).stream().findFirst();
 
     if (stored.isEmpty()) {
       return Optional.empty();
@@ -118,7 +117,7 @@ public class JdbcOAuthStateStore implements OAuthStateStore {
       return Optional.empty();
     }
 
-    jdbcTemplate.update(DELETE_SQL, ownerId, provider.name());
+    jdbcTemplate.update(DELETE_SQL, userId, provider.name());
     return Optional.of(challenge);
   }
 

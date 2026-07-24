@@ -52,10 +52,9 @@ public class JdbcWaterIntakeRepository implements WaterIntakeRepository {
   public StoredWaterIntakeEntry save(UUID userId, WaterIntakeEntry entry) {
     UUID id = UUID.randomUUID();
     jdbcTemplate.update(
-        "INSERT INTO water_intake_entry (id, owner_id, user_id, log_date, volume_ml)"
-            + " VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO water_intake_entry (id, user_id, log_date, volume_ml)"
+            + " VALUES (?, ?, ?, ?)",
         id,
-        userId.toString(),
         userId,
         Date.valueOf(entry.date()),
         entry.volumeMl());
