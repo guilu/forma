@@ -3,6 +3,7 @@ package dev.diegobarrioh.forma.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.diegobarrioh.forma.bootstrap.LegacyUserBootstrap;
 import dev.diegobarrioh.forma.domain.AdherenceCategory;
 import dev.diegobarrioh.forma.domain.BodyMeasurement;
 import dev.diegobarrioh.forma.domain.CategoryAdherence;
@@ -40,10 +41,15 @@ class AdherenceServiceTest {
       Clock.fixed(Instant.parse("2026-07-15T12:00:00Z"), ZoneOffset.UTC);
   private static final LocalDate TODAY = LocalDate.of(2026, 7, 15);
 
-  // FOR-145b-1: matches AdherenceService's internal LEGACY_OWNER_UUID compile-compat shim (the
-  // UUID equivalent of the legacy OWNER_ID = "default-user" string).
-  private static final UUID LEGACY_OWNER_UUID =
-      UUID.fromString("00000000-0000-0000-0000-000000000000");
+  /**
+   * FOR-145b-2 security fix (🟠 MEDIUM cross-account signal leak): TRAINING/MEASUREMENTS are only
+   * computed from the still-unscoped global tables for the seeded legacy placeholder account (see
+   * {@code AdherenceService} javadoc's INTERIM security guard). Every TRAINING/MEASUREMENTS
+   * assertion in this class therefore runs as the placeholder; {@link
+   * #aNonPlaceholderUserGetsZeroedTrainingAndMeasurementsWithoutConsultingTheGlobalRepositories()}
+   * proves the guard for a real, non-placeholder caller.
+   */
+  private static final UUID USER_ID = LegacyUserBootstrap.PLACEHOLDER_USER_ID;
 
   private final FakeStatusRepository statusRepository = new FakeStatusRepository();
   private final WeeklyTrainingScheduleService scheduleService =
@@ -58,7 +64,7 @@ class AdherenceServiceTest {
           mealLogRepository,
           bodyMeasurementRepository,
           FIXED_CLOCK,
-          () -> LEGACY_OWNER_UUID);
+          () -> USER_ID);
 
   @Test
   void windowSpansTodayMinusDaysPlusOneThroughToday() {
@@ -89,11 +95,11 @@ class AdherenceServiceTest {
 
   @Test
   void nutritionCompletedIsDaysWithAtLeastOneLoggedEntryPlannedIsDaysInWindow() {
-    log(mealLogRepository, LEGACY_OWNER_UUID, LocalDate.of(2026, 7, 9));
-    log(mealLogRepository, LEGACY_OWNER_UUID, LocalDate.of(2026, 7, 11));
-    log(mealLogRepository, LEGACY_OWNER_UUID, LocalDate.of(2026, 7, 15));
+    log(mealLogRepository, USER_ID, LocalDate.of(2026, 7, 9));
+    log(mealLogRepository, USER_ID, LocalDate.of(2026, 7, 11));
+    log(mealLogRepository, USER_ID, LocalDate.of(2026, 7, 15));
     // Outside the window -- must not be counted.
-    log(mealLogRepository, LEGACY_OWNER_UUID, LocalDate.of(2026, 7, 1));
+    log(mealLogRepository, USER_ID, LocalDate.of(2026, 7, 1));
 
     Adherence adherence = service.compute(7);
 
@@ -138,7 +144,7 @@ class AdherenceServiceTest {
             mealLogRepository,
             bodyMeasurementRepository,
             fridayClock,
-            () -> LEGACY_OWNER_UUID);
+            () -> USER_ID);
 
     Adherence adherence = fridayService.compute(1);
 
@@ -170,17 +176,91 @@ class AdherenceServiceTest {
     assertThatThrownBy(() -> service.compute(366)).isInstanceOf(ValidationException.class);
   }
 
+  /**
+   * FOR-145b-2: real per-user wiring (the 145b-1 interim {@code requireLegacyOwner()} guard was
+   * removed). A different authenticated user's {@code compute()} call returns 200 with THEIR OWN
+   * (empty) NUTRITION data — never a 404, and never {@code USER_ID}'s logged days.
+   */
   @Test
-  void aNonPlaceholderAuthenticatedCallerGets404NeverTheLegacyOwnersAdherenceData() {
+  void aDifferentAuthenticatedUserSeesTheirOwnEmptyNutritionDataNeverTheOtherUsers() {
+    log(mealLogRepository, USER_ID, LocalDate.of(2026, 7, 9));
+    UUID otherUserId = UUID.randomUUID();
     AdherenceService otherUserService =
         new AdherenceService(
             scheduleService,
             mealLogRepository,
             bodyMeasurementRepository,
             FIXED_CLOCK,
-            UUID::randomUUID);
+            () -> otherUserId);
 
-    assertThatThrownBy(() -> otherUserService.compute(7)).isInstanceOf(NotFoundException.class);
+    Adherence adherence = otherUserService.compute(7);
+
+    CategoryAdherence nutrition = byCategory(adherence, AdherenceCategory.NUTRITION);
+    assertThat(nutrition.completed()).isZero();
+  }
+
+  /**
+   * FOR-145b-2 SECURITY FIX (🟠 MEDIUM cross-account signal leak, post-review): a real,
+   * non-placeholder caller must never have their TRAINING/MEASUREMENTS numbers derived from the
+   * still-unscoped global {@code training_session_status}/{@code body_measurements} tables (145c
+   * gap). Both categories come back zeroed, and — critically — the global repositories are never
+   * even consulted for that caller (asserted via call counters that would otherwise reflect the
+   * seeded global data below). NUTRITION stays real, since {@link MealLogRepository} is properly
+   * user-scoped.
+   */
+  @Test
+  void
+      aNonPlaceholderUserGetsZeroedTrainingAndMeasurementsWithoutConsultingTheGlobalRepositories() {
+    // Seed the global (unscoped) tables with data that WOULD change the result if read.
+    statusRepository.upsert("SATURDAY:RUNNING", SessionStatus.COMPLETED, null);
+    measure(bodyMeasurementRepository, Instant.parse("2026-07-13T08:00:00Z"));
+    UUID nonPlaceholderUserId = UUID.randomUUID();
+    log(mealLogRepository, nonPlaceholderUserId, LocalDate.of(2026, 7, 11));
+    int findAllCallsBefore = statusRepository.findAllCallCount;
+    int listCallsBefore = bodyMeasurementRepository.listCallCount;
+    AdherenceService nonPlaceholderService =
+        new AdherenceService(
+            scheduleService,
+            mealLogRepository,
+            bodyMeasurementRepository,
+            FIXED_CLOCK,
+            () -> nonPlaceholderUserId);
+
+    Adherence adherence = nonPlaceholderService.compute(7);
+
+    CategoryAdherence training = byCategory(adherence, AdherenceCategory.TRAINING);
+    assertThat(training.planned()).isZero();
+    assertThat(training.completed()).isZero();
+    assertThat(training.rate()).isNull();
+    CategoryAdherence measurements = byCategory(adherence, AdherenceCategory.MEASUREMENTS);
+    assertThat(measurements.planned()).isZero();
+    assertThat(measurements.completed()).isZero();
+    assertThat(measurements.rate()).isNull();
+    // The global repos were never consulted for this non-placeholder caller.
+    assertThat(statusRepository.findAllCallCount).isEqualTo(findAllCallsBefore);
+    assertThat(bodyMeasurementRepository.listCallCount).isEqualTo(listCallsBefore);
+    // NUTRITION is unaffected -- still computed for real from this user's own meal_log rows.
+    CategoryAdherence nutrition = byCategory(adherence, AdherenceCategory.NUTRITION);
+    assertThat(nutrition.completed()).isEqualTo(1);
+  }
+
+  /**
+   * Sanity counterpart to the guard above: the seeded legacy placeholder account keeps full,
+   * unchanged TRAINING/MEASUREMENTS behavior (all other tests in this class already exercise this
+   * via {@code USER_ID}, which is the placeholder — this test makes that guarantee explicit).
+   */
+  @Test
+  void thePlaceholderAccountKeepsFullTrainingAndMeasurementsBehavior() {
+    assertThat(USER_ID).isEqualTo(LegacyUserBootstrap.PLACEHOLDER_USER_ID);
+    statusRepository.upsert("SATURDAY:RUNNING", SessionStatus.COMPLETED, null);
+    measure(bodyMeasurementRepository, Instant.parse("2026-07-13T08:00:00Z"));
+
+    Adherence adherence = service.compute(7);
+
+    CategoryAdherence training = byCategory(adherence, AdherenceCategory.TRAINING);
+    assertThat(training.completed()).isEqualTo(1);
+    CategoryAdherence measurements = byCategory(adherence, AdherenceCategory.MEASUREMENTS);
+    assertThat(measurements.completed()).isEqualTo(1);
   }
 
   private static CategoryAdherence byCategory(Adherence adherence, AdherenceCategory category) {
@@ -209,9 +289,11 @@ class AdherenceServiceTest {
    */
   private static final class FakeStatusRepository implements TrainingSessionStatusRepository {
     private final Map<String, StoredSessionStatus> stored = new HashMap<>();
+    private int findAllCallCount = 0;
 
     @Override
     public Map<String, StoredSessionStatus> findAll() {
+      findAllCallCount++;
       return stored;
     }
 
@@ -246,6 +328,7 @@ class AdherenceServiceTest {
   /** In-memory {@link BodyMeasurementRepository}. */
   private static final class FakeBodyMeasurementRepository implements BodyMeasurementRepository {
     private final List<BodyMeasurement> saved = new ArrayList<>();
+    private int listCallCount = 0;
 
     @Override
     public void save(BodyMeasurement measurement) {
@@ -254,6 +337,7 @@ class AdherenceServiceTest {
 
     @Override
     public List<BodyMeasurement> list() {
+      listCallCount++;
       return List.copyOf(saved);
     }
   }

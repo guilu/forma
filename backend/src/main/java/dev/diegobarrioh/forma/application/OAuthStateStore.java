@@ -3,6 +3,7 @@ package dev.diegobarrioh.forma.application;
 import dev.diegobarrioh.forma.domain.IntegrationProvider;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Port for a short-lived, single-use, expiring OAuth state/PKCE challenge store (FOR-131 spec Data
@@ -28,15 +29,15 @@ import java.util.Optional;
 public interface OAuthStateStore {
 
   /**
-   * Issues a fresh, single-use challenge for {@code ownerId}/{@code provider}, expiring after a
+   * Issues a fresh, single-use challenge for {@code userId}/{@code provider}, expiring after a
    * short, implementation-defined window. Replaces (overwrites) any previous unconsumed challenge
    * for the same owner/provider, so re-triggering connect before finishing a previous attempt
    * simply invalidates the old attempt rather than accumulating rows.
    */
-  OAuthChallenge create(String ownerId, IntegrationProvider provider, Instant now);
+  OAuthChallenge create(UUID userId, IntegrationProvider provider, Instant now);
 
   /**
-   * Validates and single-use-consumes the challenge matching {@code ownerId}/{@code provider}/
+   * Validates and single-use-consumes the challenge matching {@code userId}/{@code provider}/
    * {@code state} as of {@code now}: empty when no challenge exists, the stored challenge's {@code
    * state} does not match, or it has expired (spec FOR-131 Edge Cases: "mismatched/expired/replayed
    * state → reject"). A successful consume removes the challenge so a replayed callback with the
@@ -44,5 +45,5 @@ public interface OAuthStateStore {
    * documented.
    */
   Optional<OAuthChallenge> consume(
-      String ownerId, IntegrationProvider provider, String state, Instant now);
+      UUID userId, IntegrationProvider provider, String state, Instant now);
 }

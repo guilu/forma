@@ -3,6 +3,7 @@ package dev.diegobarrioh.forma.adapter.persistence;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.diegobarrioh.forma.application.UserProfileRepository;
+import dev.diegobarrioh.forma.bootstrap.LegacyUserBootstrap;
 import dev.diegobarrioh.forma.domain.ActivityLevel;
 import dev.diegobarrioh.forma.domain.DefaultObjectives;
 import dev.diegobarrioh.forma.domain.MainGoal;
@@ -16,6 +17,7 @@ import dev.diegobarrioh.forma.domain.UserProfile;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,10 +29,16 @@ import org.springframework.test.context.ActiveProfiles;
  * Integration test for {@link JdbcUserProfileRepository} (FOR-107). Runs against the in-memory
  * PostgreSQL-mode H2 with Flyway migrations applied (ADR-007), like the FOR-16/FOR-27 tests. Covers
  * the "clean-database → defaults" and "seeded row → round-trip" fixtures from tests.md.
+ *
+ * <p>FOR-145b-2 (migration V28): {@code user_profile.user_id} FK-references {@code users(id)}, so
+ * every profile row uses the always-present legacy placeholder account (matching {@code
+ * JdbcGoalRepositoryTest}'s pattern for Class-A tables).
  */
 @SpringBootTest
 @ActiveProfiles("test")
 class JdbcUserProfileRepositoryTest {
+
+  private static final UUID OWNER = LegacyUserBootstrap.PLACEHOLDER_USER_ID;
 
   @Autowired private UserProfileRepository repository;
   @Autowired private JdbcTemplate jdbcTemplate;
@@ -42,14 +50,14 @@ class JdbcUserProfileRepositoryTest {
 
   @Test
   void findReturnsEmptyOnACleanDatabase() {
-    assertThat(repository.find("default-user")).isEmpty();
+    assertThat(repository.find(OWNER)).isEmpty();
   }
 
   @Test
   void savesAndReadsBackAFullProfile() {
     UserProfile profile =
         new UserProfile(
-            "default-user",
+            OWNER,
             "Ada Lovelace",
             "ada@example.com",
             LocalDate.of(1990, 1, 1),
@@ -72,7 +80,7 @@ class JdbcUserProfileRepositoryTest {
             new PersonalTargets(2300.0, 12.0, 13.0, 73.0, 75.0, 70.0, 260.0));
 
     repository.save(profile);
-    Optional<UserProfile> read = repository.find("default-user");
+    Optional<UserProfile> read = repository.find(OWNER);
 
     assertThat(read).isPresent();
     UserProfile stored = read.orElseThrow();
@@ -104,10 +112,10 @@ class JdbcUserProfileRepositoryTest {
 
   @Test
   void saveUpsertsAnExistingRowInPlace() {
-    repository.save(UserProfile.defaults("default-user"));
+    repository.save(UserProfile.defaults(OWNER));
     UserProfile updated =
         new UserProfile(
-            "default-user",
+            OWNER,
             "Renamed",
             null,
             null,
@@ -127,14 +135,14 @@ class JdbcUserProfileRepositoryTest {
 
     assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM user_profile", Integer.class))
         .isEqualTo(1);
-    assertThat(repository.find("default-user").orElseThrow().name()).isEqualTo("Renamed");
+    assertThat(repository.find(OWNER).orElseThrow().name()).isEqualTo("Renamed");
   }
 
   @Test
   void roundTripsNullableFieldsAndEmptyOnboardingLists() {
-    repository.save(UserProfile.defaults("default-user"));
+    repository.save(UserProfile.defaults(OWNER));
 
-    UserProfile stored = repository.find("default-user").orElseThrow();
+    UserProfile stored = repository.find(OWNER).orElseThrow();
     assertThat(stored.name()).isNull();
     assertThat(stored.birthDate()).isNull();
     assertThat(stored.sex()).isNull();
@@ -149,7 +157,7 @@ class JdbcUserProfileRepositoryTest {
   void roundTripsPartialBaselineAndTargets() {
     UserProfile withPartialTargets =
         new UserProfile(
-            "default-user",
+            OWNER,
             null,
             null,
             null,
@@ -166,7 +174,7 @@ class JdbcUserProfileRepositoryTest {
             new PersonalTargets(2300.0, null, null, null, null, null, null));
 
     repository.save(withPartialTargets);
-    UserProfile stored = repository.find("default-user").orElseThrow();
+    UserProfile stored = repository.find(OWNER).orElseThrow();
 
     assertThat(stored.profileBaseline().weightKg()).isEqualTo(73.6);
     assertThat(stored.profileBaseline().bodyFatPct()).isNull();

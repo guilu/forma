@@ -12,8 +12,8 @@ import dev.diegobarrioh.forma.adapter.withings.WithingsHttpTransport;
 import dev.diegobarrioh.forma.application.BodyMeasurementRepository;
 import dev.diegobarrioh.forma.application.ExchangedTokens;
 import dev.diegobarrioh.forma.application.IntegrationRepository;
-import dev.diegobarrioh.forma.application.IntegrationService;
 import dev.diegobarrioh.forma.application.IntegrationTokenStore;
+import dev.diegobarrioh.forma.bootstrap.LegacyUserBootstrap;
 import dev.diegobarrioh.forma.domain.IntegrationConnection;
 import dev.diegobarrioh.forma.domain.IntegrationProvider;
 import dev.diegobarrioh.forma.support.WebMvcAuthTestConfig;
@@ -39,7 +39,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 /**
  * Full-stack, real-database round trip for {@code POST /api/v1/integrations/withings/sync} (FOR-132
- * tests.md API Tests): real {@link IntegrationService}, real JDBC repositories/markers store, real
+ * tests.md API Tests): real {@code IntegrationService}, real JDBC repositories/markers store, real
  * Flyway schema (through V16) — only the Withings HTTP transport is faked, so the Getmeas call
  * resolves to a recorded fixture instead of the live API (spec FOR-132 tests.md: "never call the
  * live Withings API in tests").
@@ -49,6 +49,12 @@ import org.springframework.test.web.servlet.MockMvc;
  * driving the real OAuth connect/callback dance — that round trip is already covered by {@code
  * IntegrationServiceTest}/{@code IntegrationControllerTest} (FOR-131); this test's only concern is
  * the FOR-132 sync-import path.
+ *
+ * <p>FOR-145b-2 (migration V28): {@code integration_connection}/{@code integration_token} now key
+ * by {@code user_id UUID}. {@link WebMvcAuthTestConfig} authenticates every request as the seeded
+ * legacy placeholder account, so the seed here uses the same id ({@link
+ * LegacyUserBootstrap#PLACEHOLDER_USER_ID}) that {@code IntegrationService} resolves via {@code
+ * CurrentUserProvider} for the real MockMvc-dispatched sync call.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -56,7 +62,7 @@ import org.springframework.test.web.servlet.MockMvc;
 @Import(WebMvcAuthTestConfig.class)
 class IntegrationSyncEndToEndTest {
 
-  private static final String OWNER = IntegrationService.OWNER_ID;
+  private static final java.util.UUID OWNER = LegacyUserBootstrap.PLACEHOLDER_USER_ID;
   private static final String ACCESS_TOKEN = "fixture-access-token-e2e";
   private static final String REFRESH_TOKEN = "fixture-refresh-token-e2e";
 
@@ -157,7 +163,7 @@ class IntegrationSyncEndToEndTest {
 
     Integer markerRowCount =
         jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM integration_measure_marker WHERE owner_id = ? AND provider = ?",
+            "SELECT COUNT(*) FROM integration_measure_marker WHERE user_id = ? AND provider = ?",
             Integer.class,
             OWNER,
             IntegrationProvider.WITHINGS.name());

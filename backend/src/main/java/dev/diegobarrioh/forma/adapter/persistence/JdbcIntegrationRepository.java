@@ -11,6 +11,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
@@ -32,6 +33,10 @@ import org.springframework.stereotype.Repository;
  * <p>{@code last_sync_duplicates_skipped} (migration V16, FOR-132) is additive on this same table —
  * it records the last sync's dedup count alongside the existing {@code last_sync_*} columns, not a
  * new table, mirroring how the rest of {@link SyncOutcome} is already flattened here.
+ *
+ * <p><b>owner_id -&gt; user_id (FOR-145b-2, migration V28).</b> {@code integration_connection}'s
+ * composite primary key was rebuilt from the legacy {@code owner_id VARCHAR} column to {@code
+ * user_id UUID}, FK-referencing {@code users(id)}.
  */
 @Repository
 public class JdbcIntegrationRepository implements IntegrationRepository {
@@ -41,7 +46,7 @@ public class JdbcIntegrationRepository implements IntegrationRepository {
       SELECT provider, status, connected_at, last_sync_at,
         last_sync_result, last_sync_imported_count, last_sync_duplicates_skipped, last_sync_message
       FROM integration_connection
-      WHERE owner_id = ?
+      WHERE user_id = ?
       ORDER BY provider
       """;
 
@@ -50,7 +55,7 @@ public class JdbcIntegrationRepository implements IntegrationRepository {
       SELECT provider, status, connected_at, last_sync_at,
         last_sync_result, last_sync_imported_count, last_sync_duplicates_skipped, last_sync_message
       FROM integration_connection
-      WHERE owner_id = ? AND provider = ?
+      WHERE user_id = ? AND provider = ?
       """;
 
   private static final String UPDATE_SQL =
@@ -59,13 +64,13 @@ public class JdbcIntegrationRepository implements IntegrationRepository {
         status = ?, connected_at = ?, last_sync_at = ?,
         last_sync_result = ?, last_sync_imported_count = ?, last_sync_duplicates_skipped = ?,
         last_sync_message = ?
-      WHERE owner_id = ? AND provider = ?
+      WHERE user_id = ? AND provider = ?
       """;
 
   private static final String INSERT_SQL =
       """
       INSERT INTO integration_connection
-        (owner_id, provider, status, connected_at, last_sync_at,
+        (user_id, provider, status, connected_at, last_sync_at,
          last_sync_result, last_sync_imported_count, last_sync_duplicates_skipped, last_sync_message)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       """;
@@ -90,20 +95,20 @@ public class JdbcIntegrationRepository implements IntegrationRepository {
   }
 
   @Override
-  public List<IntegrationConnection> findAllByOwner(String ownerId) {
-    return jdbcTemplate.query(FIND_ALL_SQL, ROW_MAPPER, ownerId);
+  public List<IntegrationConnection> findAllByOwner(UUID userId) {
+    return jdbcTemplate.query(FIND_ALL_SQL, ROW_MAPPER, userId);
   }
 
   @Override
   public Optional<IntegrationConnection> findByOwnerAndProvider(
-      String ownerId, IntegrationProvider provider) {
+      UUID userId, IntegrationProvider provider) {
     List<IntegrationConnection> found =
-        jdbcTemplate.query(FIND_ONE_SQL, ROW_MAPPER, ownerId, provider.name());
+        jdbcTemplate.query(FIND_ONE_SQL, ROW_MAPPER, userId, provider.name());
     return found.stream().findFirst();
   }
 
   @Override
-  public IntegrationConnection save(String ownerId, IntegrationConnection connection) {
+  public IntegrationConnection save(UUID userId, IntegrationConnection connection) {
     SyncOutcome outcome = connection.lastSyncOutcome();
     String status = connection.status().name();
     OffsetDateTime connectedAt = toOffsetDateTime(connection.connectedAt());
@@ -123,12 +128,12 @@ public class JdbcIntegrationRepository implements IntegrationRepository {
             lastSyncImportedCount,
             lastSyncDuplicatesSkipped,
             lastSyncMessage,
-            ownerId,
+            userId,
             connection.provider().name());
     if (updated == 0) {
       jdbcTemplate.update(
           INSERT_SQL,
-          ownerId,
+          userId,
           connection.provider().name(),
           status,
           connectedAt,

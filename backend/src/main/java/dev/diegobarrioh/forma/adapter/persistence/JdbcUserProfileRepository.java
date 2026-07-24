@@ -21,6 +21,7 @@ import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
@@ -39,13 +40,19 @@ import org.springframework.stereotype.Repository;
  * migration comment) — day/equipment labels are short controlled-vocabulary codes with no commas,
  * so this is safe for the MVP; a genuinely free-text multi-value field would need a real join
  * table.
+ *
+ * <p><b>owner_id -&gt; user_id (FOR-145b-2, migration V28).</b> {@code user_profile}'s primary key
+ * was rebuilt from the legacy {@code owner_id VARCHAR} column (V8) to {@code user_id UUID},
+ * FK-referencing {@code users(id)} — a PK-reconstruction "Class B" table (unlike the Class A
+ * expand/contract of FOR-145b-1), done via a shadow-table swap (see V28's own comment) since {@code
+ * owner_id} could not simply be retyped in place while it was still the primary key.
  */
 @Repository
 public class JdbcUserProfileRepository implements UserProfileRepository {
 
   private static final String FIND_SQL =
       """
-      SELECT owner_id, name, email, birth_date, sex, height_cm, activity_level, main_goal,
+      SELECT user_id, name, email, birth_date, sex, height_cm, activity_level, main_goal,
         weight_unit, height_unit, distance_unit, energy_unit,
         caloric_deficit_kcal, protein_target_g, daily_water_ml, theme_mode,
         onboarding_profile_name, onboarding_profile_birth_date, onboarding_profile_sex,
@@ -56,7 +63,7 @@ public class JdbcUserProfileRepository implements UserProfileRepository {
         base_calories_kcal, body_fat_target_min_pct, body_fat_target_max_pct,
         weight_target_min_kg, weight_target_max_kg, fat_target_g, carbs_target_g
       FROM user_profile
-      WHERE owner_id = ?
+      WHERE user_id = ?
       """;
 
   private static final String UPDATE_SQL =
@@ -73,13 +80,13 @@ public class JdbcUserProfileRepository implements UserProfileRepository {
         baseline_weight_kg = ?, baseline_body_fat_pct = ?, baseline_bmi = ?,
         base_calories_kcal = ?, body_fat_target_min_pct = ?, body_fat_target_max_pct = ?,
         weight_target_min_kg = ?, weight_target_max_kg = ?, fat_target_g = ?, carbs_target_g = ?
-      WHERE owner_id = ?
+      WHERE user_id = ?
       """;
 
   private static final String INSERT_SQL =
       """
       INSERT INTO user_profile
-        (owner_id, name, email, birth_date, sex, height_cm, activity_level, main_goal,
+        (user_id, name, email, birth_date, sex, height_cm, activity_level, main_goal,
          weight_unit, height_unit, distance_unit, energy_unit,
          caloric_deficit_kcal, protein_target_g, daily_water_ml, theme_mode,
          onboarding_profile_name, onboarding_profile_birth_date, onboarding_profile_sex,
@@ -96,7 +103,7 @@ public class JdbcUserProfileRepository implements UserProfileRepository {
   private static final RowMapper<UserProfile> ROW_MAPPER =
       (rs, rowNum) ->
           new UserProfile(
-              rs.getString("owner_id"),
+              rs.getObject("user_id", UUID.class),
               rs.getString("name"),
               rs.getString("email"),
               rs.getObject("birth_date", LocalDate.class),
@@ -152,8 +159,8 @@ public class JdbcUserProfileRepository implements UserProfileRepository {
   }
 
   @Override
-  public Optional<UserProfile> find(String ownerId) {
-    List<UserProfile> found = jdbcTemplate.query(FIND_SQL, ROW_MAPPER, ownerId);
+  public Optional<UserProfile> find(UUID userId) {
+    List<UserProfile> found = jdbcTemplate.query(FIND_SQL, ROW_MAPPER, userId);
     return found.stream().findFirst();
   }
 

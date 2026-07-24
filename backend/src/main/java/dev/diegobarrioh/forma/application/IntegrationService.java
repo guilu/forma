@@ -27,16 +27,18 @@ import org.springframework.stereotype.Service;
  * with no registered {@link ProviderMeasuresGateway} (Google Fit, Apple Health — out of FOR-132
  * scope) keep the FOR-126 stub/no-op sync behavior unchanged.
  *
- * <p>Single-user MVP (ADR-002): every use case operates on the one {@link #OWNER_ID} row, mirroring
- * {@link UserProfileService#OWNER_ID} / {@link GoalService#OWNER_ID}. No shared "current account"
- * abstraction exists yet, so this constant is duplicated here (same rationale as {@code
- * GoalService}) and will collapse onto a real account id once authentication lands.
+ * <p>Real multi-user auth (FOR-145b-2, ADR-012, migration V28): every use case resolves the
+ * caller's account id via {@link CurrentUserProvider} instead of the old fixed {@code OWNER_ID =
+ * "default-user"} constant (removed by this slice) — {@code integration_connection}, {@code
+ * integration_token}, {@code integration_oauth_state} and {@code integration_measure_marker} all
+ * had their composite primary keys rebuilt from the legacy {@code owner_id VARCHAR} column to
+ * {@code user_id UUID}. {@link #bodyMeasurementRepository} is NOT scoped here: {@code
+ * body_measurements} is a 145c "gap table" (no {@code user_id} column at all yet, see {@code
+ * AdherenceService}'s documented limitation) — a real Withings sync import from a non-placeholder
+ * user still writes into the same global, unscoped measurement history until 145c closes that gap.
  */
 @Service
 public class IntegrationService {
-
-  /** Fixed single-user owner id for the MVP (ADR-002), mirroring {@link GoalService#OWNER_ID}. */
-  public static final String OWNER_ID = "default-user";
 
   /** User-readable, secret-free sync failure messages (ADR-004/ADR-008 — never leak tokens). */
   private static final String MESSAGE_NOT_CONNECTED = "El proveedor no está conectado.";
@@ -53,6 +55,7 @@ public class IntegrationService {
   private final BodyMeasurementRepository bodyMeasurementRepository;
   private final Map<IntegrationProvider, ProviderOAuthGateway> gatewaysByProvider;
   private final Map<IntegrationProvider, ProviderMeasuresGateway> measuresGatewaysByProvider;
+  private final CurrentUserProvider currentUserProvider;
 
   public IntegrationService(
       IntegrationRepository repository,
@@ -61,7 +64,8 @@ public class IntegrationService {
       ImportedMeasureMarkerStore markerStore,
       BodyMeasurementRepository bodyMeasurementRepository,
       List<ProviderOAuthGateway> gateways,
-      List<ProviderMeasuresGateway> measuresGateways) {
+      List<ProviderMeasuresGateway> measuresGateways,
+      CurrentUserProvider currentUserProvider) {
     this.repository = repository;
     this.stateStore = stateStore;
     this.tokenStore = tokenStore;
@@ -73,6 +77,7 @@ public class IntegrationService {
     this.measuresGatewaysByProvider =
         measuresGateways.stream()
             .collect(Collectors.toMap(ProviderMeasuresGateway::provider, Function.identity()));
+    this.currentUserProvider = currentUserProvider;
   }
 
   /**
@@ -98,12 +103,15 @@ public class IntegrationService {
     Optional<ProviderOAuthGateway> gateway = gatewayFor(provider);
     if (gateway.isEmpty()) {
       IntegrationConnection connected = currentOrDefault(provider).connect(Instant.now());
-      return ConnectResult.connected(repository.save(OWNER_ID, connected));
+      return ConnectResult.connected(
+          repository.save(currentUserProvider.currentUserId(), connected));
     }
 
     Instant now = Instant.now();
-    OAuthChallenge challenge = stateStore.create(OWNER_ID, provider, now);
-    repository.save(OWNER_ID, currentOrDefault(provider).awaitingCallback());
+    OAuthChallenge challenge =
+        stateStore.create(currentUserProvider.currentUserId(), provider, now);
+    repository.save(
+        currentUserProvider.currentUserId(), currentOrDefault(provider).awaitingCallback());
     String authorizationUrl =
         gateway.get().buildAuthorizationUrl(challenge.state(), challenge.codeChallenge());
     return ConnectResult.authorizationRequired(authorizationUrl);
@@ -135,13 +143,15 @@ public class IntegrationService {
 
     Instant now = Instant.now();
     OAuthChallenge challenge =
-        stateStore.consume(OWNER_ID, provider, state, now).orElseThrow(OAuthStateException::new);
+        stateStore
+            .consume(currentUserProvider.currentUserId(), provider, state, now)
+            .orElseThrow(OAuthStateException::new);
 
     ExchangedTokens tokens = gateway.exchangeAuthorizationCode(code, challenge.codeVerifier());
 
-    tokenStore.store(OWNER_ID, provider, tokens);
+    tokenStore.store(currentUserProvider.currentUserId(), provider, tokens);
     IntegrationConnection connected = currentOrDefault(provider).connect(now);
-    return repository.save(OWNER_ID, connected);
+    return repository.save(currentUserProvider.currentUserId(), connected);
   }
 
   /**
@@ -151,9 +161,9 @@ public class IntegrationService {
    * always safe to call even when none are stored.
    */
   public IntegrationConnection disconnect(IntegrationProvider provider) {
-    tokenStore.forget(OWNER_ID, provider);
+    tokenStore.forget(currentUserProvider.currentUserId(), provider);
     IntegrationConnection disconnected = currentOrDefault(provider).disconnect();
-    return repository.save(OWNER_ID, disconnected);
+    return repository.save(currentUserProvider.currentUserId(), disconnected);
   }
 
   /**
@@ -171,7 +181,8 @@ public class IntegrationService {
    * expiry is evaluated against.
    */
   public IntegrationConnection refreshTokenIfNeeded(IntegrationProvider provider, Instant now) {
-    Optional<ExchangedTokens> stored = tokenStore.find(OWNER_ID, provider);
+    Optional<ExchangedTokens> stored =
+        tokenStore.find(currentUserProvider.currentUserId(), provider);
     if (stored.isEmpty()) {
       return currentOrDefault(provider);
     }
@@ -186,10 +197,11 @@ public class IntegrationService {
                     new ValidationException("El proveedor no admite conexión OAuth: " + provider));
     try {
       ExchangedTokens refreshed = gateway.refreshTokens(stored.get().refreshToken());
-      tokenStore.store(OWNER_ID, provider, refreshed);
+      tokenStore.store(currentUserProvider.currentUserId(), provider, refreshed);
       return currentOrDefault(provider);
     } catch (ProviderOAuthException ex) {
-      return repository.save(OWNER_ID, currentOrDefault(provider).needsReauth());
+      return repository.save(
+          currentUserProvider.currentUserId(), currentOrDefault(provider).needsReauth());
     }
   }
 
@@ -231,24 +243,29 @@ public class IntegrationService {
     if (measuresGateway.isEmpty()) {
       SyncOutcome stubOutcome = new SyncOutcome(SyncResult.OK, 0, 0, null);
       IntegrationConnection synced = current.withSyncOutcome(Instant.now(), stubOutcome);
-      return repository.save(OWNER_ID, synced);
+      return repository.save(currentUserProvider.currentUserId(), synced);
     }
 
     IntegrationConnection refreshed = refreshTokenIfNeeded(provider, Instant.now());
     if (refreshed.status() == IntegrationStatus.NEEDS_REAUTH) {
       SyncOutcome needsReauth =
           new SyncOutcome(SyncResult.NEEDS_REAUTH, 0, 0, MESSAGE_NEEDS_REAUTH);
-      return repository.save(OWNER_ID, refreshed.withSyncOutcome(Instant.now(), needsReauth));
+      return repository.save(
+          currentUserProvider.currentUserId(),
+          refreshed.withSyncOutcome(Instant.now(), needsReauth));
     }
 
-    Optional<ExchangedTokens> tokens = tokenStore.find(OWNER_ID, provider);
+    Optional<ExchangedTokens> tokens =
+        tokenStore.find(currentUserProvider.currentUserId(), provider);
     if (tokens.isEmpty()) {
       // Defensive: CONNECTED with a registered OAuth gateway should always have stored tokens
       // (they are set together in #callback); treat the impossible case the same as a failed
       // refresh rather than crashing or calling the provider with no credentials.
       SyncOutcome needsReauth =
           new SyncOutcome(SyncResult.NEEDS_REAUTH, 0, 0, MESSAGE_NEEDS_REAUTH);
-      return repository.save(OWNER_ID, refreshed.withSyncOutcome(Instant.now(), needsReauth));
+      return repository.save(
+          currentUserProvider.currentUserId(),
+          refreshed.withSyncOutcome(Instant.now(), needsReauth));
     }
 
     List<ImportedMeasureGroup> fetchedGroups;
@@ -259,10 +276,13 @@ public class IntegrationService {
               .fetchMeasureGroups(tokens.get().accessToken(), refreshed.lastSyncAt());
     } catch (ProviderSyncException ex) {
       SyncOutcome errorOutcome = new SyncOutcome(SyncResult.ERROR, 0, 0, MESSAGE_PROVIDER_ERROR);
-      return repository.save(OWNER_ID, refreshed.withSyncOutcome(Instant.now(), errorOutcome));
+      return repository.save(
+          currentUserProvider.currentUserId(),
+          refreshed.withSyncOutcome(Instant.now(), errorOutcome));
     }
 
-    Set<Long> alreadyImported = markerStore.findImportedGroupIds(OWNER_ID, provider);
+    Set<Long> alreadyImported =
+        markerStore.findImportedGroupIds(currentUserProvider.currentUserId(), provider);
     Instant importedAt = Instant.now();
     int importedCount = 0;
     int duplicatesSkipped = 0;
@@ -273,13 +293,14 @@ public class IntegrationService {
       }
       BodyMeasurement measurement = group.measurement();
       bodyMeasurementRepository.save(measurement);
-      markerStore.markImported(OWNER_ID, provider, group.externalGroupId(), importedAt);
+      markerStore.markImported(
+          currentUserProvider.currentUserId(), provider, group.externalGroupId(), importedAt);
       importedCount++;
     }
 
     SyncOutcome outcome = new SyncOutcome(SyncResult.OK, importedCount, duplicatesSkipped, null);
     IntegrationConnection synced = refreshed.withSyncOutcome(importedAt, outcome);
-    return repository.save(OWNER_ID, synced);
+    return repository.save(currentUserProvider.currentUserId(), synced);
   }
 
   private Optional<ProviderMeasuresGateway> measuresGatewayFor(IntegrationProvider provider) {
@@ -292,7 +313,7 @@ public class IntegrationService {
 
   private IntegrationConnection currentOrDefault(IntegrationProvider provider) {
     return repository
-        .findByOwnerAndProvider(OWNER_ID, provider)
+        .findByOwnerAndProvider(currentUserProvider.currentUserId(), provider)
         .orElseGet(() -> IntegrationConnection.disconnectedDefault(provider));
   }
 }

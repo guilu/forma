@@ -8,6 +8,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
@@ -21,6 +22,10 @@ import org.springframework.stereotype.Repository;
  * "should I encrypt this" decision, it always does, and it never logs a plaintext or ciphertext
  * value (ADR-008). Plain JDBC via {@link JdbcTemplate} — no ORM (ADR-003), following {@link
  * JdbcIntegrationRepository}'s update-then-insert upsert pattern.
+ *
+ * <p><b>owner_id -&gt; user_id (FOR-145b-2, migration V28).</b> {@code integration_token}'s
+ * composite primary key was rebuilt from the legacy {@code owner_id VARCHAR} column to {@code
+ * user_id UUID}, FK-referencing {@code users(id)}.
  */
 @Repository
 public class JdbcIntegrationTokenStore implements IntegrationTokenStore {
@@ -30,7 +35,7 @@ public class JdbcIntegrationTokenStore implements IntegrationTokenStore {
       SELECT access_token_ciphertext, access_token_nonce,
         refresh_token_ciphertext, refresh_token_nonce, access_token_expires_at
       FROM integration_token
-      WHERE owner_id = ? AND provider = ?
+      WHERE user_id = ? AND provider = ?
       """;
 
   private static final String UPDATE_SQL =
@@ -39,19 +44,19 @@ public class JdbcIntegrationTokenStore implements IntegrationTokenStore {
         access_token_ciphertext = ?, access_token_nonce = ?,
         refresh_token_ciphertext = ?, refresh_token_nonce = ?,
         access_token_expires_at = ?, updated_at = ?
-      WHERE owner_id = ? AND provider = ?
+      WHERE user_id = ? AND provider = ?
       """;
 
   private static final String INSERT_SQL =
       """
       INSERT INTO integration_token
-        (owner_id, provider, access_token_ciphertext, access_token_nonce,
+        (user_id, provider, access_token_ciphertext, access_token_nonce,
          refresh_token_ciphertext, refresh_token_nonce, access_token_expires_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       """;
 
   private static final String DELETE_SQL =
-      "DELETE FROM integration_token WHERE owner_id = ? AND provider = ?";
+      "DELETE FROM integration_token WHERE user_id = ? AND provider = ?";
 
   private final JdbcTemplate jdbcTemplate;
   private final AesGcmTokenCipher cipher;
@@ -62,7 +67,7 @@ public class JdbcIntegrationTokenStore implements IntegrationTokenStore {
   }
 
   @Override
-  public void store(String ownerId, IntegrationProvider provider, ExchangedTokens tokens) {
+  public void store(UUID userId, IntegrationProvider provider, ExchangedTokens tokens) {
     AesGcmTokenCipher.EncryptedValue access = cipher.encrypt(tokens.accessToken());
     AesGcmTokenCipher.EncryptedValue refresh = cipher.encrypt(tokens.refreshToken());
     OffsetDateTime expiresAt = toOffsetDateTime(tokens.accessTokenExpiresAt());
@@ -77,12 +82,12 @@ public class JdbcIntegrationTokenStore implements IntegrationTokenStore {
             refresh.nonce(),
             expiresAt,
             updatedAt,
-            ownerId,
+            userId,
             provider.name());
     if (updated == 0) {
       jdbcTemplate.update(
           INSERT_SQL,
-          ownerId,
+          userId,
           provider.name(),
           access.ciphertext(),
           access.nonce(),
@@ -94,7 +99,7 @@ public class JdbcIntegrationTokenStore implements IntegrationTokenStore {
   }
 
   @Override
-  public Optional<ExchangedTokens> find(String ownerId, IntegrationProvider provider) {
+  public Optional<ExchangedTokens> find(UUID userId, IntegrationProvider provider) {
     RowMapper<ExchangedTokens> rowMapper =
         (rs, rowNum) ->
             new ExchangedTokens(
@@ -103,13 +108,13 @@ public class JdbcIntegrationTokenStore implements IntegrationTokenStore {
                 cipher.decrypt(
                     rs.getBytes("refresh_token_ciphertext"), rs.getBytes("refresh_token_nonce")),
                 toInstant(rs.getObject("access_token_expires_at", OffsetDateTime.class)));
-    List<ExchangedTokens> found = jdbcTemplate.query(FIND_SQL, rowMapper, ownerId, provider.name());
+    List<ExchangedTokens> found = jdbcTemplate.query(FIND_SQL, rowMapper, userId, provider.name());
     return found.stream().findFirst();
   }
 
   @Override
-  public void forget(String ownerId, IntegrationProvider provider) {
-    jdbcTemplate.update(DELETE_SQL, ownerId, provider.name());
+  public void forget(UUID userId, IntegrationProvider provider) {
+    jdbcTemplate.update(DELETE_SQL, userId, provider.name());
   }
 
   private static OffsetDateTime toOffsetDateTime(Instant instant) {

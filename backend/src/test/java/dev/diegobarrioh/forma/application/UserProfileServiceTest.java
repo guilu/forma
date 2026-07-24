@@ -17,6 +17,7 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -27,8 +28,10 @@ import org.junit.jupiter.api.Test;
  */
 class UserProfileServiceTest {
 
+  private static final UUID USER_ID = UUID.randomUUID();
+
   private final RecordingRepository repository = new RecordingRepository();
-  private final UserProfileService service = new UserProfileService(repository);
+  private final UserProfileService service = new UserProfileService(repository, () -> USER_ID);
 
   @Test
   void getReturnsDefaultsWhenNoRowExistsYet() {
@@ -42,9 +45,9 @@ class UserProfileServiceTest {
   @Test
   void getReturnsStoredProfileWhenARowExists() {
     repository.rows.put(
-        UserProfileService.OWNER_ID,
+        USER_ID,
         new UserProfile(
-            UserProfileService.OWNER_ID,
+            USER_ID,
             "Ada",
             null,
             null,
@@ -66,9 +69,9 @@ class UserProfileServiceTest {
   @Test
   void updateProfileFieldsPersistsWithoutClobberingPreferences() {
     repository.rows.put(
-        UserProfileService.OWNER_ID,
+        USER_ID,
         new UserProfile(
-            UserProfileService.OWNER_ID,
+            USER_ID,
             "Old Name",
             "old@example.com",
             LocalDate.of(1990, 1, 1),
@@ -93,7 +96,7 @@ class UserProfileServiceTest {
     assertThat(updated.sex()).isEqualTo(Sex.FEMALE);
     assertThat(updated.themeMode()).isEqualTo(ThemeMode.LIGHT);
     assertThat(updated.defaultObjectives().caloricDeficitKcal()).isEqualTo(500.0);
-    assertThat(repository.rows.get(UserProfileService.OWNER_ID)).isEqualTo(updated);
+    assertThat(repository.rows.get(USER_ID)).isEqualTo(updated);
   }
 
   @Test
@@ -101,9 +104,9 @@ class UserProfileServiceTest {
     ProfileBaseline baseline = new ProfileBaseline(73.6, 14.7, 22.7);
     PersonalTargets targets = new PersonalTargets(2300.0, 12.0, 13.0, 73.0, 75.0, 70.0, 260.0);
     repository.rows.put(
-        UserProfileService.OWNER_ID,
+        USER_ID,
         new UserProfile(
-            UserProfileService.OWNER_ID,
+            USER_ID,
             "Diego",
             null,
             null,
@@ -132,9 +135,9 @@ class UserProfileServiceTest {
   @Test
   void updateThemeModePersistsWithoutClobberingProfileFields() {
     repository.rows.put(
-        UserProfileService.OWNER_ID,
+        USER_ID,
         new UserProfile(
-            UserProfileService.OWNER_ID,
+            USER_ID,
             "Ada",
             "ada@example.com",
             null,
@@ -154,8 +157,7 @@ class UserProfileServiceTest {
 
     assertThat(updated.themeMode()).isEqualTo(ThemeMode.LIGHT);
     assertThat(updated.name()).isEqualTo("Ada");
-    assertThat(repository.rows.get(UserProfileService.OWNER_ID).themeMode())
-        .isEqualTo(ThemeMode.LIGHT);
+    assertThat(repository.rows.get(USER_ID).themeMode()).isEqualTo(ThemeMode.LIGHT);
   }
 
   @Test
@@ -171,9 +173,9 @@ class UserProfileServiceTest {
   @Test
   void updateDefaultObjectivesPersistsWithoutClobberingThemeMode() {
     repository.rows.put(
-        UserProfileService.OWNER_ID,
+        USER_ID,
         new UserProfile(
-            UserProfileService.OWNER_ID,
+            USER_ID,
             null,
             null,
             null,
@@ -224,9 +226,9 @@ class UserProfileServiceTest {
   @Test
   void submitOnboardingAnswersAfterCompletionIsStillAllowed() {
     repository.rows.put(
-        UserProfileService.OWNER_ID,
+        USER_ID,
         new UserProfile(
-            UserProfileService.OWNER_ID,
+            USER_ID,
             null,
             null,
             null,
@@ -259,11 +261,11 @@ class UserProfileServiceTest {
 
   /** In-memory {@link UserProfileRepository} that records saves, keyed by owner id. */
   private static final class RecordingRepository implements UserProfileRepository {
-    private final Map<String, UserProfile> rows = new HashMap<>();
+    private final Map<UUID, UserProfile> rows = new HashMap<>();
 
     @Override
-    public Optional<UserProfile> find(String ownerId) {
-      return Optional.ofNullable(rows.get(ownerId));
+    public Optional<UserProfile> find(UUID userId) {
+      return Optional.ofNullable(rows.get(userId));
     }
 
     @Override

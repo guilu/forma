@@ -104,12 +104,11 @@ public class JdbcWeeklyTrackingRecordRepository implements WeeklyTrackingRecordR
       jdbcTemplate.update(
           """
           INSERT INTO weekly_tracking_record
-            (id, owner_id, user_id, week, record_date, weight_kg, body_fat_percentage, bmi,
+            (id, user_id, week, record_date, weight_kg, body_fat_percentage, bmi,
              running_km, pace_4km_min_per_km, recommended_kcal, comment)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           """,
           UUID.randomUUID(),
-          userId.toString(),
           userId,
           record.week(),
           Date.valueOf(record.date()),

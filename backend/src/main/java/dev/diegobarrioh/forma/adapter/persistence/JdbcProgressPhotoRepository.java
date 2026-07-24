@@ -20,8 +20,9 @@ import org.springframework.stereotype.Repository;
  *
  * <p>FOR-145b-1 (migration V27): {@link #findById} is now owner-scoped at the SQL level (WHERE id =
  * ? AND user_id = ?) -- a cross-owner id and an unknown id are now indistinguishable, so the
- * service maps both to 404 (no existence leak), replacing the pre-145b 403-vs-404 split. Legacy
- * {@code owner_id VARCHAR} column stays populated (userId.toString()) but is never read here.
+ * service maps both to 404 (no existence leak), replacing the pre-145b 403-vs-404 split. The legacy
+ * {@code owner_id VARCHAR} column has been fully dropped (FOR-145b-2, migration V29) — it is no
+ * longer written or read anywhere in this adapter.
  */
 @Repository
 public class JdbcProgressPhotoRepository implements ProgressPhotoRepository {
@@ -51,10 +52,9 @@ public class JdbcProgressPhotoRepository implements ProgressPhotoRepository {
       String storageRef,
       Instant createdAt) {
     jdbcTemplate.update(
-        "INSERT INTO progress_photo (id, owner_id, user_id, content_type, size_bytes,"
-            + " storage_ref, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO progress_photo (id, user_id, content_type, size_bytes,"
+            + " storage_ref, created_at) VALUES (?, ?, ?, ?, ?, ?)",
         UUID.fromString(id),
-        userId.toString(),
         userId,
         contentType,
         sizeBytes,

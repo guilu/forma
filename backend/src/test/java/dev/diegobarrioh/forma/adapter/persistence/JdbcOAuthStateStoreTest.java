@@ -4,9 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.diegobarrioh.forma.application.OAuthChallenge;
 import dev.diegobarrioh.forma.application.OAuthStateStore;
+import dev.diegobarrioh.forma.bootstrap.LegacyUserBootstrap;
 import dev.diegobarrioh.forma.domain.IntegrationProvider;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,21 +21,37 @@ import org.springframework.test.context.ActiveProfiles;
  * Integration test for {@link JdbcOAuthStateStore} (FOR-131, migration V15). Runs against the
  * in-memory PostgreSQL-mode H2 with Flyway migrations applied (ADR-007), like {@code
  * JdbcIntegrationRepositoryTest} (FOR-126).
+ *
+ * <p>FOR-145b-2 (migration V28): {@code integration_oauth_state.user_id} FK-references {@code
+ * users(id)}, so {@code OTHER_OWNER} must be a real seeded row. {@code OWNER} reuses the
+ * always-present legacy placeholder account.
  */
 @SpringBootTest
 @ActiveProfiles("test")
 class JdbcOAuthStateStoreTest {
 
-  private static final String OWNER = "default-user";
-  private static final String OTHER_OWNER = "someone-else";
+  private static final UUID OWNER = LegacyUserBootstrap.PLACEHOLDER_USER_ID;
+  private static final UUID OTHER_OWNER = UUID.randomUUID();
   private static final Instant NOW = Instant.parse("2026-07-16T08:00:00Z");
 
   @Autowired private OAuthStateStore stateStore;
   @Autowired private JdbcTemplate jdbcTemplate;
 
   @BeforeEach
-  void clearTable() {
+  void seedTables() {
     jdbcTemplate.update("DELETE FROM integration_oauth_state");
+    jdbcTemplate.update("DELETE FROM users WHERE id = ?", OTHER_OWNER);
+    jdbcTemplate.update(
+        "INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)",
+        OTHER_OWNER,
+        "oauth-state-other-owner@test.local",
+        "!");
+  }
+
+  @AfterEach
+  void cleanUpOtherOwner() {
+    jdbcTemplate.update("DELETE FROM integration_oauth_state");
+    jdbcTemplate.update("DELETE FROM users WHERE id = ?", OTHER_OWNER);
   }
 
   @Test

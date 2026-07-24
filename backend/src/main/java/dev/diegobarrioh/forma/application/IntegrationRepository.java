@@ -4,6 +4,7 @@ import dev.diegobarrioh.forma.domain.IntegrationConnection;
 import dev.diegobarrioh.forma.domain.IntegrationProvider;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Port for persisting and reading {@link IntegrationConnection}s (FOR-126). Owned by the
@@ -13,28 +14,31 @@ import java.util.Optional;
  * <p><b>Token-free by design</b> (ADR-004, spec FOR-126 boundary rule): this port declares no
  * accessor that reads or writes a token/secret. Later FOR-103 slices add encrypted token storage
  * entirely inside the adapter implementation — this interface must not change to accommodate that.
+ *
+ * <p>{@code userId} is a real account id (FOR-145b-2, migration V28) — {@code
+ * integration_connection}'s composite primary key was rebuilt from the legacy {@code owner_id
+ * VARCHAR} column to {@code user_id UUID}, FK-referencing {@code users(id)}.
  */
 public interface IntegrationRepository {
 
   /**
-   * All connections stored for {@code ownerId}, in a stable order. May be a strict subset of {@link
+   * All connections stored for {@code userId}, in a stable order. May be a strict subset of {@link
    * IntegrationProvider#values()} — providers never connected have no row (see {@code
    * IntegrationService#status}, which fills the gaps with defaults).
    */
-  List<IntegrationConnection> findAllByOwner(String ownerId);
+  List<IntegrationConnection> findAllByOwner(UUID userId);
 
   /**
-   * Finds {@code ownerId}'s connection for {@code provider}; empty if none was ever stored or it
+   * Finds {@code userId}'s connection for {@code provider}; empty if none was ever stored or it
    * belongs to another owner.
    */
-  Optional<IntegrationConnection> findByOwnerAndProvider(
-      String ownerId, IntegrationProvider provider);
+  Optional<IntegrationConnection> findByOwnerAndProvider(UUID userId, IntegrationProvider provider);
 
   /**
-   * Inserts or updates (upserts) the connection for {@code ownerId}/{@code connection.provider()}.
+   * Inserts or updates (upserts) the connection for {@code userId}/{@code connection.provider()}.
    * Callers always pass the fully-merged connection; this port never partially patches a row.
    *
    * @return the persisted connection
    */
-  IntegrationConnection save(String ownerId, IntegrationConnection connection);
+  IntegrationConnection save(UUID userId, IntegrationConnection connection);
 }
