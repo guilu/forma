@@ -16,6 +16,7 @@ import dev.diegobarrioh.forma.application.IntegrationService;
 import dev.diegobarrioh.forma.application.IntegrationTokenStore;
 import dev.diegobarrioh.forma.domain.IntegrationConnection;
 import dev.diegobarrioh.forma.domain.IntegrationProvider;
+import dev.diegobarrioh.forma.support.WebMvcAuthTestConfig;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
@@ -30,6 +31,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
@@ -51,6 +53,7 @@ import org.springframework.test.web.servlet.MockMvc;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@Import(WebMvcAuthTestConfig.class)
 class IntegrationSyncEndToEndTest {
 
   private static final String OWNER = IntegrationService.OWNER_ID;

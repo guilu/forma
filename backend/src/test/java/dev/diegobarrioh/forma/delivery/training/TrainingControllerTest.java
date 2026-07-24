@@ -23,12 +23,14 @@ import dev.diegobarrioh.forma.application.WeeklyTrainingSummary;
 import dev.diegobarrioh.forma.application.WeeklyTrainingSummaryService;
 import dev.diegobarrioh.forma.domain.MuscleLoad;
 import dev.diegobarrioh.forma.domain.SessionStatus;
+import dev.diegobarrioh.forma.support.WebMvcAuthTestConfig;
 import java.time.DayOfWeek;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -37,6 +39,7 @@ import org.springframework.test.web.servlet.MockMvc;
  * status-update endpoint (happy path, validation, not-found).
  */
 @WebMvcTest(TrainingController.class)
+@Import(WebMvcAuthTestConfig.class)
 class TrainingControllerTest {
 
   @Autowired private MockMvc mockMvc;

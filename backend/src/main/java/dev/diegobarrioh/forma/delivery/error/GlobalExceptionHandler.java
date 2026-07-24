@@ -1,9 +1,11 @@
 package dev.diegobarrioh.forma.delivery.error;
 
+import dev.diegobarrioh.forma.application.ConflictException;
 import dev.diegobarrioh.forma.application.ForbiddenException;
 import dev.diegobarrioh.forma.application.NotFoundException;
 import dev.diegobarrioh.forma.application.OAuthStateException;
 import dev.diegobarrioh.forma.application.ProviderOAuthException;
+import dev.diegobarrioh.forma.application.UnauthorizedException;
 import dev.diegobarrioh.forma.application.ValidationException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -144,6 +146,29 @@ public class GlobalExceptionHandler {
   @ResponseStatus(HttpStatus.FORBIDDEN)
   public ApiError handleForbidden(ForbiddenException ex, HttpServletRequest request) {
     return ApiError.of(ApiErrorCode.FORBIDDEN, ex.getMessage(), correlationId(request), null);
+  }
+
+  /**
+   * No authenticated caller is present where one is required (FOR-145, ADR-012) — reached only as
+   * defense-in-depth ({@link
+   * dev.diegobarrioh.forma.delivery.security.SecurityContextCurrentUserProvider}'s javadoc): the
+   * {@code SecurityFilterChain}'s {@code AuthenticationEntryPoint} normally rejects an
+   * unauthenticated request before any controller method runs.
+   */
+  @ExceptionHandler(UnauthorizedException.class)
+  @ResponseStatus(HttpStatus.UNAUTHORIZED)
+  public ApiError handleUnauthorized(UnauthorizedException ex, HttpServletRequest request) {
+    return ApiError.of(ApiErrorCode.UNAUTHORIZED, ex.getMessage(), correlationId(request), null);
+  }
+
+  /**
+   * The request conflicts with existing state (FOR-145 spec: "Duplicate email rejected" on
+   * self-registration) maps to 409 with the safe, caller-provided message.
+   */
+  @ExceptionHandler(ConflictException.class)
+  @ResponseStatus(HttpStatus.CONFLICT)
+  public ApiError handleConflict(ConflictException ex, HttpServletRequest request) {
+    return ApiError.of(ApiErrorCode.CONFLICT, ex.getMessage(), correlationId(request), null);
   }
 
   /**

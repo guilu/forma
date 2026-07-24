@@ -12,6 +12,14 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME}
     password: ${SPRING_DATASOURCE_PASSWORD}
 
+# Session-cookie auth (FOR-145, ADR-012): a real deployment is HTTPS-only, so the session
+# cookie's Secure flag is forced here rather than left to auto-detect (base application.yml).
+server:
+  servlet:
+    session:
+      cookie:
+        secure: true
+
 # Withings OAuth secrets (FOR-131) are read from the environment via the base application.yml's
 # empty-default placeholders (WITHINGS_CLIENT_ID / WITHINGS_CLIENT_SECRET / WITHINGS_TOKEN_ENC_KEY).
 # They are deliberately NOT declared "required, no fallback" here: by design the application boots

@@ -20,12 +20,14 @@ import dev.diegobarrioh.forma.domain.GoalProgress;
 import dev.diegobarrioh.forma.domain.GoalStatus;
 import dev.diegobarrioh.forma.domain.Milestone;
 import dev.diegobarrioh.forma.domain.ProgressSource;
+import dev.diegobarrioh.forma.support.WebMvcAuthTestConfig;
 import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -35,6 +37,7 @@ import org.springframework.test.web.servlet.MockMvc;
  * {@code UserProfileControllerTest} (FOR-107).
  */
 @WebMvcTest(GoalController.class)
+@Import(WebMvcAuthTestConfig.class)
 class GoalControllerTest {
 
   @Autowired private MockMvc mockMvc;

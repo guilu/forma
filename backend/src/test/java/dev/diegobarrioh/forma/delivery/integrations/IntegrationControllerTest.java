@@ -18,12 +18,14 @@ import dev.diegobarrioh.forma.domain.IntegrationProvider;
 import dev.diegobarrioh.forma.domain.IntegrationStatus;
 import dev.diegobarrioh.forma.domain.SyncOutcome;
 import dev.diegobarrioh.forma.domain.SyncResult;
+import dev.diegobarrioh.forma.support.WebMvcAuthTestConfig;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -35,6 +37,7 @@ import org.springframework.test.web.servlet.MockMvc;
  * IntegrationService} is mocked, like {@code GoalControllerTest} (FOR-125).
  */
 @WebMvcTest(IntegrationController.class)
+@Import(WebMvcAuthTestConfig.class)
 class IntegrationControllerTest {
 
   @Autowired private MockMvc mockMvc;

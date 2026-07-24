@@ -25,6 +25,14 @@ dependencies {
     // Bean Validation for API request DTOs and the validation error baseline (FOR-88).
     implementation 'org.springframework.boot:spring-boot-starter-validation'
 
+    // Real authentication (FOR-145, ADR-012): session-cookie auth via Spring Security,
+    // Argon2id password hashing (Argon2PasswordEncoder ships with this starter).
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    // Argon2PasswordEncoder delegates the actual Argon2id computation to Bouncy Castle at
+    // runtime (not bundled by spring-security-crypto itself) — required or every
+    // PasswordEncoder#encode/matches call throws NoClassDefFoundError.
+    implementation 'org.bouncycastle:bcprov-jdk18on:1.78.1'
+
     // Persistence baseline (FOR-83): JDBC DataSource + Flyway migrations against
     // PostgreSQL (ADR-003). No JPA/ORM yet — the domain stays framework-free.
     implementation 'org.springframework.boot:spring-boot-starter-jdbc'
@@ -33,6 +41,8 @@ dependencies {
     runtimeOnly 'org.postgresql:postgresql'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    // Authenticated MockMvc test support (FOR-145, ADR-012): SecurityMockMvcRequestPostProcessors.
+    testImplementation 'org.springframework.security:spring-security-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     // In-memory database (PostgreSQL compatibility mode) so the migration
     // baseline runs in tests without requiring Docker/PostgreSQL locally.

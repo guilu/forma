@@ -10,12 +10,14 @@ import dev.diegobarrioh.forma.application.WorkoutTemplateService;
 import dev.diegobarrioh.forma.domain.StrengthWorkoutItem;
 import dev.diegobarrioh.forma.domain.StrengthWorkoutTemplate;
 import dev.diegobarrioh.forma.domain.WorkoutType;
+import dev.diegobarrioh.forma.support.WebMvcAuthTestConfig;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
@@ -24,6 +26,7 @@ import org.springframework.test.web.servlet.MockMvc;
  * not-found handling.
  */
 @WebMvcTest(WorkoutController.class)
+@Import(WebMvcAuthTestConfig.class)
 class WorkoutControllerTest {
 
   @Autowired private MockMvc mockMvc;

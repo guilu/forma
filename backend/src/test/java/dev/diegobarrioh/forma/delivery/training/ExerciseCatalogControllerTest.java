@@ -10,12 +10,14 @@ import dev.diegobarrioh.forma.application.CatalogExercise;
 import dev.diegobarrioh.forma.application.CatalogExerciseService;
 import dev.diegobarrioh.forma.application.NotFoundException;
 import dev.diegobarrioh.forma.domain.Modality;
+import dev.diegobarrioh.forma.support.WebMvcAuthTestConfig;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
@@ -23,6 +25,7 @@ import org.springframework.test.web.servlet.MockMvc;
  * single lookup, and error mapping (bogus {@code ?modality=} -> 400, unknown id -> 404).
  */
 @WebMvcTest(ExerciseCatalogController.class)
+@Import(WebMvcAuthTestConfig.class)
 class ExerciseCatalogControllerTest {
 
   @Autowired private MockMvc mockMvc;

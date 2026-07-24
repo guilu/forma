@@ -14,6 +14,7 @@ import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.diegobarrioh.forma.application.ProgressPhotoRepository;
 import dev.diegobarrioh.forma.application.ProgressPhotoService;
+import dev.diegobarrioh.forma.support.WebMvcAuthTestConfig;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.UUID;
@@ -25,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
@@ -57,6 +59,7 @@ import org.springframework.test.web.servlet.MockMvc;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@Import(WebMvcAuthTestConfig.class)
 class ProgressPhotoEndToEndTest {
 
   private static final String OTHER_OWNER = "someone-else";

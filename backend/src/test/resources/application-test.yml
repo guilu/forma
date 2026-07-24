@@ -9,6 +9,15 @@ spring:
     password: ""
     driver-class-name: org.h2.Driver
 
+# Session-cookie auth (FOR-145, ADR-012). Forces the Secure cookie flag explicitly (mirroring
+# application-prod.yml) so the FOR-145 spec's "httpOnly+Secure+SameSite=Lax" login scenario is
+# exercised deterministically in an environment that never carries real TLS.
+server:
+  servlet:
+    session:
+      cookie:
+        secure: true
+
 # Withings OAuth test fixtures (FOR-131). NOT real secrets: client id/secret are placeholder
 # strings (WithingsOAuthAdapterTest/JdbcIntegrationTokenStoreTest never call the live Withings
 # API — recorded fixtures / a fake transport only, per AGENTS.md and tests.md). The encryption key

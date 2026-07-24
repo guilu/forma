@@ -20,6 +20,7 @@ import dev.diegobarrioh.forma.domain.ShoppingCategory;
 import dev.diegobarrioh.forma.domain.ShoppingListItem;
 import dev.diegobarrioh.forma.domain.ShoppingListStatus;
 import dev.diegobarrioh.forma.domain.ShoppingUnit;
+import dev.diegobarrioh.forma.support.WebMvcAuthTestConfig;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -28,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -38,6 +40,7 @@ import org.springframework.test.web.servlet.MockMvc;
  * handling.
  */
 @WebMvcTest(ShoppingListController.class)
+@Import(WebMvcAuthTestConfig.class)
 class ShoppingListControllerTest {
 
   private static final Instant GENERATED_AT = Instant.parse("2026-07-06T08:00:00Z");

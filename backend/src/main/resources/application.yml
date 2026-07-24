@@ -64,6 +64,13 @@ forma:
     photos:
       storage-dir: ${FORMA_PROGRESS_PHOTOS_DIR:${user.home}/.forma/progress-photos}
 
+  # Legacy placeholder-account activation (FOR-145, ADR-012 / LegacyUserBootstrap). Unset by
+  # default — the migration V26 placeholder row (the pre-auth single-user data owner) stays
+  # unusable until a real environment provides this via FORMA_BOOTSTRAP_LEGACY_USER_PASSWORD.
+  # Never a literal value here (AGENTS.md: "Do not commit secrets").
+  bootstrap:
+    legacy-user-password: ${FORMA_BOOTSTRAP_LEGACY_USER_PASSWORD:}
+
 server:
   port: ${SERVER_PORT:8080}
   # API error safety baseline (FOR-88, ADR-005): never leak stack traces or raw
@@ -73,6 +80,19 @@ server:
     include-stacktrace: never
     include-message: never
     include-binding-errors: never
+
+  # Session-cookie auth (FOR-145, ADR-012). http-only stops JS reading the session id
+  # (XSS-mitigation) and same-site=lax is the CSRF baseline. `secure` is deliberately NOT forced
+  # here: Tomcat then defaults it to the request's own scheme (false over local plain HTTP dev,
+  # true once a request actually arrives over HTTPS), so local development stays usable without
+  # TLS. Real HTTPS-only environments force it explicitly (application-prod.yml); the automated
+  # test suite also forces it explicitly (application-test.yml) so the FOR-145 spec's
+  # "httpOnly+Secure+SameSite=Lax" scenario is exercised deterministically.
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        same-site: lax
 
 # Observability baseline (ADR-008): expose health only and never leak internal
 # configuration or details. Broader API/error handling is owned by FOR-88.

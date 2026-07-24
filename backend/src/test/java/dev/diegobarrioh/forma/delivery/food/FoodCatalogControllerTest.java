@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import dev.diegobarrioh.forma.application.CatalogFood;
 import dev.diegobarrioh.forma.application.CatalogFoodService;
 import dev.diegobarrioh.forma.application.NotFoundException;
+import dev.diegobarrioh.forma.support.WebMvcAuthTestConfig;
 import java.math.BigDecimal;
 import java.util.List;
 import org.hamcrest.Matchers;
@@ -15,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
@@ -22,6 +24,7 @@ import org.springframework.test.web.servlet.MockMvc;
  * (with explicit JSON {@code null} for absent key nutrients), and 404 on an unknown id.
  */
 @WebMvcTest(FoodCatalogController.class)
+@Import(WebMvcAuthTestConfig.class)
 class FoodCatalogControllerTest {
 
   @Autowired private MockMvc mockMvc;
