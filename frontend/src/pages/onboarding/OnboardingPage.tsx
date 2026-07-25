@@ -278,7 +278,7 @@ export function OnboardingPage() {
     const next: OnboardingProgress = { ...progress, completed: true };
     setProgress(next);
     syncInBackground(next);
-    navigate('/');
+    navigate('/app');
   }
 
   function handleRestart() {

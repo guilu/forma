@@ -503,7 +503,7 @@ function WeeklySummary({ days }: { readonly days: readonly TrainingDay[] }) {
           </li>
         ))}
       </ul>
-      <Link className={styles.summaryLink} to="/progreso">
+      <Link className={styles.summaryLink} to="/app/progreso">
         Ver estadísticas completas
       </Link>
     </Card>
@@ -658,7 +658,7 @@ function MuscleGroupsSection() {
           </span>
           <p className={styles.encourageTitle}>¡Sigue así!</p>
           <p className={styles.encourageText}>Vas por buen camino para alcanzar tu objetivo.</p>
-          <Link className={styles.encourageLink} to="/progreso">
+          <Link className={styles.encourageLink} to="/app/progreso">
             Ver progreso
           </Link>
         </div>

@@ -30,12 +30,12 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: readonly NavItem[] = [
-  { path: '/', label: 'Dashboard', icon: 'dashboard', primary: true },
-  { path: '/mediciones', label: 'Mediciones', icon: 'measurements', primary: true },
-  { path: '/entrenamiento', label: 'Entrenamiento', icon: 'training', primary: true },
-  { path: '/nutricion', label: 'Nutrición', icon: 'nutrition', primary: true },
-  { path: '/lista-compra', label: 'Lista de compra', icon: 'shopping', primary: false },
-  { path: '/progreso', label: 'Progreso', icon: 'progress', primary: false },
-  { path: '/objetivos', label: 'Objetivos', icon: 'goals', primary: false },
-  { path: '/ajustes', label: 'Ajustes', icon: 'settings', primary: false, settings: true },
+  { path: '/app', label: 'Dashboard', icon: 'dashboard', primary: true },
+  { path: '/app/mediciones', label: 'Mediciones', icon: 'measurements', primary: true },
+  { path: '/app/entrenamiento', label: 'Entrenamiento', icon: 'training', primary: true },
+  { path: '/app/nutricion', label: 'Nutrición', icon: 'nutrition', primary: true },
+  { path: '/app/lista-compra', label: 'Lista de compra', icon: 'shopping', primary: false },
+  { path: '/app/progreso', label: 'Progreso', icon: 'progress', primary: false },
+  { path: '/app/objetivos', label: 'Objetivos', icon: 'goals', primary: false },
+  { path: '/app/ajustes', label: 'Ajustes', icon: 'settings', primary: false, settings: true },
 ];

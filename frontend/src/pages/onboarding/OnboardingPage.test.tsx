@@ -45,7 +45,7 @@ function renderOnboarding() {
       <NotificationProvider>
         <Routes>
           <Route path="/onboarding" element={<OnboardingPage />} />
-          <Route path="/" element={<div>Panel principal</div>} />
+          <Route path="/app" element={<div>Panel principal</div>} />
         </Routes>
       </NotificationProvider>
     </MemoryRouter>,

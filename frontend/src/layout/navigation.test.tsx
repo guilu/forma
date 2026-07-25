@@ -51,7 +51,7 @@ describe('sidebar navigation', () => {
   it('navigates to a section when its link is clicked', async () => {
     const user = userEvent.setup();
     render(
-      <MemoryRouter initialEntries={['/']}>
+      <MemoryRouter initialEntries={['/app']}>
         <App />
       </MemoryRouter>,
     );
@@ -74,7 +74,7 @@ describe('sidebar navigation', () => {
   it('navigates to a section using only the keyboard', async () => {
     const user = userEvent.setup();
     render(
-      <MemoryRouter initialEntries={['/']}>
+      <MemoryRouter initialEntries={['/app']}>
         <App />
       </MemoryRouter>,
     );

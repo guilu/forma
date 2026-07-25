@@ -49,7 +49,7 @@ describe('BodyMetricsStep', () => {
 
     expect(screen.getByRole('link', { name: 'Ir a Integraciones' })).toHaveAttribute(
       'href',
-      '/ajustes/integraciones',
+      '/app/ajustes/integraciones',
     );
   });
 
