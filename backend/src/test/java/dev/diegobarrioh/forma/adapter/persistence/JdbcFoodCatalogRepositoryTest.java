@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.diegobarrioh.forma.application.CatalogFood;
 import dev.diegobarrioh.forma.application.FoodCatalogRepository;
+import dev.diegobarrioh.forma.bootstrap.LegacyUserBootstrap;
 import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
@@ -88,9 +89,10 @@ class JdbcFoodCatalogRepositoryTest {
     UUID id = UUID.randomUUID();
 
     jdbcTemplate.update(
-        "INSERT INTO shopping_products (id, name, estimated_price_eur, linked_food_item_id)"
-            + " VALUES (?, ?, ?, ?)",
+        "INSERT INTO shopping_products (id, user_id, name, estimated_price_eur,"
+            + " linked_food_item_id) VALUES (?, ?, ?, ?, ?)",
         id,
+        LegacyUserBootstrap.PLACEHOLDER_USER_ID,
         "Test product",
         new BigDecimal("1.00"),
         "oats");
@@ -122,9 +124,10 @@ class JdbcFoodCatalogRepositoryTest {
     UUID id = UUID.randomUUID();
 
     jdbcTemplate.update(
-        "INSERT INTO shopping_products (id, name, estimated_price_eur, linked_food_item_id)"
-            + " VALUES (?, ?, ?, ?)",
+        "INSERT INTO shopping_products (id, user_id, name, estimated_price_eur,"
+            + " linked_food_item_id) VALUES (?, ?, ?, ?, ?)",
         id,
+        LegacyUserBootstrap.PLACEHOLDER_USER_ID,
         "Test product",
         new BigDecimal("1.00"),
         (String) null);

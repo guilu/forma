@@ -3,7 +3,6 @@ package dev.diegobarrioh.forma.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import dev.diegobarrioh.forma.bootstrap.LegacyUserBootstrap;
 import dev.diegobarrioh.forma.domain.AdherenceCategory;
 import dev.diegobarrioh.forma.domain.BodyMeasurement;
 import dev.diegobarrioh.forma.domain.CategoryAdherence;
@@ -34,6 +33,12 @@ import org.junit.jupiter.api.Test;
  * 7-day window {@code [2026-07-09, 2026-07-15]} covers, by weekday: Thu(STRENGTH) Fri(REST)
  * Sat(RUNNING) Sun(STRENGTH) Mon(RUNNING) Tue(STRENGTH) Wed(RUNNING) -&gt; 3 RUNNING days + 3
  * STRENGTH days = 6 planned sessions (one entry per non-rest day), 1 REST day.
+ *
+ * <p>FOR-145c: {@link #statusRepository} and {@link #bodyMeasurementRepository} are per-user scoped
+ * fakes (mirroring the real repos post migrations V30/V31), so every fixture in this class is
+ * seeded against an explicit {@code userId} rather than a single implicit global table — the 145b-2
+ * INTERIM security guard that used to zero TRAINING/MEASUREMENTS for non-placeholder callers was
+ * removed by this slice (see {@code AdherenceService} javadoc).
  */
 class AdherenceServiceTest {
 
@@ -41,20 +46,12 @@ class AdherenceServiceTest {
       Clock.fixed(Instant.parse("2026-07-15T12:00:00Z"), ZoneOffset.UTC);
   private static final LocalDate TODAY = LocalDate.of(2026, 7, 15);
 
-  /**
-   * FOR-145b-2 security fix (🟠 MEDIUM cross-account signal leak): TRAINING/MEASUREMENTS are only
-   * computed from the still-unscoped global tables for the seeded legacy placeholder account (see
-   * {@code AdherenceService} javadoc's INTERIM security guard). Every TRAINING/MEASUREMENTS
-   * assertion in this class therefore runs as the placeholder; {@link
-   * #aNonPlaceholderUserGetsZeroedTrainingAndMeasurementsWithoutConsultingTheGlobalRepositories()}
-   * proves the guard for a real, non-placeholder caller.
-   */
-  private static final UUID USER_ID = LegacyUserBootstrap.PLACEHOLDER_USER_ID;
+  private static final UUID USER_ID = UUID.randomUUID();
 
   private final FakeStatusRepository statusRepository = new FakeStatusRepository();
   private final WeeklyTrainingScheduleService scheduleService =
       new WeeklyTrainingScheduleService(
-          new RunningPlanService(), new WorkoutTemplateService(), statusRepository);
+          new RunningPlanService(), new WorkoutTemplateService(), statusRepository, () -> USER_ID);
   private final FakeMealLogRepository mealLogRepository = new FakeMealLogRepository();
   private final FakeBodyMeasurementRepository bodyMeasurementRepository =
       new FakeBodyMeasurementRepository();
@@ -82,8 +79,8 @@ class AdherenceServiceTest {
     // status is the *current* per-weekday snapshot (FOR-27 has no per-date history), so it is
     // projected onto every occurrence of that weekday in the window (documented in
     // AdherenceService).
-    statusRepository.upsert("SATURDAY:RUNNING", SessionStatus.COMPLETED, null);
-    statusRepository.upsert("TUESDAY:STRENGTH", SessionStatus.COMPLETED, null);
+    statusRepository.upsert(USER_ID, "SATURDAY:RUNNING", SessionStatus.COMPLETED, null);
+    statusRepository.upsert(USER_ID, "TUESDAY:STRENGTH", SessionStatus.COMPLETED, null);
 
     Adherence adherence = service.compute(7);
 
@@ -121,10 +118,10 @@ class AdherenceServiceTest {
 
   @Test
   void measurementsCompletedIsActualEntriesInWindowPlannedIsWeeklyCadenceCeiling() {
-    measure(bodyMeasurementRepository, Instant.parse("2026-07-10T08:00:00Z"));
-    measure(bodyMeasurementRepository, Instant.parse("2026-07-13T08:00:00Z"));
+    measure(bodyMeasurementRepository, USER_ID, Instant.parse("2026-07-10T08:00:00Z"));
+    measure(bodyMeasurementRepository, USER_ID, Instant.parse("2026-07-13T08:00:00Z"));
     // Outside the window -- must not be counted.
-    measure(bodyMeasurementRepository, Instant.parse("2026-07-01T08:00:00Z"));
+    measure(bodyMeasurementRepository, USER_ID, Instant.parse("2026-07-01T08:00:00Z"));
 
     Adherence adherence = service.compute(7);
 
@@ -200,67 +197,65 @@ class AdherenceServiceTest {
   }
 
   /**
-   * FOR-145b-2 SECURITY FIX (🟠 MEDIUM cross-account signal leak, post-review): a real,
-   * non-placeholder caller must never have their TRAINING/MEASUREMENTS numbers derived from the
-   * still-unscoped global {@code training_session_status}/{@code body_measurements} tables (145c
-   * gap). Both categories come back zeroed, and — critically — the global repositories are never
-   * even consulted for that caller (asserted via call counters that would otherwise reflect the
-   * seeded global data below). NUTRITION stays real, since {@link MealLogRepository} is properly
-   * user-scoped.
+   * FOR-145c: {@code training_session_status} (V31) and {@code body_measurements} (V30) are now
+   * {@code user_id}-scoped, so the 145b-2 INTERIM security guard is gone — a real, non-placeholder
+   * caller gets TRAINING/MEASUREMENTS computed from THEIR OWN rows, never zeroed and never another
+   * account's data.
    */
   @Test
-  void
-      aNonPlaceholderUserGetsZeroedTrainingAndMeasurementsWithoutConsultingTheGlobalRepositories() {
-    // Seed the global (unscoped) tables with data that WOULD change the result if read.
-    statusRepository.upsert("SATURDAY:RUNNING", SessionStatus.COMPLETED, null);
-    measure(bodyMeasurementRepository, Instant.parse("2026-07-13T08:00:00Z"));
-    UUID nonPlaceholderUserId = UUID.randomUUID();
-    log(mealLogRepository, nonPlaceholderUserId, LocalDate.of(2026, 7, 11));
-    int findAllCallsBefore = statusRepository.findAllCallCount;
-    int listCallsBefore = bodyMeasurementRepository.listCallCount;
-    AdherenceService nonPlaceholderService =
+  void aDifferentAuthenticatedUserGetsRealTrainingAndMeasurementsFromTheirOwnDataOnly() {
+    // Seed USER_ID's data -- must NOT leak into the other user's numbers.
+    statusRepository.upsert(USER_ID, "SATURDAY:RUNNING", SessionStatus.COMPLETED, null);
+    measure(bodyMeasurementRepository, USER_ID, Instant.parse("2026-07-13T08:00:00Z"));
+
+    UUID otherUserId = UUID.randomUUID();
+    statusRepository.upsert(otherUserId, "TUESDAY:STRENGTH", SessionStatus.COMPLETED, null);
+    measure(bodyMeasurementRepository, otherUserId, Instant.parse("2026-07-11T08:00:00Z"));
+    log(mealLogRepository, otherUserId, LocalDate.of(2026, 7, 11));
+
+    WeeklyTrainingScheduleService otherScheduleService =
+        new WeeklyTrainingScheduleService(
+            new RunningPlanService(),
+            new WorkoutTemplateService(),
+            statusRepository,
+            () -> otherUserId);
+    AdherenceService otherUserService =
         new AdherenceService(
-            scheduleService,
+            otherScheduleService,
             mealLogRepository,
             bodyMeasurementRepository,
             FIXED_CLOCK,
-            () -> nonPlaceholderUserId);
+            () -> otherUserId);
 
-    Adherence adherence = nonPlaceholderService.compute(7);
+    Adherence adherence = otherUserService.compute(7);
 
     CategoryAdherence training = byCategory(adherence, AdherenceCategory.TRAINING);
-    assertThat(training.planned()).isZero();
-    assertThat(training.completed()).isZero();
-    assertThat(training.rate()).isNull();
+    assertThat(training.planned()).isEqualTo(6);
+    assertThat(training.completed()).isEqualTo(1); // only THEIR Tuesday, not USER_ID's Saturday
     CategoryAdherence measurements = byCategory(adherence, AdherenceCategory.MEASUREMENTS);
-    assertThat(measurements.planned()).isZero();
-    assertThat(measurements.completed()).isZero();
-    assertThat(measurements.rate()).isNull();
-    // The global repos were never consulted for this non-placeholder caller.
-    assertThat(statusRepository.findAllCallCount).isEqualTo(findAllCallsBefore);
-    assertThat(bodyMeasurementRepository.listCallCount).isEqualTo(listCallsBefore);
-    // NUTRITION is unaffected -- still computed for real from this user's own meal_log rows.
+    assertThat(measurements.completed()).isEqualTo(1); // only THEIR measurement
     CategoryAdherence nutrition = byCategory(adherence, AdherenceCategory.NUTRITION);
     assertThat(nutrition.completed()).isEqualTo(1);
   }
 
   /**
-   * Sanity counterpart to the guard above: the seeded legacy placeholder account keeps full,
-   * unchanged TRAINING/MEASUREMENTS behavior (all other tests in this class already exercise this
-   * via {@code USER_ID}, which is the placeholder — this test makes that guarantee explicit).
+   * Sanity counterpart: {@code USER_ID}'s own TRAINING/MEASUREMENTS numbers are unaffected by
+   * another user's data seeded into the same (now per-user scoped) repositories.
    */
   @Test
-  void thePlaceholderAccountKeepsFullTrainingAndMeasurementsBehavior() {
-    assertThat(USER_ID).isEqualTo(LegacyUserBootstrap.PLACEHOLDER_USER_ID);
-    statusRepository.upsert("SATURDAY:RUNNING", SessionStatus.COMPLETED, null);
-    measure(bodyMeasurementRepository, Instant.parse("2026-07-13T08:00:00Z"));
+  void theOriginalUsersTrainingAndMeasurementsAreUnaffectedByAnotherUsersData() {
+    statusRepository.upsert(USER_ID, "SATURDAY:RUNNING", SessionStatus.COMPLETED, null);
+    measure(bodyMeasurementRepository, USER_ID, Instant.parse("2026-07-13T08:00:00Z"));
+    UUID otherUserId = UUID.randomUUID();
+    statusRepository.upsert(otherUserId, "TUESDAY:STRENGTH", SessionStatus.COMPLETED, null);
+    measure(bodyMeasurementRepository, otherUserId, Instant.parse("2026-07-12T08:00:00Z"));
 
     Adherence adherence = service.compute(7);
 
     CategoryAdherence training = byCategory(adherence, AdherenceCategory.TRAINING);
-    assertThat(training.completed()).isEqualTo(1);
+    assertThat(training.completed()).isEqualTo(1); // only USER_ID's Saturday
     CategoryAdherence measurements = byCategory(adherence, AdherenceCategory.MEASUREMENTS);
-    assertThat(measurements.completed()).isEqualTo(1);
+    assertThat(measurements.completed()).isEqualTo(1); // only USER_ID's measurement
   }
 
   private static CategoryAdherence byCategory(Adherence adherence, AdherenceCategory category) {
@@ -277,29 +272,31 @@ class AdherenceServiceTest {
             date, MealType.LUNCH, "X", new NutritionTotals(100, 10.0, 10.0, 10.0)));
   }
 
-  private static void measure(FakeBodyMeasurementRepository repository, Instant measuredAt) {
+  private static void measure(
+      FakeBodyMeasurementRepository repository, UUID userId, Instant measuredAt) {
     repository.save(
+        userId,
         new BodyMeasurement(
             measuredAt, MeasurementSource.MANUAL, 80.0, null, null, null, null, null));
   }
 
   /**
-   * In-memory {@link TrainingSessionStatusRepository}, matching {@code
-   * WeeklyTrainingScheduleServiceTest}.
+   * In-memory {@link TrainingSessionStatusRepository}, scoped per {@code userId} (mirroring the
+   * real repo post migration V31 — the composite {@code (user_id, session_id)} primary key).
    */
   private static final class FakeStatusRepository implements TrainingSessionStatusRepository {
-    private final Map<String, StoredSessionStatus> stored = new HashMap<>();
-    private int findAllCallCount = 0;
+    private final Map<UUID, Map<String, StoredSessionStatus>> stored = new HashMap<>();
 
     @Override
-    public Map<String, StoredSessionStatus> findAll() {
-      findAllCallCount++;
-      return stored;
+    public Map<String, StoredSessionStatus> findAllByUser(UUID userId) {
+      return stored.getOrDefault(userId, Map.of());
     }
 
     @Override
-    public void upsert(String sessionId, SessionStatus status, String notes) {
-      stored.put(sessionId, new StoredSessionStatus(sessionId, status, notes));
+    public void upsert(UUID userId, String sessionId, SessionStatus status, String notes) {
+      stored
+          .computeIfAbsent(userId, k -> new HashMap<>())
+          .put(sessionId, new StoredSessionStatus(sessionId, status, notes));
     }
   }
 
@@ -325,20 +322,21 @@ class AdherenceServiceTest {
     private record OwnedEntry(UUID userId, StoredMealLogEntry stored) {}
   }
 
-  /** In-memory {@link BodyMeasurementRepository}. */
+  /**
+   * In-memory {@link BodyMeasurementRepository}, scoped per {@code userId} (mirroring the real repo
+   * post migration V30).
+   */
   private static final class FakeBodyMeasurementRepository implements BodyMeasurementRepository {
-    private final List<BodyMeasurement> saved = new ArrayList<>();
-    private int listCallCount = 0;
+    private final Map<UUID, List<BodyMeasurement>> saved = new HashMap<>();
 
     @Override
-    public void save(BodyMeasurement measurement) {
-      saved.add(measurement);
+    public void save(UUID userId, BodyMeasurement measurement) {
+      saved.computeIfAbsent(userId, k -> new ArrayList<>()).add(measurement);
     }
 
     @Override
-    public List<BodyMeasurement> list() {
-      listCallCount++;
-      return List.copyOf(saved);
+    public List<BodyMeasurement> list(UUID userId) {
+      return List.copyOf(saved.getOrDefault(userId, List.of()));
     }
   }
 }

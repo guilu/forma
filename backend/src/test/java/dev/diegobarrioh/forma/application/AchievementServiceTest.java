@@ -2,7 +2,6 @@ package dev.diegobarrioh.forma.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import dev.diegobarrioh.forma.bootstrap.LegacyUserBootstrap;
 import dev.diegobarrioh.forma.domain.BodyMeasurement;
 import dev.diegobarrioh.forma.domain.Goal;
 import dev.diegobarrioh.forma.domain.GoalMetric;
@@ -17,6 +16,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,21 +29,18 @@ import org.junit.jupiter.api.Test;
  * FOR-104): evaluate → award newly-met rules → return earned (with {@code earnedAt}) + available,
  * idempotent, owner-scoped (spec FOR-135 tests.md "Application Tests"). Hand-rolled in-memory fakes
  * (no Spring, no Mockito), matching {@code GoalServiceTest}/{@code AdherenceServiceTest}.
+ *
+ * <p>FOR-145c: {@link #bodyMeasurementRepository} is a per-user scoped fake (mirroring the real
+ * repo post migration V30), so the 145b-2 INTERIM security guard that used to skip
+ * measurement-based rules for non-placeholder callers was removed by this slice (see {@code
+ * AchievementService} javadoc).
  */
 class AchievementServiceTest {
 
   private static final Clock FIXED_CLOCK =
       Clock.fixed(Instant.parse("2026-07-17T10:00:00Z"), ZoneOffset.UTC);
 
-  /**
-   * FOR-145b-2 security fix (🟠 MEDIUM cross-account signal leak): measurement-based rules are only
-   * evaluated from the still-unscoped global {@code body_measurements} table for the seeded legacy
-   * placeholder account (see {@code AchievementService} javadoc's INTERIM security guard). Every
-   * measurement-achievement assertion in this class therefore runs as the placeholder; {@link
-   * #aNonPlaceholderUserNeverEarnsMeasurementBasedAchievementsFromTheGlobalTable()} proves the
-   * guard for a real, non-placeholder caller.
-   */
-  private static final UUID USER_ID = LegacyUserBootstrap.PLACEHOLDER_USER_ID;
+  private static final UUID USER_ID = UUID.randomUUID();
 
   private static final UUID OTHER_OWNER = UUID.randomUUID();
 
@@ -73,7 +70,7 @@ class AchievementServiceTest {
 
   @Test
   void evaluationAwardsANewlyMetRuleAndPersistsItWithEarnedAt() {
-    bodyMeasurementRepository.saved.add(measurement());
+    bodyMeasurementRepository.save(USER_ID, measurement());
 
     AchievementsView view = service.evaluate();
 
@@ -91,7 +88,7 @@ class AchievementServiceTest {
 
   @Test
   void reEvaluatingAnAlreadyEarnedAchievementIsANoOpAndEarnedAtNeverChanges() {
-    bodyMeasurementRepository.saved.add(measurement());
+    bodyMeasurementRepository.save(USER_ID, measurement());
     AchievementsView first = service.evaluate();
     Instant firstEarnedAt =
         first.earned().stream()
@@ -117,7 +114,7 @@ class AchievementServiceTest {
 
   @Test
   void responseSeparatesEarnedFromAvailable() {
-    bodyMeasurementRepository.saved.add(measurement());
+    bodyMeasurementRepository.save(USER_ID, measurement());
 
     AchievementsView view = service.evaluate();
 
@@ -131,7 +128,7 @@ class AchievementServiceTest {
   @Test
   void tenMeasurementsAwardsBothMeasurementAchievements() {
     for (int i = 0; i < 10; i++) {
-      bodyMeasurementRepository.saved.add(measurement());
+      bodyMeasurementRepository.save(USER_ID, measurement());
     }
 
     AchievementsView view = service.evaluate();
@@ -225,60 +222,57 @@ class AchievementServiceTest {
   }
 
   /**
-   * FOR-145b-2 SECURITY FIX (🟠 MEDIUM cross-account signal leak, post-review): a real,
-   * non-placeholder caller must never earn a measurement-based achievement from the still-unscoped
-   * global {@code body_measurements} table (145c gap) — the global repository is not even consulted
-   * for that caller (asserted via a call counter). Goal-based rules, which are properly
-   * user-scoped, still fire normally for that same caller.
+   * FOR-145c: {@code body_measurements} (V30) is now {@code user_id}-scoped, so the 145b-2 INTERIM
+   * security guard is gone — a real, non-placeholder caller earns measurement-based achievements
+   * from THEIR OWN measurements, never from another account's data.
    */
   @Test
-  void aNonPlaceholderUserNeverEarnsMeasurementBasedAchievementsFromTheGlobalTable() {
-    // Seed the global (unscoped) table with 10+ measurements -- enough to award BOTH
-    // measurement-based achievements if it were read.
+  void aDifferentAuthenticatedUserEarnsMeasurementBasedAchievementsFromTheirOwnData() {
+    // USER_ID's own measurement -- must not count toward another user's achievements.
+    bodyMeasurementRepository.save(USER_ID, measurement());
+    UUID otherUserId = UUID.randomUUID();
     for (int i = 0; i < 10; i++) {
-      bodyMeasurementRepository.saved.add(measurement());
+      bodyMeasurementRepository.save(otherUserId, measurement());
     }
-    int listCallsBefore = bodyMeasurementRepository.listCallCount;
-    UUID nonPlaceholderUserId = UUID.randomUUID();
     goalRepository.rows.put(
         "goal-1",
         new StoredGoal(
             "goal-1",
             new Goal("Meta", GoalMetric.WEIGHT_KG, 70.0, null, GoalStatus.ACHIEVED, List.of())));
-    AchievementService nonPlaceholderService =
+    AchievementService otherUserService =
         new AchievementService(
             achievementRepository,
             bodyMeasurementRepository,
             goalRepository,
             integrationRepository,
             FIXED_CLOCK,
-            () -> nonPlaceholderUserId);
+            () -> otherUserId);
 
-    AchievementsView view = nonPlaceholderService.evaluate();
+    AchievementsView view = otherUserService.evaluate();
 
     assertThat(view.earned())
         .extracting(AchievementView::id)
-        .doesNotContain("FIRST_MEASUREMENT", "TEN_MEASUREMENTS_LOGGED");
-    assertThat(bodyMeasurementRepository.listCallCount).isEqualTo(listCallsBefore);
-    // Goal-based rules (properly user-scoped) still fire normally for this caller.
-    assertThat(view.earned())
-        .extracting(AchievementView::id)
-        .contains("FIRST_GOAL_CREATED", "FIRST_GOAL_ACHIEVED");
+        .contains("FIRST_MEASUREMENT", "TEN_MEASUREMENTS_LOGGED");
   }
 
   /**
-   * Sanity counterpart to the guard above: the seeded legacy placeholder account keeps full,
-   * unchanged measurement-based achievement behavior (other tests in this class already exercise
-   * this via {@code USER_ID}, which is the placeholder — this test makes that guarantee explicit).
+   * Sanity counterpart: {@code USER_ID}'s own measurement-based achievements are unaffected by
+   * another user's measurements seeded into the same (now per-user scoped) repository.
    */
   @Test
-  void thePlaceholderAccountKeepsFullMeasurementBasedAchievementBehavior() {
-    assertThat(USER_ID).isEqualTo(LegacyUserBootstrap.PLACEHOLDER_USER_ID);
-    bodyMeasurementRepository.saved.add(measurement());
+  void theOriginalUsersMeasurementBasedAchievementsAreUnaffectedByAnotherUsersData() {
+    bodyMeasurementRepository.save(USER_ID, measurement());
+    UUID otherUserId = UUID.randomUUID();
+    for (int i = 0; i < 10; i++) {
+      bodyMeasurementRepository.save(otherUserId, measurement());
+    }
 
     AchievementsView view = service.evaluate();
 
     assertThat(view.earned()).extracting(AchievementView::id).contains("FIRST_MEASUREMENT");
+    assertThat(view.earned())
+        .extracting(AchievementView::id)
+        .doesNotContain("TEN_MEASUREMENTS_LOGGED"); // USER_ID only logged 1, not 10
   }
 
   private static BodyMeasurement measurement() {
@@ -293,19 +287,21 @@ class AchievementServiceTest {
         null);
   }
 
+  /**
+   * In-memory {@link BodyMeasurementRepository}, scoped per {@code userId} (mirroring the real repo
+   * post migration V30).
+   */
   private static class FakeBodyMeasurementRepository implements BodyMeasurementRepository {
-    final List<BodyMeasurement> saved = new ArrayList<>();
-    int listCallCount = 0;
+    private final Map<UUID, List<BodyMeasurement>> saved = new HashMap<>();
 
     @Override
-    public void save(BodyMeasurement measurement) {
-      saved.add(measurement);
+    public void save(UUID userId, BodyMeasurement measurement) {
+      saved.computeIfAbsent(userId, k -> new ArrayList<>()).add(measurement);
     }
 
     @Override
-    public List<BodyMeasurement> list() {
-      listCallCount++;
-      return List.copyOf(saved);
+    public List<BodyMeasurement> list(UUID userId) {
+      return List.copyOf(saved.getOrDefault(userId, List.of()));
     }
   }
 

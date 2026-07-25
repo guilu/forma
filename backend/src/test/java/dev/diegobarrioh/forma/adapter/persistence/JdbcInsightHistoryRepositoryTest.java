@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.diegobarrioh.forma.application.InsightHistoryRepository;
 import dev.diegobarrioh.forma.application.WeeklyInsights;
+import dev.diegobarrioh.forma.bootstrap.LegacyUserBootstrap;
 import dev.diegobarrioh.forma.domain.Recommendation;
 import dev.diegobarrioh.forma.domain.RecommendationCategory;
 import dev.diegobarrioh.forma.domain.RecommendationSeverity;
@@ -12,6 +13,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +34,7 @@ class JdbcInsightHistoryRepositoryTest {
   private static final LocalDate WEEK_1 = LocalDate.of(2026, 6, 29);
   private static final LocalDate WEEK_2 = LocalDate.of(2026, 7, 6);
   private static final LocalDate WEEK_3 = LocalDate.of(2026, 7, 13);
+  private static final UUID OWNER = LegacyUserBootstrap.PLACEHOLDER_USER_ID;
 
   @Autowired private InsightHistoryRepository repository;
   @Autowired private JdbcTemplate jdbcTemplate;
@@ -61,19 +64,19 @@ class JdbcInsightHistoryRepositoryTest {
 
   @Test
   void listAllReturnsEmptyBeforeAnyInsightsHaveBeenGenerated() {
-    assertThat(repository.listAll()).isEmpty();
+    assertThat(repository.listAll(OWNER)).isEmpty();
   }
 
   @Test
   void findMostRecentCheckInBeforeReturnsEmptyOnACleanDatabase() {
-    assertThat(repository.findMostRecentCheckInBefore(WEEK_2)).isEmpty();
+    assertThat(repository.findMostRecentCheckInBefore(OWNER, WEEK_2)).isEmpty();
   }
 
   @Test
   void savesAndReadsBackAFullInsightsRoundTrip() {
-    repository.save(insightsFor(WEEK_2, 72.0));
+    repository.save(OWNER, insightsFor(WEEK_2, 72.0));
 
-    List<WeeklyInsights> history = repository.listAll();
+    List<WeeklyInsights> history = repository.listAll(OWNER);
 
     assertThat(history).hasSize(1);
     WeeklyInsights stored = history.get(0);
@@ -97,11 +100,11 @@ class JdbcInsightHistoryRepositoryTest {
 
   @Test
   void listAllOrdersMostRecentPeriodFirst() {
-    repository.save(insightsFor(WEEK_1, 74.0));
-    repository.save(insightsFor(WEEK_3, 70.0));
-    repository.save(insightsFor(WEEK_2, 72.0));
+    repository.save(OWNER, insightsFor(WEEK_1, 74.0));
+    repository.save(OWNER, insightsFor(WEEK_3, 70.0));
+    repository.save(OWNER, insightsFor(WEEK_2, 72.0));
 
-    List<WeeklyInsights> history = repository.listAll();
+    List<WeeklyInsights> history = repository.listAll(OWNER);
 
     assertThat(history)
         .extracting(insights -> insights.checkIn().weekStartDate())
@@ -110,11 +113,11 @@ class JdbcInsightHistoryRepositoryTest {
 
   @Test
   void findMostRecentCheckInBeforeSkipsAGapWeekAndFindsTheMostRecentPriorPeriod() {
-    repository.save(insightsFor(WEEK_1, 74.0));
+    repository.save(OWNER, insightsFor(WEEK_1, 74.0));
     // WEEK_2 is deliberately never generated (a gap week) — WEEK_3's prior must still be WEEK_1.
-    repository.save(insightsFor(WEEK_3, 70.0));
+    repository.save(OWNER, insightsFor(WEEK_3, 70.0));
 
-    Optional<WeeklyCheckIn> prior = repository.findMostRecentCheckInBefore(WEEK_3);
+    Optional<WeeklyCheckIn> prior = repository.findMostRecentCheckInBefore(OWNER, WEEK_3);
 
     assertThat(prior).isPresent();
     assertThat(prior.get().weekStartDate()).isEqualTo(WEEK_1);
@@ -123,10 +126,10 @@ class JdbcInsightHistoryRepositoryTest {
 
   @Test
   void savingTheSamePeriodTwiceOverwritesRatherThanAppending() {
-    repository.save(insightsFor(WEEK_2, 72.0));
-    repository.save(insightsFor(WEEK_2, 71.0));
+    repository.save(OWNER, insightsFor(WEEK_2, 72.0));
+    repository.save(OWNER, insightsFor(WEEK_2, 71.0));
 
-    List<WeeklyInsights> history = repository.listAll();
+    List<WeeklyInsights> history = repository.listAll(OWNER);
 
     assertThat(history).hasSize(1);
     assertThat(history.get(0).checkIn().latestWeightKg()).isEqualTo(71.0);

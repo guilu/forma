@@ -20,6 +20,9 @@ import org.springframework.stereotype.Repository;
  * <p>Plain JDBC via {@link JdbcTemplate} (no ORM, like FOR-16). Generates the UUID id on create
  * (the domain type has no identity). Prices round-trip as {@code NUMERIC}/{@link
  * java.math.BigDecimal}; {@code last_checked_at} as an absolute instant.
+ *
+ * <p>Real multi-user auth (FOR-145c, ADR-012, migration V32): every read/write is scoped by the
+ * real {@code user_id UUID} column added to close this "gap table"'s zero owner-scoping.
  */
 @Repository
 public class JdbcShoppingProductRepository implements ShoppingProductRepository {
@@ -49,22 +52,25 @@ public class JdbcShoppingProductRepository implements ShoppingProductRepository 
   }
 
   @Override
-  public List<StoredShoppingProduct> findAll() {
+  public List<StoredShoppingProduct> findAllByOwner(UUID userId) {
     return jdbcTemplate.query(
         "SELECT id, name, url, package_size, estimated_price_eur, price_per_unit_eur,"
             + " linked_food_item_id, last_checked_at, notes, category FROM shopping_products"
-            + " ORDER BY name",
-        ROW_MAPPER);
+            + " WHERE user_id = ? ORDER BY name",
+        ROW_MAPPER,
+        userId);
   }
 
   @Override
-  public StoredShoppingProduct create(ShoppingProduct product) {
+  public StoredShoppingProduct create(UUID userId, ShoppingProduct product) {
     String id = UUID.randomUUID().toString();
     jdbcTemplate.update(
-        "INSERT INTO shopping_products (id, name, url, package_size, estimated_price_eur,"
-            + " price_per_unit_eur, linked_food_item_id, last_checked_at, notes, category)"
-            + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO shopping_products (id, user_id, name, url, package_size,"
+            + " estimated_price_eur, price_per_unit_eur, linked_food_item_id, last_checked_at,"
+            + " notes, category)"
+            + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         UUID.fromString(id),
+        userId,
         product.name(),
         product.url(),
         product.packageSize(),
@@ -78,12 +84,12 @@ public class JdbcShoppingProductRepository implements ShoppingProductRepository 
   }
 
   @Override
-  public Optional<StoredShoppingProduct> update(String id, ShoppingProduct product) {
+  public Optional<StoredShoppingProduct> update(UUID userId, String id, ShoppingProduct product) {
     int updated =
         jdbcTemplate.update(
             "UPDATE shopping_products SET name = ?, url = ?, package_size = ?,"
                 + " estimated_price_eur = ?, price_per_unit_eur = ?, linked_food_item_id = ?,"
-                + " last_checked_at = ?, notes = ?, category = ? WHERE id = ?",
+                + " last_checked_at = ?, notes = ?, category = ? WHERE id = ? AND user_id = ?",
             product.name(),
             product.url(),
             product.packageSize(),
@@ -93,7 +99,8 @@ public class JdbcShoppingProductRepository implements ShoppingProductRepository 
             toOffsetDateTime(product.lastCheckedAt()),
             product.notes(),
             product.category().name(),
-            UUID.fromString(id));
+            UUID.fromString(id),
+            userId);
     return updated == 0 ? Optional.empty() : Optional.of(new StoredShoppingProduct(id, product));
   }
 

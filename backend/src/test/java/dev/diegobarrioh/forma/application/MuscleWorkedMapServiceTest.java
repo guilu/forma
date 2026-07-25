@@ -17,7 +17,10 @@ class MuscleWorkedMapServiceTest {
 
   private final WeeklyTrainingScheduleService scheduleService =
       new WeeklyTrainingScheduleService(
-          new RunningPlanService(), new WorkoutTemplateService(), new FakeStatusRepository());
+          new RunningPlanService(),
+          new WorkoutTemplateService(),
+          new FakeStatusRepository(),
+          () -> WeeklyTrainingScheduleServiceTest.USER_ID);
   private final MuscleWorkedMapService service =
       new MuscleWorkedMapService(
           scheduleService, new WorkoutTemplateService(), new ExerciseCatalogService());

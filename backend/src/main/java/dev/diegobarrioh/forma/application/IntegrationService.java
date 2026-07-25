@@ -32,10 +32,10 @@ import org.springframework.stereotype.Service;
  * "default-user"} constant (removed by this slice) — {@code integration_connection}, {@code
  * integration_token}, {@code integration_oauth_state} and {@code integration_measure_marker} all
  * had their composite primary keys rebuilt from the legacy {@code owner_id VARCHAR} column to
- * {@code user_id UUID}. {@link #bodyMeasurementRepository} is NOT scoped here: {@code
- * body_measurements} is a 145c "gap table" (no {@code user_id} column at all yet, see {@code
- * AdherenceService}'s documented limitation) — a real Withings sync import from a non-placeholder
- * user still writes into the same global, unscoped measurement history until 145c closes that gap.
+ * {@code user_id UUID}. {@link #bodyMeasurementRepository} is now scoped too (FOR-145c, migration
+ * V30): a Withings sync import writes its measurements against the caller's own {@code user_id},
+ * closing the "gap table" cross-account leak documented by the earlier 145b-2 revision of this
+ * javadoc.
  */
 @Service
 public class IntegrationService {
@@ -292,7 +292,7 @@ public class IntegrationService {
         continue;
       }
       BodyMeasurement measurement = group.measurement();
-      bodyMeasurementRepository.save(measurement);
+      bodyMeasurementRepository.save(currentUserProvider.currentUserId(), measurement);
       markerStore.markImported(
           currentUserProvider.currentUserId(), provider, group.externalGroupId(), importedAt);
       importedCount++;

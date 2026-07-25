@@ -12,6 +12,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -20,10 +21,12 @@ import org.junit.jupiter.api.Test;
  */
 class ShoppingBudgetServiceTest {
 
+  private static final UUID USER_ID = UUID.randomUUID();
+
   @Test
   void computesBudgetFromCurrentProductPrices() {
     FakeProductRepository repository = new FakeProductRepository();
-    ShoppingBudgetService service = new ShoppingBudgetService(repository);
+    ShoppingBudgetService service = new ShoppingBudgetService(repository, () -> USER_ID);
 
     ShoppingList list =
         new ShoppingList(
@@ -43,19 +46,19 @@ class ShoppingBudgetServiceTest {
   /** In-memory repository returning two priced products. */
   private static final class FakeProductRepository implements ShoppingProductRepository {
     @Override
-    public List<StoredShoppingProduct> findAll() {
+    public List<StoredShoppingProduct> findAllByOwner(UUID userId) {
       return List.of(
           new StoredShoppingProduct("p1", product(new BigDecimal("1.95"))),
           new StoredShoppingProduct("p2", product(new BigDecimal("3.90"))));
     }
 
     @Override
-    public StoredShoppingProduct create(ShoppingProduct product) {
+    public StoredShoppingProduct create(UUID userId, ShoppingProduct product) {
       throw new UnsupportedOperationException("not used");
     }
 
     @Override
-    public Optional<StoredShoppingProduct> update(String id, ShoppingProduct product) {
+    public Optional<StoredShoppingProduct> update(UUID userId, String id, ShoppingProduct product) {
       throw new UnsupportedOperationException("not used");
     }
 

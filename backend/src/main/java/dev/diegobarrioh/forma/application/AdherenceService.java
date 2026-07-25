@@ -1,7 +1,6 @@
 package dev.diegobarrioh.forma.application;
 
 import dev.diegobarrioh.forma.application.WeeklyTrainingSchedule.TrainingDay;
-import dev.diegobarrioh.forma.bootstrap.LegacyUserBootstrap;
 import dev.diegobarrioh.forma.domain.AdherenceCategory;
 import dev.diegobarrioh.forma.domain.CategoryAdherence;
 import dev.diegobarrioh.forma.domain.SessionStatus;
@@ -49,28 +48,22 @@ import org.springframework.stereotype.Service;
  * — weekly by default?"), not a fabricated fact.
  *
  * <p><b>Owner-scoping (ADR-002, spec FOR-129 "mirror the FOR-127/128 owner scoping").</b> Real
- * multi-user auth (FOR-145b-2, ADR-012): NUTRITION resolves the caller's account id via {@link
- * CurrentUserProvider} and passes it to {@link MealLogRepository} on every call — replacing the old
- * fixed {@code OWNER_ID = "default-user"} constant and the 145b-1 interim {@code
- * requireLegacyOwner()} guard (both removed by this slice). <b>Documented discrepancy vs the spec's
- * owner-scoping expectation, carried over from 145b-1</b>: {@link BodyMeasurementRepository}
- * (FOR-16, migration V2) and {@link TrainingSessionStatusRepository}/{@link
- * WeeklyTrainingScheduleService} (FOR-26/27, migration V3) predate the owner-scoping convention
- * introduced by FOR-125/127 — their tables have no {@code user_id} column and their ports take no
- * owner parameter at all, so nothing exists to filter on. TRAINING and MEASUREMENTS therefore
- * cannot be scoped to a real per-user boundary yet.
+ * multi-user auth (FOR-145, ADR-012): every category resolves the caller's account id via {@link
+ * CurrentUserProvider} and computes exclusively from that caller's own rows. NUTRITION reads {@link
+ * MealLogRepository} (scoped since 145b-1). TRAINING reads {@link
+ * WeeklyTrainingScheduleService#currentWeek()}, which resolves the caller via its own injected
+ * {@link CurrentUserProvider} and reads {@link TrainingSessionStatusRepository} — scoped since 145c
+ * migration V31, which rebuilt {@code training_session_status}'s primary key from a bare {@code
+ * session_id} (colliding across accounts, e.g. every user's Saturday run shared one row) to {@code
+ * (user_id, session_id)}. MEASUREMENTS reads {@link BodyMeasurementRepository} — scoped since 145c
+ * migration V30, which added a plain {@code user_id} column (with a backfill) to {@code
+ * body_measurements}.
  *
- * <p><b>INTERIM security guard (post-145b-2 security review, 🟠 MEDIUM cross-account signal
- * leak).</b> Reading the unscoped tables for a real, non-placeholder caller would leak every
- * account's global training/measurement activity into that caller's adherence numbers. Until 145c
- * adds {@code user_id} to {@code body_measurements}/{@code training_session_status}, {@link
- * #compute(int)} only computes TRAINING/MEASUREMENTS from those tables for the seeded legacy
- * placeholder account ({@link LegacyUserBootstrap#PLACEHOLDER_USER_ID}) — every other caller gets
- * both categories back as {@code planned=0, completed=0} (never a 404, "empty is fine" per spec
- * FOR-129) and the global repositories are not even consulted for that caller. NUTRITION is
- * unaffected — {@link MealLogRepository} is properly {@code user_id}-scoped (145b-1) and is always
- * computed for real. <b>Remove this guard in 145c</b> once both tables carry {@code user_id} and
- * this service can scope TRAINING/MEASUREMENTS like NUTRITION already is.
+ * <p><b>145c removed the 145b-2 INTERIM security guard</b> that computed TRAINING/MEASUREMENTS only
+ * for the seeded legacy placeholder account and zeroed those two categories for every other caller
+ * (🟠 MEDIUM cross-account signal leak, since neither table carried {@code user_id} yet at that
+ * point). Both tables are now properly scoped, so every caller — placeholder or not — gets real,
+ * isolated TRAINING/MEASUREMENTS numbers derived only from their own data.
  */
 @Service
 public class AdherenceService {
@@ -113,23 +106,15 @@ public class AdherenceService {
           "days must be between " + MIN_DAYS + " and " + MAX_DAYS + ", was: " + days);
     }
     UUID userId = currentUserProvider.currentUserId();
-    boolean isLegacyPlaceholder = LegacyUserBootstrap.PLACEHOLDER_USER_ID.equals(userId);
 
     LocalDate to = LocalDate.now(clock);
     LocalDate from = to.minusDays(days - 1L);
 
-    // INTERIM security guard (145c gap, see class javadoc): only the seeded legacy placeholder
-    // account reads the still-unscoped global training/measurement tables; every other caller gets
-    // those two categories back zeroed, without consulting the global repositories at all.
     List<CategoryAdherence> categories =
         List.of(
-            isLegacyPlaceholder
-                ? training(from, to)
-                : CategoryAdherence.of(AdherenceCategory.TRAINING, 0, 0),
+            training(from, to),
             nutrition(userId, from, to, days),
-            isLegacyPlaceholder
-                ? measurements(from, to, days)
-                : CategoryAdherence.of(AdherenceCategory.MEASUREMENTS, 0, 0));
+            measurements(userId, from, to, days));
     return new Adherence(days, from, to, categories);
   }
 
@@ -164,10 +149,11 @@ public class AdherenceService {
     return CategoryAdherence.of(AdherenceCategory.NUTRITION, windowDays, completed);
   }
 
-  private CategoryAdherence measurements(LocalDate from, LocalDate to, int windowDays) {
+  private CategoryAdherence measurements(
+      UUID userId, LocalDate from, LocalDate to, int windowDays) {
     int planned = (int) Math.ceil(windowDays / 7.0);
     long completed =
-        bodyMeasurementRepository.list().stream()
+        bodyMeasurementRepository.list(userId).stream()
             .map(measurement -> LocalDate.ofInstant(measurement.measuredAt(), clock.getZone()))
             .filter(date -> !date.isBefore(from) && !date.isAfter(to))
             .count();

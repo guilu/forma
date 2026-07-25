@@ -682,12 +682,12 @@ class IntegrationServiceTest {
     final List<BodyMeasurement> saved = new ArrayList<>();
 
     @Override
-    public void save(BodyMeasurement measurement) {
+    public void save(UUID userId, BodyMeasurement measurement) {
       saved.add(measurement);
     }
 
     @Override
-    public List<BodyMeasurement> list() {
+    public List<BodyMeasurement> list(UUID userId) {
       return List.copyOf(saved);
     }
   }

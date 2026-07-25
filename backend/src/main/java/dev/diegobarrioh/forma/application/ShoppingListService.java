@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
@@ -27,6 +28,12 @@ import org.springframework.stereotype.Service;
  * product price is reflected immediately instead of the stored snapshot going stale; falling back
  * to that stored snapshot only when the product no longer resolves.
  *
+ * <p>Real multi-user auth (FOR-145c, ADR-012, migration V33): this "gap table" service had ZERO
+ * owner-scoping before this slice. Every use case now resolves the caller's account id via {@link
+ * CurrentUserProvider} and passes it to both {@link ShoppingListRepository} and {@link
+ * ShoppingProductRepository} on every call. {@code shopping_list_items} has no {@code user_id} of
+ * its own — item operations are scoped through their owning list's {@code user_id}.
+ *
  * <p><strong>Regenerate (FOR-109):</strong> the repository has no algorithmic "generate a list from
  * nutrition templates" logic — FOR-37's own spec explicitly deferred that ("automatic generation
  * from nutrition templates is a later concern") and the only list ever created was seeded via a
@@ -44,24 +51,30 @@ public class ShoppingListService {
   private final ShoppingListRepository listRepository;
   private final ShoppingProductRepository productRepository;
   private final ShoppingBudgetService budgetService;
+  private final CurrentUserProvider currentUserProvider;
 
   public ShoppingListService(
       ShoppingListRepository listRepository,
       ShoppingProductRepository productRepository,
-      ShoppingBudgetService budgetService) {
+      ShoppingBudgetService budgetService,
+      CurrentUserProvider currentUserProvider) {
     this.listRepository = listRepository;
     this.productRepository = productRepository;
     this.budgetService = budgetService;
+    this.currentUserProvider = currentUserProvider;
   }
 
-  /** The current week's checklist with resolved names, categories, link-outs and budget. */
+  /**
+   * The caller's current week's checklist with resolved names, categories, link-outs and budget.
+   */
   public ShoppingListView currentView() {
+    UUID userId = currentUserProvider.currentUserId();
     ActiveShoppingList active =
         listRepository
-            .findActive()
+            .findActive(userId)
             .orElseThrow(() -> new NotFoundException("No hay lista de compra activa"));
 
-    Map<String, StoredShoppingProduct> productsById = productsById();
+    Map<String, StoredShoppingProduct> productsById = productsById(userId);
 
     var entries = active.items().stream().map(stored -> toEntry(stored, productsById)).toList();
 
@@ -80,7 +93,7 @@ public class ShoppingListService {
    */
   public StoredShoppingListItem setChecked(String itemId, boolean checked) {
     return listRepository
-        .setChecked(itemId, checked)
+        .setChecked(currentUserProvider.currentUserId(), itemId, checked)
         .orElseThrow(() -> new NotFoundException("No existe el artículo: " + itemId));
   }
 
@@ -92,8 +105,9 @@ public class ShoppingListService {
    * @throws NotFoundException if there is no active list to regenerate
    */
   public ShoppingListView regenerate() {
+    UUID userId = currentUserProvider.currentUserId();
     var freshItems =
-        productRepository.findAll().stream()
+        productRepository.findAllByOwner(userId).stream()
             .map(
                 product ->
                     new ShoppingListItem(
@@ -105,7 +119,7 @@ public class ShoppingListService {
                         null))
             .toList();
     listRepository
-        .regenerate(freshItems, Instant.now())
+        .regenerate(userId, freshItems, Instant.now())
         .orElseThrow(() -> new NotFoundException("No hay lista de compra activa"));
     return currentView();
   }
@@ -121,12 +135,13 @@ public class ShoppingListService {
    *     resolves (rejected rather than fabricating a cost from nothing, per spec edge case)
    */
   public StoredShoppingListItem updateQuantity(String itemId, int quantity) {
+    UUID userId = currentUserProvider.currentUserId();
     StoredShoppingListItem existing =
         listRepository
-            .findItem(itemId)
+            .findItem(userId, itemId)
             .orElseThrow(() -> new NotFoundException("No existe el artículo: " + itemId));
 
-    StoredShoppingProduct product = productsById().get(existing.item().productId());
+    StoredShoppingProduct product = productsById(userId).get(existing.item().productId());
     if (product == null) {
       throw new NotFoundException(
           "El producto del artículo ya no existe: " + existing.item().productId());
@@ -140,12 +155,12 @@ public class ShoppingListService {
             .setScale(2, RoundingMode.HALF_UP);
 
     return listRepository
-        .updateQuantity(itemId, quantity, newCost)
+        .updateQuantity(userId, itemId, quantity, newCost)
         .orElseThrow(() -> new NotFoundException("No existe el artículo: " + itemId));
   }
 
-  private Map<String, StoredShoppingProduct> productsById() {
-    return productRepository.findAll().stream()
+  private Map<String, StoredShoppingProduct> productsById(UUID userId) {
+    return productRepository.findAllByOwner(userId).stream()
         .collect(Collectors.toMap(StoredShoppingProduct::id, stored -> stored));
   }
 

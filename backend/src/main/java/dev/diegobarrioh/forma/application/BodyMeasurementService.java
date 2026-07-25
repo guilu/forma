@@ -14,14 +14,21 @@ import org.springframework.stereotype.Service;
  * application/domain layer). Delegates persistence to the FOR-16 {@link BodyMeasurementRepository}
  * port and returns domain objects, so derived values come from {@link BodyMeasurement} and are
  * never recomputed in the delivery layer.
+ *
+ * <p>Real multi-user auth (FOR-145c, ADR-012, migration V30): this "gap table" service had ZERO
+ * owner-scoping before this slice. Every use case now resolves the caller's account id via {@link
+ * CurrentUserProvider} and passes it to the repository on every call.
  */
 @Service
 public class BodyMeasurementService {
 
   private final BodyMeasurementRepository repository;
+  private final CurrentUserProvider currentUserProvider;
 
-  public BodyMeasurementService(BodyMeasurementRepository repository) {
+  public BodyMeasurementService(
+      BodyMeasurementRepository repository, CurrentUserProvider currentUserProvider) {
     this.repository = repository;
+    this.currentUserProvider = currentUserProvider;
   }
 
   /**
@@ -50,12 +57,12 @@ public class BodyMeasurementService {
             muscleMassKg,
             waterPercentage,
             notes);
-    repository.save(measurement);
+    repository.save(currentUserProvider.currentUserId(), measurement);
     return measurement;
   }
 
-  /** Lists stored measurements, most recent first (FOR-16 default order). */
+  /** Lists the caller's stored measurements, most recent first (FOR-16 default order). */
   public List<BodyMeasurement> list() {
-    return repository.list();
+    return repository.list(currentUserProvider.currentUserId());
   }
 }

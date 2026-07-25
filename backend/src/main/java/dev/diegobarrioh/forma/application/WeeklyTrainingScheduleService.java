@@ -33,6 +33,11 @@ import org.springframework.stereotype.Service;
  * <p>Each session has a stable id ({@code "<DAY>:<KIND>"}) that is stable because the schedule is
  * deterministic; completion status (FOR-27) is stored against that id and applied here (default
  * {@code PLANNED}). No week navigation or real dates yet (spec FOR-26 Open Questions).
+ *
+ * <p>Real multi-user auth (FOR-145c, ADR-012, migration V31): resolves the caller's account id via
+ * {@link CurrentUserProvider} and reads only their stored statuses — {@code
+ * training_session_status} had ZERO owner-scoping (and a cross-user PK collision on the bare {@code
+ * session_id}) before this slice.
  */
 @Service
 public class WeeklyTrainingScheduleService {
@@ -43,14 +48,17 @@ public class WeeklyTrainingScheduleService {
   private final RunningPlanService runningPlanService;
   private final WorkoutTemplateService workoutTemplateService;
   private final TrainingSessionStatusRepository statusRepository;
+  private final CurrentUserProvider currentUserProvider;
 
   public WeeklyTrainingScheduleService(
       RunningPlanService runningPlanService,
       WorkoutTemplateService workoutTemplateService,
-      TrainingSessionStatusRepository statusRepository) {
+      TrainingSessionStatusRepository statusRepository,
+      CurrentUserProvider currentUserProvider) {
     this.runningPlanService = runningPlanService;
     this.workoutTemplateService = workoutTemplateService;
     this.statusRepository = statusRepository;
+    this.currentUserProvider = currentUserProvider;
   }
 
   /** The stable session id for a day + kind (e.g. {@code "SATURDAY:RUNNING"}). */
@@ -60,7 +68,8 @@ public class WeeklyTrainingScheduleService {
 
   /** Builds the current week's calendar (Monday through Sunday), with stored status applied. */
   public WeeklyTrainingSchedule currentWeek() {
-    Map<String, StoredSessionStatus> stored = statusRepository.findAll();
+    Map<String, StoredSessionStatus> stored =
+        statusRepository.findAllByUser(currentUserProvider.currentUserId());
     Map<DayOfWeek, List<TrainingEntry>> entriesByDay = new EnumMap<>(DayOfWeek.class);
     for (DayOfWeek day : DayOfWeek.values()) {
       entriesByDay.put(day, new ArrayList<>());

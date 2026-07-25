@@ -2,6 +2,7 @@ package dev.diegobarrioh.forma.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -15,6 +16,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -26,6 +28,7 @@ class WeeklyInsightsServiceTest {
   private static final Instant NOW = Instant.parse("2026-07-10T08:00:00Z");
   private static final Clock FIXED = Clock.fixed(NOW, ZoneOffset.UTC);
   private static final LocalDate WEEK = LocalDate.of(2026, 7, 6);
+  private static final UUID USER_ID = UUID.randomUUID();
 
   private final WeeklyCheckInService checkInService = mock(WeeklyCheckInService.class);
   private final BodyTrendRecommendationService bodyTrendService =
@@ -52,7 +55,8 @@ class WeeklyInsightsServiceTest {
           paceDegradationService,
           shoppingCostService,
           historyRepository,
-          FIXED);
+          FIXED,
+          () -> USER_ID);
 
   private static Recommendation rec(
       RecommendationCategory category, RecommendationSeverity severity) {
@@ -133,7 +137,7 @@ class WeeklyInsightsServiceTest {
 
     WeeklyInsights insights = service.currentInsights();
 
-    verify(historyRepository).save(insights);
+    verify(historyRepository).save(USER_ID, insights);
   }
 
   /** Regression check per spec FOR-110 tests.md: checkIn/main/secondary/generatedAt unchanged. */
@@ -152,6 +156,6 @@ class WeeklyInsightsServiceTest {
     assertThat(insights.main()).isNotNull();
     assertThat(insights.secondary()).isNotNull();
     assertThat(insights.generatedAt()).isEqualTo(NOW);
-    verify(historyRepository).save(any(WeeklyInsights.class));
+    verify(historyRepository).save(eq(USER_ID), any(WeeklyInsights.class));
   }
 }

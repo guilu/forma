@@ -13,6 +13,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -24,9 +25,11 @@ class InsightHistoryServiceTest {
   private static final Instant NOW = Instant.parse("2026-07-13T08:00:00Z");
   private static final LocalDate CURRENT_WEEK = LocalDate.of(2026, 7, 13);
   private static final LocalDate PRIOR_WEEK = LocalDate.of(2026, 7, 6);
+  private static final UUID USER_ID = UUID.randomUUID();
 
   private final InsightHistoryRepository repository = mock(InsightHistoryRepository.class);
-  private final InsightHistoryService service = new InsightHistoryService(repository);
+  private final InsightHistoryService service =
+      new InsightHistoryService(repository, () -> USER_ID);
 
   private static Recommendation rec() {
     return new Recommendation(
@@ -37,7 +40,7 @@ class InsightHistoryServiceTest {
   void historyDelegatesToRepositoryListAll() {
     WeeklyCheckIn checkIn = new WeeklyCheckIn(CURRENT_WEEK, 71.0, 17.5, 55.5, 3, 3, 3, 2, null);
     WeeklyInsights insights = new WeeklyInsights(checkIn, rec(), List.of(), NOW);
-    when(repository.listAll()).thenReturn(List.of(insights));
+    when(repository.listAll(USER_ID)).thenReturn(List.of(insights));
 
     List<WeeklyInsights> history = service.history();
 
@@ -46,7 +49,7 @@ class InsightHistoryServiceTest {
 
   @Test
   void historyReturnsEmptyListBeforeAnyInsightsHaveBeenGenerated() {
-    when(repository.listAll()).thenReturn(List.of());
+    when(repository.listAll(USER_ID)).thenReturn(List.of());
 
     assertThat(service.history()).isEmpty();
   }
@@ -55,7 +58,8 @@ class InsightHistoryServiceTest {
   void deltasForComputesAgainstTheMostRecentPriorPersistedCheckIn() {
     WeeklyCheckIn current = new WeeklyCheckIn(CURRENT_WEEK, 71.0, 17.5, 55.5, 3, 3, 3, 2, null);
     WeeklyCheckIn prior = new WeeklyCheckIn(PRIOR_WEEK, 72.5, 18.0, 55.0, 3, 2, 3, 1, null);
-    when(repository.findMostRecentCheckInBefore(CURRENT_WEEK)).thenReturn(Optional.of(prior));
+    when(repository.findMostRecentCheckInBefore(USER_ID, CURRENT_WEEK))
+        .thenReturn(Optional.of(prior));
 
     WeeklyCheckInDeltas deltas = service.deltasFor(current);
 
@@ -66,7 +70,8 @@ class InsightHistoryServiceTest {
   @Test
   void deltasForReturnsNoneWhenThereIsNoPriorPeriod() {
     WeeklyCheckIn current = new WeeklyCheckIn(CURRENT_WEEK, 71.0, 17.5, 55.5, 3, 3, 3, 2, null);
-    when(repository.findMostRecentCheckInBefore(CURRENT_WEEK)).thenReturn(Optional.empty());
+    when(repository.findMostRecentCheckInBefore(USER_ID, CURRENT_WEEK))
+        .thenReturn(Optional.empty());
 
     WeeklyCheckInDeltas deltas = service.deltasFor(current);
 

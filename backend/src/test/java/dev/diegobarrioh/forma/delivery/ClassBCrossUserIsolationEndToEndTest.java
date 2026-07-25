@@ -35,10 +35,11 @@ import org.springframework.test.web.servlet.MockMvc;
  * never the legacy placeholder's — after user A writes real data. Streak/weekly-history/adherence
  * (NUTRITION category) are proven via the already-scoped {@code meal_log_entry} table (Class A,
  * 145b-1); achievements are proven via a directly-seeded {@code earned_achievement} row (bypassing
- * {@code AchievementService#evaluate()}, whose {@code body_measurements}-backed rules are a
- * documented 145c gap — see {@code AchievementService} javadoc — so this test does not rely on
- * their evaluation being isolated, only on the per-user PK read/write of the achievement table
- * itself).
+ * {@code AchievementService#evaluate()}, only exercising the per-user PK read/write of the
+ * achievement table itself). {@code body_measurements}/{@code training_session_status}-backed
+ * TRAINING/MEASUREMENTS adherence and measurement-based achievements — closed as 145c "gap tables"
+ * (migrations V30/V31) — are covered deterministically in {@code
+ * ClassCCrossUserIsolationEndToEndTest} instead.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -221,11 +222,14 @@ class ClassBCrossUserIsolationEndToEndTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.categories[?(@.category=='NUTRITION')].completed").value(1));
 
-    // User B's same-window nutrition adherence is unaffected -- zero completed, never A's. TRAINING
-    // is asserted at zero too: FOR-145b-2's post-review security fix means a real, non-placeholder
-    // caller never has TRAINING computed from the still-unscoped global training_session_status
-    // table (145c gap) — see AdherenceService's INTERIM security guard javadoc — regardless of that
-    // table's global state.
+    // User B's same-window nutrition adherence is unaffected -- zero completed, never A's.
+    // TRAINING.completed is asserted at zero too: user B never marked any session COMPLETED, so
+    // that stays zero regardless of which real weekday the suite happens to run on.
+    // TRAINING.planned
+    // is NOT asserted here (145c, migration V31: training_session_status is now user_id-scoped and
+    // the 145b-2 INTERIM guard was removed, so planned is real per-weekday schedule data --
+    // day-dependent under the real system clock; ClassCCrossUserIsolationEndToEndTest covers
+    // TRAINING isolation deterministically via a direct DB assertion instead).
     mockMvc
         .perform(
             get("/api/v1/progress/adherence")
@@ -234,7 +238,6 @@ class ClassBCrossUserIsolationEndToEndTest {
                 .with(csrf()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.categories[?(@.category=='NUTRITION')].completed").value(0))
-        .andExpect(jsonPath("$.categories[?(@.category=='TRAINING')].planned").value(0))
         .andExpect(jsonPath("$.categories[?(@.category=='TRAINING')].completed").value(0));
 
     // User A's current-week bucket in weekly-history shows the logged day as completed.
