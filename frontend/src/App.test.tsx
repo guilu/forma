@@ -61,7 +61,7 @@ vi.mock('./api/integrations', () => ({
  * unknown routes fall back to the not-found page.
  */
 describe('App', () => {
-  it('renders a public landing placeholder on the index route', () => {
+  it('renders the public landing on the index route', () => {
     render(
       <MemoryRouter initialEntries={['/']}>
         <App />
@@ -70,9 +70,11 @@ describe('App', () => {
 
     // Generic greeting: no profile mocked here, so the name stays unset
     // (FOR-169 empty first-run).
-    expect(screen.getByRole('heading', { name: 'FORMA' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Entiende tu progreso. Organiza lo que viene.' }),
+    ).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Hola 👋' })).not.toBeInTheDocument();
-    expect(screen.queryAllByRole('navigation')).toHaveLength(0);
+    expect(screen.getByRole('navigation', { name: 'Navegación pública' })).toBeInTheDocument();
   });
 
   it('renders the Dashboard at the protected /app entry point', () => {
@@ -109,7 +111,7 @@ describe('App', () => {
   });
 
   it.each([
-    ['/', 'FORMA'],
+    ['/', 'Entiende tu progreso. Organiza lo que viene.'],
     ['/auth?code=abc&state=xyz', 'Conexión con Withings'],
   ])('keeps %s public for anonymous users', (path, heading) => {
     authStatus = 'anonymous';
