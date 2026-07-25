@@ -8,6 +8,7 @@ import dev.diegobarrioh.forma.domain.SessionStatus;
 import java.time.DayOfWeek;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
@@ -18,10 +19,12 @@ import org.junit.jupiter.api.Test;
  */
 class WeeklyTrainingScheduleServiceTest {
 
+  static final UUID USER_ID = UUID.randomUUID();
+
   private final FakeStatusRepository statusRepository = new FakeStatusRepository();
   private final WeeklyTrainingScheduleService service =
       new WeeklyTrainingScheduleService(
-          new RunningPlanService(), new WorkoutTemplateService(), statusRepository);
+          new RunningPlanService(), new WorkoutTemplateService(), statusRepository, () -> USER_ID);
 
   private Map<DayOfWeek, TrainingDay> byDay() {
     return service.currentWeek().days().stream()
@@ -79,7 +82,8 @@ class WeeklyTrainingScheduleServiceTest {
 
   @Test
   void appliesStoredStatusAndNotes() {
-    statusRepository.upsert("SATURDAY:RUNNING", SessionStatus.COMPLETED, "Buenas sensaciones");
+    statusRepository.upsert(
+        USER_ID, "SATURDAY:RUNNING", SessionStatus.COMPLETED, "Buenas sensaciones");
 
     TrainingEntry saturdayRun =
         byDay().get(DayOfWeek.SATURDAY).entries().stream()
@@ -96,12 +100,12 @@ class WeeklyTrainingScheduleServiceTest {
     private final Map<String, StoredSessionStatus> stored = new HashMap<>();
 
     @Override
-    public Map<String, StoredSessionStatus> findAll() {
+    public Map<String, StoredSessionStatus> findAllByUser(UUID userId) {
       return stored;
     }
 
     @Override
-    public void upsert(String sessionId, SessionStatus status, String notes) {
+    public void upsert(UUID userId, String sessionId, SessionStatus status, String notes) {
       stored.put(sessionId, new StoredSessionStatus(sessionId, status, notes));
     }
   }

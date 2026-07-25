@@ -60,9 +60,7 @@ class ClassACrossUserIsolationEndToEndTest {
     jdbcTemplate.update("DELETE FROM weekly_tracking_record");
     // FOR-145b-2: earned_achievement.user_id now FK-references users(id) too -- a real
     // achievements-endpoint call (see the deferred-endpoints test below) can insert a row for
-    // USER_A/USER_B (FIRST_MEASUREMENT fires off the still-unscoped 145c body_measurements gap
-    // table, see AchievementService's documented limitation), which must be cleared before the
-    // FK-constrained user delete below.
+    // USER_A/USER_B, which must be cleared before the FK-constrained user delete below.
     jdbcTemplate.update("DELETE FROM earned_achievement WHERE user_id IN (?, ?)", USER_A, USER_B);
     jdbcTemplate.update("DELETE FROM users WHERE id IN (?, ?)", USER_A, USER_B);
     jdbcTemplate.update(

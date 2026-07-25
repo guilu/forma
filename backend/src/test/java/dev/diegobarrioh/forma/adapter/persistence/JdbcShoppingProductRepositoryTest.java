@@ -4,11 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.diegobarrioh.forma.application.ShoppingProductRepository;
 import dev.diegobarrioh.forma.application.StoredShoppingProduct;
+import dev.diegobarrioh.forma.bootstrap.LegacyUserBootstrap;
 import dev.diegobarrioh.forma.domain.ShoppingCategory;
 import dev.diegobarrioh.forma.domain.ShoppingProduct;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +25,8 @@ import org.springframework.test.context.ActiveProfiles;
 @SpringBootTest
 @ActiveProfiles("test")
 class JdbcShoppingProductRepositoryTest {
+
+  private static final UUID OWNER = LegacyUserBootstrap.PLACEHOLDER_USER_ID;
 
   @Autowired private ShoppingProductRepository repository;
   @Autowired private JdbcTemplate jdbcTemplate;
@@ -51,10 +55,10 @@ class JdbcShoppingProductRepositoryTest {
 
   @Test
   void createsThenListsWithGeneratedId() {
-    StoredShoppingProduct created = repository.create(product("Avena", "1.95"));
+    StoredShoppingProduct created = repository.create(OWNER, product("Avena", "1.95"));
 
     assertThat(created.id()).isNotBlank();
-    assertThat(repository.findAll())
+    assertThat(repository.findAllByOwner(OWNER))
         .singleElement()
         .satisfies(
             stored -> {
@@ -71,13 +75,13 @@ class JdbcShoppingProductRepositoryTest {
 
   @Test
   void updatesAnExistingProduct() {
-    StoredShoppingProduct created = repository.create(product("Avena", "1.95"));
+    StoredShoppingProduct created = repository.create(OWNER, product("Avena", "1.95"));
 
     Optional<StoredShoppingProduct> updated =
-        repository.update(created.id(), product("Avena integral", "2.30"));
+        repository.update(OWNER, created.id(), product("Avena integral", "2.30"));
 
     assertThat(updated).isPresent();
-    assertThat(repository.findAll())
+    assertThat(repository.findAllByOwner(OWNER))
         .singleElement()
         .satisfies(
             stored -> {
@@ -88,16 +92,17 @@ class JdbcShoppingProductRepositoryTest {
 
   @Test
   void updateOfUnknownIdReturnsEmpty() {
-    assertThat(repository.update("00000000-0000-0000-0000-000000000000", product("X", "1.00")))
+    assertThat(
+            repository.update(OWNER, "00000000-0000-0000-0000-000000000000", product("X", "1.00")))
         .isEmpty();
   }
 
   @Test
   void roundTripsCategory() {
     StoredShoppingProduct created =
-        repository.create(product("Platano", "1.80", ShoppingCategory.FRUTAS_Y_VERDURAS));
+        repository.create(OWNER, product("Platano", "1.80", ShoppingCategory.FRUTAS_Y_VERDURAS));
 
-    assertThat(repository.findAll())
+    assertThat(repository.findAllByOwner(OWNER))
         .singleElement()
         .satisfies(
             stored ->
@@ -106,10 +111,10 @@ class JdbcShoppingProductRepositoryTest {
 
     Optional<StoredShoppingProduct> updated =
         repository.update(
-            created.id(), product("Platano", "1.80", ShoppingCategory.LACTEOS_Y_HUEVOS));
+            OWNER, created.id(), product("Platano", "1.80", ShoppingCategory.LACTEOS_Y_HUEVOS));
 
     assertThat(updated).isPresent();
-    assertThat(repository.findAll())
+    assertThat(repository.findAllByOwner(OWNER))
         .singleElement()
         .satisfies(
             stored ->
@@ -119,9 +124,9 @@ class JdbcShoppingProductRepositoryTest {
 
   @Test
   void productWithNoCategoryDefaultsToOtros() {
-    repository.create(product("Sin categoria", "1.00", null));
+    repository.create(OWNER, product("Sin categoria", "1.00", null));
 
-    assertThat(repository.findAll())
+    assertThat(repository.findAllByOwner(OWNER))
         .singleElement()
         .satisfies(
             stored -> assertThat(stored.product().category()).isEqualTo(ShoppingCategory.OTROS));

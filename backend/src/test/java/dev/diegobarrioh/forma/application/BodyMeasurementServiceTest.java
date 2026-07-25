@@ -7,6 +7,7 @@ import dev.diegobarrioh.forma.domain.MeasurementSource;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -15,8 +16,11 @@ import org.junit.jupiter.api.Test;
  */
 class BodyMeasurementServiceTest {
 
+  private static final UUID USER_ID = UUID.randomUUID();
+
   private final RecordingRepository repository = new RecordingRepository();
-  private final BodyMeasurementService service = new BodyMeasurementService(repository);
+  private final BodyMeasurementService service =
+      new BodyMeasurementService(repository, () -> USER_ID);
 
   @Test
   void createManualBuildsManualMeasurementAndPersistsIt() {
@@ -64,12 +68,12 @@ class BodyMeasurementServiceTest {
     private final List<BodyMeasurement> saved = new ArrayList<>();
 
     @Override
-    public void save(BodyMeasurement measurement) {
+    public void save(UUID userId, BodyMeasurement measurement) {
       saved.add(measurement);
     }
 
     @Override
-    public List<BodyMeasurement> list() {
+    public List<BodyMeasurement> list(UUID userId) {
       return List.copyOf(saved);
     }
   }

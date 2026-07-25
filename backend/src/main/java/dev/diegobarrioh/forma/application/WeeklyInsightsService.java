@@ -46,6 +46,12 @@ import org.springframework.stereotype.Service;
  * it only stores the output going forward (spec FOR-110: "wrap/store its output", do not rewrite
  * generation). The returned {@link WeeklyInsights} shape is unchanged from FOR-45/FOR-56
  * (regression requirement, tests.md).
+ *
+ * <h2>Real multi-user auth (FOR-145c, ADR-012, migration V34)</h2>
+ *
+ * {@code insight_history} is a "gap table" that had ZERO owner-scoping before this slice. Resolves
+ * the caller's account id via {@link CurrentUserProvider} and passes it to {@link
+ * InsightHistoryRepository#save} on every call.
  */
 @Service
 public class WeeklyInsightsService {
@@ -59,6 +65,7 @@ public class WeeklyInsightsService {
   private final ShoppingCostRecommendationService shoppingCostService;
   private final InsightHistoryRepository historyRepository;
   private final Clock clock;
+  private final CurrentUserProvider currentUserProvider;
 
   public WeeklyInsightsService(
       WeeklyCheckInService checkInService,
@@ -69,7 +76,8 @@ public class WeeklyInsightsService {
       PaceDegradationRecommendationService paceDegradationService,
       ShoppingCostRecommendationService shoppingCostService,
       InsightHistoryRepository historyRepository,
-      Clock clock) {
+      Clock clock,
+      CurrentUserProvider currentUserProvider) {
     this.checkInService = checkInService;
     this.bodyTrendService = bodyTrendService;
     this.bodyFatTrendService = bodyFatTrendService;
@@ -79,6 +87,7 @@ public class WeeklyInsightsService {
     this.shoppingCostService = shoppingCostService;
     this.historyRepository = historyRepository;
     this.clock = clock;
+    this.currentUserProvider = currentUserProvider;
   }
 
   /**
@@ -103,7 +112,7 @@ public class WeeklyInsightsService {
     List<Recommendation> secondary = List.copyOf(ranked.subList(1, ranked.size()));
 
     WeeklyInsights insights = new WeeklyInsights(checkIn, main, secondary, Instant.now(clock));
-    historyRepository.save(insights);
+    historyRepository.save(currentUserProvider.currentUserId(), insights);
     return insights;
   }
 

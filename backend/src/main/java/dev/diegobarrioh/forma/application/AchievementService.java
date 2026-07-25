@@ -1,6 +1,5 @@
 package dev.diegobarrioh.forma.application;
 
-import dev.diegobarrioh.forma.bootstrap.LegacyUserBootstrap;
 import dev.diegobarrioh.forma.domain.Achievement;
 import dev.diegobarrioh.forma.domain.AchievementCatalog;
 import dev.diegobarrioh.forma.domain.AchievementData;
@@ -35,23 +34,16 @@ import org.springframework.stereotype.Service;
  * caller's account id via {@link CurrentUserProvider} instead of the old fixed {@code OWNER_ID =
  * "default-user"} constant (removed by this slice, alongside the 145b-1 interim {@code
  * requireLegacyOwner()} guard) — {@code earned_achievement}'s composite primary key was rebuilt
- * from the legacy {@code owner_id VARCHAR} column to {@code user_id UUID}. {@link
- * #bodyMeasurementRepository} is NOT scoped here: {@code body_measurements} is a 145c "gap table"
- * (no {@code user_id} column at all yet, see {@code AdherenceService}'s documented limitation).
+ * from the legacy {@code owner_id VARCHAR} column to {@code user_id UUID}.
  *
- * <p><b>INTERIM security guard (post-145b-2 security review, 🟠 MEDIUM cross-account signal
- * leak).</b> Evaluating measurement-based rules (e.g. {@code FIRST_MEASUREMENT}, {@code
- * TEN_MEASUREMENTS_LOGGED}) against the global, unscoped {@code body_measurements} table for a
- * real, non-placeholder caller would let that caller false-positive-earn achievements from every
- * other account's measurement history. Until 145c adds {@code user_id} to {@code
- * body_measurements}, {@link #loadData(UUID)} only loads measurements — and therefore only
- * evaluates measurement-based rules — for the seeded legacy placeholder account ({@link
- * LegacyUserBootstrap#PLACEHOLDER_USER_ID}); every other caller gets an empty measurement list (the
- * global repository is not consulted at all for that caller), so measurement-based rules simply
- * never fire for them, while goal-based and integration-based rules (properly {@code
- * user_id}-scoped since 145b-1/145b-2) are still evaluated normally. <b>Remove this guard in
- * 145c</b> once {@code body_measurements} carries {@code user_id} and can be scoped like the other
- * rule inputs already are.
+ * <p><b>{@link #bodyMeasurementRepository} scoping (145c, migration V30).</b> {@code
+ * body_measurements} gained a {@code user_id} column (with a backfill), closing what was a 145c
+ * "gap table" with zero owner-scoping. {@link #loadData(UUID)} now always loads the caller's own
+ * measurements via {@link BodyMeasurementRepository#list(UUID)}, so measurement-based rules (e.g.
+ * {@code FIRST_MEASUREMENT}, {@code TEN_MEASUREMENTS_LOGGED}) evaluate for every caller from their
+ * own data. <b>145c removed the 145b-2 INTERIM security guard</b> (🟠 MEDIUM cross-account signal
+ * leak) that restricted measurement-based rule evaluation to the seeded legacy placeholder account
+ * and always returned an empty measurement list for every other caller.
  */
 @Service
 public class AchievementService {
@@ -119,14 +111,9 @@ public class AchievementService {
   }
 
   private AchievementData loadData(UUID userId) {
-    // 145c TODO: body_measurements has no user_id column yet (gap table) -- this list() is global,
-    // unscoped by owner, see class javadoc. INTERIM security guard: only the legacy placeholder
-    // account reads it; every other caller gets an empty list so measurement-based rules never fire
-    // from other accounts' data (post-145b-2 security review, 🟠 MEDIUM leak).
-    List<BodyMeasurement> measurements =
-        LegacyUserBootstrap.PLACEHOLDER_USER_ID.equals(userId)
-            ? bodyMeasurementRepository.list()
-            : List.of();
+    // 145c (migration V30): body_measurements now carries user_id, so this is a real per-caller
+    // read -- no more INTERIM guard restricting it to the legacy placeholder account.
+    List<BodyMeasurement> measurements = bodyMeasurementRepository.list(userId);
     List<Goal> goals =
         goalRepository.findAllByOwner(userId).stream().map(StoredGoal::goal).toList();
     boolean withingsSyncCompleted =

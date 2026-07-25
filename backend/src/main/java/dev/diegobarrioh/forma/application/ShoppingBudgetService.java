@@ -15,20 +15,26 @@ import org.springframework.stereotype.Service;
  * delegates the arithmetic to the pure {@link ShoppingBudgetCalculator}. Because it reads current
  * prices, the budget reflects price changes; computed on demand, no persisted budget. Mirrors the
  * FOR-21/FOR-28 service pattern.
+ *
+ * <p>Real multi-user auth (FOR-145c, ADR-012, migration V32): resolves the caller's account id via
+ * {@link CurrentUserProvider} so the budget is computed from the caller's own product catalog.
  */
 @Service
 public class ShoppingBudgetService {
 
   private final ShoppingProductRepository productRepository;
+  private final CurrentUserProvider currentUserProvider;
 
-  public ShoppingBudgetService(ShoppingProductRepository productRepository) {
+  public ShoppingBudgetService(
+      ShoppingProductRepository productRepository, CurrentUserProvider currentUserProvider) {
     this.productRepository = productRepository;
+    this.currentUserProvider = currentUserProvider;
   }
 
   /** Computes the weekly + monthly budget for a list using current product prices. */
   public ShoppingBudget budgetFor(ShoppingList list) {
     Map<String, BigDecimal> unitPriceById =
-        productRepository.findAll().stream()
+        productRepository.findAllByOwner(currentUserProvider.currentUserId()).stream()
             .collect(
                 Collectors.toMap(
                     StoredShoppingProduct::id, stored -> stored.product().estimatedPriceEur()));

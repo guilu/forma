@@ -13,6 +13,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
@@ -33,6 +34,12 @@ import org.springframework.stereotype.Repository;
  * for its recommendations (N+1) rather than a single join — acceptable at the MVP's low, personal,
  * weekly-cadence data volume (spec FOR-110 Open Questions: no retention cap for MVP), and keeps the
  * mapping code simple and easy to follow.
+ *
+ * <p>Real multi-user auth (FOR-145c, ADR-012, migration V34): both tables' primary keys were
+ * rebuilt to include {@code user_id UUID} — {@code insight_history}'s PK is now {@code (user_id,
+ * week_start_date)} and {@code insight_history_recommendation}'s is {@code (user_id,
+ * week_start_date, sort_order)} — closing the "gap table" cross-user collision on the bare {@code
+ * week_start_date}. Every statement is scoped by {@code user_id}.
  */
 @Repository
 public class JdbcInsightHistoryRepository implements InsightHistoryRepository {
@@ -48,44 +55,45 @@ public class JdbcInsightHistoryRepository implements InsightHistoryRepository {
         latest_weight_kg = ?, latest_body_fat_percentage = ?, latest_lean_mass_kg = ?,
         planned_running_sessions = ?, completed_running_sessions = ?,
         planned_strength_sessions = ?, completed_strength_sessions = ?, notes = ?, generated_at = ?
-      WHERE week_start_date = ?
+      WHERE user_id = ? AND week_start_date = ?
       """;
 
   private static final String INSERT_PARENT_SQL =
       """
       INSERT INTO insight_history
-        (week_start_date, latest_weight_kg, latest_body_fat_percentage, latest_lean_mass_kg,
-         planned_running_sessions, completed_running_sessions, planned_strength_sessions,
-         completed_strength_sessions, notes, generated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (user_id, week_start_date, latest_weight_kg, latest_body_fat_percentage,
+         latest_lean_mass_kg, planned_running_sessions, completed_running_sessions,
+         planned_strength_sessions, completed_strength_sessions, notes, generated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       """;
 
   private static final String DELETE_RECOMMENDATIONS_SQL =
-      "DELETE FROM insight_history_recommendation WHERE week_start_date = ?";
+      "DELETE FROM insight_history_recommendation WHERE user_id = ? AND week_start_date = ?";
 
   private static final String INSERT_RECOMMENDATION_SQL =
       """
       INSERT INTO insight_history_recommendation
-        (week_start_date, sort_order, is_main, category, severity, message, reason,
+        (user_id, week_start_date, sort_order, is_main, category, severity, message, reason,
          related_metric, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       """;
 
   private static final String LIST_PERIODS_SQL =
       "SELECT "
           + CHECKIN_COLUMNS
           + ", generated_at FROM insight_history"
-          + " ORDER BY week_start_date DESC";
+          + " WHERE user_id = ? ORDER BY week_start_date DESC";
 
   private static final String FIND_RECOMMENDATIONS_SQL =
       "SELECT sort_order, is_main, category, severity, message, reason, related_metric, created_at"
-          + " FROM insight_history_recommendation WHERE week_start_date = ? ORDER BY sort_order";
+          + " FROM insight_history_recommendation WHERE user_id = ? AND week_start_date = ?"
+          + " ORDER BY sort_order";
 
   private static final String FIND_PRIOR_CHECKIN_SQL =
       "SELECT "
           + CHECKIN_COLUMNS
           + " FROM insight_history"
-          + " WHERE week_start_date < ? ORDER BY week_start_date DESC";
+          + " WHERE user_id = ? AND week_start_date < ? ORDER BY week_start_date DESC";
 
   private static final RowMapper<WeeklyCheckIn> CHECKIN_MAPPER =
       (rs, rowNum) ->
@@ -125,7 +133,7 @@ public class JdbcInsightHistoryRepository implements InsightHistoryRepository {
   }
 
   @Override
-  public void save(WeeklyInsights insights) {
+  public void save(UUID userId, WeeklyInsights insights) {
     WeeklyCheckIn checkIn = insights.checkIn();
     LocalDate period = checkIn.weekStartDate();
     OffsetDateTime generatedAt = toOffsetDateTime(insights.generatedAt());
@@ -142,10 +150,12 @@ public class JdbcInsightHistoryRepository implements InsightHistoryRepository {
             checkIn.completedStrengthSessions(),
             checkIn.notes(),
             generatedAt,
+            userId,
             period);
     if (updated == 0) {
       jdbcTemplate.update(
           INSERT_PARENT_SQL,
+          userId,
           period,
           toNullableBigDecimal(checkIn.latestWeightKg()),
           toNullableBigDecimal(checkIn.latestBodyFatPercentage()),
@@ -158,31 +168,33 @@ public class JdbcInsightHistoryRepository implements InsightHistoryRepository {
           generatedAt);
     }
 
-    jdbcTemplate.update(DELETE_RECOMMENDATIONS_SQL, period);
-    insertRecommendation(period, 0, true, insights.main());
+    jdbcTemplate.update(DELETE_RECOMMENDATIONS_SQL, userId, period);
+    insertRecommendation(userId, period, 0, true, insights.main());
     List<Recommendation> secondary = insights.secondary();
     for (int i = 0; i < secondary.size(); i++) {
-      insertRecommendation(period, i + 1, false, secondary.get(i));
+      insertRecommendation(userId, period, i + 1, false, secondary.get(i));
     }
   }
 
   @Override
-  public List<WeeklyInsights> listAll() {
-    return jdbcTemplate.query(LIST_PERIODS_SQL, PERIOD_MAPPER).stream()
-        .map(this::toWeeklyInsights)
+  public List<WeeklyInsights> listAll(UUID userId) {
+    return jdbcTemplate.query(LIST_PERIODS_SQL, PERIOD_MAPPER, userId).stream()
+        .map(period -> toWeeklyInsights(userId, period))
         .toList();
   }
 
   @Override
-  public Optional<WeeklyCheckIn> findMostRecentCheckInBefore(LocalDate period) {
-    List<WeeklyCheckIn> found = jdbcTemplate.query(FIND_PRIOR_CHECKIN_SQL, CHECKIN_MAPPER, period);
+  public Optional<WeeklyCheckIn> findMostRecentCheckInBefore(UUID userId, LocalDate period) {
+    List<WeeklyCheckIn> found =
+        jdbcTemplate.query(FIND_PRIOR_CHECKIN_SQL, CHECKIN_MAPPER, userId, period);
     return found.isEmpty() ? Optional.empty() : Optional.of(found.get(0));
   }
 
   private void insertRecommendation(
-      LocalDate period, int sortOrder, boolean isMain, Recommendation recommendation) {
+      UUID userId, LocalDate period, int sortOrder, boolean isMain, Recommendation recommendation) {
     jdbcTemplate.update(
         INSERT_RECOMMENDATION_SQL,
+        userId,
         period,
         sortOrder,
         isMain,
@@ -194,10 +206,13 @@ public class JdbcInsightHistoryRepository implements InsightHistoryRepository {
         toOffsetDateTime(recommendation.createdAt()));
   }
 
-  private WeeklyInsights toWeeklyInsights(StoredPeriod period) {
+  private WeeklyInsights toWeeklyInsights(UUID userId, StoredPeriod period) {
     List<StoredRecommendation> rows =
         jdbcTemplate.query(
-            FIND_RECOMMENDATIONS_SQL, RECOMMENDATION_MAPPER, period.checkIn().weekStartDate());
+            FIND_RECOMMENDATIONS_SQL,
+            RECOMMENDATION_MAPPER,
+            userId,
+            period.checkIn().weekStartDate());
     Recommendation main =
         rows.stream()
             .filter(StoredRecommendation::isMain)

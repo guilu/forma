@@ -11,6 +11,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
@@ -56,7 +57,10 @@ class NutritionDayTypeResolverTest {
     // Same day-kind source (FOR-128): a policy change updates both, so they can never drift.
     WeeklyTrainingScheduleService scheduleService =
         new WeeklyTrainingScheduleService(
-            new RunningPlanService(), new WorkoutTemplateService(), new FakeStatusRepository());
+            new RunningPlanService(),
+            new WorkoutTemplateService(),
+            new FakeStatusRepository(),
+            () -> UUID.randomUUID());
     Map<DayOfWeek, WeeklyTrainingSchedule.TrainingDay> byDay =
         scheduleService.currentWeek().days().stream()
             .collect(
@@ -95,12 +99,13 @@ class NutritionDayTypeResolverTest {
         new HashMap<>();
 
     @Override
-    public Map<String, dev.diegobarrioh.forma.application.StoredSessionStatus> findAll() {
+    public Map<String, dev.diegobarrioh.forma.application.StoredSessionStatus> findAllByUser(
+        UUID userId) {
       return stored;
     }
 
     @Override
-    public void upsert(String sessionId, SessionStatus status, String notes) {
+    public void upsert(UUID userId, String sessionId, SessionStatus status, String notes) {
       stored.put(
           sessionId,
           new dev.diegobarrioh.forma.application.StoredSessionStatus(sessionId, status, notes));

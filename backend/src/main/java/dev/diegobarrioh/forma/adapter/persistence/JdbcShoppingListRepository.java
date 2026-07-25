@@ -29,6 +29,12 @@ import org.springframework.stereotype.Repository;
  * <p>Plain JDBC via {@link JdbcTemplate} (no ORM, like FOR-16). The active list is the single row
  * with {@code status = 'ACTIVE'}; its items are read separately and combined. Reads the FOR-108
  * {@code unit}/{@code servings}/{@code generated_at} columns added by migration V9.
+ *
+ * <p>Real multi-user auth (FOR-145c, ADR-012, migration V33): {@code shopping_lists} carries a real
+ * {@code user_id UUID} column, closing this "gap table"'s zero owner-scoping. {@code
+ * shopping_list_items} has no {@code user_id} of its own — every item statement scopes through its
+ * owning list via a {@code shopping_list_id IN (SELECT id FROM shopping_lists WHERE user_id = ?)}
+ * join, per the design's "child tables scoped via parent" default.
  */
 @Repository
 public class JdbcShoppingListRepository implements ShoppingListRepository {
@@ -55,8 +61,8 @@ public class JdbcShoppingListRepository implements ShoppingListRepository {
   }
 
   @Override
-  public Optional<ActiveShoppingList> findActive() {
-    Optional<ActiveList> activeList = findActiveListRow();
+  public Optional<ActiveShoppingList> findActive(UUID userId) {
+    Optional<ActiveList> activeList = findActiveListRow(userId);
     if (activeList.isEmpty()) {
       return Optional.empty();
     }
@@ -64,15 +70,19 @@ public class JdbcShoppingListRepository implements ShoppingListRepository {
   }
 
   @Override
-  public Optional<StoredShoppingListItem> setChecked(String itemId, boolean checked) {
+  public Optional<StoredShoppingListItem> setChecked(UUID userId, String itemId, boolean checked) {
     UUID itemUuid = UUID.fromString(itemId);
     int updated =
         jdbcTemplate.update(
-            "UPDATE shopping_list_items SET checked = ? WHERE id = ?", checked, itemUuid);
+            "UPDATE shopping_list_items SET checked = ? WHERE id = ? AND shopping_list_id IN"
+                + " (SELECT id FROM shopping_lists WHERE user_id = ?)",
+            checked,
+            itemUuid,
+            userId);
     if (updated == 0) {
       return Optional.empty();
     }
-    return findItemRow(itemUuid);
+    return findItemRow(userId, itemUuid);
   }
 
   /**
@@ -82,8 +92,8 @@ public class JdbcShoppingListRepository implements ShoppingListRepository {
    */
   @Override
   public Optional<ActiveShoppingList> regenerate(
-      List<ShoppingListItem> items, Instant generatedAt) {
-    Optional<ActiveList> activeList = findActiveListRow();
+      UUID userId, List<ShoppingListItem> items, Instant generatedAt) {
+    Optional<ActiveList> activeList = findActiveListRow(userId);
     if (activeList.isEmpty()) {
       return Optional.empty();
     }
@@ -108,42 +118,45 @@ public class JdbcShoppingListRepository implements ShoppingListRepository {
         "UPDATE shopping_lists SET generated_at = ? WHERE id = ?",
         toOffsetDateTime(generatedAt),
         listId);
-    return findActive();
+    return findActive(userId);
   }
 
   @Override
   public Optional<StoredShoppingListItem> updateQuantity(
-      String itemId, int quantity, BigDecimal estimatedCostEur) {
+      UUID userId, String itemId, int quantity, BigDecimal estimatedCostEur) {
     UUID itemUuid = UUID.fromString(itemId);
     int updated =
         jdbcTemplate.update(
-            "UPDATE shopping_list_items SET quantity = ?, estimated_cost_eur = ? WHERE id = ?",
+            "UPDATE shopping_list_items SET quantity = ?, estimated_cost_eur = ? WHERE id = ?"
+                + " AND shopping_list_id IN (SELECT id FROM shopping_lists WHERE user_id = ?)",
             quantity,
             estimatedCostEur,
-            itemUuid);
+            itemUuid,
+            userId);
     if (updated == 0) {
       return Optional.empty();
     }
-    return findItemRow(itemUuid);
+    return findItemRow(userId, itemUuid);
   }
 
   @Override
-  public Optional<StoredShoppingListItem> findItem(String itemId) {
-    return findItemRow(UUID.fromString(itemId));
+  public Optional<StoredShoppingListItem> findItem(UUID userId, String itemId) {
+    return findItemRow(userId, UUID.fromString(itemId));
   }
 
-  private Optional<ActiveList> findActiveListRow() {
+  private Optional<ActiveList> findActiveListRow(UUID userId) {
     List<ActiveList> lists =
         jdbcTemplate.query(
             "SELECT id, week_start_date, status, notes, generated_at FROM shopping_lists"
-                + " WHERE status = 'ACTIVE' ORDER BY week_start_date DESC",
+                + " WHERE status = 'ACTIVE' AND user_id = ? ORDER BY week_start_date DESC",
             (rs, rowNum) ->
                 new ActiveList(
                     rs.getString("id"),
                     rs.getObject("week_start_date", LocalDate.class),
                     ShoppingListStatus.valueOf(rs.getString("status")),
                     rs.getString("notes"),
-                    rs.getObject("generated_at", OffsetDateTime.class)));
+                    rs.getObject("generated_at", OffsetDateTime.class)),
+            userId);
     return lists.isEmpty() ? Optional.empty() : Optional.of(lists.get(0));
   }
 
@@ -165,13 +178,17 @@ public class JdbcShoppingListRepository implements ShoppingListRepository {
         list.generatedAt().toInstant());
   }
 
-  private Optional<StoredShoppingListItem> findItemRow(UUID itemUuid) {
+  private Optional<StoredShoppingListItem> findItemRow(UUID userId, UUID itemUuid) {
     try {
       return Optional.of(
           jdbcTemplate.queryForObject(
-              "SELECT " + ITEM_COLUMNS + " FROM shopping_list_items WHERE id = ?",
+              "SELECT "
+                  + ITEM_COLUMNS
+                  + " FROM shopping_list_items WHERE id = ? AND shopping_list_id IN"
+                  + " (SELECT id FROM shopping_lists WHERE user_id = ?)",
               ITEM_MAPPER,
-              itemUuid));
+              itemUuid,
+              userId));
     } catch (EmptyResultDataAccessException ex) {
       return Optional.empty();
     }

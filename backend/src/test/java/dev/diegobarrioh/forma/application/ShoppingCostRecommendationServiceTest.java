@@ -16,6 +16,7 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -27,11 +28,12 @@ class ShoppingCostRecommendationServiceTest {
 
   private static final Instant NOW = Instant.parse("2026-07-09T08:00:00Z");
   private static final Clock FIXED = Clock.fixed(NOW, ZoneOffset.UTC);
+  private static final UUID USER_ID = UUID.randomUUID();
 
   private final ShoppingListRepository listRepository = mock(ShoppingListRepository.class);
   private final ShoppingBudgetService budgetService = mock(ShoppingBudgetService.class);
   private final ShoppingCostRecommendationService service =
-      new ShoppingCostRecommendationService(listRepository, budgetService, FIXED);
+      new ShoppingCostRecommendationService(listRepository, budgetService, FIXED, () -> USER_ID);
 
   private static ActiveShoppingList activeList() {
     return new ActiveShoppingList(
@@ -40,7 +42,7 @@ class ShoppingCostRecommendationServiceTest {
 
   @Test
   void producesARecommendationWhenTheActiveListIsOverThreshold() {
-    when(listRepository.findActive()).thenReturn(Optional.of(activeList()));
+    when(listRepository.findActive(USER_ID)).thenReturn(Optional.of(activeList()));
     when(budgetService.budgetFor(any()))
         .thenReturn(
             new ShoppingBudget(
@@ -58,7 +60,7 @@ class ShoppingCostRecommendationServiceTest {
 
   @Test
   void producesNothingWhenUnderThreshold() {
-    when(listRepository.findActive()).thenReturn(Optional.of(activeList()));
+    when(listRepository.findActive(USER_ID)).thenReturn(Optional.of(activeList()));
     when(budgetService.budgetFor(any()))
         .thenReturn(
             new ShoppingBudget(
@@ -69,7 +71,7 @@ class ShoppingCostRecommendationServiceTest {
 
   @Test
   void producesNothingWhenThereIsNoActiveList() {
-    when(listRepository.findActive()).thenReturn(Optional.empty());
+    when(listRepository.findActive(USER_ID)).thenReturn(Optional.empty());
 
     assertThat(service.currentRecommendations()).isEmpty();
   }

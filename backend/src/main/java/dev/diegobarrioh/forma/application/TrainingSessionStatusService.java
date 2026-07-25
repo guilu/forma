@@ -13,17 +13,26 @@ import org.springframework.stereotype.Service;
  * {@link NotFoundException} → 404) and persists the status (and optional notes) via the repository
  * port. The transition rule is intentionally permissive for the MVP: any of {@code PLANNED}, {@code
  * COMPLETED}, {@code SKIPPED} can be set (including reverting), keeping completion simple.
+ *
+ * <p>Real multi-user auth (FOR-145c, ADR-012, migration V31): this "gap table" service had ZERO
+ * owner-scoping before this slice — {@code training_session_status}'s primary key was rebuilt to a
+ * composite {@code (user_id, session_id)} (the bare {@code session_id} alone collided across
+ * users). Resolves the caller's account id via {@link CurrentUserProvider} on every call.
  */
 @Service
 public class TrainingSessionStatusService {
 
   private final WeeklyTrainingScheduleService scheduleService;
   private final TrainingSessionStatusRepository repository;
+  private final CurrentUserProvider currentUserProvider;
 
   public TrainingSessionStatusService(
-      WeeklyTrainingScheduleService scheduleService, TrainingSessionStatusRepository repository) {
+      WeeklyTrainingScheduleService scheduleService,
+      TrainingSessionStatusRepository repository,
+      CurrentUserProvider currentUserProvider) {
     this.scheduleService = scheduleService;
     this.repository = repository;
+    this.currentUserProvider = currentUserProvider;
   }
 
   /**
@@ -35,7 +44,7 @@ public class TrainingSessionStatusService {
     if (!currentSessionIds().contains(sessionId)) {
       throw new NotFoundException("No existe la sesión de entrenamiento: " + sessionId);
     }
-    repository.upsert(sessionId, status, notes);
+    repository.upsert(currentUserProvider.currentUserId(), sessionId, status, notes);
     return new StoredSessionStatus(sessionId, status, notes);
   }
 

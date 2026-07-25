@@ -9,6 +9,7 @@ import dev.diegobarrioh.forma.domain.SessionStatus;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -18,11 +19,13 @@ import org.junit.jupiter.api.Test;
  */
 class WeeklyTrainingSummaryServiceTest {
 
+  private static final UUID USER_ID = UUID.randomUUID();
+
   private final FakeStatusRepository statusRepository = new FakeStatusRepository();
   private final RunningPlanService runningPlanService = new RunningPlanService();
   private final WeeklyTrainingScheduleService scheduleService =
       new WeeklyTrainingScheduleService(
-          runningPlanService, new WorkoutTemplateService(), statusRepository);
+          runningPlanService, new WorkoutTemplateService(), statusRepository, () -> USER_ID);
   private final WeeklyTrainingSummaryService service =
       new WeeklyTrainingSummaryService(scheduleService, runningPlanService);
 
@@ -42,7 +45,7 @@ class WeeklyTrainingSummaryServiceTest {
 
   @Test
   void countsCompletedRunningAndItsDistance() {
-    statusRepository.upsert("SATURDAY:RUNNING", SessionStatus.COMPLETED, null);
+    statusRepository.upsert(USER_ID, "SATURDAY:RUNNING", SessionStatus.COMPLETED, null);
 
     WeeklyTrainingSummary summary = service.currentSummary();
 
@@ -53,7 +56,7 @@ class WeeklyTrainingSummaryServiceTest {
 
   @Test
   void countsCompletedStrength() {
-    statusRepository.upsert("TUESDAY:STRENGTH", SessionStatus.COMPLETED, null);
+    statusRepository.upsert(USER_ID, "TUESDAY:STRENGTH", SessionStatus.COMPLETED, null);
 
     assertThat(service.currentSummary().completedStrengthSessions()).isEqualTo(1);
   }
@@ -78,12 +81,12 @@ class WeeklyTrainingSummaryServiceTest {
     private final Map<String, StoredSessionStatus> stored = new HashMap<>();
 
     @Override
-    public Map<String, StoredSessionStatus> findAll() {
+    public Map<String, StoredSessionStatus> findAllByUser(UUID userId) {
       return stored;
     }
 
     @Override
-    public void upsert(String sessionId, SessionStatus status, String notes) {
+    public void upsert(UUID userId, String sessionId, SessionStatus status, String notes) {
       stored.put(sessionId, new StoredSessionStatus(sessionId, status, notes));
     }
   }

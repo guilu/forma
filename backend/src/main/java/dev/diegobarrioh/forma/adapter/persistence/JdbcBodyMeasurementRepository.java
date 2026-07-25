@@ -22,6 +22,9 @@ import org.springframework.stereotype.Repository;
  *
  * <p>The domain type carries no identity (FOR-15), so this adapter generates the row's UUID primary
  * key at save time. Derived masses are not stored; {@link BodyMeasurement} recomputes them on read.
+ *
+ * <p>Real multi-user auth (FOR-145c, ADR-012, migration V30): every read/write is scoped by the
+ * real {@code user_id UUID} column added to close this "gap table"'s zero owner-scoping.
  */
 @Repository
 public class JdbcBodyMeasurementRepository implements BodyMeasurementRepository {
@@ -29,9 +32,9 @@ public class JdbcBodyMeasurementRepository implements BodyMeasurementRepository 
   private static final String INSERT_SQL =
       """
       INSERT INTO body_measurements
-        (id, measured_at, source, weight_kg, body_fat_percentage, bmi, muscle_mass_kg,
+        (id, user_id, measured_at, source, weight_kg, body_fat_percentage, bmi, muscle_mass_kg,
          water_percentage, notes)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       """;
 
   private static final String LIST_SQL =
@@ -39,6 +42,7 @@ public class JdbcBodyMeasurementRepository implements BodyMeasurementRepository 
       SELECT measured_at, source, weight_kg, body_fat_percentage, bmi, muscle_mass_kg,
         water_percentage, notes
       FROM body_measurements
+      WHERE user_id = ?
       ORDER BY measured_at DESC
       """;
 
@@ -61,10 +65,11 @@ public class JdbcBodyMeasurementRepository implements BodyMeasurementRepository 
   }
 
   @Override
-  public void save(BodyMeasurement measurement) {
+  public void save(UUID userId, BodyMeasurement measurement) {
     jdbcTemplate.update(
         INSERT_SQL,
         UUID.randomUUID(),
+        userId,
         OffsetDateTime.ofInstant(measurement.measuredAt(), ZoneOffset.UTC),
         measurement.source().name(),
         BigDecimal.valueOf(measurement.weightKg()),
@@ -76,8 +81,8 @@ public class JdbcBodyMeasurementRepository implements BodyMeasurementRepository 
   }
 
   @Override
-  public List<BodyMeasurement> list() {
-    return jdbcTemplate.query(LIST_SQL, ROW_MAPPER);
+  public List<BodyMeasurement> list(UUID userId) {
+    return jdbcTemplate.query(LIST_SQL, ROW_MAPPER, userId);
   }
 
   private static Double toNullableDouble(BigDecimal value) {

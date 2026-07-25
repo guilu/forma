@@ -14,6 +14,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -25,11 +26,13 @@ import org.junit.jupiter.api.Test;
 class ShoppingListServiceTest {
 
   private static final Instant GENERATED_AT = Instant.parse("2026-07-06T08:00:00Z");
+  private static final UUID USER_ID = UUID.randomUUID();
 
   private final FakeProductRepository products = new FakeProductRepository();
   private final FakeListRepository lists = new FakeListRepository();
   private final ShoppingListService service =
-      new ShoppingListService(lists, products, new ShoppingBudgetService(products));
+      new ShoppingListService(
+          lists, products, new ShoppingBudgetService(products, () -> USER_ID), () -> USER_ID);
 
   @Test
   void resolvesProductNamesAndComputesBudget() {
@@ -61,7 +64,10 @@ class ShoppingListServiceTest {
     FakeListRepository listsWithServings = new FakeListRepository(4);
     ShoppingListService serviceWithLinkedProduct =
         new ShoppingListService(
-            listsWithServings, linkedProducts, new ShoppingBudgetService(linkedProducts));
+            listsWithServings,
+            linkedProducts,
+            new ShoppingBudgetService(linkedProducts, () -> USER_ID),
+            () -> USER_ID);
 
     ShoppingListView view = serviceWithLinkedProduct.currentView();
 
@@ -77,7 +83,10 @@ class ShoppingListServiceTest {
     FakeListRepository listsWithRawServings = new FakeListRepository(4);
     ShoppingListService serviceWithUnlinkedProduct =
         new ShoppingListService(
-            listsWithRawServings, products, new ShoppingBudgetService(products));
+            listsWithRawServings,
+            products,
+            new ShoppingBudgetService(products, () -> USER_ID),
+            () -> USER_ID);
 
     ShoppingListView view = serviceWithUnlinkedProduct.currentView();
 
@@ -93,21 +102,23 @@ class ShoppingListServiceTest {
             lists,
             new ShoppingProductRepository() {
               @Override
-              public List<StoredShoppingProduct> findAll() {
+              public List<StoredShoppingProduct> findAllByOwner(UUID userId) {
                 return List.of();
               }
 
               @Override
-              public StoredShoppingProduct create(ShoppingProduct product) {
+              public StoredShoppingProduct create(UUID userId, ShoppingProduct product) {
                 throw new UnsupportedOperationException();
               }
 
               @Override
-              public Optional<StoredShoppingProduct> update(String id, ShoppingProduct product) {
+              public Optional<StoredShoppingProduct> update(
+                  UUID userId, String id, ShoppingProduct product) {
                 throw new UnsupportedOperationException();
               }
             },
-            new ShoppingBudgetService(products));
+            new ShoppingBudgetService(products, () -> USER_ID),
+            () -> USER_ID);
 
     ShoppingListView view = serviceWithNoProducts.currentView();
 
@@ -132,7 +143,10 @@ class ShoppingListServiceTest {
     FakeProductRepository productsWithoutUrl = new FakeProductRepository(null, false);
     ShoppingListService serviceWithoutUrl =
         new ShoppingListService(
-            lists, productsWithoutUrl, new ShoppingBudgetService(productsWithoutUrl));
+            lists,
+            productsWithoutUrl,
+            new ShoppingBudgetService(productsWithoutUrl, () -> USER_ID),
+            () -> USER_ID);
 
     ShoppingListView view = serviceWithoutUrl.currentView();
 
@@ -149,7 +163,11 @@ class ShoppingListServiceTest {
     // already recomputes. Regression test for the edit-price-stale-line bug.
     FakeListRepository listsWithStaleCost = new FakeListRepository(2, new BigDecimal("2.00"));
     ShoppingListService serviceWithStaleCost =
-        new ShoppingListService(listsWithStaleCost, products, new ShoppingBudgetService(products));
+        new ShoppingListService(
+            listsWithStaleCost,
+            products,
+            new ShoppingBudgetService(products, () -> USER_ID),
+            () -> USER_ID);
 
     ShoppingListView view = serviceWithStaleCost.currentView();
 
@@ -165,7 +183,10 @@ class ShoppingListServiceTest {
     FakeListRepository listsWithQuantityThree = new FakeListRepository(3, new BigDecimal("100.00"));
     ShoppingListService serviceWithQuantityThree =
         new ShoppingListService(
-            listsWithQuantityThree, products, new ShoppingBudgetService(products));
+            listsWithQuantityThree,
+            products,
+            new ShoppingBudgetService(products, () -> USER_ID),
+            () -> USER_ID);
 
     ShoppingListView view = serviceWithQuantityThree.currentView();
 
@@ -209,22 +230,24 @@ class ShoppingListServiceTest {
     ShoppingProductRepository noProducts =
         new ShoppingProductRepository() {
           @Override
-          public List<StoredShoppingProduct> findAll() {
+          public List<StoredShoppingProduct> findAllByOwner(UUID userId) {
             return List.of();
           }
 
           @Override
-          public StoredShoppingProduct create(ShoppingProduct product) {
+          public StoredShoppingProduct create(UUID userId, ShoppingProduct product) {
             throw new UnsupportedOperationException();
           }
 
           @Override
-          public Optional<StoredShoppingProduct> update(String id, ShoppingProduct product) {
+          public Optional<StoredShoppingProduct> update(
+              UUID userId, String id, ShoppingProduct product) {
             throw new UnsupportedOperationException();
           }
         };
     ShoppingListService serviceWithNoProducts =
-        new ShoppingListService(lists, noProducts, new ShoppingBudgetService(noProducts));
+        new ShoppingListService(
+            lists, noProducts, new ShoppingBudgetService(noProducts, () -> USER_ID), () -> USER_ID);
 
     ShoppingListView view = serviceWithNoProducts.regenerate();
 
@@ -236,7 +259,11 @@ class ShoppingListServiceTest {
     FakeListRepository listsWithNoActive = new FakeListRepository();
     listsWithNoActive.hasActiveList = false;
     ShoppingListService serviceWithNoActiveList =
-        new ShoppingListService(listsWithNoActive, products, new ShoppingBudgetService(products));
+        new ShoppingListService(
+            listsWithNoActive,
+            products,
+            new ShoppingBudgetService(products, () -> USER_ID),
+            () -> USER_ID);
 
     assertThatThrownBy(serviceWithNoActiveList::regenerate).isInstanceOf(NotFoundException.class);
   }
@@ -270,7 +297,11 @@ class ShoppingListServiceTest {
     FakeListRepository listsWithOrphanItem = new FakeListRepository();
     listsWithOrphanItem.orphanProductId = true;
     ShoppingListService serviceWithOrphanItem =
-        new ShoppingListService(listsWithOrphanItem, products, new ShoppingBudgetService(products));
+        new ShoppingListService(
+            listsWithOrphanItem,
+            products,
+            new ShoppingBudgetService(products, () -> USER_ID),
+            () -> USER_ID);
 
     assertThatThrownBy(() -> serviceWithOrphanItem.updateQuantity("i1", 3))
         .isInstanceOf(NotFoundException.class);
@@ -316,7 +347,7 @@ class ShoppingListServiceTest {
     }
 
     @Override
-    public Optional<ActiveShoppingList> findActive() {
+    public Optional<ActiveShoppingList> findActive(UUID userId) {
       if (!hasActiveList) {
         return Optional.empty();
       }
@@ -335,7 +366,8 @@ class ShoppingListServiceTest {
     }
 
     @Override
-    public Optional<StoredShoppingListItem> setChecked(String itemId, boolean checked) {
+    public Optional<StoredShoppingListItem> setChecked(
+        UUID userId, String itemId, boolean checked) {
       ShoppingListItem item = itemsById.get(itemId);
       if (item == null) {
         return Optional.empty();
@@ -354,7 +386,7 @@ class ShoppingListServiceTest {
 
     @Override
     public Optional<ActiveShoppingList> regenerate(
-        List<ShoppingListItem> items, Instant newGeneratedAt) {
+        UUID userId, List<ShoppingListItem> items, Instant newGeneratedAt) {
       if (!hasActiveList) {
         return Optional.empty();
       }
@@ -365,12 +397,12 @@ class ShoppingListServiceTest {
         itemsById.put("regen-" + i, items.get(i));
       }
       this.generatedAt = newGeneratedAt;
-      return findActive();
+      return findActive(userId);
     }
 
     @Override
     public Optional<StoredShoppingListItem> updateQuantity(
-        String itemId, int quantity, BigDecimal estimatedCostEur) {
+        UUID userId, String itemId, int quantity, BigDecimal estimatedCostEur) {
       ShoppingListItem item = itemsById.get(itemId);
       if (item == null) {
         return Optional.empty();
@@ -388,7 +420,7 @@ class ShoppingListServiceTest {
     }
 
     @Override
-    public Optional<StoredShoppingListItem> findItem(String itemId) {
+    public Optional<StoredShoppingListItem> findItem(UUID userId, String itemId) {
       ShoppingListItem item = itemsById.get(itemId);
       if (item == null) {
         return Optional.empty();
@@ -425,7 +457,7 @@ class ShoppingListServiceTest {
     }
 
     @Override
-    public List<StoredShoppingProduct> findAll() {
+    public List<StoredShoppingProduct> findAllByOwner(UUID userId) {
       return List.of(
           new StoredShoppingProduct(
               "p1",
@@ -442,12 +474,12 @@ class ShoppingListServiceTest {
     }
 
     @Override
-    public StoredShoppingProduct create(ShoppingProduct product) {
+    public StoredShoppingProduct create(UUID userId, ShoppingProduct product) {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public Optional<StoredShoppingProduct> update(String id, ShoppingProduct product) {
+    public Optional<StoredShoppingProduct> update(UUID userId, String id, ShoppingProduct product) {
       throw new UnsupportedOperationException();
     }
   }

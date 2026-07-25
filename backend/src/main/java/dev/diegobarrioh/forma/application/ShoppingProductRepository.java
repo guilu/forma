@@ -3,19 +3,27 @@ package dev.diegobarrioh.forma.application;
 import dev.diegobarrioh.forma.domain.ShoppingProduct;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Port for persisting {@link ShoppingProduct}s (FOR-36). Owned by the application side; adapters
  * implement it (ADR-001).
+ *
+ * <p>{@code userId} is a real account id (FOR-145c "gap table" closure, migration V32) — {@code
+ * shopping_products.user_id UUID}, FK-referencing {@code users(id)}. Before this slice the table
+ * had NO owner-scoping at all.
  */
 public interface ShoppingProductRepository {
 
-  /** All products. */
-  List<StoredShoppingProduct> findAll();
+  /** All of {@code userId}'s products. */
+  List<StoredShoppingProduct> findAllByOwner(UUID userId);
 
-  /** Persists a new product, generating and returning its id. */
-  StoredShoppingProduct create(ShoppingProduct product);
+  /** Persists a new product for {@code userId}, generating and returning its id. */
+  StoredShoppingProduct create(UUID userId, ShoppingProduct product);
 
-  /** Updates an existing product; empty if no product has the given id. */
-  Optional<StoredShoppingProduct> update(String id, ShoppingProduct product);
+  /**
+   * Updates one of {@code userId}'s existing products; empty if no product has the given id for
+   * that owner.
+   */
+  Optional<StoredShoppingProduct> update(UUID userId, String id, ShoppingProduct product);
 }

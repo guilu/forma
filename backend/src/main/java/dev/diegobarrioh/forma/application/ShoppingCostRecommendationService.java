@@ -16,6 +16,9 @@ import org.springframework.stereotype.Service;
  * Computed on demand — no persistence. An absent active list (spec edge case, e.g. before FOR-152's
  * data exists) yields no recommendation rather than an error, mirroring the other recommendation
  * services' fail-safe behavior.
+ *
+ * <p>Real multi-user auth (FOR-145c, ADR-012, migration V33): resolves the caller's account id via
+ * {@link CurrentUserProvider} so the active list read is scoped to the caller's own lists.
  */
 @Service
 public class ShoppingCostRecommendationService {
@@ -23,18 +26,23 @@ public class ShoppingCostRecommendationService {
   private final ShoppingListRepository listRepository;
   private final ShoppingBudgetService budgetService;
   private final Clock clock;
+  private final CurrentUserProvider currentUserProvider;
 
   public ShoppingCostRecommendationService(
-      ShoppingListRepository listRepository, ShoppingBudgetService budgetService, Clock clock) {
+      ShoppingListRepository listRepository,
+      ShoppingBudgetService budgetService,
+      Clock clock,
+      CurrentUserProvider currentUserProvider) {
     this.listRepository = listRepository;
     this.budgetService = budgetService;
     this.clock = clock;
+    this.currentUserProvider = currentUserProvider;
   }
 
-  /** Evaluates the active shopping list's budget for the over-threshold cost signal. */
+  /** Evaluates the caller's active shopping list's budget for the over-threshold cost signal. */
   public List<Recommendation> currentRecommendations() {
     return listRepository
-        .findActive()
+        .findActive(currentUserProvider.currentUserId())
         .map(
             active ->
                 ShoppingCostRules.evaluate(

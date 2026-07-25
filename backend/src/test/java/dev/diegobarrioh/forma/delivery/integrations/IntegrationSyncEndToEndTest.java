@@ -107,7 +107,7 @@ class IntegrationSyncEndToEndTest {
         .andExpect(jsonPath("$.importedCount").value(2))
         .andExpect(jsonPath("$.duplicatesSkipped").value(0));
 
-    assertThat(bodyMeasurementRepository.list()).hasSize(2);
+    assertThat(bodyMeasurementRepository.list(OWNER)).hasSize(2);
   }
 
   @Test
@@ -123,7 +123,7 @@ class IntegrationSyncEndToEndTest {
         .andExpect(jsonPath("$.duplicatesSkipped").value(2));
 
     // The headline idempotency assertion: no duplicate BodyMeasurement rows after re-sync.
-    assertThat(bodyMeasurementRepository.list()).hasSize(2);
+    assertThat(bodyMeasurementRepository.list(OWNER)).hasSize(2);
   }
 
   @Test
@@ -136,7 +136,7 @@ class IntegrationSyncEndToEndTest {
         .andExpect(jsonPath("$.result").value("OK"))
         .andExpect(jsonPath("$.importedCount").value(0));
 
-    assertThat(bodyMeasurementRepository.list()).isEmpty();
+    assertThat(bodyMeasurementRepository.list(OWNER)).isEmpty();
   }
 
   @Test

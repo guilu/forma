@@ -35,7 +35,9 @@ class GoalServiceTest {
       new RecordingBodyMeasurementRepository();
   private final GoalService service =
       new GoalService(
-          goalRepository, new WeeklyBodySummaryService(bodyMeasurementRepository), () -> USER_ID);
+          goalRepository,
+          new WeeklyBodySummaryService(bodyMeasurementRepository, () -> USER_ID),
+          () -> USER_ID);
 
   @Test
   void listIsEmptyWhenNoGoalsExistYet() {
@@ -237,12 +239,12 @@ class GoalServiceTest {
     final List<BodyMeasurement> saved = new ArrayList<>();
 
     @Override
-    public void save(BodyMeasurement measurement) {
+    public void save(UUID userId, BodyMeasurement measurement) {
       saved.add(measurement);
     }
 
     @Override
-    public List<BodyMeasurement> list() {
+    public List<BodyMeasurement> list(UUID userId) {
       List<BodyMeasurement> newestFirst = new ArrayList<>(saved);
       newestFirst.sort((a, b) -> b.measuredAt().compareTo(a.measuredAt()));
       return newestFirst;

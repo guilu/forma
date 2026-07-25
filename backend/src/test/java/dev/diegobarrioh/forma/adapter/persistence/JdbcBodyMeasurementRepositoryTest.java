@@ -3,10 +3,12 @@ package dev.diegobarrioh.forma.adapter.persistence;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.diegobarrioh.forma.application.BodyMeasurementRepository;
+import dev.diegobarrioh.forma.bootstrap.LegacyUserBootstrap;
 import dev.diegobarrioh.forma.domain.BodyMeasurement;
 import dev.diegobarrioh.forma.domain.MeasurementSource;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -17,10 +19,15 @@ import org.springframework.test.context.ActiveProfiles;
  * Integration test for {@link JdbcBodyMeasurementRepository} (FOR-16). Runs against the in-memory
  * PostgreSQL-mode H2 with Flyway migrations applied (see application-test.yml), following the
  * pattern of {@code MigrationBaselineTest} (ADR-007, "tests run against migrated schema").
+ *
+ * <p>FOR-145c (migration V30): {@code body_measurements.user_id} FK-references {@code users(id)},
+ * so every call is scoped through the always-present legacy placeholder account.
  */
 @SpringBootTest
 @ActiveProfiles("test")
 class JdbcBodyMeasurementRepositoryTest {
+
+  private static final UUID OWNER = LegacyUserBootstrap.PLACEHOLDER_USER_ID;
 
   @Autowired private BodyMeasurementRepository repository;
   @Autowired private JdbcTemplate jdbcTemplate;
@@ -44,9 +51,9 @@ class JdbcBodyMeasurementRepositoryTest {
             null,
             "after run");
 
-    repository.save(measurement);
+    repository.save(OWNER, measurement);
 
-    List<BodyMeasurement> stored = repository.list();
+    List<BodyMeasurement> stored = repository.list(OWNER);
     assertThat(stored).hasSize(1);
     BodyMeasurement read = stored.get(0);
     assertThat(read.measuredAt()).isEqualTo(measurement.measuredAt());
@@ -74,9 +81,9 @@ class JdbcBodyMeasurementRepositoryTest {
             58.0,
             "Báscula Withings");
 
-    repository.save(measurement);
+    repository.save(OWNER, measurement);
 
-    BodyMeasurement read = repository.list().get(0);
+    BodyMeasurement read = repository.list(OWNER).get(0);
     assertThat(read.muscleMassKg()).isEqualTo(62.8);
     assertThat(read.waterPercentage()).isEqualTo(58.0);
   }
@@ -105,10 +112,10 @@ class JdbcBodyMeasurementRepositoryTest {
             null);
 
     // Insert oldest first to prove ordering is by measured_at, not insertion order.
-    repository.save(older);
-    repository.save(newer);
+    repository.save(OWNER, older);
+    repository.save(OWNER, newer);
 
-    List<BodyMeasurement> stored = repository.list();
+    List<BodyMeasurement> stored = repository.list(OWNER);
     assertThat(stored)
         .extracting(BodyMeasurement::measuredAt)
         .containsExactly(newer.measuredAt(), older.measuredAt());
@@ -127,9 +134,9 @@ class JdbcBodyMeasurementRepositoryTest {
             null,
             null);
 
-    repository.save(minimal);
+    repository.save(OWNER, minimal);
 
-    BodyMeasurement read = repository.list().get(0);
+    BodyMeasurement read = repository.list(OWNER).get(0);
     assertThat(read.bodyFatPercentage()).isNull();
     assertThat(read.bmi()).isNull();
     assertThat(read.notes()).isNull();

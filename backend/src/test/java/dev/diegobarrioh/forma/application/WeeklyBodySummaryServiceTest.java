@@ -9,6 +9,7 @@ import dev.diegobarrioh.forma.domain.WeeklyBodySummary;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -17,8 +18,11 @@ import org.junit.jupiter.api.Test;
  */
 class WeeklyBodySummaryServiceTest {
 
+  private static final UUID USER_ID = UUID.randomUUID();
+
   private final FakeRepository repository = new FakeRepository();
-  private final WeeklyBodySummaryService service = new WeeklyBodySummaryService(repository);
+  private final WeeklyBodySummaryService service =
+      new WeeklyBodySummaryService(repository, () -> USER_ID);
 
   private static BodyMeasurement measurement(String isoDate, double weightKg, double bodyFat) {
     return new BodyMeasurement(
@@ -58,12 +62,12 @@ class WeeklyBodySummaryServiceTest {
     private final List<BodyMeasurement> measurements = new ArrayList<>();
 
     @Override
-    public void save(BodyMeasurement measurement) {
+    public void save(UUID userId, BodyMeasurement measurement) {
       measurements.add(measurement);
     }
 
     @Override
-    public List<BodyMeasurement> list() {
+    public List<BodyMeasurement> list(UUID userId) {
       return List.copyOf(measurements);
     }
   }
