@@ -5,9 +5,10 @@ import { Brand } from '../components/Brand';
 import { Button } from '../components/Button';
 import { TextField } from '../components/FormField';
 import styles from './AuthPage.module.css';
+import { resolveAuthDestination, type AuthDestination } from '../auth/authDestination';
 
 interface AuthLocationState {
-  readonly from?: { readonly pathname?: string; readonly search?: string };
+  readonly from?: AuthDestination;
 }
 
 export function LoginPage() {
@@ -15,7 +16,7 @@ export function LoginPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const destination = (location.state as AuthLocationState | null)?.from;
-  const target = `${destination?.pathname ?? '/'}${destination?.search ?? ''}`;
+  const target = resolveAuthDestination(destination);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [pending, setPending] = useState(false);

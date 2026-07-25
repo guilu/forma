@@ -76,7 +76,7 @@ export function BodyMetricsStep({ value, onChange }: BodyMetricsStepProps) {
           <p className={styles.hint}>
             Puedes conectar Withings ahora o más tarde desde Ajustes → Integraciones.
           </p>
-          <Link className={styles.linkButton} to="/ajustes/integraciones">
+          <Link className={styles.linkButton} to="/app/ajustes/integraciones">
             Ir a Integraciones
           </Link>
         </div>

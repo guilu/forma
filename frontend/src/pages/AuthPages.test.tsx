@@ -63,7 +63,7 @@ describe('auth pages', () => {
       <MemoryRouter initialEntries={[path]}>
         <Routes>
           <Route path={path} element={page} />
-          <Route path="/" element={<div>Dashboard autenticado</div>} />
+          <Route path="/app" element={<div>Dashboard autenticado</div>} />
         </Routes>
       </MemoryRouter>,
     );
@@ -75,18 +75,141 @@ describe('auth pages', () => {
     vi.mocked(useAuth).mockReturnValue(authState({ login }));
     render(
       <MemoryRouter
-        initialEntries={[{ pathname: '/login', state: { from: { pathname: '/progreso' } } }]}
+        initialEntries={[
+          {
+            pathname: '/login',
+            state: {
+              from: {
+                pathname: '/app/progreso',
+                search: '?periodo=mes',
+                hash: '#tendencia',
+              },
+            },
+          },
+        ]}
       >
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/progreso" element={<LocationPath />} />
+          <Route path="/app/progreso" element={<LocationPath />} />
         </Routes>
       </MemoryRouter>,
     );
     await userEvent.type(screen.getByLabelText('Correo electrónico'), 'user@example.com');
     await userEvent.type(screen.getByLabelText('Contraseña'), 'password1234');
     await userEvent.click(screen.getByRole('button', { name: 'Iniciar sesión' }));
-    expect(screen.getByText('/progreso')).toBeInTheDocument();
+    expect(await screen.findByText('/app/progreso?periodo=mes#tendencia')).toBeInTheDocument();
+  });
+
+  it('returns to the preserved destination after successful registration', async () => {
+    const register = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(useAuth).mockReturnValue(authState({ register }));
+    render(
+      <MemoryRouter
+        initialEntries={[
+          {
+            pathname: '/registro',
+            state: {
+              from: {
+                pathname: '/app/nutricion',
+                search: '?dia=hoy',
+                hash: '#macros',
+              },
+            },
+          },
+        ]}
+      >
+        <Routes>
+          <Route path="/registro" element={<RegisterPage />} />
+          <Route path="/app/nutricion" element={<LocationPath />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await userEvent.type(screen.getByLabelText('Correo electrónico'), 'user@example.com');
+    await userEvent.type(screen.getByLabelText('Contraseña'), 'password1234');
+    await userEvent.type(screen.getByLabelText('Confirmar contraseña'), 'password1234');
+    await userEvent.click(screen.getByRole('button', { name: 'Crear cuenta' }));
+    expect(register).toHaveBeenCalledWith({
+      email: 'user@example.com',
+      password: 'password1234',
+    });
+    expect(await screen.findByText('/app/nutricion?dia=hoy#macros')).toBeInTheDocument();
+  });
+
+  it('rejects an external post-login destination', async () => {
+    const login = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(useAuth).mockReturnValue(authState({ login }));
+    render(
+      <MemoryRouter
+        initialEntries={[
+          { pathname: '/login', state: { from: { pathname: '//malicious.example/path' } } },
+        ]}
+      >
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/app" element={<LocationPath />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await userEvent.type(screen.getByLabelText('Correo electrónico'), 'user@example.com');
+    await userEvent.type(screen.getByLabelText('Contraseña'), 'password1234');
+    await userEvent.click(screen.getByRole('button', { name: 'Iniciar sesión' }));
+    expect(await screen.findByText('/app')).toBeInTheDocument();
+  });
+
+  it('rejects an external post-registration destination', async () => {
+    const register = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(useAuth).mockReturnValue(authState({ register }));
+    render(
+      <MemoryRouter
+        initialEntries={[
+          { pathname: '/registro', state: { from: { pathname: '//malicious.example/path' } } },
+        ]}
+      >
+        <Routes>
+          <Route path="/registro" element={<RegisterPage />} />
+          <Route path="/app" element={<LocationPath />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await userEvent.type(screen.getByLabelText('Correo electrónico'), 'user@example.com');
+    await userEvent.type(screen.getByLabelText('Contraseña'), 'password1234');
+    await userEvent.type(screen.getByLabelText('Confirmar contraseña'), 'password1234');
+    await userEvent.click(screen.getByRole('button', { name: 'Crear cuenta' }));
+    expect(await screen.findByText('/app')).toBeInTheDocument();
+  });
+
+  it.each([
+    ['/login', <LoginPage />],
+    ['/registro', <RegisterPage />],
+  ])('sends an authenticated user from %s to a valid preserved destination', (path, page) => {
+    vi.mocked(useAuth).mockReturnValue(
+      authState({
+        status: 'authenticated',
+        user: { id: '1', email: 'user@example.com' },
+      }),
+    );
+    render(
+      <MemoryRouter
+        initialEntries={[
+          {
+            pathname: path,
+            state: {
+              from: {
+                pathname: '/app/progreso',
+                search: '?periodo=mes',
+                hash: '#tendencia',
+              },
+            },
+          },
+        ]}
+      >
+        <Routes>
+          <Route path={path} element={page} />
+          <Route path="/app/progreso" element={<LocationPath />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(screen.getByText('/app/progreso?periodo=mes#tendencia')).toBeInTheDocument();
   });
 
   it('shows safe Spanish copy for backend login and registration failures', async () => {
@@ -124,7 +247,8 @@ describe('auth pages', () => {
 });
 
 function LocationPath() {
-  return <div>{useLocation().pathname}</div>;
+  const location = useLocation();
+  return <div>{`${location.pathname}${location.search}${location.hash}`}</div>;
 }
 
 function authState(overrides: Partial<ReturnType<typeof useAuth>>): ReturnType<typeof useAuth> {

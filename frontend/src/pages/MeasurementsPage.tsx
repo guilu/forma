@@ -397,7 +397,7 @@ function BodyDistributionCard({ latest }: { readonly latest: BodyMeasurement }) 
           ))}
         </ul>
       </div>
-      <a className={styles.detailLink} href="/progreso">
+      <a className={styles.detailLink} href="/app/progreso">
         Ver análisis detallado
       </a>
     </Card>

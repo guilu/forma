@@ -1,14 +1,20 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { App } from './App';
 
+let authStatus: 'authenticated' | 'anonymous' = 'authenticated';
+
+afterEach(() => {
+  authStatus = 'authenticated';
+});
+
 vi.mock('./auth/AuthContext', () => ({
   AuthProvider: ({ children }: { children: ReactNode }) => children,
   useAuth: () => ({
-    status: 'authenticated',
-    user: { id: 'user-1', email: 'persona@example.com' },
+    status: authStatus,
+    user: authStatus === 'authenticated' ? { id: 'user-1', email: 'persona@example.com' } : null,
     bootstrapError: false,
     logout: vi.fn(),
     refreshCurrentUser: vi.fn(),
@@ -55,7 +61,7 @@ vi.mock('./api/integrations', () => ({
  * unknown routes fall back to the not-found page.
  */
 describe('App', () => {
-  it('renders the Dashboard on the index route', () => {
+  it('renders a public landing placeholder on the index route', () => {
     render(
       <MemoryRouter initialEntries={['/']}>
         <App />
@@ -64,14 +70,61 @@ describe('App', () => {
 
     // Generic greeting: no profile mocked here, so the name stays unset
     // (FOR-169 empty first-run).
+    expect(screen.getByRole('heading', { name: 'FORMA' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Hola 👋' })).not.toBeInTheDocument();
+    expect(screen.queryAllByRole('navigation')).toHaveLength(0);
+  });
+
+  it('renders the Dashboard at the protected /app entry point', () => {
+    render(
+      <MemoryRouter initialEntries={['/app']}>
+        <App />
+      </MemoryRouter>,
+    );
+
     expect(screen.getByRole('heading', { name: 'Hola 👋' })).toBeInTheDocument();
-    // The persistent shell navigation is present.
     expect(screen.getAllByRole('navigation').length).toBeGreaterThan(0);
+  });
+
+  it.each([
+    '/app',
+    '/app/mediciones',
+    '/app/entrenamiento',
+    '/app/nutricion',
+    '/app/lista-compra',
+    '/app/progreso',
+    '/app/objetivos',
+    '/app/ajustes',
+    '/app/ajustes/integraciones',
+    '/onboarding',
+  ])('redirects an anonymous user from protected route %s', (path) => {
+    authStatus = 'anonymous';
+    render(
+      <MemoryRouter initialEntries={[path]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('heading', { name: 'Iniciar sesión' })).toBeInTheDocument();
+  });
+
+  it.each([
+    ['/', 'FORMA'],
+    ['/auth?code=abc&state=xyz', 'Conexión con Withings'],
+  ])('keeps %s public for anonymous users', (path, heading) => {
+    authStatus = 'anonymous';
+    render(
+      <MemoryRouter initialEntries={[path]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument();
   });
 
   it('renders a known section route', () => {
     render(
-      <MemoryRouter initialEntries={['/nutricion']}>
+      <MemoryRouter initialEntries={['/app/nutricion']}>
         <App />
       </MemoryRouter>,
     );
@@ -81,7 +134,7 @@ describe('App', () => {
 
   it('renders the FOR-58 settings screen at /ajustes', () => {
     render(
-      <MemoryRouter initialEntries={['/ajustes']}>
+      <MemoryRouter initialEntries={['/app/ajustes']}>
         <App />
       </MemoryRouter>,
     );
@@ -91,7 +144,7 @@ describe('App', () => {
 
   it('renders the FOR-57 integrations screen at its standalone sub-route', () => {
     render(
-      <MemoryRouter initialEntries={['/ajustes/integraciones']}>
+      <MemoryRouter initialEntries={['/app/ajustes/integraciones']}>
         <App />
       </MemoryRouter>,
     );

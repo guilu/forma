@@ -108,7 +108,7 @@ function renderContent(state: State) {
     return (
       <EmptyState
         title="Aún no hay mediciones."
-        action={<Link to="/mediciones">Registra tu primera medición</Link>}
+        action={<Link to="/app/mediciones">Registra tu primera medición</Link>}
       />
     );
   }

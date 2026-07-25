@@ -395,7 +395,7 @@ function ShoppingShortcut({ count }: { readonly count: number | undefined }) {
             ? 'Generada según tu plan nutricional'
             : `${count} producto${count === 1 ? '' : 's'}`}
         </p>
-        <Link className={styles.shoppingLink} to="/lista-compra">
+        <Link className={styles.shoppingLink} to="/app/lista-compra">
           Ver lista de la compra
         </Link>
       </div>

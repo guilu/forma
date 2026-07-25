@@ -48,7 +48,7 @@ export function MobileNav() {
           <NavLink
             key={item.path}
             to={item.path}
-            end={item.path === '/'}
+            end={item.path === '/app'}
             className={linkClass}
             onClick={() => setMoreOpen(false)}
           >

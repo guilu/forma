@@ -5,13 +5,14 @@ import { Brand } from '../components/Brand';
 import { Button } from '../components/Button';
 import { TextField } from '../components/FormField';
 import styles from './AuthPage.module.css';
+import { resolveAuthDestination, type AuthDestination } from '../auth/authDestination';
 
 export function RegisterPage() {
   const auth = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const state = location.state as { from?: { pathname?: string; search?: string } } | null;
-  const target = `${state?.from?.pathname ?? '/'}${state?.from?.search ?? ''}`;
+  const state = location.state as { from?: AuthDestination } | null;
+  const target = resolveAuthDestination(state?.from);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');

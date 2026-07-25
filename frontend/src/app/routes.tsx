@@ -14,6 +14,7 @@ import { AuthCallbackPage } from '../pages/AuthCallbackPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { LoginPage } from '../pages/LoginPage';
 import { RegisterPage } from '../pages/RegisterPage';
+import { LandingPage } from '../pages/LandingPage';
 import { RequireAuth } from '../auth/RequireAuth';
 
 /**
@@ -32,6 +33,7 @@ import { RequireAuth } from '../auth/RequireAuth';
  * callback is still resolving.
  */
 export const routes: RouteObject[] = [
+  { path: '/', element: <LandingPage /> },
   { path: '/login', element: <LoginPage /> },
   { path: '/registro', element: <RegisterPage /> },
   {
@@ -44,7 +46,7 @@ export const routes: RouteObject[] = [
   },
   { path: '/auth', element: <AuthCallbackPage /> },
   {
-    path: '/',
+    path: '/app',
     element: (
       <RequireAuth>
         <AppShell />
@@ -65,4 +67,5 @@ export const routes: RouteObject[] = [
       { path: '*', element: <NotFoundPage /> },
     ],
   },
+  { path: '*', element: <NotFoundPage /> },
 ];

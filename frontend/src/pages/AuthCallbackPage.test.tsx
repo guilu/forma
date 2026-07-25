@@ -33,7 +33,7 @@ function renderAt(path: string, options?: { strict?: boolean }) {
       <NotificationProvider>
         <Routes>
           <Route path="/auth" element={<AuthCallbackPage />} />
-          <Route path="/ajustes/integraciones" element={<h1>{INTEGRATIONS_STUB_HEADING}</h1>} />
+          <Route path="/app/ajustes/integraciones" element={<h1>{INTEGRATIONS_STUB_HEADING}</h1>} />
         </Routes>
       </NotificationProvider>
     </MemoryRouter>

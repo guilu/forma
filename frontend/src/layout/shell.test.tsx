@@ -57,7 +57,7 @@ describe('application shell', () => {
   // compare against the real compiled classnames instead of guessing hashes.
   it('applies the active CSS module class only to the link matching the current route', () => {
     render(
-      <MemoryRouter initialEntries={['/']}>
+      <MemoryRouter initialEntries={['/app']}>
         <Sidebar />
       </MemoryRouter>,
     );

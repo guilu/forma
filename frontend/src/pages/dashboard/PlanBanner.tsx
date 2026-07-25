@@ -13,7 +13,7 @@ export function PlanBanner() {
         <p className={styles.title}>Tu plan está en marcha 🚀</p>
         <p className={styles.subtitle}>Cada pequeño paso te acerca a tu mejor versión.</p>
       </div>
-      <Link className={styles.cta} to="/objetivos">
+      <Link className={styles.cta} to="/app/objetivos">
         Ver mis objetivos
       </Link>
     </section>

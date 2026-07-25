@@ -18,7 +18,7 @@ import styles from './SyncWidget.module.css';
  */
 export function SyncWidget() {
   return (
-    <WidgetSection id="sync-widget-title" title="Integraciones" linkTo="/ajustes/integraciones">
+    <WidgetSection id="sync-widget-title" title="Integraciones" linkTo="/app/ajustes/integraciones">
       <div className={styles.card}>
         <Icon name="heart" size={20} />
         <span className={styles.name}>Withings</span>

@@ -17,7 +17,7 @@ export function Sidebar() {
     <NavLink
       key={item.path}
       to={item.path}
-      end={item.path === '/'}
+      end={item.path === '/app'}
       className={({ isActive }) =>
         [styles.link, isActive ? styles.active : ''].filter(Boolean).join(' ')
       }
