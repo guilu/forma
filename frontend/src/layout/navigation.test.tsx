@@ -3,6 +3,18 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { App } from '../App';
+import type { ReactNode } from 'react';
+
+vi.mock('../auth/AuthContext', () => ({
+  AuthProvider: ({ children }: { children: ReactNode }) => children,
+  useAuth: () => ({
+    status: 'authenticated',
+    user: { id: 'user-1', email: 'persona@example.com' },
+    bootstrapError: false,
+    logout: vi.fn(),
+    refreshCurrentUser: vi.fn(),
+  }),
+}));
 
 // The Dashboard (index route, FOR-51) fetches from several feature APIs on mount;
 // stub them all so this navigation test stays hermetic.

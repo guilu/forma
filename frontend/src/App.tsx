@@ -2,6 +2,7 @@ import { useRoutes } from 'react-router-dom';
 import { routes } from './app/routes';
 import { NotificationProvider } from './components/NotificationProvider';
 import { ThemeProvider } from './theme/ThemeContext';
+import { AuthProvider } from './auth/AuthContext';
 
 /**
  * Root application component (FOR-81). Resolves the route table into the current
@@ -19,7 +20,9 @@ export function App() {
   const element = useRoutes(routes);
   return (
     <ThemeProvider>
-      <NotificationProvider>{element}</NotificationProvider>
+      <NotificationProvider>
+        <AuthProvider>{element}</AuthProvider>
+      </NotificationProvider>
     </ThemeProvider>
   );
 }
