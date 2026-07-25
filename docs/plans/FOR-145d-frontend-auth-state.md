@@ -58,6 +58,7 @@ Reglas exactas:
    - si no existe `XSRF-TOKEN`, hacer `GET /actuator/health` con las mismas `credentials` para primar la cookie
    - volver a leer `document.cookie`
    - enviar `X-XSRF-TOKEN: <valor-cookie>` si el token ya existe
+   - si después del priming el token sigue ausente o no es legible, abortar sin enviar la petición insegura
 3. `GET`, `HEAD` y `OPTIONS` no envían `X-XSRF-TOKEN`.
 4. `requestBlob` también debe enviar cookies de sesión.
 
@@ -73,6 +74,8 @@ Mantenerlo mínimo:
 - `status`: `loading | authenticated | anonymous`
 - `user`: `{ id, email } | null`
 - métodos: `login`, `register`, `logout`, `refreshCurrentUser`
+
+El contrato backend real separa creación de cuenta y sesión: `/register` crea y devuelve la cuenta, pero no establece `SecurityContext` ni `JSESSIONID`. Por tanto, el método frontend `register` debe encadenar `register -> login` con las mismas credenciales y solo marcar `authenticated` tras el login correcto.
 
 Evitar persistencia local de credenciales o user cache duradera. La fuente de verdad es la cookie de sesión + `GET /api/v1/auth/me`.
 
@@ -93,7 +96,7 @@ Evitar persistencia local de credenciales o user cache duradera. La fuente de ve
 
 1. Endurecer el cliente API para cookies + CSRF.
    - Empezar por tests en `frontend/src/api/client.test.ts`.
-   - Cubrir `credentials`, priming `GET /actuator/health`, lectura de `XSRF-TOKEN`, envío de `X-XSRF-TOKEN` y `requestBlob`.
+   - Cubrir `credentials`, priming `GET /actuator/health`, lectura de `XSRF-TOKEN`, envío de `X-XSRF-TOKEN`, aborto seguro si el token sigue inaccesible y `requestBlob`.
    - Después implementar en `frontend/src/api/client.ts`.
 
 2. Añadir el módulo de API de auth.
@@ -103,7 +106,7 @@ Evitar persistencia local de credenciales o user cache duradera. La fuente de ve
 
 3. Añadir el provider de auth.
    - Crear `frontend/src/auth/AuthContext.test.tsx`.
-   - Casos: bootstrap 200, bootstrap 401, bootstrap error no-401, login, register, logout.
+   - Casos: bootstrap 200, bootstrap 401, bootstrap error no-401, login, register seguido de login explícito, y logout.
    - Implementar `frontend/src/auth/AuthContext.tsx` con estado y API pública mínima.
 
 4. Añadir el guard de rutas.
@@ -214,7 +217,7 @@ Esperado:
 
 ## Checklist de evidencia para PR/Jira
 
-- Captura o descripción del flujo `registro -> login implícito o autenticado -> shell protegida`.
+- Captura o descripción del flujo `registro -> login explícito -> shell protegida`.
 - Captura o descripción del flujo `logout -> redirect a /login`.
 - Evidencia de que el Topbar ya no muestra `Diego` fijo.
 - Evidencia de tests frontend en verde.

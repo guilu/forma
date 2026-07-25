@@ -15,6 +15,13 @@ vi.mock('../api/profile', () => ({
   }),
   updateThemeMode: vi.fn().mockResolvedValue(undefined),
 }));
+vi.mock('../auth/AuthContext', () => ({
+  useAuth: () => ({
+    status: 'authenticated',
+    user: { id: 'user-1', email: 'persona@example.com' },
+    logout: vi.fn(),
+  }),
+}));
 
 /**
  * Application shell accessibility tests (FOR-61): the skip link, the

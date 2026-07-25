@@ -105,14 +105,65 @@ async function throwForErrorResponse(response: Response): Promise<never> {
   );
 }
 
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+
+function credentialsFor(baseUrl: string): RequestCredentials {
+  if (!baseUrl) return 'same-origin';
+  try {
+    return new URL(baseUrl, window.location.origin).origin === window.location.origin
+      ? 'same-origin'
+      : 'include';
+  } catch {
+    return 'same-origin';
+  }
+}
+
+function readCookie(name: string): string | undefined {
+  if (typeof document === 'undefined') return undefined;
+  const prefix = `${name}=`;
+  const cookie = document.cookie
+    .split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(prefix));
+  return cookie ? decodeURIComponent(cookie.slice(prefix.length)) : undefined;
+}
+
 export function createApiClient(baseUrl: string = getApiBaseUrl()): ApiClient {
+  const credentials = credentialsFor(baseUrl);
+
+  async function prepareInit(init?: RequestInit): Promise<RequestInit> {
+    const method = (init?.method ?? 'GET').toUpperCase();
+    const headers = new Headers(init?.headers);
+    headers.set('Accept', 'application/json');
+
+    if (!SAFE_METHODS.has(method)) {
+      let token = readCookie('XSRF-TOKEN');
+      if (!token) {
+        const primeResponse = await fetch(`${baseUrl}/actuator/health`, {
+          method: 'GET',
+          credentials,
+          headers: { Accept: 'application/json' },
+        });
+        if (!primeResponse.ok) {
+          await throwForErrorResponse(primeResponse);
+        }
+        token = readCookie('XSRF-TOKEN');
+      }
+      if (!token) {
+        throw new Error(
+          'No se pudo obtener el token CSRF. Comprueba la configuración de cookies del servidor.',
+        );
+      }
+      headers.set('X-XSRF-TOKEN', token);
+    }
+
+    return { ...init, headers, credentials };
+  }
+
   return {
     baseUrl,
     async request<T>(path: string, init?: RequestInit): Promise<T> {
-      const response = await fetch(`${baseUrl}${path}`, {
-        headers: { Accept: 'application/json', ...init?.headers },
-        ...init,
-      });
+      const response = await fetch(`${baseUrl}${path}`, await prepareInit(init));
 
       if (!response.ok) {
         await throwForErrorResponse(response);
@@ -128,7 +179,10 @@ export function createApiClient(baseUrl: string = getApiBaseUrl()): ApiClient {
       return (await response.json()) as T;
     },
     async requestBlob(path: string, init?: RequestInit): Promise<Blob> {
-      const response = await fetch(`${baseUrl}${path}`, init);
+      const response = await fetch(`${baseUrl}${path}`, {
+        ...init,
+        credentials,
+      });
 
       if (!response.ok) {
         await throwForErrorResponse(response);

@@ -1,7 +1,19 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import type { ReactNode } from 'react';
 import { App } from './App';
+
+vi.mock('./auth/AuthContext', () => ({
+  AuthProvider: ({ children }: { children: ReactNode }) => children,
+  useAuth: () => ({
+    status: 'authenticated',
+    user: { id: 'user-1', email: 'persona@example.com' },
+    bootstrapError: false,
+    logout: vi.fn(),
+    refreshCurrentUser: vi.fn(),
+  }),
+}));
 
 // Pages that fetch on mount (Dashboard, Nutrition) are stubbed so this routing
 // smoke test stays hermetic (no real network). The Dashboard (FOR-51) composes

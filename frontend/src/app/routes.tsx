@@ -12,6 +12,9 @@ import { IntegrationsPage } from '../pages/IntegrationsPage';
 import { OnboardingPage } from '../pages/onboarding/OnboardingPage';
 import { AuthCallbackPage } from '../pages/AuthCallbackPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
+import { LoginPage } from '../pages/LoginPage';
+import { RegisterPage } from '../pages/RegisterPage';
+import { RequireAuth } from '../auth/RequireAuth';
 
 /**
  * Route table (FOR-81). Paths mirror the centralized NAV_ITEMS model and all
@@ -29,11 +32,24 @@ import { NotFoundPage } from '../pages/NotFoundPage';
  * callback is still resolving.
  */
 export const routes: RouteObject[] = [
-  { path: '/onboarding', element: <OnboardingPage /> },
+  { path: '/login', element: <LoginPage /> },
+  { path: '/registro', element: <RegisterPage /> },
+  {
+    path: '/onboarding',
+    element: (
+      <RequireAuth>
+        <OnboardingPage />
+      </RequireAuth>
+    ),
+  },
   { path: '/auth', element: <AuthCallbackPage /> },
   {
     path: '/',
-    element: <AppShell />,
+    element: (
+      <RequireAuth>
+        <AppShell />
+      </RequireAuth>
+    ),
     children: [
       { index: true, element: <DashboardPage /> },
       { path: 'mediciones', element: <MeasurementsPage /> },

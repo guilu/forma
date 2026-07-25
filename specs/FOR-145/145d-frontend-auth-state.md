@@ -41,6 +41,11 @@ This slice does not add backend production behavior. It consumes the already-mer
 
 The frontend must treat `email` as the only guaranteed display field in this slice. No profile name, avatar URL, refresh token, or role data exists here.
 
+`register` creates and returns the account but does **not** establish a server session.
+The frontend `register(credentials)` flow must therefore call `register` first and then
+`login` with the same credentials. Only the successful login response may transition
+the auth state to `authenticated`.
+
 ### Auth error model
 
 Non-2xx responses use the existing `ApiError` shape already represented by `ApiRequestError` in `frontend/src/api/client.ts`.
@@ -72,7 +77,9 @@ Behavior:
 - `200` sets `status=authenticated` and stores the returned user.
 - `401` sets `status=anonymous` without showing a generic error toast.
 - Any other failure is treated as a transient bootstrap failure and must render a retryable error state for protected-route entry instead of silently pretending the user is anonymous.
-- `login` and `register` both end in `authenticated` state using the returned server payload.
+- `login` ends in `authenticated` state using its returned server payload.
+- `register` creates the account, explicitly logs in with the same credentials, and only
+  then ends in `authenticated` state using the login payload.
 - `logout` calls the backend endpoint, clears local auth state, and returns the app to anonymous routing.
 
 ### 2. Public auth routes
@@ -136,8 +143,10 @@ Required behavior:
    - read the cookie value from `document.cookie`
    - send it as `X-XSRF-TOKEN`
 4. If no `XSRF-TOKEN` cookie exists yet, the client must prime it with `GET /actuator/health` before the unsafe request.
-5. Safe requests (`GET`, `HEAD`, `OPTIONS`) must not send `X-XSRF-TOKEN`.
-6. `requestBlob` must also send credentials so authenticated binary reads keep working.
+5. After priming, if `XSRF-TOKEN` is still absent or inaccessible to JavaScript, the client
+   must fail closed and must not send the unsafe request.
+6. Safe requests (`GET`, `HEAD`, `OPTIONS`) must not send `X-XSRF-TOKEN`.
+7. `requestBlob` must also send credentials so authenticated binary reads keep working.
 
 This slice may add a small internal helper layer inside the client, but it must preserve the centralized API boundary from FOR-81.
 
@@ -180,13 +189,14 @@ Minimum automated coverage for this slice:
    - credentials mode for cross-origin requests
    - unsafe request primes `XSRF-TOKEN` via `GET /actuator/health` when absent
    - unsafe request sends `X-XSRF-TOKEN` when cookie exists
+   - unsafe request is not sent when the token remains unavailable after priming
    - safe requests do not send `X-XSRF-TOKEN`
    - `requestBlob` sends credentials
 2. Auth state tests
    - bootstrap to authenticated on `me=200`
    - bootstrap to anonymous on `me=401`
    - bootstrap retryable error on non-401 failure
-   - `login`, `register`, and `logout` update state correctly
+   - `login`, `register` followed by explicit `login`, and `logout` update state correctly
 3. Route tests
    - anonymous user hitting a protected route is redirected to `/login`
    - authenticated user reaching `/login` or `/registro` is redirected away

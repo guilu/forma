@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
@@ -18,6 +18,14 @@ vi.mock('../api/profile', () => ({
   }),
   updateThemeMode: vi.fn().mockResolvedValue(undefined),
 }));
+const logoutMock = vi.fn();
+vi.mock('../auth/AuthContext', () => ({
+  useAuth: () => ({
+    status: 'authenticated',
+    user: { id: 'user-1', email: 'persona@example.com' },
+    logout: logoutMock,
+  }),
+}));
 
 /**
  * Shell hardening tests (FOR-49): the sidebar integration status, the topbar
@@ -25,6 +33,10 @@ vi.mock('../api/profile', () => ({
  * from navigation on small screens.
  */
 describe('application shell', () => {
+  beforeEach(() => {
+    logoutMock.mockReset();
+  });
+
   it('renders the Withings integration status as a card in the sidebar footer', () => {
     render(
       <MemoryRouter>
@@ -57,15 +69,32 @@ describe('application shell', () => {
     expect(inactiveLink.className.split(' ')).not.toContain(styles.active);
   });
 
-  it('renders the account area and notifications in the topbar', () => {
+  it('renders the authenticated account and calls logout from the topbar', async () => {
+    const user = userEvent.setup();
     render(
       <ThemeProvider>
         <Topbar />
       </ThemeProvider>,
     );
 
-    expect(screen.getByText('Diego')).toBeInTheDocument();
+    expect(screen.getByText('persona@example.com')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Notificaciones' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Cerrar sesión' }));
+    expect(logoutMock).toHaveBeenCalled();
+  });
+
+  it('keeps logout failure handled and offers retry', async () => {
+    logoutMock.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(undefined);
+    const user = userEvent.setup();
+    render(
+      <ThemeProvider>
+        <Topbar />
+      </ThemeProvider>,
+    );
+    await user.click(screen.getByRole('button', { name: 'Cerrar sesión' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo cerrar la sesión');
+    await user.click(screen.getByRole('button', { name: 'Reintentar cierre de sesión' }));
+    expect(logoutMock).toHaveBeenCalledTimes(2);
   });
 
   it('toggles the theme from the topbar next to the notifications bell', async () => {
