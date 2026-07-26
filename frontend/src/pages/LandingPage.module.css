@@ -1,130 +1,335 @@
+/*
+ * FOR-185: translation of `docs/0-landing.html` into CSS Modules. Class names
+ * follow this codebase's conventions rather than the mockup's Tailwind utility
+ * strings, and every colour/space/type value resolves through a design token
+ * (`styles/theme.css`) so the page follows the active theme instead of hard
+ * coding the mockup's dark-only palette.
+ *
+ * Recurring mockup primitives and where they went:
+ *   `.kinetic-bg`              -> `.page` (two soft accent radial washes)
+ *   `.hero-mesh`               -> `.heroMesh`
+ *   `.glass-card`              -> the shared translucent-surface rule below
+ *   `.primary-button-gradient` -> `.ctaPrimary` (and Button's `.primary`)
+ *
+ * The page's own navigation bar is *not* here: FOR-185 promoted it to the
+ * global Topbar (see `layout/RootLayout.tsx`).
+ */
+
 .page {
   min-width: 0;
   overflow-x: clip;
-  background:
+  background-color: var(--color-bg);
+  background-image:
     radial-gradient(
-      circle at 15% 10%,
-      color-mix(in srgb, var(--color-accent) 12%, transparent),
-      transparent 28rem
+      circle at 20% 30%,
+      color-mix(in srgb, var(--color-accent) 8%, transparent) 0%,
+      transparent 40%
     ),
-    var(--color-bg);
+    radial-gradient(
+      circle at 80% 70%,
+      color-mix(in srgb, var(--color-secondary) 8%, transparent) 0%,
+      transparent 40%
+    );
 }
 
 .hero,
-.section,
+.features,
 .product,
 .cta,
 .footer {
-  width: min(100% - (var(--space-container-mobile) * 2), 1200px);
-  margin-inline: auto;
+  padding-inline: var(--space-container-mobile);
 }
 
-.footer nav {
+/* Template `.glass-card`. Shared by every raised surface on the page; the
+ * individual rules below only add radius, padding and their accent-tinted
+ * border override. */
+.accessCard,
+.featureCard,
+.productFrame,
+.productBadge,
+.ctaCard,
+.ctaGlass {
+  background-color: color-mix(in srgb, var(--color-surface) 70%, transparent);
+  backdrop-filter: blur(12px);
+  border: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
+}
+
+/* --- Hero ---------------------------------------------------------------- */
+
+.hero {
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
+  justify-content: center;
+  /* Template `min-h-[921px]`, capped to what is left of the viewport so the
+   * hero never overflows a short laptop screen. */
+  min-height: min(921px, calc(100dvh - var(--topbar-height)));
+  padding-block: var(--space-8);
+}
+
+/* Template `.hero-mesh`: a 40px technical grid fading behind the hero. */
+.heroMesh {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.4;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--color-border) 10%, transparent) 1px, transparent 1px),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--color-border) 10%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 40px 40px;
+}
+
+.heroGrid {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  display: grid;
+  gap: var(--space-6);
+  align-items: center;
+}
+
+.heroCopy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: var(--space-4);
+  text-align: center;
 }
 
-.footer a,
-.registerPrompt a,
-.textLink {
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+  padding: 6px var(--space-4);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 20%, transparent);
+  border-radius: var(--radius-full);
+  background-color: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  color: var(--color-accent);
+  font-size: var(--font-size-label-sm);
   font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
-.footer a:hover,
-.registerPrompt a:hover,
-.textLink:hover {
+.badgeDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--color-accent);
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.title,
+.displayTitle {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--font-size-display-xl);
+  line-height: var(--line-height-display-xl);
+  letter-spacing: var(--letter-spacing-display-xl);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.accentText {
   color: var(--color-accent);
 }
 
-.primaryLink {
+.accentStrong {
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+.lead {
+  margin: 0;
+  max-width: 36rem;
+  font-size: var(--font-size-lg);
+  line-height: 1.556;
+  color: var(--color-text-secondary);
+}
+
+.heroActions {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+}
+
+/* Template `.primary-button-gradient` as a link-shaped CTA. The Button
+ * primitive gained the same treatment (Button.module.css `.primary`); this is
+ * its anchor counterpart, which cannot reuse a <button>. */
+.ctaPrimary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-height: 44px;
-  padding: var(--space-3) var(--space-5);
+  padding: var(--space-4) var(--space-8);
+  border-radius: var(--radius-lg);
+  background: var(--gradient-accent);
+  color: var(--color-on-gradient);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-headline-md);
   font-weight: 700;
-  border: 1px solid var(--color-accent);
-  border-radius: var(--radius-md);
+  text-align: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.primaryLink {
-  color: var(--color-accent-contrast);
-  background: var(--color-accent);
+.ctaPrimary:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-accent-glow);
 }
 
-.hero {
-  display: grid;
-  align-items: center;
-  gap: var(--space-8);
-  min-height: calc(100vh - var(--topbar-height));
-  padding-block: calc(var(--space-8) * 2);
+.ctaBlock {
+  width: 100%;
 }
 
-.heroCopy {
-  max-width: 660px;
-}
-
-.eyebrow {
-  margin: 0 0 var(--space-3);
-  color: var(--color-accent);
-  font-size: var(--font-size-sm);
-  font-weight: 700;
-  letter-spacing: 0.08em;
+/* Template: the closing CTA is a full pill in the display size. */
+.ctaPill {
+  border-radius: var(--radius-full);
+  padding: var(--space-5) var(--space-8);
+  font-size: var(--font-size-headline-lg);
+  line-height: var(--line-height-headline-lg);
+  font-weight: 900;
+  letter-spacing: -0.01em;
   text-transform: uppercase;
 }
 
-.hero h1 {
-  max-width: 14ch;
-  font-family: var(--font-heading);
-  font-size: clamp(2.4rem, 7vw, 5.3rem);
-  font-weight: 900;
-  letter-spacing: -0.045em;
-}
-
-.lead {
-  max-width: 60ch;
-  margin-block: var(--space-5);
-  color: var(--color-text-muted);
-  font-size: var(--font-size-lg);
-}
-
-.textLink {
+.ctaGlass {
   display: inline-flex;
-  min-height: 44px;
   align-items: center;
-  color: var(--color-accent);
+  justify-content: center;
+  min-height: 44px;
+  padding: var(--space-4) var(--space-8);
+  border-radius: var(--radius-lg);
+  border-color: var(--color-border);
+  color: var(--color-text);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-headline-md);
+  font-weight: 600;
+  text-align: center;
+  transition: background-color 0.3s ease;
+}
+
+.ctaGlass:hover {
+  background-color: color-mix(in srgb, var(--color-surface-variant) 50%, transparent);
+}
+
+.socialProof {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding-top: var(--space-4);
+}
+
+.avatars {
+  display: flex;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid var(--color-bg);
+  background-color: var(--color-card);
+  object-fit: cover;
+}
+
+.avatar + .avatar {
+  margin-left: -16px;
+}
+
+.socialProofCopy {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-label-md);
+}
+
+/* --- Hero access card ---------------------------------------------------- */
+
+.accessWrapper {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  justify-self: center;
+}
+
+/* Template: a blurred accent halo pulsing behind the card. */
+.accessHalo {
+  position: absolute;
+  inset: calc(var(--space-4) * -1);
+  z-index: 0;
+  border-radius: var(--radius-full);
+  background-color: color-mix(in srgb, var(--color-accent) 20%, transparent);
+  filter: blur(48px);
+  opacity: 0.3;
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 .accessCard {
-  width: 100%;
-  max-width: 430px;
-  justify-self: center;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
   padding: var(--space-6);
-  background: var(--color-card);
-  border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
+  border-color: color-mix(in srgb, var(--color-accent) 20%, transparent);
 }
 
-.accessCard h2 {
+.accessHeader {
+  text-align: center;
+}
+
+.accessTitle {
+  margin: 0 0 var(--space-2);
   font-family: var(--font-heading);
-  font-size: var(--font-size-xl);
+  font-size: var(--font-size-headline-lg);
+  line-height: var(--line-height-headline-lg);
+  font-weight: 600;
+  color: var(--color-text);
 }
 
-.account,
-.muted {
-  color: var(--color-text-muted);
-}
-
-.account {
-  overflow-wrap: anywhere;
+.accessSubtitle {
+  margin: 0;
+  color: var(--color-text-secondary);
 }
 
 .loginForm {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: var(--space-4);
-  margin-top: var(--space-5);
+}
+
+.loginSubmit {
+  width: 100%;
+  min-height: 56px;
+  border-radius: var(--radius-lg);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-headline-md);
+}
+
+.account {
+  margin: 0;
+  color: var(--color-text);
+  font-weight: 600;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.muted {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
 }
 
 .error {
@@ -133,258 +338,481 @@
 }
 
 .registerPrompt {
-  margin: var(--space-5) 0 0;
-  color: var(--color-text-muted);
+  margin: 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  text-align: center;
 }
 
-.registerPrompt a {
-  color: var(--color-accent);
-}
+/* --- Features ------------------------------------------------------------ */
 
-.section,
-.product {
-  padding-block: calc(var(--space-8) * 2);
-  scroll-margin-top: 96px;
+.features {
+  padding-block: var(--space-8);
+  background-color: color-mix(in srgb, var(--color-surface-low) 50%, transparent);
 }
 
 .sectionHeading {
-  max-width: 720px;
-  margin-bottom: var(--space-8);
+  max-width: 1280px;
+  margin: 0 auto var(--space-6);
+  text-align: center;
 }
 
-.sectionHeading h2,
-.product h2,
-.cta h2 {
+.sectionTitle {
+  margin: 0 0 var(--space-2);
   font-family: var(--font-heading);
-  font-size: clamp(2rem, 4vw, 3.2rem);
+  font-size: var(--font-size-headline-lg);
+  line-height: var(--line-height-headline-lg);
+  font-weight: 600;
+  color: var(--color-text);
 }
 
-.benefitGrid {
+.sectionLead {
+  margin: 0;
+  max-width: 42rem;
+  font-size: var(--font-size-lg);
+  line-height: 1.556;
+  color: var(--color-text-secondary);
+}
+
+.sectionHeading .sectionLead {
+  margin-inline: auto;
+}
+
+.featureGrid {
+  max-width: 1280px;
+  margin: 0 auto;
   display: grid;
   gap: var(--space-5);
 }
 
-.benefitCard {
-  min-width: 0;
-  padding: var(--space-6);
-  background: var(--color-card);
-  border: 1px solid var(--color-border);
+/*
+ * Each card scopes its own hue through `--feature-tone` (set by the
+ * `.tone*` classes), so the glow, icon chip and hover border below are one
+ * rule each instead of three near-duplicates.
+ */
+.featureCard {
+  position: relative;
+  overflow: hidden;
+  /* `scroll-margin-top` keeps the sticky bar from covering the card when the
+   * public nav's `#entrenamiento` / `#nutricion` anchors jump here. */
+  scroll-margin-top: calc(var(--topbar-height) + var(--space-4));
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  transition: border-color 0.5s ease;
+}
+
+.featureCard:hover {
+  border-color: color-mix(in srgb, var(--feature-tone) 50%, transparent);
+}
+
+.featureGlow {
+  position: absolute;
+  top: -48px;
+  right: -48px;
+  width: 128px;
+  height: 128px;
+  border-radius: 50%;
+  background-color: color-mix(in srgb, var(--feature-tone) 10%, transparent);
+  filter: blur(48px);
+  transition: background-color 0.3s ease;
+}
+
+.featureCard:hover .featureGlow {
+  background-color: color-mix(in srgb, var(--feature-tone) 20%, transparent);
+}
+
+.tonePrimary {
+  --feature-tone: var(--color-accent);
+}
+
+.toneSecondary {
+  --feature-tone: var(--color-secondary);
+}
+
+.toneTertiary {
+  --feature-tone: var(--color-tertiary);
+}
+
+.featureIcon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: var(--space-4);
+  border: 1px solid color-mix(in srgb, var(--feature-tone) 20%, transparent);
+  border-radius: var(--radius-lg);
+  background-color: color-mix(in srgb, var(--feature-tone) 10%, transparent);
+  color: var(--feature-tone);
+}
+
+.featureTitle {
+  position: relative;
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-headline-md);
+  line-height: var(--line-height-headline-md);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.featureText {
+  position: relative;
+  margin: 0;
+  color: var(--color-text-secondary);
+  line-height: 1.625;
+}
+
+/* --- Product / bio-sync -------------------------------------------------- */
+
+.product {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding-block: var(--space-8);
+  scroll-margin-top: calc(var(--topbar-height) + var(--space-4));
+  display: grid;
+  gap: var(--space-8);
+  align-items: center;
+}
+
+.productVisual {
+  position: relative;
+}
+
+/* Template: a slightly rotated, scaled-down frame that straightens on hover. */
+.productFrame {
+  aspect-ratio: 1;
+  padding: var(--space-2);
+  border-radius: var(--radius-lg);
+  border-color: color-mix(in srgb, var(--color-accent) 20%, transparent);
+  overflow: hidden;
+  transform: rotate(3deg) scale(0.95);
+  transition: transform 0.7s ease;
+}
+
+.productFrame:hover {
+  transform: rotate(0deg) scale(1);
+}
+
+.productImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   border-radius: var(--radius-lg);
 }
 
-.benefitCard h3 {
-  margin-block: var(--space-5) var(--space-3);
-  font-family: var(--font-heading);
-  font-size: var(--font-size-xl);
-}
-
-.benefitCard p,
-.productCopy > p,
-.cta p,
-.footer p,
-.previewCard p {
-  color: var(--color-text-muted);
-}
-
-.cardIndex {
-  color: var(--color-accent);
-  font-family: var(--font-heading);
-  font-size: var(--font-size-lg);
-  font-weight: 700;
-}
-
-.product {
-  display: grid;
+.productBadge {
+  position: absolute;
+  left: calc(var(--space-5) * -1);
+  bottom: calc(var(--space-5) * -1);
+  display: flex;
   align-items: center;
-  gap: var(--space-8);
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  border-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+
+.productBadgeIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background-color: color-mix(in srgb, var(--color-accent) 20%, transparent);
+  color: var(--color-accent);
+}
+
+.productBadgeLabel {
+  margin: 0;
+  color: var(--color-accent);
+  font-size: var(--font-size-label-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.productBadgeValue {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--font-size-headline-md);
+  line-height: var(--line-height-headline-md);
+  font-weight: 600;
+  color: var(--color-text);
 }
 
 .productCopy {
-  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
 }
 
 .capabilityList {
-  display: grid;
-  gap: var(--space-3);
+  margin: 0;
   padding: 0;
-  margin: var(--space-6) 0 0;
   list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
-.capabilityList li {
-  padding-left: var(--space-5);
-  border-left: 3px solid var(--color-accent);
-}
-
-.preview {
-  min-width: 0;
-  padding: var(--space-5);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-}
-
-.previewHeader {
+.capability {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding-bottom: var(--space-4);
+  gap: var(--space-2);
+  color: var(--color-text);
+}
+
+.capabilityIcon {
+  flex-shrink: 0;
+  color: var(--color-accent);
+}
+
+.inlineLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  color: var(--color-accent);
   font-weight: 700;
 }
 
-.status {
-  padding: var(--space-1) var(--space-3);
-  color: var(--color-accent);
-  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
-  border-radius: var(--radius-full);
-  font-size: var(--font-size-sm);
+.inlineLinkIcon {
+  transition: transform 0.2s ease;
 }
 
-.previewGrid {
-  display: grid;
-  gap: var(--space-3);
+.inlineLink:hover .inlineLinkIcon {
+  transform: translateX(8px);
 }
 
-.previewCard {
-  min-width: 0;
-  padding: var(--space-4);
-  background: var(--color-card);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-}
-
-.previewCard > span {
-  display: block;
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
-}
-
-.previewCard strong {
-  display: block;
-  margin-top: var(--space-2);
-}
-
-.progressTrack {
-  height: 8px;
-  margin-top: var(--space-4);
-  overflow: hidden;
-  background: var(--color-border);
-  border-radius: var(--radius-full);
-}
-
-.progressValue {
-  display: block;
-  width: 68%;
-  height: 100%;
-  background: var(--color-accent);
-  border-radius: inherit;
-}
-
-.bars {
-  display: flex;
-  align-items: end;
-  gap: var(--space-2);
-  height: 64px;
-  margin-top: var(--space-4);
-}
-
-.bars i {
-  flex: 1;
-  height: 42%;
-  background: color-mix(in srgb, var(--color-accent) 42%, var(--color-border));
-  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-}
-
-.bars i:nth-child(2) {
-  height: 58%;
-}
-
-.bars i:nth-child(3) {
-  height: 50%;
-}
-
-.bars i:nth-child(4) {
-  height: 78%;
-}
-
-.bars i:nth-child(5) {
-  height: 88%;
-  background: var(--color-accent);
-}
+/* --- Closing CTA --------------------------------------------------------- */
 
 .cta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-6);
-  padding: var(--space-8);
-  background: var(--color-card);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  padding-block: var(--space-8);
+  scroll-margin-top: calc(var(--topbar-height) + var(--space-4));
 }
 
-.footer {
-  display: grid;
+.ctaCard {
+  max-width: 64rem;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: var(--space-5);
+  gap: var(--space-4);
+  padding: var(--space-8) var(--space-6);
+  border-radius: 24px;
+  border-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
+  text-align: center;
+}
+
+/* --- Footer -------------------------------------------------------------- */
+
+.footer {
   padding-block: var(--space-8);
-  margin-top: calc(var(--space-8) * 2);
+  background-color: var(--color-surface-low);
   border-top: 1px solid var(--color-border);
 }
 
-.footer p {
-  margin-bottom: 0;
+.footerGrid {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-6);
 }
 
-@media (min-width: 768px) {
+.footerBrand {
+  grid-column: span 2;
+}
+
+.footerLockup {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.footerMark {
+  height: 1.5rem;
+  width: auto;
+}
+
+.footerWordmark {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-headline-md);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: var(--color-accent);
+}
+
+.footerTagline {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-label-md);
+  line-height: 1.625;
+}
+
+.footerHeading {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-headline-md);
+  line-height: var(--line-height-headline-md);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.footerList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.footerLink {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-label-md);
+}
+
+.footerLink:hover {
+  color: var(--color-accent);
+}
+
+.footerBottom {
+  max-width: 1280px;
+  margin: var(--space-6) auto 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.footerCopyright {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-label-sm);
+}
+
+.footerSocial {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.footerIconLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  color: var(--color-text-secondary);
+}
+
+.footerIconLink:hover {
+  color: var(--color-accent);
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/*
+ * The mockup leans on decorative motion (pulsing badge/halo, hover lifts and
+ * rotations). Honour the OS-level reduced-motion preference across all of it
+ * in one place rather than rule by rule.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .badgeDot,
+  .accessHalo {
+    animation: none;
+  }
+
+  .ctaPrimary,
+  .productFrame,
+  .inlineLinkIcon,
+  .featureCard,
+  .featureGlow {
+    transition: none;
+  }
+
+  .ctaPrimary:hover,
+  .productFrame,
+  .productFrame:hover,
+  .inlineLink:hover .inlineLinkIcon {
+    transform: none;
+  }
+}
+
+/* --- Breakpoints --------------------------------------------------------- */
+
+@media (min-width: 641px) {
+  .heroActions {
+    flex-direction: row;
+    justify-content: center;
+  }
+}
+
+@media (min-width: 769px) {
   .hero,
-  .section,
+  .features,
   .product,
   .cta,
   .footer {
-    width: min(100% - (var(--space-container-desktop) * 2), 1200px);
+    padding-inline: var(--space-container-desktop);
   }
 
-  .benefitGrid,
-  .previewGrid {
+  .featureGrid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .footer {
-    grid-template-columns: 1fr auto auto;
-  }
-}
-
-@media (min-width: 1024px) {
-  .hero,
   .product {
-    grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .footerGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .footerBrand {
+    grid-column: span 1;
+  }
+
+  .footerBottom {
+    flex-direction: row;
+    justify-content: space-between;
   }
 }
 
-@media (max-width: 767px) {
-  .hero {
-    min-height: 0;
-    padding-block: var(--space-8);
+@media (min-width: 1025px) {
+  .heroGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .accessCard {
-    padding: var(--space-5);
-  }
-
-  .cta {
-    align-items: stretch;
-    flex-direction: column;
-    padding: var(--space-5);
-  }
-
-  .cta .primaryLink {
-    width: 100%;
-  }
-
-  .footer nav {
+  .heroCopy {
     align-items: flex-start;
-    flex-direction: column;
+    text-align: left;
+  }
+
+  .heroActions {
+    align-self: auto;
+    justify-content: flex-start;
+  }
+
+  .socialProof {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .title {
+    font-size: 4rem;
+    line-height: 1.1;
   }
 }

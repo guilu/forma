@@ -71,7 +71,7 @@ describe('App', () => {
     // Generic greeting: no profile mocked here, so the name stays unset
     // (FOR-169 empty first-run).
     expect(
-      screen.getByRole('heading', { name: 'Entiende tu progreso. Organiza lo que viene.' }),
+      screen.getByRole('heading', { level: 1, name: /Entrena\. Nutre\. Evoluciona\./ }),
     ).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Hola 👋' })).not.toBeInTheDocument();
     // FOR-185: the navigation bar is rendered by the global RootLayout on every
@@ -115,8 +115,8 @@ describe('App', () => {
   });
 
   it.each([
-    ['/', 'Entiende tu progreso. Organiza lo que viene.'],
-    ['/auth?code=abc&state=xyz', 'Conexión con Withings'],
+    ['/', /Entrena\. Nutre\. Evoluciona\./],
+    ['/auth?code=abc&state=xyz', /Conexión con Withings/],
   ])('keeps %s public for anonymous users', (path, heading) => {
     authStatus = 'anonymous';
     render(
