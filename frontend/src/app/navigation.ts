@@ -33,7 +33,11 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { path: '/app', label: 'Dashboard', icon: 'dashboard', primary: true },
   { path: '/app/mediciones', label: 'Mediciones', icon: 'measurements', primary: true },
   { path: '/app/entrenamiento', label: 'Entrenamiento', icon: 'training', primary: true },
-  { path: '/app/nutricion', label: 'Nutrición', icon: 'nutrition', primary: true },
+  // FOR-185: moved out of the mobile bar into the "Más" overflow, where its
+  // position in this list puts it first, above "Lista de compra". The bar is
+  // down to three sections plus the disclosure, which leaves the remaining
+  // tap targets noticeably wider.
+  { path: '/app/nutricion', label: 'Nutrición', icon: 'nutrition', primary: false },
   { path: '/app/lista-compra', label: 'Lista de compra', icon: 'shopping', primary: false },
   { path: '/app/progreso', label: 'Progreso', icon: 'progress', primary: false },
   { path: '/app/objetivos', label: 'Objetivos', icon: 'goals', primary: false },

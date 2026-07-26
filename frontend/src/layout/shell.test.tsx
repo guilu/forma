@@ -173,10 +173,11 @@ describe('application shell', () => {
       screen.queryByRole('menuitem', { name: 'Objetivos', hidden: true }),
     ).not.toBeInTheDocument();
 
-    // FOR-164: the primary mobile bar is limited to Dashboard, Mediciones,
-    // Entrenamiento and Nutrición. Progreso moved behind "Más", so it is not a
-    // primary bar link.
+    // FOR-164: the primary mobile bar is limited to Dashboard, Mediciones and
+    // Entrenamiento. Progreso moved behind "Más", so it is not a primary bar
+    // link — and FOR-185 moved Nutrición there too.
     expect(screen.queryByRole('link', { name: 'Progreso', hidden: true })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Nutrición', hidden: true })).not.toBeInTheDocument();
 
     const more = screen.getByRole('button', { name: 'Más', hidden: true });
     expect(more).toHaveAttribute('aria-expanded', 'false');
@@ -184,6 +185,16 @@ describe('application shell', () => {
 
     expect(more).toHaveAttribute('aria-expanded', 'true');
     const menu = screen.getByRole('menu', { name: 'Más secciones', hidden: true });
+    // FOR-185: Nutrición leads the overflow, directly above Lista de compra —
+    // the order comes from NAV_ITEMS, so this pins it there.
+    const items = within(menu).getAllByRole('menuitem', { hidden: true });
+    expect(items.map((item) => item.textContent)).toEqual([
+      'Nutrición',
+      'Lista de compra',
+      'Progreso',
+      'Objetivos',
+      'Ajustes',
+    ]);
     expect(
       within(menu).getByRole('menuitem', { name: 'Lista de compra', hidden: true }),
     ).toBeInTheDocument();
