@@ -90,13 +90,25 @@ describe('theme.css design tokens (FOR-163 reconciliation)', () => {
       expect(tokenValue(light, token)).toBeTruthy();
     });
 
-    it('reconciles the light accent to the template inverse-primary, not the raw dark hue', () => {
-      // Templates are dark-only; the light accent is derived (documented in
-      // theme.css) from the template's own `inverse-primary` role (#006d42),
-      // which is the M3-designed variant of `primary` for opposite-brightness
-      // surfaces -- not an invented value.
-      expect(tokenValue(light, '--color-accent')).toBe('#006d42');
-      expect(tokenValue(light, '--color-accent-contrast')).toBe('#ffffff');
+    // FOR-185 replaced FOR-163's derived light accent (#006d42, the template's
+    // `inverse-primary`) with a brighter brand-chosen green. The guard is kept
+    // but re-pointed, so a future silent drift is still caught.
+    it('pins the light accent to the FOR-185 brand green and its readable ink', () => {
+      expect(tokenValue(light, '--color-accent')).toBe('#4caf50');
+      // NOT #ffffff: white on #4caf50 is ~2.78:1, and ~10 components paint
+      // text or icons on an accent fill. #0f1a13 (= light --color-text) is
+      // ~6.42:1 there.
+      expect(tokenValue(light, '--color-accent-contrast')).toBe('#0f1a13');
+    });
+
+    it('keeps the CTA gradient and its ink identical in both themes (FOR-185)', () => {
+      // The brand owner wants one bright ramp everywhere, so light does not
+      // derive a darker gradient from its own endpoints. The ink must travel
+      // with it: white on #4cdf97 is ~1.71:1, the dark ink is ~10.8:1.
+      expect(tokenValue(light, '--gradient-accent')).toBe(tokenValue(dark, '--gradient-accent'));
+      expect(tokenValue(light, '--color-on-gradient')).toBe(
+        tokenValue(dark, '--color-on-gradient'),
+      );
     });
 
     it('keeps the light warning accessible (AA) after the amber hue reconciliation', () => {

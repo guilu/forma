@@ -91,9 +91,36 @@
    * primitive can adopt the treatment without hardcoding hexes, and so the
    * light theme can substitute a darker ramp that keeps label contrast.
    */
-  --gradient-accent: linear-gradient(135deg, #4cdf97 0%, #7dde38 100%);
-  --color-on-gradient: #10141a; /* template: text-background on the gradient */
-  --shadow-accent-glow: 0 8px 24px -4px rgb(76 223 151 / 40%);
+  /*
+   * FOR-185: the CTA ramp is the FORMA logotype's own gradient (#0b755f ->
+   * #85f55c), used unchanged in BOTH themes so the primary action always
+   * reads as the brand mark. The light block repeats it verbatim rather than
+   * inheriting, so that block stays a complete, self-describing palette.
+   *
+   * KNOWN CONTRAST TRADE-OFF (FOR-61): no single ink clears AA across this
+   * ramp, because it spans from a dark teal to a bright lime. Measured against
+   * the two candidate inks:
+   *
+   *        stop     colour    white   #10141a
+   *          0%    #0b755f     5.64      3.28
+   *         25%    #2a955e     3.78      4.89
+   *         50%    #48b55e     2.61      7.08
+   *         75%    #66d55d     1.87      9.89
+   *        100%    #85f55c     1.38     13.38
+   *
+   * The dark ink is chosen because it clears AA from the 25% stop onward and
+   * is ~7:1 at the midpoint, which is where a centred button label actually
+   * sits; white is only legible over the first sliver. What it does not cover
+   * is the darkest corner -- on a 135deg ramp, the top-left of the button --
+   * where it drops to 3.28:1. If that has to be fixed without giving up the
+   * logotype colours, the minimal change is to start the ramp at its own 25%
+   * point (#2a955e), which puts the whole gradient at >=4.89:1.
+   */
+  --gradient-accent: linear-gradient(135deg, #0b755f 0%, #85f55c 100%);
+  --color-on-gradient: #10141a;
+  /* Halo tinted with the ramp's bright end, so the glow reads as the same
+   * brand gradient rather than as the flat accent. */
+  --shadow-accent-glow: 0 8px 24px -4px rgb(133 245 92 / 35%);
 
   /*
    * Spacing scale. --space-2/4/5/6 already matched the template's
@@ -236,19 +263,29 @@
   --color-text-secondary: #3c4a42;
 
   /*
-   * FOR-163: the dark accent moved from #9dff57 to the template's `primary`
-   * (#4cdf97), so the FOR-61/FOR-62 light counterpart is re-derived from the
-   * *new* hue family rather than left pointing at the old one. Rather than
-   * inventing a value, this uses the template's own `inverse-primary`
-   * (#006d42) -- the M3 role Google's tooling generated specifically as
-   * "`primary` shown on an inverse/opposite-brightness surface", i.e. exactly
-   * this light-mode-on-dark-brand use case. Contrast: #006d42 on --color-bg
-   * (#f4f7f5) is ~5.96:1; white text on this accent (e.g. Button `primary`)
-   * is ~6.43:1 -- both comfortably above the WCAG AA 4.5:1 bar for normal
-   * text (FOR-61).
+   * FOR-185: the light accent is a product decision, not a derivation. It was
+   * #006d42 (the template's `inverse-primary`, chosen by FOR-163 because it is
+   * the M3 role for "`primary` on an opposite-brightness surface"); the brand
+   * owner asked for a brighter, more saturated green so light mode reads
+   * closer to dark.
+   *
+   * KNOWN CONTRAST TRADE-OFF (FOR-61): #4caf50 on --color-bg (#f4f7f5) is
+   * ~2.58:1, below the WCAG AA 4.5:1 bar for normal text. #006d42 was ~5.96:1.
+   * That only matters where the accent is used as *text* on the page
+   * background -- accent-coloured links and emphasis (`.accentText`,
+   * `.inlineLink`, the sidebar's active item, the landing's footer wordmark).
+   * As a fill, border or icon tint it is unaffected. Accepted deliberately;
+   * if it needs fixing, the shape is a separate --color-accent-strong for
+   * text roles (e.g. #2e7d32, ~4.75:1) rather than darkening this token back.
    */
-  --color-accent: #006d42;
-  --color-accent-contrast: #ffffff;
+  --color-accent: #4caf50;
+  /*
+   * Flipped from #ffffff to the light theme's own ink. White on #4caf50 is
+   * ~2.78:1 -- unreadable for the ~10 components that paint text or icons on
+   * an accent fill (skip link, MeasurementForm, ShoppingPage, PlanBanner...).
+   * #0f1a13 (= --color-text) on the same fill is ~6.42:1.
+   */
+  --color-accent-contrast: #0f1a13;
   /*
    * FOR-163: dark warning moved from #ffd166 to the template's warning-amber
    * (#ffab70), a more orange hue. The light counterpart is re-derived at the
@@ -278,14 +315,14 @@
   --color-tertiary-contrast: #ffffff;
 
   /*
-   * The CTA gradient ramps between --color-accent and --color-secondary, so
-   * the light theme's darker endpoints produce a darker ramp -- which in turn
-   * flips the label from the page background (dark theme) to white. White on
-   * the lighter end of this ramp (#3d6b00) is ~6.4:1.
+   * Deliberately identical to the dark theme: this is the FORMA logotype's
+   * gradient, and the primary action carries the brand mark's colours in both
+   * themes. See the dark block for the full contrast table behind the ink
+   * choice and its one known weak spot.
    */
-  --gradient-accent: linear-gradient(135deg, #006d42 0%, #3d6b00 100%);
-  --color-on-gradient: #ffffff;
-  --shadow-accent-glow: 0 8px 24px -4px rgb(0 109 66 / 30%);
+  --gradient-accent: linear-gradient(135deg, #0b755f 0%, #85f55c 100%);
+  --color-on-gradient: #10141a;
+  --shadow-accent-glow: 0 8px 24px -4px rgb(133 245 92 / 35%);
 
   --shadow-card: 0 1px 3px rgba(15, 26, 19, 0.08);
 }
