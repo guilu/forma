@@ -19,14 +19,6 @@ export interface NavItem {
   readonly icon: IconName;
   /** Whether this entry appears in the compact mobile navigation bar. */
   readonly primary: boolean;
-  /**
-   * Whether this entry belongs to the sidebar's settings group (FOR-164):
-   * rendered apart from the primary section list and pinned to the bottom of
-   * the sidebar, matching the template's lower "Ajustes" entry. Orthogonal to
-   * `primary` -- that flag is about mobile bottom-bar placement, this one is
-   * about desktop sidebar grouping. Omitted (falsy) for the primary group.
-   */
-  readonly settings?: boolean;
 }
 
 export const NAV_ITEMS: readonly NavItem[] = [
@@ -41,5 +33,11 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { path: '/app/lista-compra', label: 'Lista de compra', icon: 'shopping', primary: false },
   { path: '/app/progreso', label: 'Progreso', icon: 'progress', primary: false },
   { path: '/app/objetivos', label: 'Objetivos', icon: 'goals', primary: false },
-  { path: '/app/ajustes', label: 'Ajustes', icon: 'settings', primary: false, settings: true },
+  /*
+   * FOR-185: "Ajustes" is deliberately absent. It moved out of section
+   * navigation entirely and into the topbar's account menu, next to "Cerrar
+   * sesión" — it is account chrome, not a section of the product. That also
+   * retired the `settings` grouping flag this model used to carry, which
+   * existed solely to pin this one entry to the bottom of the sidebar.
+   */
 ];

@@ -97,8 +97,9 @@ describe('application shell', () => {
   );
 
   // FOR-185: the account collapsed into an avatar trigger plus a menu, so the
-  // profile and logout actions live one interaction deeper than they used to.
-  it('exposes profile and logout behind the account menu', async () => {
+  // settings and logout actions live one interaction deeper than they used to.
+  // "Ajustes" moved here out of the section navigation entirely.
+  it('exposes settings and logout behind the account menu', async () => {
     const user = userEvent.setup();
     renderTopbar();
 
@@ -111,7 +112,7 @@ describe('application shell', () => {
 
     expect(trigger).toHaveAttribute('aria-expanded', 'true');
     const menu = screen.getByRole('menu', { name: 'Cuenta' });
-    expect(within(menu).getByRole('menuitem', { name: 'Perfil' })).toHaveAttribute(
+    expect(within(menu).getByRole('menuitem', { name: 'Ajustes' })).toHaveAttribute(
       'href',
       '/app/ajustes',
     );
@@ -157,13 +158,10 @@ describe('application shell', () => {
     expect(screen.getByRole('button', { name: 'Cambiar a tema oscuro' })).toBeInTheDocument();
   });
 
-  // FOR-164: "Ajustes" moves out of the primary nav flow and into its own
-  // settings group, pinned to the bottom of the sidebar's flex column (just
-  // above the Withings card) via `margin-top: auto` — matching the template's
-  // gap between the primary section list and the lower "Ajustes" entry. The
-  // pixel-level pinning itself is CSS-only and not assertable in jsdom, but
-  // the DOM grouping that drives it is.
-  it('separates "Ajustes" into its own settings group at the end of the nav', () => {
+  // FOR-185: "Ajustes" left the sidebar for the topbar's account menu, and the
+  // `settings` grouping flag that pinned it to the bottom went with it — every
+  // remaining entry is a product section.
+  it('lists only product sections in the sidebar, with no settings entry', () => {
     render(
       <MemoryRouter>
         <Sidebar />
@@ -171,18 +169,11 @@ describe('application shell', () => {
     );
 
     const nav = screen.getByRole('navigation', { name: 'Navegación principal' });
-    const ajustesLink = screen.getByRole('link', { name: 'Ajustes' });
-    const dashboardLink = screen.getByRole('link', { name: 'Dashboard' });
-
-    // The primary group's links are direct children of <nav>...
-    expect(dashboardLink.parentElement).toBe(nav);
-    // ...but Ajustes lives inside a dedicated settings wrapper, not as a bare
-    // sibling of the primary links.
-    expect(ajustesLink.parentElement).not.toBe(nav);
-    expect(ajustesLink.parentElement?.parentElement).toBe(nav);
-    expect(ajustesLink.parentElement).toHaveClass(styles.settingsGroup);
-    // That wrapper is the last element in the nav, so it anchors to the bottom.
-    expect(nav.lastElementChild).toBe(ajustesLink.parentElement);
+    expect(within(nav).queryByRole('link', { name: 'Ajustes' })).not.toBeInTheDocument();
+    // Every link is now a direct child of <nav>; there is no group wrapper left.
+    for (const link of within(nav).getAllByRole('link')) {
+      expect(link.parentElement).toBe(nav);
+    }
   });
 
   // The mobile bar is CSS-hidden at the jsdom desktop viewport (shown only
@@ -220,7 +211,6 @@ describe('application shell', () => {
       'Lista de compra',
       'Progreso',
       'Objetivos',
-      'Ajustes',
     ]);
     expect(
       within(menu).getByRole('menuitem', { name: 'Lista de compra', hidden: true }),
@@ -232,7 +222,7 @@ describe('application shell', () => {
       within(menu).getByRole('menuitem', { name: 'Objetivos', hidden: true }),
     ).toBeInTheDocument();
     expect(
-      within(menu).getByRole('menuitem', { name: 'Ajustes', hidden: true }),
+      within(menu).getByRole('menuitem', { name: 'Nutrición', hidden: true }),
     ).toBeInTheDocument();
   });
 
@@ -245,7 +235,7 @@ describe('application shell', () => {
     );
 
     await user.click(screen.getByRole('button', { name: 'Más', hidden: true }));
-    await user.click(screen.getByRole('menuitem', { name: 'Ajustes', hidden: true }));
+    await user.click(screen.getByRole('menuitem', { name: 'Objetivos', hidden: true }));
 
     expect(
       screen.queryByRole('menu', { name: 'Más secciones', hidden: true }),

@@ -13,9 +13,6 @@ import styles from './Sidebar.module.css';
  * here would be a second copy directly under the first.
  */
 export function Sidebar() {
-  const primaryItems = NAV_ITEMS.filter((item) => !item.settings);
-  const settingsItems = NAV_ITEMS.filter((item) => item.settings);
-
   const renderLink = (item: (typeof NAV_ITEMS)[number]) => (
     <NavLink
       key={item.path}
@@ -32,16 +29,13 @@ export function Sidebar() {
 
   return (
     <aside className={styles.sidebar}>
+      {/*
+       * FOR-185: every entry is a product section now. "Ajustes" used to be
+       * pinned apart at the bottom via a `settings` grouping flag; it moved to
+       * the topbar's account menu, and the group went with it.
+       */}
       <nav className={styles.nav} aria-label="Navegación principal">
-        {primaryItems.map(renderLink)}
-        {/*
-         * FOR-164: the settings group (currently just "Ajustes") is pinned to
-         * the bottom of the nav's flex column via `margin-top: auto` on this
-         * wrapper -- see Sidebar.module.css `.settingsGroup` -- landing just
-         * above the Withings card, matching the template's lower "Ajustes"
-         * entry instead of it being flush with the primary section list.
-         */}
-        <div className={styles.settingsGroup}>{settingsItems.map(renderLink)}</div>
+        {NAV_ITEMS.map(renderLink)}
       </nav>
       <div className={styles.integration}>
         <div className={styles.integrationHeader}>

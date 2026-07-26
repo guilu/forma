@@ -34,7 +34,8 @@ export type IconName =
   | 'checkCircle'
   | 'arrowRight'
   | 'share'
-  | 'globe';
+  | 'globe'
+  | 'logout';
 
 const PATHS: Record<IconName, string> = {
   dashboard: 'M3 3h7v7H3zM14 3h7v4h-7zM14 10h7v11h-7zM3 13h7v8H3z',
@@ -95,6 +96,9 @@ const PATHS: Record<IconName, string> = {
   // `language`.
   globe:
     'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.5 3.5 5.6 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-5.6-3.5-9s1-6.5 3.5-9z',
+  // Arrow leaving an open-sided frame — the sign-out action in the topbar's
+  // account menu (FOR-185).
+  logout: 'M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3M16 17l5-5-5-5M21 12H9',
 };
 
 interface IconProps {

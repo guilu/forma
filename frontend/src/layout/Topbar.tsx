@@ -142,13 +142,19 @@ export function Topbar() {
               </button>
               {accountOpen && (
                 <div className={styles.accountMenu} role="menu" aria-label="Cuenta">
+                  {/*
+                   * "Ajustes" lives here rather than in the section navigation
+                   * (see app/navigation.ts): it is account chrome, not a
+                   * product section, so it belongs next to signing out.
+                   */}
                   <Link
                     className={styles.accountMenuItem}
                     role="menuitem"
                     to="/app/ajustes"
                     onClick={() => setAccountOpen(false)}
                   >
-                    Perfil
+                    <Icon name="settings" size={18} />
+                    Ajustes
                   </Link>
                   <button
                     className={styles.accountMenuItem}
@@ -158,6 +164,7 @@ export function Topbar() {
                     aria-busy={logoutPending || undefined}
                     onClick={() => void handleLogout()}
                   >
+                    <Icon name="logout" size={18} />
                     {logoutPending
                       ? 'Cerrando sesión...'
                       : logoutError
