@@ -36,6 +36,7 @@ export function Topbar() {
   const [logoutPending, setLogoutPending] = useState(false);
   const [logoutError, setLogoutError] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
 
   async function handleLogout() {
     setLogoutPending(true);
@@ -101,24 +102,70 @@ export function Topbar() {
             <button className={styles.iconButton} type="button" aria-label="Notificaciones">
               <Icon name="bell" />
             </button>
-            <div className={styles.account}>
-              <span className={styles.avatar} aria-hidden="true">
-                <Icon name="user" size={18} />
-              </span>
-              <span className={styles.accountName}>{user?.email}</span>
+            {/*
+             * The account collapses into a single avatar trigger plus a menu,
+             * rather than laying the email and a logout button out in the bar.
+             * On mobile that is the only shape that fits beside the theme and
+             * notification controls; the avatar is also where a real profile
+             * photo will go once there is one to show.
+             *
+             * `onBlur` on the wrapper closes the menu when focus leaves it
+             * entirely — `relatedTarget` is the element receiving focus, so a
+             * move *within* the menu (trigger -> item) is ignored. That covers
+             * tab-away and, with the Escape handler, gives the menu the two
+             * dismissals a keyboard user expects. A click on inert page area
+             * does not close it, matching the "Más" disclosure below.
+             */}
+            <div
+              className={styles.account}
+              onBlur={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget)) setAccountOpen(false);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') setAccountOpen(false);
+              }}
+            >
               <button
-                className={styles.logoutButton}
+                className={styles.accountTrigger}
                 type="button"
-                disabled={logoutPending}
-                aria-busy={logoutPending || undefined}
-                onClick={() => void handleLogout()}
+                aria-haspopup="menu"
+                aria-expanded={accountOpen}
+                aria-label={user?.email ? `Cuenta: ${user.email}` : 'Cuenta'}
+                onClick={() => setAccountOpen((open) => !open)}
               >
-                {logoutPending
-                  ? 'Cerrando sesión...'
-                  : logoutError
-                    ? 'Reintentar cierre de sesión'
-                    : 'Cerrar sesión'}
+                <span className={styles.avatar} aria-hidden="true">
+                  <Icon name="user" size={18} />
+                </span>
+                <span className={styles.accountName} aria-hidden="true">
+                  {user?.email}
+                </span>
               </button>
+              {accountOpen && (
+                <div className={styles.accountMenu} role="menu" aria-label="Cuenta">
+                  <Link
+                    className={styles.accountMenuItem}
+                    role="menuitem"
+                    to="/app/ajustes"
+                    onClick={() => setAccountOpen(false)}
+                  >
+                    Perfil
+                  </Link>
+                  <button
+                    className={styles.accountMenuItem}
+                    role="menuitem"
+                    type="button"
+                    disabled={logoutPending}
+                    aria-busy={logoutPending || undefined}
+                    onClick={() => void handleLogout()}
+                  >
+                    {logoutPending
+                      ? 'Cerrando sesión...'
+                      : logoutError
+                        ? 'Reintentar cierre de sesión'
+                        : 'Cerrar sesión'}
+                  </button>
+                </div>
+              )}
             </div>
             {logoutError && (
               <p className={styles.logoutError} role="alert">

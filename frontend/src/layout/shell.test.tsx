@@ -96,23 +96,50 @@ describe('application shell', () => {
     },
   );
 
-  it('renders the authenticated account and calls logout from the topbar', async () => {
+  // FOR-185: the account collapsed into an avatar trigger plus a menu, so the
+  // profile and logout actions live one interaction deeper than they used to.
+  it('exposes profile and logout behind the account menu', async () => {
     const user = userEvent.setup();
     renderTopbar();
 
-    expect(screen.getByText('persona@example.com')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Notificaciones' })).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Cerrar sesión' }));
+    const trigger = screen.getByRole('button', { name: 'Cuenta: persona@example.com' });
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('menu', { name: 'Cuenta' })).not.toBeInTheDocument();
+
+    await user.click(trigger);
+
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    const menu = screen.getByRole('menu', { name: 'Cuenta' });
+    expect(within(menu).getByRole('menuitem', { name: 'Perfil' })).toHaveAttribute(
+      'href',
+      '/app/ajustes',
+    );
+    await user.click(within(menu).getByRole('menuitem', { name: 'Cerrar sesión' }));
     expect(logoutMock).toHaveBeenCalled();
+  });
+
+  it('closes the account menu when focus leaves it', async () => {
+    const user = userEvent.setup();
+    renderTopbar();
+
+    await user.click(screen.getByRole('button', { name: 'Cuenta: persona@example.com' }));
+    expect(screen.getByRole('menu', { name: 'Cuenta' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Notificaciones' }));
+
+    expect(screen.queryByRole('menu', { name: 'Cuenta' })).not.toBeInTheDocument();
   });
 
   it('keeps logout failure handled and offers retry', async () => {
     logoutMock.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(undefined);
     const user = userEvent.setup();
     renderTopbar();
-    await user.click(screen.getByRole('button', { name: 'Cerrar sesión' }));
+    await user.click(screen.getByRole('button', { name: 'Cuenta: persona@example.com' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Cerrar sesión' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo cerrar la sesión');
-    await user.click(screen.getByRole('button', { name: 'Reintentar cierre de sesión' }));
+    // The menu stays open through the failure, so the retry is right there.
+    await user.click(screen.getByRole('menuitem', { name: 'Reintentar cierre de sesión' }));
     expect(logoutMock).toHaveBeenCalledTimes(2);
   });
 

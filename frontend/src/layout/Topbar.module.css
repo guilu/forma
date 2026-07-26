@@ -102,7 +102,12 @@
   color: var(--color-text);
 }
 
+/* Positioning context for the account menu below. */
 .account {
+  position: relative;
+}
+
+.accountTrigger {
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -110,6 +115,52 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   background-color: var(--color-card);
+  font: inherit;
+  color: inherit;
+}
+
+/*
+ * Same translucent-surface treatment as the bar and the public disclosure
+ * sheet, so every panel hanging off this bar reads as one system.
+ * `min-width: 100%` lets the menu grow past a narrow trigger (the avatar
+ * alone, once the email is hidden) without ever being narrower than it.
+ */
+.accountMenu {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  z-index: 1;
+  min-width: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background-color: color-mix(in srgb, var(--color-bg) 80%, transparent);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-card);
+}
+
+.accountMenuItem {
+  display: block;
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  font: inherit;
+  color: var(--color-text);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.accountMenuItem:hover {
+  background-color: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  color: var(--color-accent-strong);
+}
+
+.accountMenuItem:disabled {
+  cursor: wait;
+  opacity: 0.7;
 }
 
 .avatar {
@@ -126,23 +177,6 @@
 .accountName {
   font-size: var(--font-size-sm);
   color: var(--color-text);
-}
-
-.logoutButton {
-  padding: var(--space-1) var(--space-2);
-  border: 0;
-  border-left: 1px solid var(--color-border);
-  background: transparent;
-  color: var(--color-text-muted);
-}
-
-.logoutButton:hover {
-  color: var(--color-text);
-}
-
-.logoutButton:disabled {
-  cursor: wait;
-  opacity: 0.7;
 }
 
 .logoutError {
