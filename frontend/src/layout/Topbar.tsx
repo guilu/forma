@@ -60,6 +60,21 @@ export function Topbar() {
     </button>
   );
 
+  /**
+   * The login action changes place across the breakpoint: on desktop it sits
+   * in the bar after the theme toggle, on mobile it belongs inside the
+   * disclosure sheet with the section anchors, leaving only the toggle and the
+   * hamburger in the bar. Those are two different subtrees, so it is rendered
+   * in both and each copy is `display: none` at the other width — exactly one
+   * is ever laid out, and `display: none` also removes the other from the
+   * accessibility tree, so nothing is announced twice.
+   */
+  const loginLink = (placement: string) => (
+    <Link className={[styles.loginLink, placement].join(' ')} to="/login">
+      Iniciar Sesión
+    </Link>
+  );
+
   return (
     <header className={styles.topbar}>
       {/*
@@ -110,7 +125,13 @@ export function Topbar() {
             )}
           </div>
         ) : (
-          <div className={styles.publicSide}>
+          <>
+            {/*
+             * A direct child of `.innerPublic`, not of the actions group: the
+             * bar is a three-column grid there, so the anchors centre against
+             * the bar itself rather than against whatever the brand and the
+             * actions happen to measure.
+             */}
             <nav
               className={[styles.publicNav, menuOpen ? styles.publicNavOpen : '']
                 .filter(Boolean)
@@ -126,21 +147,39 @@ export function Topbar() {
               <a className={styles.publicLink} href="/#planes">
                 Planes
               </a>
-              <Link className={styles.loginLink} to="/login">
-                Iniciar Sesión
-              </Link>
+              {loginLink(styles.loginLinkSheet)}
             </nav>
-            {themeToggle}
-            <button
-              className={[styles.iconButton, styles.menuButton].join(' ')}
-              type="button"
-              aria-label="Abrir menú"
-              aria-expanded={menuOpen}
-              onClick={() => setMenuOpen((open) => !open)}
-            >
-              <Icon name="menu" />
-            </button>
-          </div>
+            <div className={styles.publicSide}>
+              {themeToggle}
+              {loginLink(styles.loginLinkBar)}
+              <button
+                className={[styles.iconButton, styles.menuButton].join(' ')}
+                type="button"
+                aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'}
+                aria-expanded={menuOpen}
+                onClick={() => setMenuOpen((open) => !open)}
+              >
+                {/*
+                 * Three bars rather than swapping a menu/close icon, so the
+                 * hamburger morphs into the X instead of cutting to it: the
+                 * outer two rotate onto the centre line, the middle one
+                 * collapses to zero width. Same construction as the Akadem.ia
+                 * navbar. Decorative — the button's aria-label carries the
+                 * state.
+                 */}
+                <span
+                  className={[styles.burger, menuOpen ? styles.burgerOpen : '']
+                    .filter(Boolean)
+                    .join(' ')}
+                  aria-hidden="true"
+                >
+                  <span className={styles.burgerBar} />
+                  <span className={styles.burgerBar} />
+                  <span className={styles.burgerBar} />
+                </span>
+              </button>
+            </div>
+          </>
         )}
       </div>
     </header>

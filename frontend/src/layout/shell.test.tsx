@@ -222,11 +222,23 @@ describe('application shell', () => {
       '/#nutricion',
     );
     expect(within(nav).getByRole('link', { name: 'Planes' })).toHaveAttribute('href', '/#planes');
-    expect(within(nav).getByRole('link', { name: 'Iniciar Sesión' })).toHaveAttribute(
-      'href',
-      '/login',
-    );
+    // The login action sits outside the <nav>: it is an account action, not a
+    // section link, and staying out of the collapsing group keeps it in the
+    // bar on small screens instead of behind the disclosure.
+    expect(within(nav).queryByRole('link', { name: 'Iniciar Sesión' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Iniciar Sesión' })).toHaveAttribute('href', '/login');
     expect(screen.queryByRole('button', { name: 'Cerrar sesión' })).not.toBeInTheDocument();
+  });
+
+  // FOR-185: the theme toggle is ordered before the login action in the bar.
+  it('places the theme toggle before the login action', () => {
+    authStatus = 'anonymous';
+    renderTopbar();
+
+    const toggle = screen.getByRole('button', { name: /Cambiar a tema/ });
+    const login = screen.getByRole('link', { name: 'Iniciar Sesión' });
+
+    expect(toggle.compareDocumentPosition(login) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('keeps the theme toggle available to anonymous visitors', async () => {
@@ -256,5 +268,12 @@ describe('application shell', () => {
     await user.click(menu);
 
     expect(menu).toHaveAttribute('aria-expanded', 'true');
+    // The hamburger morphs into an X purely in CSS, so the accessible name is
+    // the only signal of that state change a screen reader gets — it has to
+    // travel with it. Asserted as the attribute rather than via
+    // `toHaveAccessibleName`, for the same reason this test uses
+    // `getByLabelText`: the button is `display: none` at the jsdom desktop
+    // viewport, and a hidden element's computed accessible name is "".
+    expect(menu).toHaveAttribute('aria-label', 'Cerrar menú');
   });
 });
