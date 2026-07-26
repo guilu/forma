@@ -313,7 +313,11 @@
     opacity: 0;
     overflow: hidden;
     visibility: hidden;
-    background-color: var(--color-surface);
+    /* The same translucent-surface treatment as the bar itself (see `.topbar`),
+     * so the sheet reads as an extension of it rather than as an opaque panel
+     * dropped over the page. */
+    background-color: color-mix(in srgb, var(--color-bg) 80%, transparent);
+    backdrop-filter: blur(12px);
     border-bottom: 1px solid transparent;
     transition:
       max-height 0.3s ease-in-out,
