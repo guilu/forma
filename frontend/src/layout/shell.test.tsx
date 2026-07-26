@@ -83,6 +83,19 @@ describe('application shell', () => {
     expect(inactiveLink.className.split(' ')).not.toContain(styles.active);
   });
 
+  // FOR-185: the brand is the route back out to the public site, so it points
+  // at the landing in both states — including while signed in, where it is the
+  // only way to reach `/` at all.
+  it.each(['authenticated', 'anonymous'] as const)(
+    'links the brand to the landing for a %s visitor',
+    (status) => {
+      authStatus = status;
+      renderTopbar();
+
+      expect(screen.getByRole('link', { name: 'FORMA, inicio' })).toHaveAttribute('href', '/');
+    },
+  );
+
   it('renders the authenticated account and calls logout from the topbar', async () => {
     const user = userEvent.setup();
     renderTopbar();

@@ -85,11 +85,13 @@ export function Topbar() {
       <div
         className={[styles.inner, isAuthenticated ? styles.innerApp : styles.innerPublic].join(' ')}
       >
-        <Link
-          className={styles.brand}
-          to={isAuthenticated ? '/app' : '/'}
-          aria-label="FORMA, inicio"
-        >
+        {/*
+         * Always the landing, never `/app`. The brand is the way back out of
+         * the application to the public site; pointing it at the dashboard
+         * while signed in would leave a signed-in user with no route to the
+         * landing at all.
+         */}
+        <Link className={styles.brand} to="/" aria-label="FORMA, inicio">
           <Brand />
         </Link>
 
