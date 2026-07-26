@@ -37,14 +37,57 @@
   }
 }
 
+/*
+ * FOR-185: the primary CTA moves from a flat accent fill to the landing
+ * template's `.primary-button-gradient` (primary -> secondary at 135deg) with
+ * a lift-on-hover. Driven entirely by `--gradient-accent` /
+ * `--color-on-gradient` / `--shadow-accent-glow`, so the light theme swaps in
+ * its own darker ramp and white label without a second rule here.
+ */
 .primary {
-  color: var(--color-accent-contrast);
-  background-color: var(--color-accent);
-  border-color: var(--color-accent);
-  /* Templates give the primary CTA a soft accent-tinted glow
-   * (`shadow-lg shadow-primary/20`); derive it from the accent token instead
-   * of a hardcoded color so both themes stay correct. */
+  color: var(--color-on-gradient);
+  background: var(--gradient-accent);
+  /*
+   * `background-origin: border-box` is load-bearing, not tidiness. `.button`
+   * reserves `border: 1px solid transparent` so every variant measures the
+   * same whether or not its border is visible. A gradient, though, is sized
+   * to the *padding* box by default while still being painted across the
+   * border box — so the 1px ring gets filled by stretching the gradient's
+   * edge pixels, which shows up as a stray olive band down the left edge of
+   * the button. Sizing the gradient to the border box instead makes the ramp
+   * cover the whole element evenly.
+   */
+  background-origin: border-box;
+  border-color: transparent;
   box-shadow: 0 4px 14px color-mix(in srgb, var(--color-accent) 30%, transparent);
+  /*
+   * The landing template's own easing for the primary CTA, adopted here so the
+   * app's buttons and the landing's anchor CTAs (which compose this class —
+   * see LandingPage.module.css `.ctaPrimary`) lift identically. Declared as
+   * explicit properties rather than the template's `transition: all`, which
+   * would also animate the gradient and the colour.
+   */
+  transition:
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-accent-glow);
+}
+
+/* Keep the press affordance winning over the hover lift: both selectors have
+ * the same specificity, so this has to come after `.primary:hover`. */
+.primary:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primary:hover:not(:disabled),
+  .primary:active:not(:disabled) {
+    transform: none;
+  }
 }
 
 .secondary {

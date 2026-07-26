@@ -1,0 +1,42 @@
+/*
+ * FOR-185: the navigation bar on top, the routed view below it. The bar is
+ * `position: fixed` (see Topbar.module.css for why), so the space it occupies
+ * is reserved here with padding rather than a grid row — an out-of-flow child
+ * would not fill a grid row anyway, and the routed content would have been
+ * auto-placed into it.
+ *
+ * `min-height` (not `height`) so a long public page such as the landing grows
+ * the document and scrolls normally; `AppShell` opts into a viewport-bounded
+ * frame of its own on top of this (see AppShell.module.css). The global
+ * `box-sizing: border-box` means the padding is inside the 100dvh, so a page
+ * that exactly fills the viewport does not introduce a scrollbar.
+ */
+.root {
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding-top: var(--topbar-height);
+}
+
+/*
+ * Skip link (FOR-61): visually hidden off-screen until it receives keyboard
+ * focus, then it slides into view as the first stop in the tab order — the
+ * standard pattern for letting keyboard users bypass the repeated navigation
+ * on every route. Moved here from AppShell/LandingPage in FOR-185 so there is
+ * exactly one, on every route, instead of one per area.
+ */
+.skipLink {
+  position: absolute;
+  top: -48px;
+  left: var(--space-4);
+  z-index: 100;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  background-color: var(--color-accent);
+  color: var(--color-accent-contrast);
+  font-weight: 600;
+  transition: top 0.15s ease;
+}
+
+.skipLink:focus {
+  top: var(--space-4);
+}

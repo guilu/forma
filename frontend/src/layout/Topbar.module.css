@@ -1,16 +1,82 @@
+/*
+ * FOR-185: the bar is now the first row of RootLayout's grid rather than a
+ * cell of AppShell's, and adopts the landing template's treatment —
+ * translucent surface + backdrop blur over a hairline bottom rule.
+ *
+ * `fixed` (as in the template), not `sticky`: a sticky element can only travel
+ * inside its own containing block, and this one's grid row is exactly
+ * `--topbar-height` tall, so sticky would have zero room and the bar would
+ * scroll away with a long public page. Taking it out of flow is safe because
+ * the grid row it leaves behind still reserves its height — no page-level top
+ * padding needed.
+ */
 .topbar {
-  grid-area: topbar;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
   height: var(--topbar-height);
-  background-color: var(--color-surface);
+  background-color: color-mix(in srgb, var(--color-bg) 80%, transparent);
+  backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--color-border);
+}
+
+.inner {
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--space-4);
+  padding: 0 var(--space-container-mobile);
+}
+
+/* Template: `max-w-7xl mx-auto` — the public bar shares the landing's measure
+ * so the brand lines up with the hero copy below it.
+ *
+ * Three columns rather than the base flex row, so the section anchors centre
+ * against the *bar* instead of merely landing between the brand and the
+ * actions. `1fr auto 1fr` gives the two side columns equal width whatever
+ * they contain, which is what keeps the middle one truly centred; a flex
+ * `space-between` would shift the anchors left or right as the brand and the
+ * action group change size (they do — the login pill shrinks below 480px).
+ */
+.innerPublic {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+}
+
+/*
+ * Placed explicitly rather than left to auto-placement. Below `md` the nav is
+ * `display: none`, which removes it as a grid item entirely — auto-placement
+ * would then drop the action group into the middle column and leave it
+ * stranded beside the brand instead of pinned right.
+ */
+.innerPublic .brand {
+  grid-column: 1;
+  justify-self: start;
+}
+
+.innerPublic .publicNav {
+  grid-column: 2;
+}
+
+.innerPublic .publicSide {
+  grid-column: 3;
+  justify-self: end;
+}
+
+.innerApp {
   padding: 0 var(--space-5);
 }
 
-.mobileBrand {
-  display: none;
+.brand {
+  display: inline-flex;
+  align-items: center;
+  color: inherit;
+  text-decoration: none;
 }
 
 .actions {
@@ -36,7 +102,12 @@
   color: var(--color-text);
 }
 
+/* Positioning context for the account menu below. */
 .account {
+  position: relative;
+}
+
+.accountTrigger {
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -44,6 +115,54 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   background-color: var(--color-card);
+  font: inherit;
+  color: inherit;
+}
+
+/*
+ * Same translucent-surface treatment as the bar and the public disclosure
+ * sheet, so every panel hanging off this bar reads as one system.
+ * `min-width: 100%` lets the menu grow past a narrow trigger (the avatar
+ * alone, once the email is hidden) without ever being narrower than it.
+ */
+.accountMenu {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  z-index: 1;
+  min-width: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background-color: color-mix(in srgb, var(--color-bg) 80%, transparent);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-card);
+}
+
+.accountMenuItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  font: inherit;
+  color: var(--color-text);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.accountMenuItem:hover {
+  background-color: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  color: var(--color-accent-strong);
+}
+
+.accountMenuItem:disabled {
+  cursor: wait;
+  opacity: 0.7;
 }
 
 .avatar {
@@ -62,27 +181,132 @@
   color: var(--color-text);
 }
 
-.logoutButton {
-  padding: var(--space-1) var(--space-2);
-  border: 0;
-  border-left: 1px solid var(--color-border);
-  background: transparent;
-  color: var(--color-text-muted);
-}
-
-.logoutButton:hover {
-  color: var(--color-text);
-}
-
-.logoutButton:disabled {
-  cursor: wait;
-  opacity: 0.7;
-}
-
 .logoutError {
   margin: 0;
   color: var(--color-danger);
   font-size: var(--font-size-sm);
+}
+
+/* --- Public (anonymous) bar --------------------------------------------- */
+
+.publicSide {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.publicNav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-6);
+}
+
+.publicLink {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-label-md);
+  font-weight: 500;
+  letter-spacing: var(--letter-spacing-label-md);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.publicLink:hover {
+  color: var(--color-accent-strong);
+}
+
+/* Template: outlined pill in the accent colour, tinting on hover — the public
+ * bar's only call to action. */
+.loginLink {
+  padding: var(--space-2) var(--space-5);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-lg);
+  color: var(--color-accent-strong);
+  font-size: var(--font-size-label-md);
+  font-weight: 500;
+  letter-spacing: var(--letter-spacing-label-md);
+  text-decoration: none;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.loginLink:hover {
+  background-color: color-mix(in srgb, var(--color-accent) 10%, transparent);
+}
+
+/*
+ * Two copies of the login action, one per breakpoint (see the Topbar comment
+ * on `loginLink`). Desktop keeps it in the bar after the theme toggle; mobile
+ * keeps it in the disclosure sheet, so the bar carries only the toggle and the
+ * hamburger. Exactly one is laid out at any width.
+ */
+.loginLinkSheet {
+  display: none;
+}
+
+/* The hamburger only exists below `md`, where the anchors collapse. */
+.menuButton {
+  display: none;
+}
+
+/*
+ * Hamburger that morphs into an X (ported from the Akadem.ia navbar). Three
+ * absolutely positioned bars inside a 20x16 box: on open the outer two travel
+ * to the centre line and rotate +/-45deg, the middle one collapses to zero
+ * width from its centre. Animating the bars beats swapping a `menu` icon for
+ * a `close` one, which would cut between two states with nothing in between.
+ */
+.burger {
+  position: relative;
+  display: block;
+  width: 20px;
+  height: 16px;
+}
+
+.burgerBar {
+  position: absolute;
+  left: 0;
+  display: block;
+  width: 20px;
+  height: 2px;
+  border-radius: var(--radius-full);
+  background-color: currentColor;
+  transform-origin: center;
+  transition:
+    top 0.3s ease-in-out,
+    left 0.2s ease-in-out,
+    width 0.2s ease-in-out,
+    opacity 0.2s ease-in-out,
+    transform 0.3s ease-in-out;
+}
+
+.burgerBar:nth-child(1) {
+  top: 0;
+}
+
+.burgerBar:nth-child(2) {
+  top: 7px;
+}
+
+.burgerBar:nth-child(3) {
+  top: 14px;
+}
+
+.burgerOpen .burgerBar:nth-child(1) {
+  top: 7px;
+  transform: rotate(45deg);
+}
+
+.burgerOpen .burgerBar:nth-child(2) {
+  left: 50%;
+  width: 0;
+  opacity: 0;
+}
+
+.burgerOpen .burgerBar:nth-child(3) {
+  top: 7px;
+  transform: rotate(-45deg);
 }
 
 @media (max-width: 480px) {
@@ -92,7 +316,92 @@
 }
 
 @media (max-width: 768px) {
-  .mobileBrand {
+  /*
+   * Template `md:hidden` hamburger. The anchors drop out of the bar and
+   * reappear as a sheet anchored under it when the disclosure is open.
+   *
+   * The sheet expands rather than appearing: `display: none` is not an
+   * animatable property, so the collapsed state is `max-height: 0` +
+   * `opacity: 0` and the open state grows to the rest of the viewport. That
+   * is the same technique the Akadem.ia navbar uses, and it is why the
+   * padding is animated too — a static block padding would keep the sheet
+   * visible as a strip while collapsed.
+   *
+   * `visibility` is what actually hides it, and it is deliberately NOT eased:
+   * it flips instantly on open, and on close it is delayed by the full
+   * duration (`0s linear 0.3s`) so the collapse stays visible before the sheet
+   * leaves the tree. Without it, `max-height: 0` alone would keep the links
+   * focusable and announced while invisible — a keyboard user would tab into
+   * a closed menu.
+   */
+  .publicNav {
+    position: absolute;
+    top: var(--topbar-height);
+    left: 0;
+    right: 0;
     display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-4);
+    padding-inline: var(--space-container-mobile);
+    padding-block: 0;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    visibility: hidden;
+    /* The same translucent-surface treatment as the bar itself (see `.topbar`),
+     * so the sheet reads as an extension of it rather than as an opaque panel
+     * dropped over the page. */
+    background-color: color-mix(in srgb, var(--color-bg) 80%, transparent);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid transparent;
+    transition:
+      max-height 0.3s ease-in-out,
+      opacity 0.3s ease-in-out,
+      padding-block 0.3s ease-in-out,
+      border-bottom-color 0.3s ease-in-out,
+      visibility 0s linear 0.3s;
+  }
+
+  .publicNavOpen {
+    max-height: calc(100dvh - var(--topbar-height));
+    opacity: 1;
+    overflow-y: auto;
+    visibility: visible;
+    padding-block: var(--space-5);
+    border-bottom-color: var(--color-border);
+    transition:
+      max-height 0.3s ease-in-out,
+      opacity 0.3s ease-in-out,
+      padding-block 0.3s ease-in-out,
+      border-bottom-color 0.3s ease-in-out,
+      visibility 0s;
+  }
+
+  /* Swap which copy of the login action is live: out of the bar, into the
+   * sheet. The bar is then just the brand on the left and the toggle plus the
+   * hamburger on the right. */
+  .loginLinkBar {
+    display: none;
+  }
+
+  .loginLinkSheet {
+    display: inline-flex;
+    text-align: center;
+  }
+
+  .menuButton {
+    display: inline-flex;
+  }
+}
+
+/* The disclosure still works with motion off — only the easing is dropped, so
+ * the sheet and the bars snap between their two states. `visibility` keeps its
+ * close delay removed too, so nothing lingers focusable. */
+@media (prefers-reduced-motion: reduce) {
+  .burgerBar,
+  .publicNav,
+  .publicNavOpen {
+    transition: none;
   }
 }

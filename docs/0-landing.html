@@ -1,0 +1,734 @@
+<!doctype html>
+
+<html class="dark" lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>FORMA - Entrena. Nutre. Evoluciona.</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&amp;family=Be+Vietnam+Pro:wght@400;500;600&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+      rel="stylesheet"
+    />
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "tertiary-fixed-dim": "#7ed8b6",
+              background: "#10141a",
+              "on-primary-container": "#004126",
+              "inverse-primary": "#006d42",
+              "tertiary-fixed": "#9af4d1",
+              "on-secondary-container": "#1b4000",
+              "surface-elevated": "#161B22",
+              "error-pulse": "#FF5757",
+              "surface-dim": "#10141a",
+              "on-primary-fixed": "#002111",
+              "on-primary-fixed-variant": "#005231",
+              "primary-container": "#00b874",
+              outline: "#869489",
+              "primary-fixed": "#6dfcb1",
+              "surface-container-high": "#262a31",
+              "on-tertiary-container": "#00402f",
+              "surface-variant": "#31353c",
+              error: "#ffb4ab",
+              "tertiary-container": "#57b192",
+              surface: "#10141a",
+              "on-secondary": "#173800",
+              "error-container": "#93000a",
+              "surface-container-highest": "#31353c",
+              "on-error-container": "#ffdad6",
+              "on-tertiary": "#003829",
+              tertiary: "#7ed8b6",
+              "surface-container-lowest": "#0a0e14",
+              "on-tertiary-fixed-variant": "#00513d",
+              "on-surface": "#dfe2eb",
+              "success-vibrant": "#00B874",
+              "on-tertiary-fixed": "#002117",
+              "secondary-fixed": "#98fb53",
+              "secondary-container": "#59b502",
+              "surface-tint": "#4cdf97",
+              primary: "#4cdf97",
+              "outline-variant": "#3c4a40",
+              "on-secondary-fixed-variant": "#245100",
+              "inverse-on-surface": "#2d3137",
+              "surface-bright": "#353940",
+              "secondary-fixed-dim": "#7dde38",
+              "on-surface-variant": "#bbcabe",
+              "on-secondary-fixed": "#0a2000",
+              "text-dimmed": "#8B949E",
+              "surface-container-low": "#181c22",
+              "on-primary": "#003920",
+              "on-background": "#dfe2eb",
+              "surface-container": "#1c2026",
+              "on-error": "#690005",
+              "warning-amber": "#FFAB70",
+              "primary-fixed-dim": "#4cdf97",
+              "surface-stroke": "#30363D",
+              secondary: "#7dde38",
+              "inverse-surface": "#dfe2eb",
+            },
+            borderRadius: {
+              DEFAULT: "0.25rem",
+              lg: "0.5rem",
+              xl: "0.75rem",
+              full: "9999px",
+            },
+            spacing: {
+              base: "8px",
+              "container-margin-mobile": "20px",
+              "stack-gap-lg": "32px",
+              gutter: "24px",
+              "container-margin-desktop": "40px",
+              "card-padding": "24px",
+              "stack-gap-sm": "8px",
+              "stack-gap-md": "16px",
+            },
+            fontFamily: {
+              "headline-lg-mobile": ["Montserrat"],
+              "body-lg": ["Be Vietnam Pro"],
+              "label-md": ["Be Vietnam Pro"],
+              "headline-lg": ["Montserrat"],
+              "display-xl": ["Montserrat"],
+              "label-sm": ["Be Vietnam Pro"],
+              "headline-md": ["Montserrat"],
+              "body-md": ["Be Vietnam Pro"],
+            },
+            fontSize: {
+              "headline-lg-mobile": [
+                "24px",
+                { lineHeight: "32px", fontWeight: "600" },
+              ],
+              "body-lg": ["18px", { lineHeight: "28px", fontWeight: "400" }],
+              "label-md": [
+                "14px",
+                {
+                  lineHeight: "20px",
+                  letterSpacing: "0.05em",
+                  fontWeight: "500",
+                },
+              ],
+              "headline-lg": [
+                "32px",
+                { lineHeight: "40px", fontWeight: "600" },
+              ],
+              "display-xl": [
+                "48px",
+                {
+                  lineHeight: "56px",
+                  letterSpacing: "-0.02em",
+                  fontWeight: "700",
+                },
+              ],
+              "label-sm": ["12px", { lineHeight: "16px", fontWeight: "600" }],
+              "headline-md": [
+                "20px",
+                { lineHeight: "28px", fontWeight: "600" },
+              ],
+              "body-md": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      body {
+        background-color: #10141a;
+        color: #dfe2eb;
+        font-family: "Be Vietnam Pro", sans-serif;
+        overflow-x: hidden;
+      }
+
+      .kinetic-bg {
+        background:
+          radial-gradient(
+            circle at 20% 30%,
+            rgba(76, 223, 151, 0.08) 0%,
+            transparent 40%
+          ),
+          radial-gradient(
+            circle at 80% 70%,
+            rgba(125, 222, 56, 0.08) 0%,
+            transparent 40%
+          );
+      }
+
+      .hero-mesh {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: -1;
+        opacity: 0.4;
+        background-image:
+          linear-gradient(rgba(48, 54, 61, 0.1) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(48, 54, 61, 0.1) 1px, transparent 1px);
+        background-size: 40px 40px;
+      }
+
+      .glass-card {
+        background: rgba(22, 27, 34, 0.7);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(48, 54, 61, 0.5);
+      }
+
+      .primary-button-gradient {
+        background: linear-gradient(135deg, #4cdf97 0%, #7dde38 100%);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .primary-button-gradient:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px -4px rgba(76, 223, 151, 0.4);
+      }
+
+      .material-symbols-outlined {
+        font-variation-settings:
+          "FILL" 0,
+          "wght" 400,
+          "GRAD" 0,
+          "opsz" 24;
+      }
+    </style>
+  </head>
+  <body class="antialiased">
+    <!-- Top Navigation -->
+    <nav
+      class="fixed top-0 left-0 w-full z-50 bg-surface-dim/80 backdrop-blur-md border-b border-surface-stroke"
+    >
+      <div
+        class="max-w-7xl mx-auto px-container-margin-mobile md:px-container-margin-desktop h-20 flex justify-between items-center"
+      >
+        <div class="flex items-center gap-base">
+          <div
+            class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center overflow-hidden"
+          >
+            <img
+              class="w-8 h-8 object-contain"
+              data-alt="The official FORMA brand logo, featuring a stylized, geometric 'F' designed with sharp, athletic angles. The logo is rendered in a vibrant gradient transition from emerald green to lime, set against a solid black rounded-square background to symbolize elite performance and digital precision in fitness technology."
+              src="https://lh3.googleusercontent.com/aida-public/AB6AXuDRjOmKZJ-M1l7TqC_nyEW2MVlG_siWzac6NzZgULMHMCak_3rDv9yv_x8jABopFsx3F6Wvg_mS2q_s3C1C0P7TRJUodUMh8RUtZGTJ43x9CJ_IHeRL0sRi9A3FxuIDFX0RrirE7iiaHLJjSK0RsbJOYpcZOiO2q3Y_kyl34ffKLzWmESshTVqgxaZKuBgj4A-L5aDWqbyNbUBIKErdGhFYg0VOGyHl3pzBq_wxFUQu6qZt4Z95tuEfHev15zxtYUPT5OIksHQnh10"
+            />
+          </div>
+          <span
+            class="font-headline-md text-headline-md tracking-tighter font-black text-primary"
+            >FORMA</span
+          >
+        </div>
+        <div class="hidden md:flex items-center gap-stack-gap-lg">
+          <a
+            class="text-on-surface-variant hover:text-primary transition-colors font-label-md text-label-md"
+            href="#"
+            >Entrenamiento</a
+          >
+          <a
+            class="text-on-surface-variant hover:text-primary transition-colors font-label-md text-label-md"
+            href="#"
+            >Nutrición</a
+          >
+          <a
+            class="text-on-surface-variant hover:text-primary transition-colors font-label-md text-label-md"
+            href="#"
+            >Planes</a
+          >
+          <button
+            class="text-primary font-label-md text-label-md px-6 py-2 border border-primary rounded-xl hover:bg-primary/10 transition-all"
+            onclick="
+              document
+                .getElementById('login-modal')
+                .scrollIntoView({ behavior: 'smooth' })
+            "
+          >
+            Iniciar Sesión
+          </button>
+        </div>
+        <button class="md:hidden text-on-surface">
+          <span class="material-symbols-outlined">menu</span>
+        </button>
+      </div>
+    </nav>
+    <main class="pt-20">
+      <!-- Hero Section -->
+      <section
+        class="relative min-h-[921px] flex items-center justify-center px-container-margin-mobile md:px-container-margin-desktop overflow-hidden kinetic-bg"
+      >
+        <div class="hero-mesh"></div>
+        <div
+          class="max-w-7xl mx-auto grid lg:grid-cols-2 gap-stack-gap-lg items-center relative z-10"
+        >
+          <div class="space-y-stack-gap-md text-center lg:text-left">
+            <div
+              class="inline-flex items-center gap-2 px-4 py-1.5 bg-primary/10 border border-primary/20 rounded-full mb-base"
+            >
+              <span
+                class="flex h-2 w-2 rounded-full bg-primary animate-pulse"
+              ></span>
+              <span
+                class="text-primary font-label-sm text-label-sm uppercase tracking-widest"
+                >Nueva Versión 4.0 Disponible</span
+              >
+            </div>
+            <h1
+              class="font-display-xl text-display-xl md:text-[64px] leading-tight text-on-surface tracking-tighter"
+            >
+              Entrena. Nutre.<br />
+              <span class="text-primary">Evoluciona.</span>
+            </h1>
+            <p
+              class="font-body-lg text-body-lg text-on-surface-variant max-w-xl mx-auto lg:mx-0"
+            >
+              La plataforma definitiva de fitness que integra entrenamientos
+              personalizados, planes de nutrición y seguimiento biométrico
+              avanzado. Tu mejor versión empieza aquí.
+            </p>
+            <div
+              class="flex flex-col sm:flex-row items-center gap-base pt-base justify-center lg:justify-start"
+            >
+              <button
+                class="w-full sm:w-auto px-10 py-4 primary-button-gradient rounded-xl text-background font-headline-md text-headline-md font-bold"
+              >
+                Empezar ahora
+              </button>
+              <button
+                class="w-full sm:w-auto px-10 py-4 glass-card rounded-xl text-on-surface font-headline-md text-headline-md border border-surface-stroke hover:bg-surface-variant/50 transition-all"
+              >
+                Ver Demo
+              </button>
+            </div>
+            <div
+              class="pt-stack-gap-md flex items-center gap-stack-gap-sm justify-center lg:justify-start"
+            >
+              <div class="flex -space-x-4">
+                <div
+                  class="w-10 h-10 rounded-full border-2 border-background bg-surface-container overflow-hidden"
+                >
+                  <img
+                    class="w-full h-full object-cover"
+                    data-alt="A close-up portrait of a professional marathon runner looking focused and determined, sweat glistening on their forehead under dramatic sunset lighting. The athletic aesthetic is crisp and modern, featuring high-contrast tones that highlight the physical intensity and performance-driven spirit of the FORMA platform."
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuDb7EOBzj46dg7QVONYD-TzSWyXZfkRPE07OODKR2a6qTctpFW8Evc5RjCfIckmvW6UyD2xEjmaBh2W8qcKyomDx3CGRAOL5dOQTvSh1jwhnRQZEqm0y-rpnpj5xe5kNI2b6Jk1h9ArSLOdz_xlIQzNCr1Q9ELBoObCHKYBXcThrSOm7hgSIDzHfHHxKLnE0oQdjJHe63YVqqPnuQPD3POV33hyO-muEQpQhCVmGXKK8vgoOULrw75CYKfUWDt8sZnL_OeWsFcs0xc"
+                  />
+                </div>
+                <div
+                  class="w-10 h-10 rounded-full border-2 border-background bg-surface-container overflow-hidden"
+                >
+                  <img
+                    class="w-full h-full object-cover"
+                    data-alt="A portrait of a smiling woman in high-performance gym wear, holding a healthy green smoothie. The lighting is soft and professional, emphasizing a balance between intense physical training and holistic nutritional health. The background is a blurred high-end fitness studio with emerald green accents."
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuDxY2QuItUBRBcR0_zb5-IukHbNwUD5dtH6_UnNi2CT8sGGd2bupS8twKxrySmxM87C7hCyyjenYkb8jb3PxW9XYIh_9ESTYyOd8kw0u7Y-bmSdfdzDjTRTLPWtF2x85GOuWZfxxPsPwRKkRy3o3UKOqxL-aE-9EfP6k6kW2ILKQqEmYokAuCSusr1GD6iWjS6vYcWImShXRz8wTzPqBHR3QmxkV9xB_HiiUoDf--kPGgtxIIFvtmgGR6Dm5g2GFIuyy7nbVPbfUHE"
+                  />
+                </div>
+                <div
+                  class="w-10 h-10 rounded-full border-2 border-background bg-surface-container overflow-hidden"
+                >
+                  <img
+                    class="w-full h-full object-cover"
+                    data-alt="An action shot of a muscular athlete performing a kettlebell swing in a dark, moody warehouse gym environment. The lighting is high-contrast with subtle green volumetric fog, capturing the 'Elite Coach' personality of the brand with a focus on power, precision, and peak athletic performance."
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuAau6FfRq7-rY8dtIbRRDYqcs32gryNI09C9YUY268UiiFG2TEpviBzqriXUkAchBrTK5NzkW718w5VEn0JuaYQTYYDlbtgcO55q-fvP5WtKlCptdV5EtRqWL6mlk2F-Joni7QIYzWv4rdEToFra3g7W0FR2o-a0AE21mJt7Q2Yw_r4gry1QK2AIG4HQyk0si9F30erJx5mKeuQYGsvXyMZGtqt7vuh8WHpFDR-f4vI5uwRWO8DLlRwmxwqymB2bKFTEz647jN7vXk"
+                  />
+                </div>
+              </div>
+              <p class="text-on-surface-variant font-label-md text-label-md">
+                Únete a
+                <span class="text-primary font-bold">+10,000</span> atletas
+                optimizando su rendimiento.
+              </p>
+            </div>
+          </div>
+          <!-- Strategic Login Card -->
+          <div class="relative" id="login-modal">
+            <div
+              class="absolute -inset-4 bg-primary/20 blur-3xl rounded-full opacity-30 animate-pulse"
+            ></div>
+            <div
+              class="glass-card p-stack-gap-lg rounded-xl relative border border-primary/20"
+            >
+              <div class="text-center mb-stack-gap-md">
+                <h2
+                  class="font-headline-lg text-headline-lg text-on-surface mb-base"
+                >
+                  Iniciar Sesión
+                </h2>
+                <p class="text-on-surface-variant font-body-md text-body-md">
+                  Accede a tu panel personalizado
+                </p>
+              </div>
+              <form class="space-y-stack-gap-md">
+                <div>
+                  <label
+                    class="block text-on-surface-variant font-label-md text-label-md mb-base ml-1"
+                    >Correo electrónico</label
+                  >
+                  <input
+                    class="w-full bg-surface-container-lowest border border-surface-stroke rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-on-surface transition-all placeholder:text-surface-variant"
+                    placeholder="diego@forma.coach"
+                    type="email"
+                  />
+                </div>
+                <div>
+                  <label
+                    class="block text-on-surface-variant font-label-md text-label-md mb-base ml-1"
+                    >Contraseña</label
+                  >
+                  <input
+                    class="w-full bg-surface-container-lowest border border-surface-stroke rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-on-surface transition-all placeholder:text-surface-variant"
+                    placeholder="••••••••"
+                    type="password"
+                  />
+                </div>
+                <div
+                  class="flex items-center justify-between text-label-sm font-label-sm"
+                >
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input
+                      class="w-4 h-4 rounded border-surface-stroke bg-surface-container text-primary focus:ring-primary focus:ring-offset-background"
+                      type="checkbox"
+                    />
+                    <span>Recordarme</span>
+                  </label>
+                  <a class="text-primary hover:underline" href="#"
+                    >¿Olvidaste tu contraseña?</a
+                  >
+                </div>
+                <button
+                  class="w-full py-4 primary-button-gradient rounded-xl text-background font-headline-md text-headline-md font-bold mt-base"
+                  type="submit"
+                >
+                  Iniciar sesión
+                </button>
+              </form>
+              <div
+                class="mt-stack-gap-md pt-stack-gap-md border-t border-surface-stroke text-center"
+              >
+                <p class="text-on-surface-variant font-body-md text-body-md">
+                  ¿No tienes cuenta?
+                  <a class="text-primary font-bold hover:underline" href="#"
+                    >Crear cuenta</a
+                  >
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- Features Bento Grid -->
+      <section
+        class="py-stack-gap-lg px-container-margin-mobile md:px-container-margin-desktop bg-surface-container-low/50 relative"
+      >
+        <div class="max-w-7xl mx-auto">
+          <div class="text-center mb-stack-gap-lg">
+            <h2
+              class="font-headline-lg text-headline-lg text-on-surface mb-base"
+            >
+              Ecosistema Elite
+            </h2>
+            <p
+              class="text-on-surface-variant font-body-lg text-body-lg max-w-2xl mx-auto"
+            >
+              Diseñado para la precisión. Construido para el rendimiento.
+            </p>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-gutter">
+            <!-- Feature 1 -->
+            <div
+              class="group p-card-padding glass-card rounded-xl border-surface-stroke hover:border-primary/50 transition-all duration-500 overflow-hidden relative"
+            >
+              <div
+                class="absolute -right-12 -top-12 w-32 h-32 bg-primary/10 rounded-full blur-3xl group-hover:bg-primary/20 transition-all"
+              ></div>
+              <div
+                class="mb-stack-gap-md w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20"
+              >
+                <span class="material-symbols-outlined text-4xl"
+                  >fitness_center</span
+                >
+              </div>
+              <h3
+                class="font-headline-md text-headline-md text-on-surface mb-base"
+              >
+                Entrenamientos de Élite
+              </h3>
+              <p
+                class="text-on-surface-variant font-body-md text-body-md leading-relaxed"
+              >
+                Rutinas adaptadas dinámicamente a tu nivel actual, fatiga y
+                objetivos específicos de rendimiento.
+              </p>
+            </div>
+            <!-- Feature 2 -->
+            <div
+              class="group p-card-padding glass-card rounded-xl border-surface-stroke hover:border-primary/50 transition-all duration-500 overflow-hidden relative"
+            >
+              <div
+                class="absolute -right-12 -top-12 w-32 h-32 bg-secondary/10 rounded-full blur-3xl group-hover:bg-secondary/20 transition-all"
+              ></div>
+              <div
+                class="mb-stack-gap-md w-14 h-14 rounded-xl bg-secondary/10 flex items-center justify-center text-secondary border border-secondary/20"
+              >
+                <span class="material-symbols-outlined text-4xl"
+                  >restaurant</span
+                >
+              </div>
+              <h3
+                class="font-headline-md text-headline-md text-on-surface mb-base"
+              >
+                Nutrición Inteligente
+              </h3>
+              <p
+                class="text-on-surface-variant font-body-md text-body-md leading-relaxed"
+              >
+                Planes de comida automáticos y control de macros simplificado.
+                Sincroniza tus compras con un toque.
+              </p>
+            </div>
+            <!-- Feature 3 -->
+            <div
+              class="group p-card-padding glass-card rounded-xl border-surface-stroke hover:border-primary/50 transition-all duration-500 overflow-hidden relative"
+            >
+              <div
+                class="absolute -right-12 -top-12 w-32 h-32 bg-tertiary/10 rounded-full blur-3xl group-hover:bg-tertiary/20 transition-all"
+              ></div>
+              <div
+                class="mb-stack-gap-md w-14 h-14 rounded-xl bg-tertiary/10 flex items-center justify-center text-tertiary border border-tertiary/20"
+              >
+                <span class="material-symbols-outlined text-4xl"
+                  >trending_up</span
+                >
+              </div>
+              <h3
+                class="font-headline-md text-headline-md text-on-surface mb-base"
+              >
+                Análisis Avanzado
+              </h3>
+              <p
+                class="text-on-surface-variant font-body-md text-body-md leading-relaxed"
+              >
+                Visualiza tu progreso con gráficas de alta densidad y métricas
+                de composición corporal precisas.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- Dynamic Visual Section -->
+      <section class="py-24 relative overflow-hidden">
+        <div
+          class="max-w-7xl mx-auto px-container-margin-mobile md:px-container-margin-desktop grid md:grid-cols-2 gap-stack-gap-lg items-center"
+        >
+          <div class="relative">
+            <div
+              class="aspect-square rounded-2xl overflow-hidden glass-card p-base border-primary/20 rotate-3 scale-95 hover:rotate-0 hover:scale-100 transition-all duration-700"
+            >
+              <img
+                class="w-full h-full object-cover rounded-xl"
+                data-alt="A highly detailed interface mockup of the FORMA mobile application shown on a high-end smartphone. The screen displays complex biometric data visualizations including heart rate charts, calorie targets, and a workout timer, all rendered in deep blacks and bright emerald greens. The device is set against a dark, minimalist background with atmospheric studio lighting."
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuDp1JGn3kakxOJhNO7gIu7PfBYVI8400dZqoMHdCchYktxbHPOwtj_D0pJ5qEUBLmHEk9Md7AdogrMNa4cgG-1FgAFpVWl5u5ymT8AhBMhNUqLXvw2Ard80179kPmPWn_tt359Zjvz5zctwm5IeS0idysnCxDhD5_GBG71n1W5Rq8qHPzUm4akdP7AbDf4tU6MAfU2B5uXC4C21gz4aLLkVN4fXok6HZUQLHuz50Jc1wqksKntNKPEb84MoTtoWl8rvvmkYUdxD9GU"
+              />
+            </div>
+            <!-- Floating Badge -->
+            <div
+              class="absolute -bottom-6 -left-6 glass-card p-4 rounded-xl border-primary/30 flex items-center gap-4 animate-bounce"
+            >
+              <div
+                class="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center text-primary"
+              >
+                <span class="material-symbols-outlined">monitoring</span>
+              </div>
+              <div>
+                <p class="font-label-sm text-label-sm text-primary uppercase">
+                  Bio-Sincronización
+                </p>
+                <p class="font-headline-md text-headline-md text-on-surface">
+                  98% Precisión
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="space-y-stack-gap-md">
+            <h2
+              class="font-display-xl text-display-xl text-on-surface tracking-tighter"
+            >
+              Tu cuerpo no miente.<br /><span class="text-primary"
+                >Escúchalo.</span
+              >
+            </h2>
+            <p class="text-on-surface-variant font-body-lg text-body-lg">
+              Integramos datos en tiempo real de tus wearables favoritos (Apple
+              Watch, Garmin, Withings) para ajustar tu carga de entrenamiento
+              cada mañana. No más sobre-entrenamiento. Solo resultados.
+            </p>
+            <ul class="space-y-base">
+              <li
+                class="flex items-center gap-base text-on-surface font-body-md text-body-md"
+              >
+                <span class="material-symbols-outlined text-primary"
+                  >check_circle</span
+                >
+                Sincronización nativa con Withings &amp; HealthKit
+              </li>
+              <li
+                class="flex items-center gap-base text-on-surface font-body-md text-body-md"
+              >
+                <span class="material-symbols-outlined text-primary"
+                  >check_circle</span
+                >
+                Algoritmo de recuperación propietario
+              </li>
+              <li
+                class="flex items-center gap-base text-on-surface font-body-md text-body-md"
+              >
+                <span class="material-symbols-outlined text-primary"
+                  >check_circle</span
+                >
+                Actualizaciones de peso y grasa semanales
+              </li>
+            </ul>
+            <button
+              class="mt-base text-primary font-bold flex items-center gap-base hover:gap-4 transition-all group"
+            >
+              Ver cómo funciona
+              <span
+                class="material-symbols-outlined group-hover:translate-x-2 transition-transform"
+                >arrow_forward</span
+              >
+            </button>
+          </div>
+        </div>
+      </section>
+      <!-- CTA Section with Animated Shader -->
+      <section
+        class="py-stack-gap-lg px-container-margin-mobile md:px-container-margin-desktop mb-stack-gap-lg"
+      >
+        <div
+          class="max-w-5xl mx-auto relative rounded-3xl overflow-hidden glass-card p-stack-gap-lg text-center border-primary/30"
+        >
+          <div class="relative z-10">
+            <h2
+              class="font-display-xl text-display-xl text-on-surface mb-stack-gap-sm"
+            >
+              ¿Listo para el siguiente nivel?
+            </h2>
+            <p
+              class="text-on-surface-variant font-body-lg text-body-lg mb-stack-gap-md max-w-xl mx-auto"
+            >
+              Únete a la élite. Empieza tu transformación hoy mismo con 14 días
+              de prueba gratuita.
+            </p>
+            <button
+              class="px-12 py-5 primary-button-gradient rounded-full text-background font-headline-lg text-headline-lg font-black tracking-tight uppercase"
+            >
+              Unirme a FORMA
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+    <!-- Footer -->
+    <footer
+      class="bg-surface-container-low border-t border-surface-stroke py-stack-gap-lg px-container-margin-mobile md:px-container-margin-desktop"
+    >
+      <div
+        class="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-stack-gap-lg"
+      >
+        <div class="col-span-2 md:col-span-1">
+          <div class="flex items-center gap-base mb-stack-gap-md">
+            <div
+              class="w-8 h-8 bg-primary rounded flex items-center justify-center overflow-hidden"
+            >
+              <img
+                class="w-6 h-6 object-contain"
+                data-alt="A small scale representation of the FORMA logo used for digital iconography. It features the signature 'F' character in a neon-green to dark-green gradient, encapsulated in a high-contrast black container, designed for modern dark-mode mobile interfaces."
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuDnn2ZR_V_FFvmke8J9quPszcIePotduRAxXkb9Q_5eoTYQ9GvYY9LLtp5QSP0z4L-5AyjR99OARmOGLOd3jSMxkVyh7KOIYtpNDFL7CixXMayZLhXTgqxSPJ3GfbIZhBupagQ11OybLaXSWHMSqZSmEkPmGQRgqNRBvQFmF5Mnnhc7eQ-aedY1PaW4PtseYiUvPaojDrCeemHotC59JQkE9nDdVXyGhwtIgqMIDcnfH9mjgqMIdt3qBqIi8fpKUTqWhvWJwxvjVAg"
+              />
+            </div>
+            <span
+              class="font-headline-md text-headline-md tracking-tighter font-black text-primary"
+              >FORMA</span
+            >
+          </div>
+          <p
+            class="text-on-surface-variant font-label-md text-label-md leading-relaxed"
+          >
+            Elite Coach. Data Driven. Performance Obsessed.
+          </p>
+        </div>
+        <div>
+          <h4 class="text-on-surface font-headline-md text-headline-md mb-base">
+            Producto
+          </h4>
+          <ul
+            class="space-y-base text-on-surface-variant font-label-md text-label-md"
+          >
+            <li><a class="hover:text-primary" href="#">Funciones</a></li>
+            <li><a class="hover:text-primary" href="#">Precios</a></li>
+            <li><a class="hover:text-primary" href="#">Apps</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="text-on-surface font-headline-md text-headline-md mb-base">
+            Comunidad
+          </h4>
+          <ul
+            class="space-y-base text-on-surface-variant font-label-md text-label-md"
+          >
+            <li>
+              <a class="hover:text-primary" href="#">Historias de éxito</a>
+            </li>
+            <li><a class="hover:text-primary" href="#">Blog</a></li>
+            <li><a class="hover:text-primary" href="#">Eventos</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="text-on-surface font-headline-md text-headline-md mb-base">
+            Legal
+          </h4>
+          <ul
+            class="space-y-base text-on-surface-variant font-label-md text-label-md"
+          >
+            <li><a class="hover:text-primary" href="#">Privacidad</a></li>
+            <li><a class="hover:text-primary" href="#">Términos</a></li>
+            <li><a class="hover:text-primary" href="#">Cookies</a></li>
+          </ul>
+        </div>
+      </div>
+      <div
+        class="max-w-7xl mx-auto mt-stack-gap-lg pt-stack-gap-md border-t border-surface-stroke flex flex-col md:flex-row justify-between items-center gap-base"
+      >
+        <p class="text-on-surface-variant font-label-sm text-label-sm">
+          © 2024 FORMA Elite Coach. Todos los derechos reservados.
+        </p>
+        <div class="flex gap-stack-gap-md">
+          <a class="text-on-surface-variant hover:text-primary" href="#"
+            ><span class="material-symbols-outlined">share</span></a
+          >
+          <a class="text-on-surface-variant hover:text-primary" href="#"
+            ><span class="material-symbols-outlined">language</span></a
+          >
+        </div>
+      </div>
+    </footer>
+    <script>
+      // Micro-interaction for the login card
+      const loginCard = document.getElementById("login-modal");
+      document.addEventListener("mousemove", (e) => {
+        const xAxis = (window.innerWidth / 2 - e.pageX) / 50;
+        const yAxis = (window.innerHeight / 2 - e.pageY) / 50;
+        loginCard.style.transform = `rotateY(${xAxis}deg) rotateX(${yAxis}deg)`;
+      });
+
+      // Reset transform on mouse leave
+      document.addEventListener("mouseleave", () => {
+        loginCard.style.transform = `rotateY(0deg) rotateX(0deg)`;
+      });
+    </script>
+  </body>
+</html>

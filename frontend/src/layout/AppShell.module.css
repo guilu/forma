@@ -1,25 +1,24 @@
 /*
- * FOR-164: the shell is now bounded to the viewport (`height`, not
- * `min-height`) so the grid's `1fr` content row is bounded too. Previously
- * `min-height: 100vh` let the whole grid grow with page content, which
- * scrolled the sidebar (spanning both grid rows) away with the page instead
- * of it staying put like the template. `overflow: hidden` here plus
- * `overflow-y: auto` on `.content` below moves scrolling into just the
- * content row; the sidebar and topbar rows never grow past their own size.
- * `100dvh` accounts for mobile browser chrome (address bar) collapsing;
- * `100vh` is kept as the fallback for browsers/environments without `dvh`
- * support, since this codebase has no prior `dvh` usage to match.
+ * FOR-185: the shell no longer carries a topbar row — RootLayout owns the bar
+ * above it — so this is a single row of `sidebar | content`.
+ *
+ * The frame is still bounded to what is left of the viewport rather than
+ * growing with the page (FOR-164): a `height` computed from the viewport minus
+ * the bar, with `overflow: hidden` here and `overflow-y: auto` on `.content`,
+ * so scrolling happens inside the content column and the sidebar stays put.
+ * The height is computed rather than inherited as `100%` because RootLayout's
+ * grid is sized with `min-height` (a public page must be able to grow), which
+ * leaves the row's height indefinite and percentage heights unresolvable.
+ * `100dvh` accounts for mobile browser chrome collapsing; `100vh` is the
+ * fallback for environments without `dvh`.
  */
 .shell {
-  height: 100vh;
-  height: 100dvh;
+  height: calc(100vh - var(--topbar-height));
+  height: calc(100dvh - var(--topbar-height));
   overflow: hidden;
   display: grid;
   grid-template-columns: var(--sidebar-width) 1fr;
-  grid-template-rows: var(--topbar-height) 1fr;
-  grid-template-areas:
-    'sidebar topbar'
-    'sidebar content';
+  grid-template-areas: 'sidebar content';
 }
 
 .content {
@@ -29,42 +28,15 @@
 }
 
 /*
- * Skip link (FOR-61): visually hidden off-screen until it receives keyboard
- * focus, then it slides into view as the first stop in the tab order — the
- * standard pattern for letting keyboard users bypass the repeated
- * sidebar/topbar navigation on every route.
- */
-.skipLink {
-  position: absolute;
-  top: -48px;
-  left: var(--space-4);
-  z-index: 100;
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-md);
-  background-color: var(--color-accent);
-  color: var(--color-accent-contrast);
-  font-weight: 600;
-  transition: top 0.15s ease;
-}
-
-.skipLink:focus {
-  top: var(--space-4);
-}
-
-/*
- * Single column on small screens; no `mobilenav` grid row/area anymore.
- * FOR-164 turned `MobileNav` into a floating, translucent "glass" pill
- * (`position: fixed`, see MobileNav.module.css) that hovers over the content
- * instead of sitting pinned in its own grid row, so it's out of the grid
- * flow entirely here -- just `topbar` + `content`, same shape as desktop.
+ * Single column on small screens. FOR-164 turned `MobileNav` into a floating,
+ * translucent "glass" pill (`position: fixed`, see MobileNav.module.css) that
+ * hovers over the content instead of sitting pinned in its own grid row, so it
+ * is out of the grid flow entirely here.
  */
 @media (max-width: 768px) {
   .shell {
     grid-template-columns: 1fr;
-    grid-template-rows: var(--topbar-height) 1fr;
-    grid-template-areas:
-      'topbar'
-      'content';
+    grid-template-areas: 'content';
   }
 
   .content {

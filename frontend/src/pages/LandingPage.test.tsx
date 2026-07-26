@@ -3,40 +3,46 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { useAuth } from '../auth/AuthContext';
-import { useTheme } from '../theme/ThemeContext';
 import { axe } from '../test/axe';
 import { LandingPage } from './LandingPage';
 
 vi.mock('../auth/AuthContext', () => ({ useAuth: vi.fn() }));
-vi.mock('../theme/ThemeContext', () => ({ useTheme: vi.fn() }));
 
 describe('LandingPage', () => {
-  it('renders the complete public composition with real navigation', () => {
+  it('renders the complete public composition from the FOR-185 design', () => {
     mockLanding({ status: 'anonymous' });
     renderLanding();
 
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
-    expect(screen.getByRole('navigation', { name: 'Navegación pública' })).toBeInTheDocument();
-    expect(screen.getAllByRole('link', { name: 'Beneficios' })[0]).toHaveAttribute(
-      'href',
-      '#beneficios',
-    );
-    expect(screen.getAllByRole('link', { name: 'Producto' })[0]).toHaveAttribute(
-      'href',
-      '#producto',
-    );
     expect(
-      screen.getByRole('region', { name: 'Una visión completa, sin falsas promesas' }),
+      screen.getByRole('heading', { level: 1, name: /Entrena\. Nutre\. Evoluciona\./ }),
+    ).toBeInTheDocument();
+    // The navigation bar itself is no longer part of this page — FOR-185
+    // promoted it to the global Topbar (layout/RootLayout.tsx).
+    expect(
+      screen.queryByRole('navigation', { name: 'Navegación pública' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Ecosistema Elite' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('region', { name: 'Tu cuerpo no miente. Escúchalo.' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('region', { name: 'La información importante, conectada' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('region', { name: 'Pon orden en tu progreso personal' }),
+      screen.getByRole('region', { name: '¿Listo para el siguiente nivel?' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('contentinfo')).toBeInTheDocument();
-    expect(screen.queryByText(/\+10\.000|versión 4\.0|precio|blog/i)).not.toBeInTheDocument();
   });
+
+  // The public bar's anchors (`/#entrenamiento`, `/#nutricion`, `/#planes`)
+  // only work if this page provides the matching targets.
+  it.each(['entrenamiento', 'nutricion', 'planes'])(
+    'provides the #%s target the public navigation links to',
+    (id) => {
+      mockLanding({ status: 'anonymous' });
+      const { container } = renderLanding();
+
+      expect(container.querySelector(`#${id}`)).not.toBeNull();
+    },
+  );
 
   it('offers real login and registration actions to anonymous visitors', () => {
     mockLanding({ status: 'anonymous' });
@@ -108,18 +114,7 @@ describe('LandingPage', () => {
 
     expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
     expect(screen.getByText(copy)).toBeInTheDocument();
-    expect(
-      screen.getByRole('region', { name: 'Una visión completa, sin falsas promesas' }),
-    ).toBeInTheDocument();
-  });
-
-  it('exposes the accessible theme control', async () => {
-    const setMode = vi.fn();
-    mockLanding({ status: 'anonymous' }, setMode);
-    renderLanding();
-
-    await userEvent.click(screen.getByRole('button', { name: 'Claro' }));
-    expect(setMode).toHaveBeenCalledWith('light');
+    expect(screen.getByRole('region', { name: 'Ecosistema Elite' })).toBeInTheDocument();
   });
 
   it.each([
@@ -150,7 +145,7 @@ function renderLanding() {
   );
 }
 
-function mockLanding(overrides: Partial<ReturnType<typeof useAuth>>, setMode = vi.fn()) {
+function mockLanding(overrides: Partial<ReturnType<typeof useAuth>>) {
   vi.mocked(useAuth).mockReturnValue({
     status: 'anonymous',
     user: null,
@@ -160,10 +155,5 @@ function mockLanding(overrides: Partial<ReturnType<typeof useAuth>>, setMode = v
     logout: vi.fn(),
     refreshCurrentUser: vi.fn(),
     ...overrides,
-  });
-  vi.mocked(useTheme).mockReturnValue({
-    mode: 'dark',
-    resolvedTheme: 'dark',
-    setMode,
   });
 }

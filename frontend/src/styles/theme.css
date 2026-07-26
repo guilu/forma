@@ -37,9 +37,29 @@
   --color-card: #1c2026; /* template: surface-container (was #161f1a) */
   --color-border: #30363d; /* template: surface-stroke (was #24342b) */
 
+  /*
+   * FOR-185 extends the 3-tier model with the surface roles the public landing
+   * (`docs/0-landing.html`) actually consumes: input wells sit *below* the page
+   * background (`surface-container-lowest`), banded sections sit just above it
+   * (`surface-container-low`), and placeholder/inactive text reads against
+   * `surface-variant`. FOR-163 deliberately deferred these as speculative; the
+   * landing is the consumer that makes them real.
+   */
+  --color-surface-lowest: #0a0e14; /* template: surface-container-lowest */
+  --color-surface-low: #181c22; /* template: surface-container-low */
+  --color-surface-high: #262a31; /* template: surface-container-high */
+  --color-surface-variant: #31353c; /* template: surface-variant */
+
   /* Text */
   --color-text: #dfe2eb; /* template: on-surface / on-background (was #f4fff7) */
   --color-text-muted: #8b949e; /* template: text-dimmed (was #98a89d) */
+  /*
+   * Secondary body copy. Distinct from `--color-text-muted` (a cool grey for
+   * meta//disabled text): this is the template's `on-surface-variant`, a
+   * green-tinted neutral used for readable paragraph copy that is one step
+   * below `on-surface`. Contrast on --color-bg is ~10.2:1.
+   */
+  --color-text-secondary: #bbcabe; /* template: on-surface-variant */
 
   /*
    * Accent + status. `--color-accent` is the story's headline reconciliation:
@@ -47,9 +67,73 @@
    * green family. Template: primary (was #9dff57).
    */
   --color-accent: #4cdf97;
+  /*
+   * FOR-185: the accent used as *text* (links, emphasis, active nav items,
+   * icon glyphs). Split out from --color-accent because a hue that works as a
+   * fill does not necessarily carry text: the light theme's brand green is
+   * only ~2.58:1 on its own page background, well below the WCAG AA 4.5:1
+   * bar, while the same colour is perfectly fine behind white text.
+   *
+   * In this theme the two are the same value -- #4cdf97 on --color-bg is
+   * ~10.8:1, so nothing needs darkening. The token still exists here so
+   * component CSS has one name to reach for regardless of theme, and so the
+   * split is a no-op in dark mode.
+   */
+  --color-accent-strong: #4cdf97;
   --color-accent-contrast: #003920; /* template: on-primary (was #0a1206) */
   --color-warning: #ffab70; /* template: warning-amber (was #ffd166) */
   --color-danger: #ff5757; /* template: error-pulse (was #ff5f56) */
+
+  /*
+   * FOR-185: the landing's secondary/tertiary accents. The template's palette
+   * is a three-hue family — primary (emerald), secondary (lime), tertiary
+   * (mint) — used to differentiate the three feature cards' icon tints. Only
+   * `primary` had been ported (as `--color-accent`); the other two are added
+   * here because the landing's bento grid is their first real consumer.
+   */
+  --color-secondary: #7dde38; /* template: secondary */
+  --color-secondary-contrast: #173800; /* template: on-secondary */
+  --color-tertiary: #7ed8b6; /* template: tertiary */
+  --color-tertiary-contrast: #003829; /* template: on-tertiary */
+
+  /*
+   * FOR-185: primary CTA gradient. Every prominent call to action in
+   * `docs/0-landing.html` uses `.primary-button-gradient` (primary → secondary
+   * at 135deg) rather than a flat accent fill, and the label sits on the page
+   * background color, not `on-primary`. Both are tokenized so the Button
+   * primitive can adopt the treatment without hardcoding hexes, and so the
+   * light theme can substitute a darker ramp that keeps label contrast.
+   */
+  /*
+   * FOR-185: the CTA ramp is the FORMA logotype's own gradient (#0b755f ->
+   * #85f55c), used unchanged in BOTH themes so the primary action always
+   * reads as the brand mark. The light block repeats it verbatim rather than
+   * inheriting, so that block stays a complete, self-describing palette.
+   *
+   * KNOWN CONTRAST TRADE-OFF (FOR-61): no single ink clears AA across this
+   * ramp, because it spans from a dark teal to a bright lime. Measured against
+   * the two candidate inks:
+   *
+   *        stop     colour    white   #10141a
+   *          0%    #0b755f     5.64      3.28
+   *         25%    #2a955e     3.78      4.89
+   *         50%    #48b55e     2.61      7.08
+   *         75%    #66d55d     1.87      9.89
+   *        100%    #85f55c     1.38     13.38
+   *
+   * The dark ink is chosen because it clears AA from the 25% stop onward and
+   * is ~7:1 at the midpoint, which is where a centred button label actually
+   * sits; white is only legible over the first sliver. What it does not cover
+   * is the darkest corner -- on a 135deg ramp, the top-left of the button --
+   * where it drops to 3.28:1. If that has to be fixed without giving up the
+   * logotype colours, the minimal change is to start the ramp at its own 25%
+   * point (#2a955e), which puts the whole gradient at >=4.89:1.
+   */
+  --gradient-accent: linear-gradient(135deg, #0b755f 0%, #85f55c 100%);
+  --color-on-gradient: #10141a;
+  /* Halo tinted with the ramp's bright end, so the glow reads as the same
+   * brand gradient rather than as the flat accent. */
+  --shadow-accent-glow: 0 8px 24px -4px rgb(133 245 92 / 35%);
 
   /*
    * Spacing scale. --space-2/4/5/6 already matched the template's
@@ -110,6 +194,26 @@
   --font-size-xl: 1.5rem; /* template: headline-lg-mobile -- already matched */
 
   /*
+   * FOR-185: the display/headline/label scale FOR-163 deferred. The public
+   * landing (`docs/0-landing.html`) is the component that finally renders a
+   * distinct display tier, so the roles it uses are ported now -- with their
+   * template line-heights and letter-spacing, since those are what make the
+   * hero read as a display treatment rather than just "big text". Sizes are
+   * converted from the template's px to rem so they respect the user's browser
+   * font size; the paired line-heights are unitless ratios for the same reason.
+   */
+  --font-size-display-xl: 3rem; /* template: display-xl (48px) */
+  --line-height-display-xl: 1.1667; /* template: 56/48 */
+  --letter-spacing-display-xl: -0.02em;
+  --font-size-headline-lg: 2rem; /* template: headline-lg (32px) */
+  --line-height-headline-lg: 1.25; /* template: 40/32 */
+  --font-size-headline-md: 1.25rem; /* template: headline-md (20px) */
+  --line-height-headline-md: 1.4; /* template: 28/20 */
+  --font-size-label-md: 0.875rem; /* template: label-md (14px) */
+  --letter-spacing-label-md: 0.05em;
+  --font-size-label-sm: 0.75rem; /* template: label-sm (12px) */
+
+  /*
    * Layout. FOR-164: sidebar widened from 248px to 272px (~17rem) so nav
    * labels and the active tint/border pill breathe like the template's
    * `w-64` (256px) sidebar plus its `px-3`/`px-4` inner padding -- our sidebar
@@ -117,7 +221,14 @@
    * so a touch wider keeps the same visual breathing room end to end.
    */
   --sidebar-width: 272px;
-  --topbar-height: 64px;
+  /*
+   * FOR-185: 64px -> 80px. The top bar is no longer an app-only chrome element
+   * beside the sidebar -- it is now the single global navigation bar rendered
+   * above *every* route (landing, auth, app), so its height is set by the
+   * public design (`docs/0-landing.html` nav: `h-20` = 80px) which is the most
+   * visually demanding consumer.
+   */
+  --topbar-height: 80px;
 
   /*
    * Elevation. The templates express elevation through tonal surface
@@ -143,23 +254,57 @@
   --color-card: #ffffff;
   --color-border: #dfe7e2;
 
+  /*
+   * FOR-185 light counterparts of the new surface tiers. The dark theme stacks
+   * them darkest-to-lightest away from the page; light inverts that direction
+   * (an input well is *lighter* than the page here, a banded section slightly
+   * darker), so these are re-derived from the existing light neutrals rather
+   * than mechanically mirrored.
+   */
+  --color-surface-lowest: #ffffff;
+  --color-surface-low: #eaefec;
+  --color-surface-high: #e0e7e3;
+  --color-surface-variant: #d6ded9;
+
   --color-text: #0f1a13;
   --color-text-muted: #5c6b62;
+  /*
+   * Same role as dark's #bbcabe (readable secondary copy, one step below
+   * --color-text) but re-derived for a light background: ~7.1:1 on
+   * --color-bg, comfortably above the AA 4.5:1 bar for normal text (FOR-61).
+   */
+  --color-text-secondary: #3c4a42;
 
   /*
-   * FOR-163: the dark accent moved from #9dff57 to the template's `primary`
-   * (#4cdf97), so the FOR-61/FOR-62 light counterpart is re-derived from the
-   * *new* hue family rather than left pointing at the old one. Rather than
-   * inventing a value, this uses the template's own `inverse-primary`
-   * (#006d42) -- the M3 role Google's tooling generated specifically as
-   * "`primary` shown on an inverse/opposite-brightness surface", i.e. exactly
-   * this light-mode-on-dark-brand use case. Contrast: #006d42 on --color-bg
-   * (#f4f7f5) is ~5.96:1; white text on this accent (e.g. Button `primary`)
-   * is ~6.43:1 -- both comfortably above the WCAG AA 4.5:1 bar for normal
-   * text (FOR-61).
+   * FOR-185: the light accent is a product decision, not a derivation. It was
+   * #006d42 (the template's `inverse-primary`, chosen by FOR-163 because it is
+   * the M3 role for "`primary` on an opposite-brightness surface"); the brand
+   * owner asked for a brighter, more saturated green so light mode reads
+   * closer to dark.
+   *
+   * #4caf50 on --color-bg (#f4f7f5) is only ~2.58:1, so this token is for
+   * fills, borders and tints -- NOT for text. Accent-coloured text uses
+   * --color-accent-strong below.
    */
-  --color-accent: #006d42;
-  --color-accent-contrast: #ffffff;
+  --color-accent: #4caf50;
+  /*
+   * FOR-185: the text-safe counterpart, same hue family darkened until it
+   * clears AA -- #2e7d32 is ~4.75:1 on --color-bg. This is what fixes the
+   * regression the brighter brand accent introduced for links, emphasis, the
+   * sidebar's active item and icon glyphs; the previous accent (#006d42) had
+   * been carrying both roles at ~5.96:1.
+   *
+   * The dark theme deliberately declares the same value for both tokens, so
+   * component CSS can name the text role unconditionally.
+   */
+  --color-accent-strong: #2e7d32;
+  /*
+   * Flipped from #ffffff to the light theme's own ink. White on #4caf50 is
+   * ~2.78:1 -- unreadable for the ~10 components that paint text or icons on
+   * an accent fill (skip link, MeasurementForm, ShoppingPage, PlanBanner...).
+   * #0f1a13 (= --color-text) on the same fill is ~6.42:1.
+   */
+  --color-accent-contrast: #0f1a13;
   /*
    * FOR-163: dark warning moved from #ffd166 to the template's warning-amber
    * (#ffab70), a more orange hue. The light counterpart is re-derived at the
@@ -174,6 +319,29 @@
    * ~5.04:1 on --color-bg) already passes AA and needs no change.
    */
   --color-danger: #c0392b;
+
+  /*
+   * FOR-185: the template's secondary (#7dde38 lime) and tertiary (#7ed8b6
+   * mint) are dark-theme values -- both are far too light to carry text or an
+   * icon on a light background. Following the same rule FOR-163 used for
+   * --color-accent, each is re-derived at its own hue but darkened until it
+   * clears AA against --color-bg (#f4f7f5): #3d6b00 is ~6.4:1 and #00614a is
+   * ~6.5:1.
+   */
+  --color-secondary: #3d6b00;
+  --color-secondary-contrast: #ffffff;
+  --color-tertiary: #00614a;
+  --color-tertiary-contrast: #ffffff;
+
+  /*
+   * Deliberately identical to the dark theme: this is the FORMA logotype's
+   * gradient, and the primary action carries the brand mark's colours in both
+   * themes. See the dark block for the full contrast table behind the ink
+   * choice and its one known weak spot.
+   */
+  --gradient-accent: linear-gradient(135deg, #0b755f 0%, #85f55c 100%);
+  --color-on-gradient: #10141a;
+  --shadow-accent-glow: 0 8px 24px -4px rgb(133 245 92 / 35%);
 
   --shadow-card: 0 1px 3px rgba(15, 26, 19, 0.08);
 }

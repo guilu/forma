@@ -1,6 +1,5 @@
 import { NavLink } from 'react-router-dom';
 import { NAV_ITEMS } from '../app/navigation';
-import { Brand } from '../components/Brand';
 import { Icon } from '../components/Icon';
 import styles from './Sidebar.module.css';
 
@@ -8,11 +7,12 @@ import styles from './Sidebar.module.css';
  * Desktop sidebar navigation (FOR-81). Renders from the centralized NAV_ITEMS
  * model; the active route is highlighted via NavLink. Hidden on small screens,
  * where MobileNav takes over.
+ *
+ * <p>FOR-185 dropped the brand lockup from the top of this aside: the global
+ * navigation bar now sits above the sidebar rather than beside it, so a brand
+ * here would be a second copy directly under the first.
  */
 export function Sidebar() {
-  const primaryItems = NAV_ITEMS.filter((item) => !item.settings);
-  const settingsItems = NAV_ITEMS.filter((item) => item.settings);
-
   const renderLink = (item: (typeof NAV_ITEMS)[number]) => (
     <NavLink
       key={item.path}
@@ -29,19 +29,13 @@ export function Sidebar() {
 
   return (
     <aside className={styles.sidebar}>
-      <div className={styles.brand}>
-        <Brand />
-      </div>
+      {/*
+       * FOR-185: every entry is a product section now. "Ajustes" used to be
+       * pinned apart at the bottom via a `settings` grouping flag; it moved to
+       * the topbar's account menu, and the group went with it.
+       */}
       <nav className={styles.nav} aria-label="Navegación principal">
-        {primaryItems.map(renderLink)}
-        {/*
-         * FOR-164: the settings group (currently just "Ajustes") is pinned to
-         * the bottom of the nav's flex column via `margin-top: auto` on this
-         * wrapper -- see Sidebar.module.css `.settingsGroup` -- landing just
-         * above the Withings card, matching the template's lower "Ajustes"
-         * entry instead of it being flush with the primary section list.
-         */}
-        <div className={styles.settingsGroup}>{settingsItems.map(renderLink)}</div>
+        {NAV_ITEMS.map(renderLink)}
       </nav>
       <div className={styles.integration}>
         <div className={styles.integrationHeader}>

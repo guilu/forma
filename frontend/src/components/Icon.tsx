@@ -30,7 +30,12 @@ export type IconName =
   | 'check'
   | 'externalLink'
   | 'trash'
-  | 'upload';
+  | 'upload'
+  | 'checkCircle'
+  | 'arrowRight'
+  | 'share'
+  | 'globe'
+  | 'logout';
 
 const PATHS: Record<IconName, string> = {
   dashboard: 'M3 3h7v7H3zM14 3h7v4h-7zM14 10h7v11h-7zM3 13h7v8H3z',
@@ -77,6 +82,23 @@ const PATHS: Record<IconName, string> = {
   trash: 'M4 7h16M9 7V4h6v3M10 11v6M14 11v6M6 7l1 13h10l1-13',
   // Upward arrow into a tray — upload affordance (progress photo upload, FOR-144).
   upload: 'M12 15V4M8 8l4-4 4 4M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3',
+  // Circled checkmark — capability bullet on the public landing (FOR-185),
+  // standing in for the template's `check_circle` Material symbol.
+  checkCircle: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8 12l3 3 5-6',
+  // Rightward arrow — inline "read more" affordance (FOR-185 landing),
+  // template symbol `arrow_forward`.
+  arrowRight: 'M4 12h15M13 6l6 6-6 6',
+  // Share node graph — footer social affordance (FOR-185 landing), template
+  // symbol `share`.
+  share:
+    'M18 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM6 14.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM18 21a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM8.2 13.2l7.6 4M15.8 7.8l-7.6 4',
+  // Globe — footer locale/site affordance (FOR-185 landing), template symbol
+  // `language`.
+  globe:
+    'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c2.5 2.5 3.5 5.6 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-5.6-3.5-9s1-6.5 3.5-9z',
+  // Arrow leaving an open-sided frame — the sign-out action in the topbar's
+  // account menu (FOR-185).
+  logout: 'M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3M16 17l5-5-5-5M21 12H9',
 };
 
 interface IconProps {

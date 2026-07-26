@@ -15,7 +15,7 @@
 }
 
 .badge[data-tone='accent'] {
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   border-color: var(--color-accent);
 }
 

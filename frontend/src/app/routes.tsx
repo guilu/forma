@@ -1,5 +1,6 @@
 import type { RouteObject } from 'react-router-dom';
 import { AppShell } from '../layout/AppShell';
+import { RootLayout } from '../layout/RootLayout';
 import { DashboardPage } from '../pages/DashboardPage';
 import { MeasurementsPage } from '../pages/MeasurementsPage';
 import { TrainingPage } from '../pages/TrainingPage';
@@ -11,31 +12,33 @@ import { SettingsPage } from '../pages/SettingsPage';
 import { IntegrationsPage } from '../pages/IntegrationsPage';
 import { OnboardingPage } from '../pages/onboarding/OnboardingPage';
 import { AuthCallbackPage } from '../pages/AuthCallbackPage';
-import { NotFoundPage } from '../pages/NotFoundPage';
+import { NotFoundPage, PublicNotFoundPage } from '../pages/NotFoundPage';
 import { LoginPage } from '../pages/LoginPage';
 import { RegisterPage } from '../pages/RegisterPage';
 import { LandingPage } from '../pages/LandingPage';
 import { RequireAuth } from '../auth/RequireAuth';
 
 /**
- * Route table (FOR-81). Paths mirror the centralized NAV_ITEMS model and all
- * render inside the AppShell layout. Every element is a placeholder page; adding
- * a real screen later means swapping the element, not restructuring routing.
+ * Route table (FOR-81). Paths mirror the centralized NAV_ITEMS model.
+ *
+ * FOR-185 made the layout two-tier. `RootLayout` is the outer element for
+ * every user-facing route: it renders the global navigation bar and, below it,
+ * the routed view. `AppShell` is nested inside it for `/app`, contributing the
+ * second tier (sidebar + main, or the fixed bottom bar on small screens). The
+ * public landing and the auth pages render directly under `RootLayout`, which
+ * is what finally gives `/login` and `/registro` a navigation bar.
  *
  * `/onboarding` (FOR-59) is a deliberate exception: it is a sibling of the
- * `AppShell` route, not a child. It is a first-run flow, not a navigation
+ * `RootLayout` route, not a child. It is a first-run flow, not a navigation
  * section (absent from `app/navigation.ts` on purpose), and rendering it
- * outside the shell keeps a mid-flow user from wandering off via the sidebar.
+ * outside the frame keeps a mid-flow user from wandering off via navigation.
  *
  * `/auth` (FOR-133) is the same kind of exception: the registered Withings
  * OAuth2 redirect URL (spec FOR-131) lands here mid-flow, so it renders
- * outside `AppShell` too — no persistent sidebar/nav while the OAuth
- * callback is still resolving.
+ * outside the frame too — no persistent navigation while the OAuth callback
+ * is still resolving.
  */
 export const routes: RouteObject[] = [
-  { path: '/', element: <LandingPage /> },
-  { path: '/login', element: <LoginPage /> },
-  { path: '/registro', element: <RegisterPage /> },
   {
     path: '/onboarding',
     element: (
@@ -46,26 +49,34 @@ export const routes: RouteObject[] = [
   },
   { path: '/auth', element: <AuthCallbackPage /> },
   {
-    path: '/app',
-    element: (
-      <RequireAuth>
-        <AppShell />
-      </RequireAuth>
-    ),
+    element: <RootLayout />,
     children: [
-      { index: true, element: <DashboardPage /> },
-      { path: 'mediciones', element: <MeasurementsPage /> },
-      { path: 'entrenamiento', element: <TrainingPage /> },
-      { path: 'nutricion', element: <NutritionPage /> },
-      { path: 'lista-compra', element: <ShoppingPage /> },
-      { path: 'progreso', element: <ProgressPage /> },
-      { path: 'objetivos', element: <GoalsPage /> },
-      { path: 'ajustes', element: <SettingsPage /> },
-      // FOR-57: standalone sub-route (FOR-58's Ajustes shell isn't built yet —
-      // see IntegrationsPage.tsx doc comment).
-      { path: 'ajustes/integraciones', element: <IntegrationsPage /> },
-      { path: '*', element: <NotFoundPage /> },
+      { path: '/', element: <LandingPage /> },
+      { path: '/login', element: <LoginPage /> },
+      { path: '/registro', element: <RegisterPage /> },
+      {
+        path: '/app',
+        element: (
+          <RequireAuth>
+            <AppShell />
+          </RequireAuth>
+        ),
+        children: [
+          { index: true, element: <DashboardPage /> },
+          { path: 'mediciones', element: <MeasurementsPage /> },
+          { path: 'entrenamiento', element: <TrainingPage /> },
+          { path: 'nutricion', element: <NutritionPage /> },
+          { path: 'lista-compra', element: <ShoppingPage /> },
+          { path: 'progreso', element: <ProgressPage /> },
+          { path: 'objetivos', element: <GoalsPage /> },
+          { path: 'ajustes', element: <SettingsPage /> },
+          // FOR-57: standalone sub-route (FOR-58's Ajustes shell isn't built yet —
+          // see IntegrationsPage.tsx doc comment).
+          { path: 'ajustes/integraciones', element: <IntegrationsPage /> },
+          { path: '*', element: <NotFoundPage /> },
+        ],
+      },
+      { path: '*', element: <PublicNotFoundPage /> },
     ],
   },
-  { path: '*', element: <NotFoundPage /> },
 ];
