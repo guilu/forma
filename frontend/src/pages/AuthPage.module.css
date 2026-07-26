@@ -1,15 +1,37 @@
 /*
- * FOR-185: the card is still centred in the space *below* the global
- * navigation bar, so the full-viewport height it used to claim is reduced by
- * the bar's own height — otherwise the card sits exactly `--topbar-height`
- * too low.
+ * FOR-185: the card is anchored to the top of the area below the global
+ * navigation bar, not centred in it.
+ *
+ * It used to be `place-items: center`, which is what kept it sitting low: a
+ * ~400px form in a ~1000px viewport gets ~300px of slack above it, so neither
+ * trimming the padding nor shrinking the centring box moved it enough to
+ * read as "up". Only `justify-items` still centres, horizontally; vertically
+ * the card starts immediately under the bar.
+ *
+ * `min-height` stays so `--color-bg` covers the viewport on short pages; with
+ * the card top-aligned it no longer influences the card's position at all.
+ *
+ * The top gap is a tenth of that same area, with `--space-6` as a floor for
+ * viewports too short for it to clear.
+ *
+ * Why a tenth and not the quarter first tried: dead-centring a ~400px card in
+ * a ~1000px area already leaves a ~30% gap, so a 25% gap lands within ~50px
+ * of centre and reads as unchanged. The proportion has to drop well under the
+ * card's own natural centre before the card looks anchored high.
+ *
+ * Expressed in `dvh` rather than as `padding-top: 10%`, because percentage
+ * padding resolves against the containing block's *width*, not its height —
+ * that would tie this gap to the window's width.
  */
 .page {
   min-height: calc(100vh - var(--topbar-height));
   min-height: calc(100dvh - var(--topbar-height));
   display: grid;
-  place-items: center;
-  padding: var(--space-6) var(--space-4);
+  align-content: start;
+  justify-items: center;
+  padding: 0 var(--space-4) var(--space-6);
+  padding-top: max(var(--space-6), calc((100vh - var(--topbar-height)) * 0.1));
+  padding-top: max(var(--space-6), calc((100dvh - var(--topbar-height)) * 0.1));
   background: var(--color-bg);
 }
 
