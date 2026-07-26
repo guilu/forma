@@ -9,10 +9,6 @@
   gap: var(--space-5);
 }
 
-.brand {
-  padding: var(--space-2) var(--space-3);
-}
-
 .nav {
   display: flex;
   flex-direction: column;

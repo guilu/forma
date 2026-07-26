@@ -1,8 +1,15 @@
+/*
+ * FOR-185: the card is still centred in the space *below* the global
+ * navigation bar, so the full-viewport height it used to claim is reduced by
+ * the bar's own height — otherwise the card sits exactly `--topbar-height`
+ * too low.
+ */
 .page {
-  min-height: 100vh;
+  min-height: calc(100vh - var(--topbar-height));
+  min-height: calc(100dvh - var(--topbar-height));
   display: grid;
   place-items: center;
-  padding: var(--space-4);
+  padding: var(--space-6) var(--space-4);
   background: var(--color-bg);
 }
 

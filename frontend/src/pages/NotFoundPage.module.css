@@ -1,0 +1,15 @@
+.publicMain {
+  /* Fill what is left of the viewport below the global navigation bar, so a
+     short 404 does not leave the page bottom-heavy. */
+  min-height: calc(100vh - var(--topbar-height));
+  min-height: calc(100dvh - var(--topbar-height));
+  display: grid;
+  place-items: center;
+  padding: var(--space-8) var(--space-container-mobile);
+}
+
+@media (min-width: 769px) {
+  .publicMain {
+    padding: var(--space-8) var(--space-container-desktop);
+  }
+}

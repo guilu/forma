@@ -19,10 +19,11 @@ vi.mock('../api/profile', () => ({
   updateThemeMode: vi.fn().mockResolvedValue(undefined),
 }));
 const logoutMock = vi.fn();
+let authStatus: 'authenticated' | 'anonymous' = 'authenticated';
 vi.mock('../auth/AuthContext', () => ({
   useAuth: () => ({
-    status: 'authenticated',
-    user: { id: 'user-1', email: 'persona@example.com' },
+    status: authStatus,
+    user: authStatus === 'authenticated' ? { id: 'user-1', email: 'persona@example.com' } : null,
     logout: logoutMock,
   }),
 }));
@@ -32,9 +33,22 @@ vi.mock('../auth/AuthContext', () => ({
  * account area, and the mobile "Más" overflow that makes every section reachable
  * from navigation on small screens.
  */
+// FOR-185: the topbar is now the global navigation bar and links to the app /
+// landing root, so it needs a router context of its own.
+function renderTopbar() {
+  return render(
+    <ThemeProvider>
+      <MemoryRouter>
+        <Topbar />
+      </MemoryRouter>
+    </ThemeProvider>,
+  );
+}
+
 describe('application shell', () => {
   beforeEach(() => {
     logoutMock.mockReset();
+    authStatus = 'authenticated';
   });
 
   it('renders the Withings integration status as a card in the sidebar footer', () => {
@@ -71,11 +85,7 @@ describe('application shell', () => {
 
   it('renders the authenticated account and calls logout from the topbar', async () => {
     const user = userEvent.setup();
-    render(
-      <ThemeProvider>
-        <Topbar />
-      </ThemeProvider>,
-    );
+    renderTopbar();
 
     expect(screen.getByText('persona@example.com')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Notificaciones' })).toBeInTheDocument();
@@ -86,11 +96,7 @@ describe('application shell', () => {
   it('keeps logout failure handled and offers retry', async () => {
     logoutMock.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(undefined);
     const user = userEvent.setup();
-    render(
-      <ThemeProvider>
-        <Topbar />
-      </ThemeProvider>,
-    );
+    renderTopbar();
     await user.click(screen.getByRole('button', { name: 'Cerrar sesión' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo cerrar la sesión');
     await user.click(screen.getByRole('button', { name: 'Reintentar cierre de sesión' }));
@@ -100,11 +106,7 @@ describe('application shell', () => {
   it('toggles the theme from the topbar next to the notifications bell', async () => {
     const user = userEvent.setup();
     document.documentElement.removeAttribute('data-theme');
-    render(
-      <ThemeProvider>
-        <Topbar />
-      </ThemeProvider>,
-    );
+    renderTopbar();
 
     // Default resolves to dark → the button offers switching to light (sun).
     const toggle = screen.getByRole('button', { name: 'Cambiar a tema claro' });
@@ -201,5 +203,58 @@ describe('application shell', () => {
       'aria-expanded',
       'false',
     );
+  });
+
+  // FOR-185: the same bar now renders above the public pages too, so an
+  // anonymous visitor gets the landing's section anchors and a login action
+  // instead of the account controls.
+  it('shows the public navigation and a login action to anonymous visitors', () => {
+    authStatus = 'anonymous';
+    renderTopbar();
+
+    const nav = screen.getByRole('navigation', { name: 'Navegación pública' });
+    expect(within(nav).getByRole('link', { name: 'Entrenamiento' })).toHaveAttribute(
+      'href',
+      '/#entrenamiento',
+    );
+    expect(within(nav).getByRole('link', { name: 'Nutrición' })).toHaveAttribute(
+      'href',
+      '/#nutricion',
+    );
+    expect(within(nav).getByRole('link', { name: 'Planes' })).toHaveAttribute('href', '/#planes');
+    expect(within(nav).getByRole('link', { name: 'Iniciar Sesión' })).toHaveAttribute(
+      'href',
+      '/login',
+    );
+    expect(screen.queryByRole('button', { name: 'Cerrar sesión' })).not.toBeInTheDocument();
+  });
+
+  it('keeps the theme toggle available to anonymous visitors', async () => {
+    authStatus = 'anonymous';
+    document.documentElement.removeAttribute('data-theme');
+    const user = userEvent.setup();
+    renderTopbar();
+
+    await user.click(screen.getByRole('button', { name: 'Cambiar a tema claro' }));
+
+    expect(document.documentElement.getAttribute('data-theme')).toBe('light');
+  });
+
+  // The disclosure only matters below `md`, where the anchors are CSS-hidden;
+  // at the jsdom desktop viewport the button itself is `display: none`, which
+  // makes its accessible name compute to "" — hence `getByLabelText`, which
+  // matches the attribute rather than the computed name. This exercises the
+  // component logic only; the breakpoint behaviour is CSS.
+  it('toggles the public navigation from the mobile menu button', async () => {
+    authStatus = 'anonymous';
+    const user = userEvent.setup();
+    renderTopbar();
+
+    const menu = screen.getByLabelText('Abrir menú');
+    expect(menu).toHaveAttribute('aria-expanded', 'false');
+
+    await user.click(menu);
+
+    expect(menu).toHaveAttribute('aria-expanded', 'true');
   });
 });

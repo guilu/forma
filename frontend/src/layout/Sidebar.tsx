@@ -1,6 +1,5 @@
 import { NavLink } from 'react-router-dom';
 import { NAV_ITEMS } from '../app/navigation';
-import { Brand } from '../components/Brand';
 import { Icon } from '../components/Icon';
 import styles from './Sidebar.module.css';
 
@@ -8,6 +7,10 @@ import styles from './Sidebar.module.css';
  * Desktop sidebar navigation (FOR-81). Renders from the centralized NAV_ITEMS
  * model; the active route is highlighted via NavLink. Hidden on small screens,
  * where MobileNav takes over.
+ *
+ * <p>FOR-185 dropped the brand lockup from the top of this aside: the global
+ * navigation bar now sits above the sidebar rather than beside it, so a brand
+ * here would be a second copy directly under the first.
  */
 export function Sidebar() {
   const primaryItems = NAV_ITEMS.filter((item) => !item.settings);
@@ -29,9 +32,6 @@ export function Sidebar() {
 
   return (
     <aside className={styles.sidebar}>
-      <div className={styles.brand}>
-        <Brand />
-      </div>
       <nav className={styles.nav} aria-label="Navegación principal">
         {primaryItems.map(renderLink)}
         {/*

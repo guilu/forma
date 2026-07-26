@@ -3,28 +3,22 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { useAuth } from '../auth/AuthContext';
-import { useTheme } from '../theme/ThemeContext';
 import { axe } from '../test/axe';
 import { LandingPage } from './LandingPage';
 
 vi.mock('../auth/AuthContext', () => ({ useAuth: vi.fn() }));
-vi.mock('../theme/ThemeContext', () => ({ useTheme: vi.fn() }));
 
 describe('LandingPage', () => {
-  it('renders the complete public composition with real navigation', () => {
+  it('renders the complete public composition below the global bar', () => {
     mockLanding({ status: 'anonymous' });
     renderLanding();
 
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
-    expect(screen.getByRole('navigation', { name: 'Navegación pública' })).toBeInTheDocument();
-    expect(screen.getAllByRole('link', { name: 'Beneficios' })[0]).toHaveAttribute(
-      'href',
-      '#beneficios',
-    );
-    expect(screen.getAllByRole('link', { name: 'Producto' })[0]).toHaveAttribute(
-      'href',
-      '#producto',
-    );
+    // FOR-185: the public navigation bar is no longer part of this page — it
+    // moved to the global Topbar (layout/RootLayout.tsx).
+    expect(
+      screen.queryByRole('navigation', { name: 'Navegación pública' }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole('region', { name: 'Una visión completa, sin falsas promesas' }),
     ).toBeInTheDocument();
@@ -113,15 +107,6 @@ describe('LandingPage', () => {
     ).toBeInTheDocument();
   });
 
-  it('exposes the accessible theme control', async () => {
-    const setMode = vi.fn();
-    mockLanding({ status: 'anonymous' }, setMode);
-    renderLanding();
-
-    await userEvent.click(screen.getByRole('button', { name: 'Claro' }));
-    expect(setMode).toHaveBeenCalledWith('light');
-  });
-
   it.each([
     ['anonymous', false],
     ['authenticated', false],
@@ -150,7 +135,7 @@ function renderLanding() {
   );
 }
 
-function mockLanding(overrides: Partial<ReturnType<typeof useAuth>>, setMode = vi.fn()) {
+function mockLanding(overrides: Partial<ReturnType<typeof useAuth>>) {
   vi.mocked(useAuth).mockReturnValue({
     status: 'anonymous',
     user: null,
@@ -160,10 +145,5 @@ function mockLanding(overrides: Partial<ReturnType<typeof useAuth>>, setMode = v
     logout: vi.fn(),
     refreshCurrentUser: vi.fn(),
     ...overrides,
-  });
-  vi.mocked(useTheme).mockReturnValue({
-    mode: 'dark',
-    resolvedTheme: 'dark',
-    setMode,
   });
 }

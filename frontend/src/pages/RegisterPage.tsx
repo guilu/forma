@@ -1,7 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { Brand } from '../components/Brand';
 import { Button } from '../components/Button';
 import { TextField } from '../components/FormField';
 import styles from './AuthPage.module.css';
@@ -42,10 +41,11 @@ export function RegisterPage() {
   }
 
   return (
-    <main className={styles.page}>
+    <main id="main-content" tabIndex={-1} className={styles.page}>
       <section className={styles.card} aria-labelledby="register-title">
+        {/* FOR-185: no brand lockup here — the global navigation bar above the
+            page already carries it. */}
         <header className={styles.header}>
-          <Brand />
           <h1 id="register-title" className={styles.title}>
             Crear cuenta
           </h1>

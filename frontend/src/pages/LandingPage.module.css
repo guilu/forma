@@ -10,32 +10,6 @@
     var(--color-bg);
 }
 
-.skipLink {
-  position: fixed;
-  z-index: 20;
-  top: var(--space-2);
-  left: var(--space-2);
-  padding: var(--space-2) var(--space-4);
-  color: var(--color-accent-contrast);
-  background: var(--color-accent);
-  border-radius: var(--radius-md);
-  transform: translateY(-160%);
-}
-
-.skipLink:focus {
-  transform: translateY(0);
-}
-
-.header {
-  position: sticky;
-  z-index: 10;
-  top: 0;
-  border-bottom: 1px solid var(--color-border);
-  background: color-mix(in srgb, var(--color-bg) 88%, transparent);
-  backdrop-filter: blur(14px);
-}
-
-.nav,
 .hero,
 .section,
 .product,
@@ -45,47 +19,25 @@
   margin-inline: auto;
 }
 
-.nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  min-height: 76px;
-  padding-block: var(--space-3);
-}
-
-.brandLink {
-  flex: 0 0 auto;
-}
-
-.anchorLinks,
-.navActions,
 .footer nav {
   display: flex;
   align-items: center;
   gap: var(--space-4);
 }
 
-.anchorLinks a,
 .footer a,
 .registerPrompt a,
 .textLink {
   font-weight: 600;
 }
 
-.anchorLinks a:hover,
 .footer a:hover,
 .registerPrompt a:hover,
 .textLink:hover {
   color: var(--color-accent);
 }
 
-.navActions {
-  justify-content: flex-end;
-}
-
-.primaryLink,
-.secondaryLink {
+.primaryLink {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -101,17 +53,11 @@
   background: var(--color-accent);
 }
 
-.secondaryLink {
-  color: var(--color-text);
-  background: transparent;
-  border-color: var(--color-border);
-}
-
 .hero {
   display: grid;
   align-items: center;
   gap: var(--space-8);
-  min-height: calc(100vh - 77px);
+  min-height: calc(100vh - var(--topbar-height));
   padding-block: calc(var(--space-8) * 2);
 }
 
@@ -392,7 +338,6 @@
 }
 
 @media (min-width: 768px) {
-  .nav,
   .hero,
   .section,
   .product,
@@ -419,22 +364,6 @@
 }
 
 @media (max-width: 767px) {
-  .nav {
-    align-items: flex-start;
-    flex-wrap: wrap;
-  }
-
-  .anchorLinks {
-    order: 3;
-    width: 100%;
-    justify-content: center;
-  }
-
-  .navActions {
-    align-items: flex-end;
-    flex-direction: column;
-  }
-
   .hero {
     min-height: 0;
     padding-block: var(--space-8);
@@ -457,21 +386,5 @@
   .footer nav {
     align-items: flex-start;
     flex-direction: column;
-  }
-}
-
-@media (max-width: 420px) {
-  .navActions {
-    width: 100%;
-  }
-
-  .navActions > * {
-    max-width: 100%;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .skipLink {
-    transition: none;
   }
 }

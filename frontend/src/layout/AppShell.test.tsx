@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import { AppShell } from './AppShell';
+import { RootLayout } from './RootLayout';
 import { ThemeProvider } from '../theme/ThemeContext';
 
 // FOR-120: ThemeProvider reads/persists the theme preference through this
@@ -28,6 +29,12 @@ vi.mock('../auth/AuthContext', () => ({
  * header/nav/main landmarks every page relies on, and focus management on
  * client-side route changes (React Router does not move focus itself, so the
  * shell has to).
+ *
+ * FOR-185 split the frame in two — `RootLayout` owns the banner and the skip
+ * link, `AppShell` owns the sidebar and `<main>` below it — so the shell is
+ * mounted here as a child route of `RootLayout`, exactly as `app/routes.tsx`
+ * wires it. The landmark contract these tests guard is a property of the pair,
+ * not of either half alone.
  */
 function RoutedPage({ label, to }: { readonly label: string; readonly to?: string }) {
   return (
@@ -43,9 +50,11 @@ function renderShell(initialEntry: string) {
     <ThemeProvider>
       <MemoryRouter initialEntries={[initialEntry]}>
         <Routes>
-          <Route path="/" element={<AppShell />}>
-            <Route path="a" element={<RoutedPage label="Página A" to="/b" />} />
-            <Route path="b" element={<RoutedPage label="Página B" />} />
+          <Route element={<RootLayout />}>
+            <Route path="/" element={<AppShell />}>
+              <Route path="a" element={<RoutedPage label="Página A" to="/b" />} />
+              <Route path="b" element={<RoutedPage label="Página B" />} />
+            </Route>
           </Route>
         </Routes>
       </MemoryRouter>

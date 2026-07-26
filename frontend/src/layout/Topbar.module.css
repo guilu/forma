@@ -1,16 +1,52 @@
+/*
+ * FOR-185: the bar is now the first row of RootLayout's grid rather than a
+ * cell of AppShell's, and adopts the landing template's treatment —
+ * translucent surface + backdrop blur over a hairline bottom rule.
+ *
+ * `fixed` (as in the template), not `sticky`: a sticky element can only travel
+ * inside its own containing block, and this one's grid row is exactly
+ * `--topbar-height` tall, so sticky would have zero room and the bar would
+ * scroll away with a long public page. Taking it out of flow is safe because
+ * the grid row it leaves behind still reserves its height — no page-level top
+ * padding needed.
+ */
 .topbar {
-  grid-area: topbar;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
   height: var(--topbar-height);
-  background-color: var(--color-surface);
+  background-color: color-mix(in srgb, var(--color-bg) 80%, transparent);
+  backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--color-border);
+}
+
+.inner {
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--space-4);
+  padding: 0 var(--space-container-mobile);
+}
+
+/* Template: `max-w-7xl mx-auto` — the public bar shares the landing's measure
+ * so the brand lines up with the hero copy below it. */
+.innerPublic {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.innerApp {
   padding: 0 var(--space-5);
 }
 
-.mobileBrand {
-  display: none;
+.brand {
+  display: inline-flex;
+  align-items: center;
+  color: inherit;
+  text-decoration: none;
 }
 
 .actions {
@@ -85,6 +121,59 @@
   font-size: var(--font-size-sm);
 }
 
+/* --- Public (anonymous) bar --------------------------------------------- */
+
+.publicSide {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.publicNav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.publicLink {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-label-md);
+  font-weight: 500;
+  letter-spacing: var(--letter-spacing-label-md);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.publicLink:hover {
+  color: var(--color-accent);
+}
+
+/* Template: outlined pill in the accent colour, tinting on hover — the public
+ * bar's only call to action. */
+.loginLink {
+  padding: var(--space-2) var(--space-5);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-lg);
+  color: var(--color-accent);
+  font-size: var(--font-size-label-md);
+  font-weight: 500;
+  letter-spacing: var(--letter-spacing-label-md);
+  text-decoration: none;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.loginLink:hover {
+  background-color: color-mix(in srgb, var(--color-accent) 10%, transparent);
+}
+
+/* The hamburger only exists below `md`, where the anchors collapse. */
+.menuButton {
+  display: none;
+}
+
 @media (max-width: 480px) {
   .accountName {
     display: none;
@@ -92,7 +181,35 @@
 }
 
 @media (max-width: 768px) {
-  .mobileBrand {
+  /*
+   * Template `md:hidden` hamburger. The anchors drop out of the bar and
+   * reappear as a sheet anchored under it when the disclosure is open —
+   * `.publicNav` is still the same element, so the "Navegación pública"
+   * landmark (and its links) stay in the accessibility tree either way.
+   */
+  .publicNav {
+    display: none;
+  }
+
+  .publicNavOpen {
+    position: absolute;
+    top: var(--topbar-height);
+    left: 0;
+    right: 0;
     display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-4);
+    padding: var(--space-5) var(--space-container-mobile);
+    background-color: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .loginLink {
+    text-align: center;
+  }
+
+  .menuButton {
+    display: inline-flex;
   }
 }

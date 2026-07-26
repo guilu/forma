@@ -4,7 +4,6 @@ import { useAuth } from '../auth/AuthContext';
 import { Brand } from '../components/Brand';
 import { Button } from '../components/Button';
 import { TextField } from '../components/FormField';
-import { ThemeToggle } from '../components/ThemeToggle';
 import styles from './LandingPage.module.css';
 
 const BENEFITS = [
@@ -29,34 +28,7 @@ export function LandingPage() {
 
   return (
     <div className={styles.page}>
-      <a className={styles.skipLink} href="#contenido-principal">
-        Saltar al contenido principal
-      </a>
-      <header className={styles.header}>
-        <nav className={styles.nav} aria-label="Navegación pública">
-          <Link className={styles.brandLink} to="/" aria-label="FORMA, inicio">
-            <Brand />
-          </Link>
-          <div className={styles.anchorLinks}>
-            <a href="#beneficios">Beneficios</a>
-            <a href="#producto">Producto</a>
-          </div>
-          <div className={styles.navActions}>
-            <ThemeToggle />
-            {auth.status === 'authenticated' ? (
-              <Link className={styles.primaryLink} to="/app">
-                Ir a la aplicación
-              </Link>
-            ) : (
-              <a className={styles.secondaryLink} href="#acceso">
-                Iniciar sesión
-              </a>
-            )}
-          </div>
-        </nav>
-      </header>
-
-      <main id="contenido-principal">
+      <main id="main-content" tabIndex={-1}>
         <section className={styles.hero} aria-labelledby="landing-title">
           <div className={styles.heroCopy}>
             <p className={styles.eyebrow}>Tu sistema personal de salud y forma física</p>
