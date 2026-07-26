@@ -178,28 +178,26 @@
   padding-top: var(--space-2);
 }
 
-/* Template `.primary-button-gradient` as a link-shaped CTA. The Button
- * primitive gained the same treatment (Button.module.css `.primary`); this is
- * its anchor counterpart, which cannot reuse a <button>. */
+/*
+ * Template `.primary-button-gradient` on the landing's anchor CTAs. These are
+ * real navigations (`/registro`, `/app`), so they are `<a>`/`<Link>` and
+ * cannot be `<button>` — but they must look and behave exactly like the app's
+ * primary button, so the treatment is composed from that one source rather
+ * than re-declared here. `composes` pulls in the gradient, the ink, the
+ * `background-origin` fix, the hover lift, the press affordance and the
+ * reduced-motion handling; only the landing's larger sizing is overridden
+ * below.
+ *
+ * The `:disabled` guards in those composed rules simply never match an
+ * anchor, so the hover and press states apply as intended.
+ */
 .ctaPrimary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
+  composes: button primary from '../components/Button.module.css';
   padding: var(--space-4) var(--space-8);
   border-radius: var(--radius-lg);
-  background: var(--gradient-accent);
-  color: var(--color-on-gradient);
   font-family: var(--font-heading);
   font-size: var(--font-size-headline-md);
-  font-weight: 700;
   text-align: center;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.ctaPrimary:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-accent-glow);
 }
 
 .ctaBlock {
@@ -749,7 +747,8 @@
     animation: none;
   }
 
-  .ctaPrimary,
+  /* `.ctaPrimary` is absent on purpose: it composes Button's `.primary`, whose
+   * own reduced-motion rule already drops the lift and the press. */
   .productFrame,
   .inlineLinkIcon,
   .featureCard,
@@ -757,7 +756,6 @@
     transition: none;
   }
 
-  .ctaPrimary:hover,
   .productFrame,
   .productFrame:hover,
   .inlineLink:hover .inlineLinkIcon {

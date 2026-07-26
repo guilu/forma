@@ -47,8 +47,29 @@
 .primary {
   color: var(--color-on-gradient);
   background: var(--gradient-accent);
+  /*
+   * `background-origin: border-box` is load-bearing, not tidiness. `.button`
+   * reserves `border: 1px solid transparent` so every variant measures the
+   * same whether or not its border is visible. A gradient, though, is sized
+   * to the *padding* box by default while still being painted across the
+   * border box — so the 1px ring gets filled by stretching the gradient's
+   * edge pixels, which shows up as a stray olive band down the left edge of
+   * the button. Sizing the gradient to the border box instead makes the ramp
+   * cover the whole element evenly.
+   */
+  background-origin: border-box;
   border-color: transparent;
   box-shadow: 0 4px 14px color-mix(in srgb, var(--color-accent) 30%, transparent);
+  /*
+   * The landing template's own easing for the primary CTA, adopted here so the
+   * app's buttons and the landing's anchor CTAs (which compose this class —
+   * see LandingPage.module.css `.ctaPrimary`) lift identically. Declared as
+   * explicit properties rather than the template's `transition: all`, which
+   * would also animate the gradient and the colour.
+   */
+  transition:
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .primary:hover:not(:disabled) {
