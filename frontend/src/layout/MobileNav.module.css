@@ -34,15 +34,22 @@
 
 @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
   /*
-   * 72% surface / 28% transparent keeps body text (`--color-text` on
-   * `--color-surface`) legible over whatever is scrolling underneath in both
-   * themes -- enough tint to stop the blur reading as pure glass, not so
-   * much that it hides the blurred content and defeats the glass effect.
+   * FOR-185: both the bar and its overflow menu now use the exact treatment
+   * the navigation bar uses (`--color-bg` at 80% over a 12px blur), so every
+   * floating surface in the app reads as one system instead of three
+   * near-misses.
+   *
+   * This supersedes the note that used to sit on `.moreMenu` arguing it had to
+   * stay fully opaque because it expands over busy page content while the bar
+   * only floats over an empty strip. That concern is met rather than ignored:
+   * the shared fill is 80% tint, *more* opaque than the 72% the bar carried
+   * before, so the menu is now backed by more colour than the bar ever was.
    */
-  .mobileNav {
-    background-color: color-mix(in srgb, var(--color-surface) 72%, transparent);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+  .mobileNav,
+  .moreMenu {
+    background-color: color-mix(in srgb, var(--color-bg) 80%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
   }
 }
 
@@ -85,11 +92,9 @@
  * is a detached floating pill rather than a flush edge-to-edge bar; matches
  * the bar's border + rounded corners so the two read as one floating system.
  *
- * Unlike the bar, this menu uses a FULLY OPAQUE `--color-surface` fill (no
- * translucent glass override): the bar floats over the empty dark strip at
- * the bottom of the viewport, but this menu expands over busy page content,
- * so the same 72% tint that reads as solid on the bar bleeds text on the
- * menu. Opaque fill keeps its items as readable as the bar's buttons.
+ * The opaque `background-color` below is the no-`backdrop-filter` fallback,
+ * same as the bar's; the `@supports` block above swaps both to the shared
+ * translucent fill wherever the blur can actually be rendered.
  */
 .moreMenu {
   position: absolute;
