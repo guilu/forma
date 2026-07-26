@@ -62,10 +62,24 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Template `min-h-[921px]`, capped to what is left of the viewport so the
-   * hero never overflows a short laptop screen. */
-  min-height: min(921px, calc(100dvh - var(--topbar-height)));
-  padding-block: var(--space-8);
+  /*
+   * Vertical breathing room, halved against the mockup. Two things produced
+   * it, so both are halved -- cutting only the padding would have been barely
+   * visible:
+   *
+   * - `padding-block`, 48px -> 24px.
+   * - the template's `min-h-[921px]`. The hero's own content is ~554px tall at
+   *   the desktop breakpoint, so a 921px box left ~135px of slack per side
+   *   once `align-items: center` split the difference -- roughly three times
+   *   the padding itself. 720px keeps the hero comfortably taller than its
+   *   content (so the card and copy still centre against each other) while
+   *   bringing the total gap above and below to about half of what it was.
+   *
+   * Still capped to what is left of the viewport so the hero never overflows a
+   * short laptop screen.
+   */
+  min-height: min(720px, calc(100dvh - var(--topbar-height)));
+  padding-block: var(--space-5);
 }
 
 /* Template `.hero-mesh`: a 40px technical grid fading behind the hero. */
