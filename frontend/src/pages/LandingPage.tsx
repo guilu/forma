@@ -83,7 +83,11 @@ export function LandingPage() {
             <div className={styles.heroCopy}>
               <p className={styles.badge}>
                 <span className={styles.badgeDot} aria-hidden="true" />
-                Nueva Versión 4.0 Disponible
+                {/* Wrapped rather than left as a bare text node: JSX collapses
+                    the newline into a single space, which reads ambiguously
+                    next to a self-closing sibling (sonar typescript:S6772) and
+                    would make the label an anonymous flex item. */}
+                <span>Nueva Versión 4.0 Disponible</span>
               </p>
               <h1 id="landing-title" className={styles.title}>
                 Entrena. Nutre.
