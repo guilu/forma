@@ -67,6 +67,19 @@
    * green family. Template: primary (was #9dff57).
    */
   --color-accent: #4cdf97;
+  /*
+   * FOR-185: the accent used as *text* (links, emphasis, active nav items,
+   * icon glyphs). Split out from --color-accent because a hue that works as a
+   * fill does not necessarily carry text: the light theme's brand green is
+   * only ~2.58:1 on its own page background, well below the WCAG AA 4.5:1
+   * bar, while the same colour is perfectly fine behind white text.
+   *
+   * In this theme the two are the same value -- #4cdf97 on --color-bg is
+   * ~10.8:1, so nothing needs darkening. The token still exists here so
+   * component CSS has one name to reach for regardless of theme, and so the
+   * split is a no-op in dark mode.
+   */
+  --color-accent-strong: #4cdf97;
   --color-accent-contrast: #003920; /* template: on-primary (was #0a1206) */
   --color-warning: #ffab70; /* template: warning-amber (was #ffd166) */
   --color-danger: #ff5757; /* template: error-pulse (was #ff5f56) */
@@ -269,16 +282,22 @@
    * owner asked for a brighter, more saturated green so light mode reads
    * closer to dark.
    *
-   * KNOWN CONTRAST TRADE-OFF (FOR-61): #4caf50 on --color-bg (#f4f7f5) is
-   * ~2.58:1, below the WCAG AA 4.5:1 bar for normal text. #006d42 was ~5.96:1.
-   * That only matters where the accent is used as *text* on the page
-   * background -- accent-coloured links and emphasis (`.accentText`,
-   * `.inlineLink`, the sidebar's active item, the landing's footer wordmark).
-   * As a fill, border or icon tint it is unaffected. Accepted deliberately;
-   * if it needs fixing, the shape is a separate --color-accent-strong for
-   * text roles (e.g. #2e7d32, ~4.75:1) rather than darkening this token back.
+   * #4caf50 on --color-bg (#f4f7f5) is only ~2.58:1, so this token is for
+   * fills, borders and tints -- NOT for text. Accent-coloured text uses
+   * --color-accent-strong below.
    */
   --color-accent: #4caf50;
+  /*
+   * FOR-185: the text-safe counterpart, same hue family darkened until it
+   * clears AA -- #2e7d32 is ~4.75:1 on --color-bg. This is what fixes the
+   * regression the brighter brand accent introduced for links, emphasis, the
+   * sidebar's active item and icon glyphs; the previous accent (#006d42) had
+   * been carrying both roles at ~5.96:1.
+   *
+   * The dark theme deliberately declares the same value for both tokens, so
+   * component CSS can name the text role unconditionally.
+   */
+  --color-accent-strong: #2e7d32;
   /*
    * Flipped from #ffffff to the light theme's own ink. White on #4caf50 is
    * ~2.78:1 -- unreadable for the ~10 components that paint text or icons on

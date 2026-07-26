@@ -101,6 +101,19 @@ describe('theme.css design tokens (FOR-163 reconciliation)', () => {
       expect(tokenValue(light, '--color-accent-contrast')).toBe('#0f1a13');
     });
 
+    it('splits the text-safe accent out from the fill accent (FOR-185)', () => {
+      // The brand green is a fill colour: ~2.58:1 on the light page background,
+      // below the AA 4.5:1 bar. Accent-coloured *text* uses the darkened
+      // counterpart instead (~4.75:1). Dark needs no split — its accent is
+      // already ~10.8:1 on its own background — but declares the token anyway
+      // so component CSS can name the text role unconditionally.
+      expect(tokenValue(light, '--color-accent-strong')).toBe('#2e7d32');
+      expect(tokenValue(dark, '--color-accent-strong')).toBe(tokenValue(dark, '--color-accent'));
+      expect(tokenValue(light, '--color-accent-strong')).not.toBe(
+        tokenValue(light, '--color-accent'),
+      );
+    });
+
     it('keeps the CTA gradient and its ink identical in both themes (FOR-185)', () => {
       // The brand owner wants one bright ramp everywhere, so light does not
       // derive a darker gradient from its own endpoints. The ink must travel

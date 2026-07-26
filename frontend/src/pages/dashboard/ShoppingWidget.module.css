@@ -20,7 +20,7 @@
   width: 32px;
   height: 32px;
   flex-shrink: 0;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
   border-radius: var(--radius-md);
 }
@@ -42,5 +42,5 @@
   margin: var(--space-3) 0 0;
   font-size: var(--font-size-sm);
   font-weight: 600;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
 }

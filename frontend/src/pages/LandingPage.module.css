@@ -126,7 +126,7 @@
   border: 1px solid color-mix(in srgb, var(--color-accent) 20%, transparent);
   border-radius: var(--radius-full);
   background-color: color-mix(in srgb, var(--color-accent) 10%, transparent);
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   font-size: var(--font-size-label-sm);
   font-weight: 600;
   letter-spacing: 0.1em;
@@ -153,11 +153,11 @@
 }
 
 .accentText {
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
 }
 
 .accentStrong {
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   font-weight: 700;
 }
 
@@ -538,12 +538,12 @@
   flex-shrink: 0;
   border-radius: 50%;
   background-color: color-mix(in srgb, var(--color-accent) 20%, transparent);
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
 }
 
 .productBadgeLabel {
   margin: 0;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   font-size: var(--font-size-label-sm);
   font-weight: 600;
   text-transform: uppercase;
@@ -583,7 +583,7 @@
 
 .capabilityIcon {
   flex-shrink: 0;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
 }
 
 .inlineLink {
@@ -591,7 +591,7 @@
   align-items: center;
   gap: var(--space-2);
   min-height: 44px;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   font-weight: 700;
 }
 
@@ -660,7 +660,7 @@
   font-size: var(--font-size-headline-md);
   font-weight: 900;
   letter-spacing: -0.02em;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
 }
 
 .footerTagline {
@@ -694,7 +694,7 @@
 }
 
 .footerLink:hover {
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
 }
 
 .footerBottom {
@@ -729,7 +729,7 @@
 }
 
 .footerIconLink:hover {
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
 }
 
 @keyframes pulse {

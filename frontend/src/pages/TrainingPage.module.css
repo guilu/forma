@@ -554,7 +554,7 @@
 .muscleGroupQuality {
   font-size: var(--font-size-sm);
   font-weight: 600;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
 }
 
 .encourage {
@@ -590,7 +590,7 @@
   margin-top: var(--space-2);
   padding: var(--space-2) var(--space-4);
   font-weight: 600;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   border: 1px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
   border-radius: var(--radius-md);
 }
@@ -626,7 +626,7 @@
   margin-top: var(--space-4);
   font-size: var(--font-size-sm);
   font-weight: 600;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
 }
 
 /* ── Distribution donut (FOR-164) ───────────────────────────────────── */
@@ -713,7 +713,7 @@
 }
 
 .distributionNoteIcon {
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   flex-shrink: 0;
 }
 
@@ -731,7 +731,7 @@
 .streakCheer {
   margin: 0;
   font-weight: 600;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
 }
 
 @media (min-width: 900px) {

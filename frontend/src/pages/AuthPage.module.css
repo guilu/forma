@@ -75,6 +75,6 @@
 }
 
 .link {
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   text-decoration: underline;
 }

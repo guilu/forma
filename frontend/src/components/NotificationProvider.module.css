@@ -50,7 +50,7 @@
 }
 
 .toast[data-type='success'] .icon {
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
 }
 
 .toast[data-type='warning'] .icon {

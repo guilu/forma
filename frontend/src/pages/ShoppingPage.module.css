@@ -164,7 +164,7 @@
 }
 
 .groupIcon {
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   flex-shrink: 0;
 }
 
@@ -268,7 +268,7 @@
   justify-content: center;
   width: 34px;
   height: 34px;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
   border-radius: var(--radius-sm);
