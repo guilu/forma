@@ -37,14 +37,36 @@
   }
 }
 
+/*
+ * FOR-185: the primary CTA moves from a flat accent fill to the landing
+ * template's `.primary-button-gradient` (primary -> secondary at 135deg) with
+ * a lift-on-hover. Driven entirely by `--gradient-accent` /
+ * `--color-on-gradient` / `--shadow-accent-glow`, so the light theme swaps in
+ * its own darker ramp and white label without a second rule here.
+ */
 .primary {
-  color: var(--color-accent-contrast);
-  background-color: var(--color-accent);
-  border-color: var(--color-accent);
-  /* Templates give the primary CTA a soft accent-tinted glow
-   * (`shadow-lg shadow-primary/20`); derive it from the accent token instead
-   * of a hardcoded color so both themes stay correct. */
+  color: var(--color-on-gradient);
+  background: var(--gradient-accent);
+  border-color: transparent;
   box-shadow: 0 4px 14px color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+
+.primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-accent-glow);
+}
+
+/* Keep the press affordance winning over the hover lift: both selectors have
+ * the same specificity, so this has to come after `.primary:hover`. */
+.primary:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primary:hover:not(:disabled),
+  .primary:active:not(:disabled) {
+    transform: none;
+  }
 }
 
 .secondary {
