@@ -40,7 +40,16 @@
   display: flex;
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  /*
+   * A true pill: the requested radius is far larger than the bar, so the
+   * browser clamps every corner to half the bar's height and the two ends come
+   * out semicircular. Safe here and only here — the items are centred
+   * vertically, which is exactly where the capsule is at its widest, so no
+   * label can fall outside the fill. The "Más" menu keeps `--radius-lg`: it is
+   * tall enough that the same clamp would curve its first and last rows out
+   * from under their own text.
+   */
+  border-radius: var(--radius-full);
   box-shadow: var(--shadow-card);
 }
 
@@ -76,8 +85,10 @@
  * never overflow the viewport edges without any extra clamping.
  *
  * `margin-bottom` opens a visible gap from the bar below it now that the bar
- * is a detached floating pill rather than a flush edge-to-edge bar; matches
- * the bar's border + rounded corners so the two read as one floating system.
+ * is a detached floating pill rather than a flush edge-to-edge bar; it shares
+ * the bar's border and fill so the two read as one floating system. The radius
+ * is deliberately *not* shared: see `.bar` on why a capsule works there and
+ * would push this menu's first and last rows out from under their own text.
  *
  * The opaque `background-color` below is the no-`backdrop-filter` fallback,
  * same as the bar's; the `@supports` block below swaps both to the shared
