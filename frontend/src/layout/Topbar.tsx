@@ -17,7 +17,7 @@ import styles from './Topbar.module.css';
  *       brand, the section anchors and an outlined "Iniciar sesión" action.
  *       The anchors are plain `<a href="/#...">` rather than router links
  *       because they target fragments of the landing page: from the landing
- *       the browser scrolls in place, and from `/login` or `/registro` it
+ *       the browser scrolls in place, and from `/login` or `/register` it
  *       navigates to the landing and lands on the section.
  *   <li><b>Authenticated</b> — the account controls it already had: the
  *       theme toggle, the notifications affordance and the logout action.
@@ -150,7 +150,7 @@ export function Topbar() {
                   <Link
                     className={styles.accountMenuItem}
                     role="menuitem"
-                    to="/app/ajustes"
+                    to="/app/settings"
                     onClick={() => setAccountOpen(false)}
                   >
                     <Icon name="settings" size={18} />
@@ -194,13 +194,13 @@ export function Topbar() {
                 .join(' ')}
               aria-label="Navegación pública"
             >
-              <a className={styles.publicLink} href="/#entrenamiento">
+              <a className={styles.publicLink} href="/#training">
                 Entrenamiento
               </a>
-              <a className={styles.publicLink} href="/#nutricion">
+              <a className={styles.publicLink} href="/#nutrition">
                 Nutrición
               </a>
-              <a className={styles.publicLink} href="/#planes">
+              <a className={styles.publicLink} href="/#plans">
                 Planes
               </a>
               {loginLink(styles.loginLinkSheet)}

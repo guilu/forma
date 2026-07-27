@@ -54,7 +54,7 @@ export function ProgressSummaryWidget() {
   }, []);
 
   return (
-    <WidgetSection id="progress-summary-widget-title" title="Tu progreso" linkTo="/app/objetivos">
+    <WidgetSection id="progress-summary-widget-title" title="Tu progreso" linkTo="/app/goals">
       {renderContent(state)}
     </WidgetSection>
   );

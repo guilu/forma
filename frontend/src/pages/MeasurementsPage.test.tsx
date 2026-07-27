@@ -162,7 +162,7 @@ describe('MeasurementsPage', () => {
     expect(within(distribution).getByText('3.2 kg')).toBeInTheDocument(); // placeholder bone
     expect(
       within(distribution).getByRole('link', { name: 'Ver análisis detallado' }),
-    ).toHaveAttribute('href', '/app/progreso');
+    ).toHaveAttribute('href', '/app/progress');
   });
 
   // The Resumen/Evolución/Historial tab bar is CSS-hidden at the jsdom desktop

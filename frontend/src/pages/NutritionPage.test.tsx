@@ -235,7 +235,7 @@ describe('NutritionPage', () => {
     renderPage();
 
     const link = await screen.findByRole('link', { name: 'Ver lista de la compra' });
-    expect(link).toHaveAttribute('href', '/app/lista-compra');
+    expect(link).toHaveAttribute('href', '/app/shopping-list');
     await waitFor(() => expect(screen.getByText('1 producto')).toBeInTheDocument());
     // Direct sibling of the page <h1>, so it must render as <h2> (FOR-112).
     expect(

@@ -44,7 +44,7 @@ export function ShoppingWidget() {
     <WidgetSection
       id="shopping-widget-title"
       title="Lista de compra"
-      linkTo="/app/lista-compra"
+      linkTo="/app/shopping-list"
       linkLabel="Ver lista completa"
     >
       {renderContent(state)}

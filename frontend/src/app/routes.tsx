@@ -63,7 +63,7 @@ const AuthCallbackPage = lazyPage(() => import('../pages/AuthCallbackPage'), 'Au
  * the routed view. `AppShell` is nested inside it for `/app`, contributing the
  * second tier (sidebar + main, or the fixed bottom bar on small screens). The
  * public landing and the auth pages render directly under `RootLayout`, which
- * is what finally gives `/login` and `/registro` a navigation bar.
+ * is what finally gives `/login` and `/register` a navigation bar.
  *
  * `/onboarding` (FOR-59) is a deliberate exception: it is a sibling of the
  * `RootLayout` route, not a child. It is a first-run flow, not a navigation
@@ -90,7 +90,7 @@ export const routes: RouteObject[] = [
     children: [
       { path: '/', element: <LandingPage /> },
       { path: '/login', element: <LoginPage /> },
-      { path: '/registro', element: <RegisterPage /> },
+      { path: '/register', element: <RegisterPage /> },
       {
         path: '/app',
         element: (
@@ -100,16 +100,16 @@ export const routes: RouteObject[] = [
         ),
         children: [
           { index: true, element: <DashboardPage /> },
-          { path: 'mediciones', element: <MeasurementsPage /> },
-          { path: 'entrenamiento', element: <TrainingPage /> },
-          { path: 'nutricion', element: <NutritionPage /> },
-          { path: 'lista-compra', element: <ShoppingPage /> },
-          { path: 'progreso', element: <ProgressPage /> },
-          { path: 'objetivos', element: <GoalsPage /> },
-          { path: 'ajustes', element: <SettingsPage /> },
+          { path: 'measurements', element: <MeasurementsPage /> },
+          { path: 'training', element: <TrainingPage /> },
+          { path: 'nutrition', element: <NutritionPage /> },
+          { path: 'shopping-list', element: <ShoppingPage /> },
+          { path: 'progress', element: <ProgressPage /> },
+          { path: 'goals', element: <GoalsPage /> },
+          { path: 'settings', element: <SettingsPage /> },
           // FOR-57: standalone sub-route (FOR-58's Ajustes shell isn't built yet —
           // see IntegrationsPage.tsx doc comment).
-          { path: 'ajustes/integraciones', element: <IntegrationsPage /> },
+          { path: 'settings/integrations', element: <IntegrationsPage /> },
           { path: '*', element: <NotFoundPage /> },
         ],
       },

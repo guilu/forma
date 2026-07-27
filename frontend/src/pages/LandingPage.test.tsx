@@ -32,9 +32,9 @@ describe('LandingPage', () => {
     expect(screen.getByRole('contentinfo')).toBeInTheDocument();
   });
 
-  // The public bar's anchors (`/#entrenamiento`, `/#nutricion`, `/#planes`)
+  // The public bar's anchors (`/#training`, `/#nutrition`, `/#plans`)
   // only work if this page provides the matching targets.
-  it.each(['entrenamiento', 'nutricion', 'planes'])(
+  it.each(['training', 'nutrition', 'plans'])(
     'provides the #%s target the public navigation links to',
     (id) => {
       mockLanding({ status: 'anonymous' });
@@ -50,7 +50,7 @@ describe('LandingPage', () => {
 
     expect(screen.getByLabelText('Correo electrónico')).toHaveAttribute('autocomplete', 'email');
     expect(screen.getByLabelText('Contraseña')).toHaveAttribute('autocomplete', 'current-password');
-    expect(screen.getByRole('link', { name: 'Crear cuenta' })).toHaveAttribute('href', '/registro');
+    expect(screen.getByRole('link', { name: 'Crear cuenta' })).toHaveAttribute('href', '/register');
   });
 
   it('submits login once, disables the form while pending and navigates to the app', async () => {

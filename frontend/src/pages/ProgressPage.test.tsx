@@ -132,7 +132,7 @@ describe('ProgressPage', () => {
     expect(await screen.findByText('Aún no hay mediciones.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Registra tu primera medición' })).toHaveAttribute(
       'href',
-      '/app/mediciones',
+      '/app/measurements',
     );
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
   });

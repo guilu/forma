@@ -37,7 +37,7 @@ import styles from './AuthCallbackPage.module.css';
  * only ever POSTed once per successful landing (spec ui.md: "runs the
  * callback once on mount").
  */
-const INTEGRATIONS_PATH = '/app/ajustes/integraciones';
+const INTEGRATIONS_PATH = '/app/settings/integrations';
 const PROVIDER = 'WITHINGS';
 const GENERIC_ERROR_MESSAGE = 'No se pudo completar la conexión con Withings. Inténtalo de nuevo.';
 const MISSING_PARAMS_MESSAGE =

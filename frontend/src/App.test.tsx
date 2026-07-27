@@ -101,14 +101,14 @@ describe('App', () => {
 
   it.each([
     '/app',
-    '/app/mediciones',
-    '/app/entrenamiento',
-    '/app/nutricion',
-    '/app/lista-compra',
-    '/app/progreso',
-    '/app/objetivos',
-    '/app/ajustes',
-    '/app/ajustes/integraciones',
+    '/app/measurements',
+    '/app/training',
+    '/app/nutrition',
+    '/app/shopping-list',
+    '/app/progress',
+    '/app/goals',
+    '/app/settings',
+    '/app/settings/integrations',
     '/onboarding',
   ])('redirects an anonymous user from protected route %s', (path) => {
     authStatus = 'anonymous';
@@ -139,7 +139,7 @@ describe('App', () => {
 
   it('renders a known section route', async () => {
     render(
-      <MemoryRouter initialEntries={['/app/nutricion']}>
+      <MemoryRouter initialEntries={['/app/nutrition']}>
         <App />
       </MemoryRouter>,
     );
@@ -151,7 +151,7 @@ describe('App', () => {
 
   it('renders the FOR-58 settings screen at /ajustes', async () => {
     render(
-      <MemoryRouter initialEntries={['/app/ajustes']}>
+      <MemoryRouter initialEntries={['/app/settings']}>
         <App />
       </MemoryRouter>,
     );
@@ -163,7 +163,7 @@ describe('App', () => {
 
   it('renders the FOR-57 integrations screen at its standalone sub-route', async () => {
     render(
-      <MemoryRouter initialEntries={['/app/ajustes/integraciones']}>
+      <MemoryRouter initialEntries={['/app/settings/integrations']}>
         <App />
       </MemoryRouter>,
     );

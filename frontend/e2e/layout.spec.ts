@@ -14,7 +14,7 @@ const PHONE = { width: 375, height: 720 };
 const NARROW = { width: 574, height: 720 };
 const DESKTOP = { width: 1280, height: 900 };
 
-const APP_ROUTES = ['/app', '/app/mediciones', '/app/objetivos'] as const;
+const APP_ROUTES = ['/app', '/app/measurements', '/app/goals'] as const;
 
 test.beforeEach(async ({ page }) => {
   await stubApi(page);

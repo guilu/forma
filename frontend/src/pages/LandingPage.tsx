@@ -33,7 +33,7 @@ interface Feature {
 
 const FEATURES: readonly Feature[] = [
   {
-    id: 'entrenamiento',
+    id: 'training',
     icon: 'training',
     tone: styles.tonePrimary,
     title: 'Entrenamientos de Élite',
@@ -41,7 +41,7 @@ const FEATURES: readonly Feature[] = [
       'Rutinas adaptadas dinámicamente a tu nivel actual, fatiga y objetivos específicos de rendimiento.',
   },
   {
-    id: 'nutricion',
+    id: 'nutrition',
     icon: 'nutrition',
     tone: styles.toneSecondary,
     title: 'Nutrición Inteligente',
@@ -100,7 +100,7 @@ export function LandingPage() {
                 aquí.
               </p>
               <div className={styles.heroActions}>
-                <Link className={styles.ctaPrimary} to="/registro">
+                <Link className={styles.ctaPrimary} to="/register">
                   Empezar ahora
                 </Link>
                 <a className={styles.ctaGlass} href="#producto">
@@ -188,14 +188,14 @@ export function LandingPage() {
                 </li>
               ))}
             </ul>
-            <a className={styles.inlineLink} href="#planes">
+            <a className={styles.inlineLink} href="#plans">
               Ver cómo funciona
               <Icon name="arrowRight" className={styles.inlineLinkIcon} />
             </a>
           </div>
         </section>
 
-        <section id="planes" className={styles.cta} aria-labelledby="cta-title">
+        <section id="plans" className={styles.cta} aria-labelledby="cta-title">
           <div className={styles.ctaCard}>
             <h2 id="cta-title" className={styles.displayTitle}>
               ¿Listo para el siguiente nivel?
@@ -205,7 +205,7 @@ export function LandingPage() {
             </p>
             <Link
               className={[styles.ctaPrimary, styles.ctaPill].join(' ')}
-              to={auth.status === 'authenticated' ? '/app' : '/registro'}
+              to={auth.status === 'authenticated' ? '/app' : '/register'}
             >
               {auth.status === 'authenticated' ? 'Ir a la aplicación' : 'Unirme a FORMA'}
             </Link>
@@ -389,7 +389,7 @@ function LoginCard() {
       </form>
       <p className={styles.registerPrompt}>
         ¿No tienes cuenta?{' '}
-        <Link className={styles.accentStrong} to="/registro">
+        <Link className={styles.accentStrong} to="/register">
           Crear cuenta
         </Link>
       </p>
