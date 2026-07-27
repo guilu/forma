@@ -21,5 +21,11 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
     css: true,
+    /*
+     * Only the jsdom suite. `e2e/` holds Playwright specs (see
+     * playwright.config.ts): they import from `@playwright/test`, so Vitest
+     * collecting them by its default glob fails the run outright.
+     */
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
   },
 });

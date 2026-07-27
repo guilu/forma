@@ -71,5 +71,16 @@ jobs:
       - name: Test
         run: npm test
 
+      # Layout checks (FOR-186). jsdom performs no layout, so the suite above
+      # cannot see an overflow, a second scrollbar or a fill that never became
+      # translucent — each of which has shipped as a visual bug. One browser is
+      # enough: these assert geometry and computed style, not engine
+      # differences. The API is stubbed, so no backend service is needed here.
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Layout checks
+        run: npm run test:layout
+
       - name: Build
         run: npm run build
