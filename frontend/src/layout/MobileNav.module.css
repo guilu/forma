@@ -12,11 +12,12 @@
  * (see their respective modules) -- the floating nav must stay under both,
  * never covering a modal or the notification panel.
  *
- * The solid `background-color` here is the fallback for browsers without
- * `backdrop-filter` support; the `@supports` block further down swaps it for
- * the translucent + blurred "glass" fill only where the browser can actually
- * render the blur, so unsupported browsers still get a fully opaque,
- * readable bar instead of unreadably-transparent text.
+ * This element is now only the positioning frame: it carries no fill of its
+ * own, and the pill's surface (border, radius, shadow, glass) lives on `.bar`.
+ * That is deliberate — an element with `backdrop-filter` becomes a *backdrop
+ * root* for its descendants, so while the fill sat here the `.moreMenu` inside
+ * it had nothing left to blur but its blurred ancestor. Bar and menu are now
+ * siblings, and each blurs the page behind it.
  */
 .mobileNav {
   display: none;
@@ -26,6 +27,17 @@
   left: var(--space-4);
   z-index: 40;
   flex-direction: column;
+}
+
+/*
+ * The pill itself. The solid `background-color` here is the fallback for
+ * browsers without `backdrop-filter` support; the `@supports` block further
+ * down swaps it for the translucent + blurred "glass" fill only where the
+ * browser can actually render the blur, so unsupported browsers still get a
+ * fully opaque, readable bar instead of unreadably-transparent text.
+ */
+.bar {
+  display: flex;
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
@@ -34,10 +46,9 @@
 
 @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
   /*
-   * FOR-185: both the bar and its overflow menu now use the exact treatment
-   * the navigation bar uses (`--color-bg` at 80% over a 12px blur), so every
-   * floating surface in the app reads as one system instead of three
-   * near-misses.
+   * FOR-185: both the bar and its overflow menu use the exact treatment the
+   * navigation bar uses (`--glass-bg` over `--glass-blur`), so every floating
+   * surface in the app reads as one system instead of three near-misses.
    *
    * This supersedes the note that used to sit on `.moreMenu` arguing it had to
    * stay fully opaque because it expands over busy page content while the bar
@@ -45,16 +56,12 @@
    * the shared fill is 80% tint, *more* opaque than the 72% the bar carried
    * before, so the menu is now backed by more colour than the bar ever was.
    */
-  .mobileNav,
+  .bar,
   .moreMenu {
-    background-color: color-mix(in srgb, var(--color-bg) 80%, transparent);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background-color: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
   }
-}
-
-.bar {
-  display: flex;
 }
 
 .link {
