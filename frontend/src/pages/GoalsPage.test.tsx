@@ -74,7 +74,18 @@ describe('GoalsPage (FOR-122)', () => {
     renderPage();
 
     expect(await screen.findByText('Aún no tienes objetivos.')).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: 'Crear objetivo' }).length).toBeGreaterThan(0);
+    // Exactly one: the empty state already carries the call to action, so the
+    // header button would be a second, redundant copy of the same action.
+    expect(screen.getAllByRole('button', { name: 'Crear objetivo' })).toHaveLength(1);
+  });
+
+  it('shows the header create button only once there are goals to add to', async () => {
+    listGoalsMock.mockResolvedValue([GOAL_WITH_PROGRESS]);
+
+    renderPage();
+
+    expect(await screen.findByRole('heading', { name: 'Bajar a 12% grasa' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Crear objetivo' })).toHaveLength(1);
   });
 
   it('shows an error state with a working retry on load failure', async () => {
