@@ -159,6 +159,7 @@ function renderContent(state: State) {
             trend={
               points.length >= 2 ? (
                 <LineChart
+                  variant="spark"
                   points={points}
                   formatValue={(v) => `${v.toFixed(1)}${tile.unit ? ` ${tile.unit}` : ''}`}
                   ariaLabel={`Evolución de ${tile.label.toLowerCase()}: ${points.length} mediciones recientes.`}

@@ -2,7 +2,13 @@
 
 ## Status
 
-Accepted
+Superseded by [ADR-013](ADR-013-charting-library.md)
+
+The escape hatch below ("if a later story needs richer, interactive charts,
+revisit this decision and introduce a vetted library then") was taken: the
+FOR-164 measurements mockup asks for an area fill, a grid, dated axis ticks and
+a hover tooltip. The rules at the end of this ADR still hold and are restated in
+ADR-013.
 
 ## Context
 

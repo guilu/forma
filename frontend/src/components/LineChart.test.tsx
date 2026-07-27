@@ -15,13 +15,34 @@ describe('LineChart', () => {
     expect(screen.getByRole('img', { name: 'Peso: baja' })).toBeInTheDocument();
   });
 
-  it('draws a marker per point and a single series line', () => {
+  it('draws one series line with a gradient fill and no per-point dots', () => {
     const { container } = render(
       <LineChart points={points} formatValue={(v) => v.toFixed(1)} ariaLabel="Peso" />,
     );
 
-    expect(container.querySelectorAll('circle')).toHaveLength(points.length);
-    expect(container.querySelectorAll('polyline')).toHaveLength(1);
+    expect(container.querySelectorAll('.recharts-area-curve')).toHaveLength(1);
+    expect(container.querySelectorAll('.recharts-area-area')).toHaveLength(1);
+    // A dot per measurement turns a dense series into beads on a string; only
+    // the hovered point gets one.
+    expect(container.querySelectorAll('.recharts-dot')).toHaveLength(0);
+  });
+
+  it('strips the axes and grid in the sparkline variant', () => {
+    const { container } = render(
+      <LineChart
+        variant="spark"
+        points={points}
+        formatValue={(v) => v.toFixed(1)}
+        ariaLabel="Peso"
+      />,
+    );
+
+    // Still a labelled, readable trend...
+    expect(screen.getByRole('img', { name: 'Peso' })).toBeInTheDocument();
+    expect(container.querySelectorAll('.recharts-area-curve')).toHaveLength(1);
+    // ...but none of the furniture, which is illegible at tile height.
+    expect(container.querySelector('.recharts-cartesian-grid')).toBeNull();
+    expect(screen.queryByText('1 jul')).not.toBeInTheDocument();
   });
 
   it('labels the first and last dates and the y range', () => {

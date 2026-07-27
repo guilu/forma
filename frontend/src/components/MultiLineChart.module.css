@@ -4,22 +4,24 @@
   gap: var(--space-3);
 }
 
+/* Definite height: Recharts measures this box, and a content-sized parent
+   would collapse to zero (see LineChart.module.css). */
 .chart {
   width: 100%;
-  height: auto;
+  height: 140px;
 }
 
-.line {
-  fill: none;
-  stroke-width: 2;
-  stroke-linejoin: round;
-  stroke-linecap: round;
-  vector-effect: non-scaling-stroke;
+/* The date range reads as plain text under the plot rather than as SVG labels
+   inside it — the chart has no visible y-axis to align them against. */
+.axisRow {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
 }
 
 .axis {
-  fill: var(--color-text-muted);
-  font-size: 9px;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
 }
 
 .legend {
