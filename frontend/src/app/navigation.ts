@@ -23,16 +23,16 @@ export interface NavItem {
 
 export const NAV_ITEMS: readonly NavItem[] = [
   { path: '/app', label: 'Dashboard', icon: 'dashboard', primary: true },
-  { path: '/app/mediciones', label: 'Mediciones', icon: 'measurements', primary: true },
-  { path: '/app/entrenamiento', label: 'Entrenamiento', icon: 'training', primary: true },
+  { path: '/app/measurements', label: 'Mediciones', icon: 'measurements', primary: true },
+  { path: '/app/training', label: 'Entrenamiento', icon: 'training', primary: true },
   // FOR-185: moved out of the mobile bar into the "Más" overflow, where its
   // position in this list puts it first, above "Lista de compra". The bar is
   // down to three sections plus the disclosure, which leaves the remaining
   // tap targets noticeably wider.
-  { path: '/app/nutricion', label: 'Nutrición', icon: 'nutrition', primary: false },
-  { path: '/app/lista-compra', label: 'Lista de compra', icon: 'shopping', primary: false },
-  { path: '/app/progreso', label: 'Progreso', icon: 'progress', primary: false },
-  { path: '/app/objetivos', label: 'Objetivos', icon: 'goals', primary: false },
+  { path: '/app/nutrition', label: 'Nutrición', icon: 'nutrition', primary: false },
+  { path: '/app/shopping-list', label: 'Lista de compra', icon: 'shopping', primary: false },
+  { path: '/app/progress', label: 'Progreso', icon: 'progress', primary: false },
+  { path: '/app/goals', label: 'Objetivos', icon: 'goals', primary: false },
   /*
    * FOR-185: "Ajustes" is deliberately absent. It moved out of section
    * navigation entirely and into the topbar's account menu, next to "Cerrar

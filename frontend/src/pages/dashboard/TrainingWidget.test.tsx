@@ -101,7 +101,7 @@ describe('TrainingWidget', () => {
 
     expect(await screen.findByRole('link', { name: 'Ver plan completo' })).toHaveAttribute(
       'href',
-      '/app/entrenamiento',
+      '/app/training',
     );
   });
 });

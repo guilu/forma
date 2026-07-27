@@ -82,7 +82,7 @@ describe('NutritionWidget (Menú de hoy)', () => {
 
     expect(await screen.findByRole('link', { name: 'Ver plan' })).toHaveAttribute(
       'href',
-      '/app/nutricion',
+      '/app/nutrition',
     );
   });
 });

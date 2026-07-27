@@ -90,7 +90,7 @@ describe('ShoppingWidget (Lista de compra)', () => {
 
     expect(await screen.findByRole('link', { name: 'Ver lista completa' })).toHaveAttribute(
       'href',
-      '/app/lista-compra',
+      '/app/shopping-list',
     );
   });
 });

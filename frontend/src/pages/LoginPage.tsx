@@ -77,7 +77,7 @@ export function LoginPage() {
         </form>
         <p className={styles.footer}>
           ¿No tienes cuenta?{' '}
-          <Link className={styles.link} to="/registro" state={location.state}>
+          <Link className={styles.link} to="/register" state={location.state}>
             Crear cuenta
           </Link>
         </p>

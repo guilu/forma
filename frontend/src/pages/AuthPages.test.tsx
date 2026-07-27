@@ -51,7 +51,7 @@ describe('auth pages', () => {
 
   it.each([
     ['/login', <LoginPage />],
-    ['/registro', <RegisterPage />],
+    ['/register', <RegisterPage />],
   ])('redirects an authenticated user away from %s', (path, page) => {
     vi.mocked(useAuth).mockReturnValue(
       authState({
@@ -80,7 +80,7 @@ describe('auth pages', () => {
             pathname: '/login',
             state: {
               from: {
-                pathname: '/app/progreso',
+                pathname: '/app/progress',
                 search: '?periodo=mes',
                 hash: '#tendencia',
               },
@@ -90,14 +90,14 @@ describe('auth pages', () => {
       >
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/app/progreso" element={<LocationPath />} />
+          <Route path="/app/progress" element={<LocationPath />} />
         </Routes>
       </MemoryRouter>,
     );
     await userEvent.type(screen.getByLabelText('Correo electrónico'), 'user@example.com');
     await userEvent.type(screen.getByLabelText('Contraseña'), 'password1234');
     await userEvent.click(screen.getByRole('button', { name: 'Iniciar sesión' }));
-    expect(await screen.findByText('/app/progreso?periodo=mes#tendencia')).toBeInTheDocument();
+    expect(await screen.findByText('/app/progress?periodo=mes#tendencia')).toBeInTheDocument();
   });
 
   it('returns to the preserved destination after successful registration', async () => {
@@ -107,10 +107,10 @@ describe('auth pages', () => {
       <MemoryRouter
         initialEntries={[
           {
-            pathname: '/registro',
+            pathname: '/register',
             state: {
               from: {
-                pathname: '/app/nutricion',
+                pathname: '/app/nutrition',
                 search: '?dia=hoy',
                 hash: '#macros',
               },
@@ -119,8 +119,8 @@ describe('auth pages', () => {
         ]}
       >
         <Routes>
-          <Route path="/registro" element={<RegisterPage />} />
-          <Route path="/app/nutricion" element={<LocationPath />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/app/nutrition" element={<LocationPath />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -132,7 +132,7 @@ describe('auth pages', () => {
       email: 'user@example.com',
       password: 'password1234',
     });
-    expect(await screen.findByText('/app/nutricion?dia=hoy#macros')).toBeInTheDocument();
+    expect(await screen.findByText('/app/nutrition?dia=hoy#macros')).toBeInTheDocument();
   });
 
   it('rejects an external post-login destination', async () => {
@@ -162,11 +162,11 @@ describe('auth pages', () => {
     render(
       <MemoryRouter
         initialEntries={[
-          { pathname: '/registro', state: { from: { pathname: '//malicious.example/path' } } },
+          { pathname: '/register', state: { from: { pathname: '//malicious.example/path' } } },
         ]}
       >
         <Routes>
-          <Route path="/registro" element={<RegisterPage />} />
+          <Route path="/register" element={<RegisterPage />} />
           <Route path="/app" element={<LocationPath />} />
         </Routes>
       </MemoryRouter>,
@@ -180,7 +180,7 @@ describe('auth pages', () => {
 
   it.each([
     ['/login', <LoginPage />],
-    ['/registro', <RegisterPage />],
+    ['/register', <RegisterPage />],
   ])('sends an authenticated user from %s to a valid preserved destination', (path, page) => {
     vi.mocked(useAuth).mockReturnValue(
       authState({
@@ -195,7 +195,7 @@ describe('auth pages', () => {
             pathname: path,
             state: {
               from: {
-                pathname: '/app/progreso',
+                pathname: '/app/progress',
                 search: '?periodo=mes',
                 hash: '#tendencia',
               },
@@ -205,11 +205,11 @@ describe('auth pages', () => {
       >
         <Routes>
           <Route path={path} element={page} />
-          <Route path="/app/progreso" element={<LocationPath />} />
+          <Route path="/app/progress" element={<LocationPath />} />
         </Routes>
       </MemoryRouter>,
     );
-    expect(screen.getByText('/app/progreso?periodo=mes#tendencia')).toBeInTheDocument();
+    expect(screen.getByText('/app/progress?periodo=mes#tendencia')).toBeInTheDocument();
   });
 
   it('shows safe Spanish copy for backend login and registration failures', async () => {

@@ -109,7 +109,7 @@ function renderContent(state: State) {
         </span>
         <ProgressBar value={completed} max={total} label="Sesiones completadas esta semana" />
       </div>
-      <Link className={styles.cta} to="/app/entrenamiento">
+      <Link className={styles.cta} to="/app/training">
         Ver plan completo
       </Link>
     </div>

@@ -166,10 +166,10 @@ describe('DashboardPage', () => {
     const hrefs = screen.getAllByRole('link').map((el) => el.getAttribute('href'));
     expect(hrefs).toEqual(
       expect.arrayContaining([
-        '/app/entrenamiento',
-        '/app/nutricion',
-        '/app/lista-compra',
-        '/app/objetivos',
+        '/app/training',
+        '/app/nutrition',
+        '/app/shopping-list',
+        '/app/goals',
       ]),
     );
   });

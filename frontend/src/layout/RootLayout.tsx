@@ -10,7 +10,7 @@ import styles from './RootLayout.module.css';
  *
  * <p>Before FOR-185 the top bar was an app-only chrome element that sat
  * *beside* the sidebar (`AppShell` spanned the sidebar across both grid rows),
- * which left `/login` and `/registro` with no navigation at all. The frame is
+ * which left `/login` and `/register` with no navigation at all. The frame is
  * now two-tier: this layout owns the bar, and {@link AppShell} — mounted as a
  * child route — owns the second tier below it (sidebar + main, or a fixed
  * bottom bar on small screens).

@@ -114,7 +114,7 @@ describe('application shell', () => {
     const menu = screen.getByRole('menu', { name: 'Cuenta' });
     expect(within(menu).getByRole('menuitem', { name: 'Ajustes' })).toHaveAttribute(
       'href',
-      '/app/ajustes',
+      '/app/settings',
     );
     await user.click(within(menu).getByRole('menuitem', { name: 'Cerrar sesión' }));
     expect(logoutMock).toHaveBeenCalled();
@@ -256,13 +256,13 @@ describe('application shell', () => {
     const nav = screen.getByRole('navigation', { name: 'Navegación pública' });
     expect(within(nav).getByRole('link', { name: 'Entrenamiento' })).toHaveAttribute(
       'href',
-      '/#entrenamiento',
+      '/#training',
     );
     expect(within(nav).getByRole('link', { name: 'Nutrición' })).toHaveAttribute(
       'href',
-      '/#nutricion',
+      '/#nutrition',
     );
-    expect(within(nav).getByRole('link', { name: 'Planes' })).toHaveAttribute('href', '/#planes');
+    expect(within(nav).getByRole('link', { name: 'Planes' })).toHaveAttribute('href', '/#plans');
     // The login action sits outside the <nav>: it is an account action, not a
     // section link, and staying out of the collapsing group keeps it in the
     // bar on small screens instead of behind the disclosure.

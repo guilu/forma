@@ -35,7 +35,7 @@ import styles from './IntegrationsSection.module.css';
  * (FOR-103) ships a backend. `StatusPill`'s `connection` kind and `Card` are
  * reused from FOR-50; this is a self-contained section so it does not depend
  * on FOR-58's (not-yet-built) Ajustes shell — it is mounted from its own
- * route, `/ajustes/integraciones`.
+ * route, `/settings/integrations`.
  *
  * <p>FOR-63 adds a shared {@link ConfirmDialog} for the disconnect
  * confirmation, replacing the ad-hoc modal markup this section used to build

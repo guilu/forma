@@ -21,7 +21,7 @@ describe('SyncWidget', () => {
     expect(screen.getByText('Conectado')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Ver más' })).toHaveAttribute(
       'href',
-      '/app/ajustes/integraciones',
+      '/app/settings/integrations',
     );
   });
 });

@@ -181,7 +181,7 @@ export function ProfileSection() {
               {/* FOR-122 note: `mainGoal` is a `UserProfile` preference field
                   (COMPOSICION/RENDIMIENTO/HABITO, FOR-107) — a single
                   categorical choice, not the FOR-125 `Goal` domain the new
-                  `/objetivos` screen renders (a list of tracked metrics with
+                  `/goals` screen renders (a list of tracked metrics with
                   targets/milestones). They share the Spanish word "objetivo"
                   but not a data model, so this row is intentionally left
                   as-is rather than linked to the new screen. */}

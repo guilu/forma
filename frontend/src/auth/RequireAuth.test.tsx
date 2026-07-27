@@ -25,10 +25,10 @@ describe('RequireAuth', () => {
   it('redirects anonymous users and preserves their destination', () => {
     vi.mocked(useAuth).mockReturnValue({ status: 'anonymous' } as ReturnType<typeof useAuth>);
     render(
-      <MemoryRouter initialEntries={['/app/progreso?periodo=mes#tendencia']}>
+      <MemoryRouter initialEntries={['/app/progress?periodo=mes#tendencia']}>
         <Routes>
           <Route
-            path="/app/progreso"
+            path="/app/progress"
             element={
               <RequireAuth>
                 <div>Privado</div>
@@ -39,7 +39,7 @@ describe('RequireAuth', () => {
         </Routes>
       </MemoryRouter>,
     );
-    expect(screen.getByText('/app/progreso?periodo=mes#tendencia')).toBeInTheDocument();
+    expect(screen.getByText('/app/progress?periodo=mes#tendencia')).toBeInTheDocument();
   });
 });
 

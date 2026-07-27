@@ -11,7 +11,7 @@ import { AboutSection } from './settings/AboutSection';
 import styles from './SettingsPage.module.css';
 
 /**
- * Configuración / Ajustes screen (FOR-58), reachable at `/ajustes`. Mockup:
+ * Configuración / Ajustes screen (FOR-58), reachable at `/settings`. Mockup:
  * `docs/8-configuracion.png`. Builds out the previously bare `PagePlaceholder`
  * into the section-based layout the spec asks for, grouped in the same order
  * as the spec's User/System Flow: Perfil y preferencias, Unidades, Conexiones
