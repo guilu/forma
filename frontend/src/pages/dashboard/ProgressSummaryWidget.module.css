@@ -10,7 +10,10 @@
   flex-direction: column;
   gap: var(--space-2);
   flex: 1;
-  min-width: 12rem;
+  /* 12rem is the width the text wants before it wraps awkwardly next to the
+     ring; capped at the card's own width so a narrow phone card can't be
+     forced wider than its column. */
+  min-width: min(12rem, 100%);
 }
 
 .heading {

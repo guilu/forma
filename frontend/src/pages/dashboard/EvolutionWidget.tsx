@@ -34,7 +34,13 @@ const METRICS: Record<
   lean: { label: 'Músculo', unit: 'kg', select: (m) => m.leanMassKg },
 };
 
-const RANGES = ['7D', '30D', '90D', '1A', 'Todo'] as const;
+/**
+ * Three tabs rather than the mockup's five: they are inert affordances (see the
+ * class doc), and five of them cannot fit a one-column phone card without
+ * overflowing it, so the set is trimmed to the two ranges a user actually asks
+ * for plus "all".
+ */
+const RANGES = ['7D', '30D', 'Todos'] as const;
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });

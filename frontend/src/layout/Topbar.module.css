@@ -309,7 +309,9 @@
   transform: rotate(-45deg);
 }
 
-@media (max-width: 480px) {
+/* Same 580px threshold the dashboard uses to go single-column: below it the
+   bar has no room for a full email address next to the brand and the actions. */
+@media (max-width: 580px) {
   .accountName {
     display: none;
   }
