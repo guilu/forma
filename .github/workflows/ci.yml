@@ -76,8 +76,14 @@ jobs:
       # translucent — each of which has shipped as a visual bug. One browser is
       # enough: these assert geometry and computed style, not engine
       # differences. The API is stubbed, so no backend service is needed here.
+      #
+      # Run through an npm script, not `npx`: `npx` falls back to fetching a
+      # package from the registry when it cannot resolve one locally, and runs
+      # its lifecycle scripts, so the version that executes in CI is not the one
+      # the lockfile pins. An npm script resolves `node_modules/.bin/playwright`
+      # from the `npm ci` above and nothing else.
       - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
+        run: npm run test:layout:install
 
       - name: Layout checks
         run: npm run test:layout

@@ -10,6 +10,7 @@
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
     "test:layout": "playwright test",
+    "test:layout:install": "playwright install --with-deps chromium",
     "test:watch": "vitest",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
