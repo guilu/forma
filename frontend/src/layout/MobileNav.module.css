@@ -44,26 +44,6 @@
   box-shadow: var(--shadow-card);
 }
 
-@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
-  /*
-   * FOR-185: both the bar and its overflow menu use the exact treatment the
-   * navigation bar uses (`--glass-bg` over `--glass-blur`), so every floating
-   * surface in the app reads as one system instead of three near-misses.
-   *
-   * This supersedes the note that used to sit on `.moreMenu` arguing it had to
-   * stay fully opaque because it expands over busy page content while the bar
-   * only floats over an empty strip. That concern is met rather than ignored:
-   * the shared fill is 80% tint, *more* opaque than the 72% the bar carried
-   * before, so the menu is now backed by more colour than the bar ever was.
-   */
-  .bar,
-  .moreMenu {
-    background-color: var(--glass-bg);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-  }
-}
-
 .link {
   flex: 1;
   display: flex;
@@ -100,7 +80,7 @@
  * the bar's border + rounded corners so the two read as one floating system.
  *
  * The opaque `background-color` below is the no-`backdrop-filter` fallback,
- * same as the bar's; the `@supports` block above swaps both to the shared
+ * same as the bar's; the `@supports` block below swaps both to the shared
  * translucent fill wherever the blur can actually be rendered.
  */
 .moreMenu {
@@ -115,6 +95,33 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
+}
+
+/*
+ * FOR-185: both the bar and its overflow menu use the exact treatment the
+ * navigation bar uses (`--glass-bg` over `--glass-blur`), so every floating
+ * surface in the app reads as one system instead of three near-misses.
+ *
+ * This supersedes the note that used to sit on `.moreMenu` arguing it had to
+ * stay fully opaque because it expands over busy page content while the bar
+ * only floats over an empty strip. That concern is met rather than ignored:
+ * the shared fill is 80% tint, *more* opaque than the 72% the bar carried
+ * before, so the menu is now backed by more colour than the bar ever was.
+ *
+ * This block has to come *after* both `.bar` and `.moreMenu`, not between
+ * them: `@supports` adds no specificity, so the fallback `background-color`
+ * inside a later same-specificity rule would simply win and paint the surface
+ * opaque again — with the blur still applied, but behind an opaque fill, which
+ * is invisible. That is precisely why the "Más" menu stayed solid while the
+ * bar above it went translucent.
+ */
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .bar,
+  .moreMenu {
+    background-color: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+  }
 }
 
 .moreMenu .link {
