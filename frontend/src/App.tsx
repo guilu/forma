@@ -1,5 +1,7 @@
+import { Suspense } from 'react';
 import { useRoutes } from 'react-router-dom';
 import { routes } from './app/routes';
+import { LoadingState } from './components/LoadingState';
 import { NotificationProvider } from './components/NotificationProvider';
 import { ThemeProvider } from './theme/ThemeContext';
 import { AuthProvider } from './auth/AuthContext';
@@ -21,7 +23,16 @@ export function App() {
   return (
     <ThemeProvider>
       <NotificationProvider>
-        <AuthProvider>{element}</AuthProvider>
+        <AuthProvider>
+          {/*
+            Outermost boundary for the code-split routes (see app/routes.tsx).
+            `AppShell` has its own, so this one only catches the routes that
+            render outside the application frame — onboarding and the OAuth
+            callback — and acts as the backstop if a new route is added without
+            one.
+          */}
+          <Suspense fallback={<LoadingState />}>{element}</Suspense>
+        </AuthProvider>
       </NotificationProvider>
     </ThemeProvider>
   );
