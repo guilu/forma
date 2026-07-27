@@ -2,6 +2,29 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+  /*
+   * Never let content dictate a width wider than the cell the widget sits in:
+   * a flex/grid item's automatic minimum size is its content size, which is how
+   * a long word or a non-wrapping control used to spill out of the card and
+   * give the page a horizontal scrollbar.
+   *
+   * Height is deliberately left to the parent — the dashboard rows stretch
+   * their items, so cards in a row share a height without this needing a
+   * `height: 100%` that would overflow a stacked column (the tip + banner one).
+   */
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.widget > * {
+  min-width: 0;
+}
+
+/* Content takes the height the card gained from the row, so widgets with a
+   footer-ish element (range tabs, carousel dots) keep it at the bottom edge
+   instead of leaving a gap under a short body. */
+.widget > :last-child {
+  flex: 1;
 }
 
 /* Bordered card surface — each dashboard panel in the FOR-164 mockup. */
@@ -17,7 +40,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3);
+  gap: var(--space-2) var(--space-3);
+  /* On a one-column phone layout the title and its action/link can be wider
+     together than the card; wrapping is what keeps them inside it. */
+  flex-wrap: wrap;
 }
 
 .headerHidden {
@@ -26,6 +52,7 @@
 
 .title {
   margin: 0;
+  min-width: 0;
   font-size: var(--font-size-sm);
   font-weight: 700;
   letter-spacing: 0.04em;

@@ -24,7 +24,7 @@ const series: Series[] = [
 ];
 
 describe('MultiLineChart', () => {
-  it('renders one polyline per series with the accessible summary and a legend', () => {
+  it('renders one line per series with the accessible summary and a legend', () => {
     const { container } = render(
       <MultiLineChart
         series={series}
@@ -35,7 +35,7 @@ describe('MultiLineChart', () => {
     );
 
     expect(screen.getByRole('img', { name: 'Tendencia de peso y grasa' })).toBeInTheDocument();
-    expect(container.querySelectorAll('polyline')).toHaveLength(2);
+    expect(container.querySelectorAll('.recharts-line-curve')).toHaveLength(2);
     // Legend names each series.
     expect(screen.getByText('Peso (kg)')).toBeInTheDocument();
     expect(screen.getByText('Grasa (%)')).toBeInTheDocument();

@@ -239,6 +239,25 @@
    * bigger visual/architectural call left for FOR-164 if it's wanted.
    */
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+
+  /*
+   * "Glass": the translucent + blurred fill every floating chrome surface
+   * shares — the navigation bar, its disclosure sheet and account menu, the
+   * mobile bottom bar and its "Más" menu. Declared here rather than repeated
+   * per module so the five surfaces cannot drift into near-misses of each
+   * other, which is exactly what happened before FOR-185 reconciled them.
+   *
+   * Both themes resolve from a single declaration: `--color-bg` is overridden
+   * on the same element (`:root`) by the light block below, and a custom
+   * property's value is substituted at computed-value time, so this picks up
+   * whichever `--color-bg` won the cascade.
+   *
+   * Always pair with an opaque fallback behind an `@supports` query —
+   * `backdrop-filter` is what makes an 80% tint readable, so a browser
+   * without it must get a solid surface instead of see-through text.
+   */
+  --glass-bg: color-mix(in srgb, var(--color-bg) 80%, transparent);
+  --glass-blur: blur(12px);
 }
 
 :root[data-theme='light'] {

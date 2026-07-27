@@ -17,9 +17,40 @@
   right: 0;
   z-index: 50;
   height: var(--topbar-height);
-  background-color: color-mix(in srgb, var(--color-bg) 80%, transparent);
-  backdrop-filter: blur(12px);
+  /* Opaque fallback for browsers without `backdrop-filter`; the `@supports`
+     block below swaps in the glass fill where the blur can be rendered. */
+  background-color: var(--color-bg);
   border-bottom: 1px solid var(--color-border);
+}
+
+/*
+ * The blur lives on a pseudo-element rather than on `.topbar` itself, and this
+ * is load-bearing: an element with `backdrop-filter` becomes a *backdrop root*
+ * for its descendants, and a descendant's backdrop is then limited to what its
+ * blurred ancestor painted — the page behind is excluded. Both panels that
+ * hang off this bar (the account menu, the mobile disclosure sheet) are
+ * descendants, so with the filter on `.topbar` they came out translucent but
+ * unblurred: they were blurring an empty backdrop.
+ *
+ * `z-index: -1` keeps the fill behind the bar's own content; it cannot escape
+ * the bar because `.topbar` establishes a stacking context (`position: fixed`
+ * plus a `z-index`). The border-bottom stays on `.topbar` — borders paint
+ * above negative-z children.
+ */
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .topbar {
+    background-color: transparent;
+  }
+
+  .topbar::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background-color: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+  }
 }
 
 .inner {
@@ -136,9 +167,17 @@
   padding: var(--space-1);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  background-color: color-mix(in srgb, var(--color-bg) 80%, transparent);
-  backdrop-filter: blur(12px);
+  /* Opaque fallback; glass applied in the `@supports` block below. */
+  background-color: var(--color-surface);
   box-shadow: var(--shadow-card);
+}
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .accountMenu {
+    background-color: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+  }
 }
 
 .accountMenuItem {
@@ -309,7 +348,9 @@
   transform: rotate(-45deg);
 }
 
-@media (max-width: 480px) {
+/* Same 580px threshold the dashboard uses to go single-column: below it the
+   bar has no room for a full email address next to the brand and the actions. */
+@media (max-width: 580px) {
   .accountName {
     display: none;
   }
@@ -349,11 +390,10 @@
     opacity: 0;
     overflow: hidden;
     visibility: hidden;
-    /* The same translucent-surface treatment as the bar itself (see `.topbar`),
-     * so the sheet reads as an extension of it rather than as an opaque panel
-     * dropped over the page. */
-    background-color: color-mix(in srgb, var(--color-bg) 80%, transparent);
-    backdrop-filter: blur(12px);
+    /* The same treatment as the bar itself (see `.topbar`), so the sheet reads
+     * as an extension of it rather than as an opaque panel dropped over the
+     * page. Opaque fallback here, glass in the `@supports` block below. */
+    background-color: var(--color-bg);
     border-bottom: 1px solid transparent;
     transition:
       max-height 0.3s ease-in-out,
@@ -392,6 +432,14 @@
 
   .menuButton {
     display: inline-flex;
+  }
+
+  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+    .publicNav {
+      background-color: var(--glass-bg);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+    }
   }
 }
 

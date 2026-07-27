@@ -7,10 +7,19 @@
   box-sizing: border-box;
 }
 
-html,
+/*
+ * `min-height`, not `height`: the app frame and the landing both grow past the
+ * viewport, and a fixed-height box holding taller content is the setup that
+ * produced a second scrollbar next to the app's own. Only `html` keeps a
+ * definite height, as the reference the percentages below resolve against.
+ */
+html {
+  height: 100%;
+}
+
 body,
 #root {
-  height: 100%;
+  min-height: 100%;
 }
 
 /*

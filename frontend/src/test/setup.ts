@@ -99,6 +99,73 @@ function ensureObjectUrl() {
 
 ensureObjectUrl();
 
+/**
+ * jsdom performs no layout, so every element measures 0x0 and has no
+ * `ResizeObserver` at all. Recharts' `ResponsiveContainer` (ADR-013) asks its
+ * parent for a size and refuses to draw anything at zero, which would make
+ * every chart invisible to component tests.
+ *
+ * These two shims give the tree a plausible, fixed size instead: a container
+ * that reports 600x300 and an observer that reports that same box once, on
+ * subscribe. They are deliberately global rather than per-test — no test
+ * asserts on real geometry (jsdom cannot produce any), so a constant size is
+ * strictly more truthful than the 0 it would otherwise see.
+ */
+const CHART_TEST_WIDTH = 600;
+const CHART_TEST_HEIGHT = 300;
+
+function ensureLayoutSize() {
+  for (const [property, value] of [
+    ['offsetWidth', CHART_TEST_WIDTH],
+    ['offsetHeight', CHART_TEST_HEIGHT],
+    ['clientWidth', CHART_TEST_WIDTH],
+    ['clientHeight', CHART_TEST_HEIGHT],
+  ] as const) {
+    Object.defineProperty(HTMLElement.prototype, property, {
+      configurable: true,
+      value,
+    });
+  }
+}
+
+function ensureResizeObserver() {
+  if (typeof window.ResizeObserver === 'function') {
+    return;
+  }
+  window.ResizeObserver = class {
+    constructor(private readonly callback: ResizeObserverCallback) {}
+
+    observe(target: Element) {
+      this.callback(
+        [
+          {
+            target,
+            contentRect: {
+              width: CHART_TEST_WIDTH,
+              height: CHART_TEST_HEIGHT,
+              top: 0,
+              left: 0,
+              bottom: CHART_TEST_HEIGHT,
+              right: CHART_TEST_WIDTH,
+              x: 0,
+              y: 0,
+              toJSON: () => ({}),
+            } as DOMRectReadOnly,
+          } as ResizeObserverEntry,
+        ],
+        this as unknown as ResizeObserver,
+      );
+    }
+
+    unobserve() {}
+
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+}
+
+ensureLayoutSize();
+ensureResizeObserver();
+
 afterEach(() => {
   cleanup();
 });

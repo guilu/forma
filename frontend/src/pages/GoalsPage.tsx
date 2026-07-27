@@ -127,7 +127,12 @@ export function GoalsPage() {
           <h1 className={styles.title}>Objetivos</h1>
           <p className={styles.subtitle}>Define tus metas y sigue tu progreso.</p>
         </div>
-        {state.status === 'ready' && (
+        {/*
+          Only once there is a list to add to. On an empty list the empty state
+          below already carries this exact action as its primary call to
+          action, and showing both put the same button on screen twice.
+        */}
+        {state.status === 'ready' && state.goals.length > 0 && (
           <Button variant="primary" type="button" onClick={() => setCreating(true)}>
             Crear objetivo
           </Button>

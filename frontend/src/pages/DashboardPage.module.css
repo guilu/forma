@@ -61,7 +61,7 @@
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: var(--space-4);
-  align-items: start;
+  align-items: stretch;
 }
 
 /* Second row: next training / menu / macros / trend. */
@@ -69,7 +69,7 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-5);
-  align-items: start;
+  align-items: stretch;
 }
 
 /* Third row: progress / evolution / shopping / (tip + plan banner). */
@@ -77,13 +77,33 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-5);
-  align-items: start;
+  align-items: stretch;
+}
+
+/*
+ * Every card in a row shares the row's height (`align-items: stretch` above),
+ * and no card is allowed to be wider than its track: a grid item's automatic
+ * minimum size is its *content* size, so a single unbreakable row (the
+ * Evolución range tabs, a long shopping-list item) would otherwise push the
+ * card past the column and give the whole page a horizontal scrollbar.
+ */
+.metrics > *,
+.rowFour > *,
+.rowThree > * {
+  min-width: 0;
 }
 
 .tipColumn {
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
+  min-width: 0;
+}
+
+/* The tip card absorbs the leftover height so the plan banner stays at the
+   bottom of the column and the column matches its row-mates. */
+.tipColumn > :first-child {
+  flex: 1;
 }
 
 @media (max-width: 1100px) {
@@ -100,7 +120,12 @@
   }
 }
 
-@media (max-width: 560px) {
+/*
+ * Single column below 580px. The breakpoint sits above the widest common phone
+ * viewport (a two-up grid there leaves ~250px tracks, too narrow for a headline
+ * value plus its caption without wrapping mid-word).
+ */
+@media (max-width: 580px) {
   .metrics,
   .rowFour,
   .rowThree {

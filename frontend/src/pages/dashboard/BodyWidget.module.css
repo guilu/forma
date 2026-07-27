@@ -22,7 +22,8 @@
   }
 }
 
-@media (max-width: 560px) {
+/* Kept in step with the dashboard rows' single-column breakpoint. */
+@media (max-width: 580px) {
   .body {
     grid-template-columns: minmax(0, 1fr);
   }

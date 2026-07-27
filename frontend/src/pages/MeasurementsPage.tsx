@@ -291,6 +291,7 @@ function MeasurementsDashboard({ measurements, activeTab, setActiveTab }: Dashbo
                 trend={
                   points.length >= 2 ? (
                     <LineChart
+                      variant="spark"
                       points={points}
                       formatValue={(v) => v.toFixed(1)}
                       ariaLabel={`Evolución reciente de ${metric.label.toLowerCase()}`}
