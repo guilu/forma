@@ -2,20 +2,26 @@
  * FOR-185: the shell no longer carries a topbar row — RootLayout owns the bar
  * above it — so this is a single row of `sidebar | content`.
  *
- * The frame is still bounded to what is left of the viewport rather than
- * growing with the page (FOR-164): a `height` computed from the viewport minus
- * the bar, with `overflow: hidden` here and `overflow-y: auto` on `.content`,
- * so scrolling happens inside the content column and the sidebar stays put.
- * The height is computed rather than inherited as `100%` because RootLayout's
- * grid is sized with `min-height` (a public page must be able to grow), which
- * leaves the row's height indefinite and percentage heights unresolvable.
- * `100dvh` accounts for mobile browser chrome collapsing; `100vh` is the
- * fallback for environments without `dvh`.
+ * The page is the only scroller. This used to be an app-style frame pinned to
+ * the viewport (`height: calc(100dvh - var(--topbar-height))` plus
+ * `overflow: hidden`, with `overflow-y: auto` on the content column), which put
+ * a viewport-height scroll container *inside* a document that RootLayout also
+ * sizes to the viewport. Whenever those two viewport units disagreed by even a
+ * few pixels — and on mobile they routinely do, since `100%`, `100vh` and
+ * `100dvh` resolve against different viewports while the browser chrome
+ * collapses — the document grew its own scrollbar beside the inner one, and
+ * scrolling the outer one dragged the whole frame up leaving an empty band
+ * below it.
+ *
+ * A single scroller cannot drift out of step with itself, so no arithmetic
+ * here has to stay true: the shell grows with its content and the sidebar
+ * stays put by sticking (see `.sidebar` in Sidebar.module.css) rather than by
+ * living in a clipped box. `min-height` keeps a short page's sidebar and
+ * background filling the screen.
  */
 .shell {
-  height: calc(100vh - var(--topbar-height));
-  height: calc(100dvh - var(--topbar-height));
-  overflow: hidden;
+  min-height: calc(100vh - var(--topbar-height));
+  min-height: calc(100dvh - var(--topbar-height));
   display: grid;
   grid-template-columns: var(--sidebar-width) 1fr;
   grid-template-areas: 'sidebar content';
@@ -24,7 +30,10 @@
 .content {
   grid-area: content;
   padding: var(--space-6);
-  overflow-y: auto;
+  /* No `overflow` of its own: see the note above — the page scrolls, not this
+     column. `min-width: 0` keeps a wide child (a chart, a table) from pushing
+     the grid track wider than the viewport. */
+  min-width: 0;
 }
 
 /*

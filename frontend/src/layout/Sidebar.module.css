@@ -1,5 +1,19 @@
+/*
+ * Stays in place while the page scrolls under it. The shell no longer clips
+ * itself to the viewport (see AppShell.module.css), so this is what keeps the
+ * navigation on screen: it sticks just below the fixed top bar, and is given
+ * its own height plus `align-self: start` because a grid item stretched to the
+ * full row height would have nowhere to travel and would never stick. It
+ * scrolls internally if the nav ever outgrows the viewport.
+ */
 .sidebar {
   grid-area: sidebar;
+  position: sticky;
+  top: var(--topbar-height);
+  align-self: start;
+  height: calc(100vh - var(--topbar-height));
+  height: calc(100dvh - var(--topbar-height));
+  overflow-y: auto;
   width: var(--sidebar-width);
   background-color: var(--color-surface);
   border-right: 1px solid var(--color-border);
