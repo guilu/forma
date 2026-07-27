@@ -20,10 +20,17 @@ test.beforeEach(async ({ page }) => {
   await stubApi(page);
 });
 
-/** Waits for the route's own content, not just the shell around it. */
+/**
+ * Waits for the route's own content, not just the shell around it.
+ *
+ * <p>The page's `<h1>` is the signal, deliberately: `<main>` is part of the
+ * frame and appears immediately, holding the Suspense fallback while the
+ * route's chunk is fetched (routes are code-split — see `app/routes.tsx`).
+ * Measuring on `<main>` alone measures the loading state.
+ */
 async function gotoApp(page: Page, path: string): Promise<void> {
   await page.goto(path);
-  await expect(page.getByRole('main')).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   // Charts size themselves from a measured box, so give the first paint a
   // chance to settle before measuring anything.
   await page.waitForFunction(() => document.fonts.ready.then(() => true));
@@ -102,5 +109,30 @@ test.describe('glass chrome', () => {
     // blurred pill, then painted opaque by a later same-specificity rule.
     await page.getByRole('button', { name: 'Más' }).click();
     await expectGlassSurface(page, '[role="menu"]');
+  });
+});
+
+test.describe('code splitting', () => {
+  test('the public landing never fetches the charting library', async ({ page }) => {
+    const modules: string[] = [];
+    page.on('request', (request) => {
+      if (request.resourceType() === 'script') modules.push(new URL(request.url()).pathname);
+    });
+
+    await page.goto('/');
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+
+    // Recharts is ~110 kB gzipped and is reachable only from the pages behind
+    // `/app` (ADR-013). An anonymous visitor must not pay for it — which is
+    // what happens the moment a chart component is imported statically from
+    // anything the landing renders.
+    const charting = modules.filter((path) => path.includes('recharts'));
+    expect(charting, `The landing loaded the charting library:\n${charting.join('\n')}`).toEqual(
+      [],
+    );
+
+    // Guards the check itself: if the landing stopped loading scripts at all,
+    // the assertion above would pass for the wrong reason.
+    expect(modules.length, 'No scripts were loaded at all').toBeGreaterThan(0);
   });
 });

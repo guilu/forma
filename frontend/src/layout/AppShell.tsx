@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { Suspense, useEffect, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
+import { LoadingState } from '../components/LoadingState';
 import { Sidebar } from './Sidebar';
 import { MobileNav } from './MobileNav';
 import styles from './AppShell.module.css';
@@ -43,7 +44,15 @@ export function AppShell() {
     <div className={styles.shell}>
       <Sidebar />
       <main id="main-content" ref={mainRef} tabIndex={-1} className={styles.content}>
-        <Outlet />
+        {/*
+          The pages behind this outlet are code-split (see app/routes.tsx), so
+          the boundary sits *inside* the frame: the bar, the sidebar and the
+          bottom nav stay on screen while the next section's chunk arrives,
+          and only the content area shows the loading state.
+        */}
+        <Suspense fallback={<LoadingState message="Cargando la sección…" />}>
+          <Outlet />
+        </Suspense>
       </main>
       <MobileNav />
     </div>

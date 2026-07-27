@@ -60,6 +60,11 @@ vi.mock('./api/integrations', () => ({
  * mounts, the index route renders the Dashboard, a known route resolves, and
  * unknown routes fall back to the not-found page.
  */
+// Route pages are code-split (app/routes.tsx), so these waits cover a dynamic
+// import resolving, not just a render. Under full-suite load that can exceed
+// testing-library's 1s default, which made these assertions flaky.
+const CHUNK_TIMEOUT = { timeout: 5000 };
+
 describe('App', () => {
   it('renders the public landing on the index route', () => {
     render(
@@ -81,14 +86,16 @@ describe('App', () => {
     expect(screen.getByRole('banner')).toBeInTheDocument();
   });
 
-  it('renders the Dashboard at the protected /app entry point', () => {
+  it('renders the Dashboard at the protected /app entry point', async () => {
     render(
       <MemoryRouter initialEntries={['/app']}>
         <App />
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole('heading', { name: 'Hola 👋' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Hola 👋' }, CHUNK_TIMEOUT),
+    ).toBeInTheDocument();
     expect(screen.getAllByRole('navigation').length).toBeGreaterThan(0);
   });
 
@@ -117,7 +124,7 @@ describe('App', () => {
   it.each([
     ['/', /Entrena\. Nutre\. Evoluciona\./],
     ['/auth?code=abc&state=xyz', /Conexión con Withings/],
-  ])('keeps %s public for anonymous users', (path, heading) => {
+  ])('keeps %s public for anonymous users', async (path, heading) => {
     authStatus = 'anonymous';
     render(
       <MemoryRouter initialEntries={[path]}>
@@ -125,47 +132,57 @@ describe('App', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: heading }, CHUNK_TIMEOUT),
+    ).toBeInTheDocument();
   });
 
-  it('renders a known section route', () => {
+  it('renders a known section route', async () => {
     render(
       <MemoryRouter initialEntries={['/app/nutricion']}>
         <App />
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole('heading', { name: 'Nutrición' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Nutrición' }, CHUNK_TIMEOUT),
+    ).toBeInTheDocument();
   });
 
-  it('renders the FOR-58 settings screen at /ajustes', () => {
+  it('renders the FOR-58 settings screen at /ajustes', async () => {
     render(
       <MemoryRouter initialEntries={['/app/ajustes']}>
         <App />
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole('heading', { name: 'Configuración' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Configuración' }, CHUNK_TIMEOUT),
+    ).toBeInTheDocument();
   });
 
-  it('renders the FOR-57 integrations screen at its standalone sub-route', () => {
+  it('renders the FOR-57 integrations screen at its standalone sub-route', async () => {
     render(
       <MemoryRouter initialEntries={['/app/ajustes/integraciones']}>
         <App />
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole('heading', { name: 'Integraciones' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Integraciones' }, CHUNK_TIMEOUT),
+    ).toBeInTheDocument();
   });
 
-  it('renders the FOR-59 onboarding flow at /onboarding, outside the AppShell', () => {
+  it('renders the FOR-59 onboarding flow at /onboarding, outside the AppShell', async () => {
     render(
       <MemoryRouter initialEntries={['/onboarding']}>
         <App />
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole('heading', { name: 'Perfil' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Perfil' }, CHUNK_TIMEOUT),
+    ).toBeInTheDocument();
     // Onboarding is not a nav section (app/navigation.ts) and is not wrapped in
     // AppShell, so the persistent sidebar/mobile nav must not be present.
     expect(screen.queryAllByRole('navigation')).toHaveLength(0);
@@ -178,19 +195,23 @@ describe('App', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole('heading', { name: 'Conexión con Withings' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Conexión con Withings' }, CHUNK_TIMEOUT),
+    ).toBeInTheDocument();
     // Same rationale as /onboarding: a mid-flow OAuth landing renders outside
     // AppShell, so the persistent sidebar/mobile nav must not be present.
     expect(screen.queryAllByRole('navigation')).toHaveLength(0);
   });
 
-  it('falls back to the not-found page for unknown routes', () => {
+  it('falls back to the not-found page for unknown routes', async () => {
     render(
       <MemoryRouter initialEntries={['/does-not-exist']}>
         <App />
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole('heading', { name: 'Página no encontrada' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Página no encontrada' }, CHUNK_TIMEOUT),
+    ).toBeInTheDocument();
   });
 });

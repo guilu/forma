@@ -47,6 +47,11 @@ vi.mock('../api/insights', () => ({
  * accessible DOM. Here, clicking a sidebar link navigates and marks the link as
  * the current page — no backend, no product data.
  */
+// Route pages are code-split (app/routes.tsx), so these waits cover a dynamic
+// import resolving, not just a render. Under full-suite load that can exceed
+// testing-library's 1s default, which made these assertions flaky.
+const CHUNK_TIMEOUT = { timeout: 5000 };
+
 describe('sidebar navigation', () => {
   it('navigates to a section when its link is clicked', async () => {
     const user = userEvent.setup();
@@ -58,13 +63,19 @@ describe('sidebar navigation', () => {
 
     // Starts on the Dashboard (generic greeting — no profile is mocked here, so
     // the name stays unset, FOR-169 empty first-run).
-    expect(screen.getByRole('heading', { name: 'Hola 👋' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Hola 👋' }, CHUNK_TIMEOUT),
+    ).toBeInTheDocument();
 
     // "Objetivos" is a secondary section, so it appears once (sidebar only).
     const link = screen.getByRole('link', { name: 'Objetivos' });
     await user.click(link);
 
-    expect(screen.getByRole('heading', { name: 'Objetivos' })).toBeInTheDocument();
+    // Sections are code-split (app/routes.tsx), so the heading arrives with the
+    // route's chunk rather than on the click itself.
+    expect(
+      await screen.findByRole('heading', { name: 'Objetivos' }, CHUNK_TIMEOUT),
+    ).toBeInTheDocument();
     expect(link).toHaveAttribute('aria-current', 'page');
   });
 
@@ -85,7 +96,9 @@ describe('sidebar navigation', () => {
 
     await user.keyboard('{Enter}');
 
-    expect(screen.getByRole('heading', { name: 'Mediciones' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Mediciones' }, CHUNK_TIMEOUT),
+    ).toBeInTheDocument();
     expect(link).toHaveAttribute('aria-current', 'page');
   });
 });
