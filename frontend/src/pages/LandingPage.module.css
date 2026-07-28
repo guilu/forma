@@ -173,9 +173,24 @@
   align-self: stretch;
   display: flex;
   flex-direction: column;
-  align-items: stretch;
+  align-items: center;
   gap: var(--space-2);
   padding-top: var(--space-2);
+}
+
+/*
+ * Stacked on a phone, a CTA stretched edge to edge stops reading as a button
+ * and starts reading as a form field. Cap the pair at a thumb-friendly width
+ * and centre it, so the gutters keep them looking tappable. Both share the cap
+ * rather than sizing to their own label, so the stack reads as one column.
+ * Released at the row breakpoint below, where they size to their content.
+ */
+.heroActions .ctaPrimary,
+.heroActions .ctaGlass {
+  width: min(100%, 15rem);
+  /* The cap sizes the box now, so the wide inline padding of the row layout
+     would only eat into the label and wrap it onto a second line. */
+  padding-inline: var(--space-4);
 }
 
 /*
@@ -769,6 +784,13 @@
   .heroActions {
     flex-direction: row;
     justify-content: center;
+  }
+
+  /* Side by side there is no full-bleed to avoid: let each label size itself. */
+  .heroActions .ctaPrimary,
+  .heroActions .ctaGlass {
+    width: auto;
+    padding-inline: var(--space-8);
   }
 }
 
