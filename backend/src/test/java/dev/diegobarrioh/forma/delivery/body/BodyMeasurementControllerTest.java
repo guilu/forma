@@ -3,18 +3,24 @@ package dev.diegobarrioh.forma.delivery.body;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import dev.diegobarrioh.forma.application.BodyMeasurementService;
+import dev.diegobarrioh.forma.application.NotFoundException;
+import dev.diegobarrioh.forma.application.StoredBodyMeasurement;
 import dev.diegobarrioh.forma.domain.BodyMeasurement;
 import dev.diegobarrioh.forma.domain.MeasurementSource;
 import dev.diegobarrioh.forma.support.WebMvcAuthTestConfig;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -37,6 +43,11 @@ class BodyMeasurementControllerTest {
 
   @Autowired private MockMvc mockMvc;
   @MockBean private BodyMeasurementService service;
+
+  /** Pairs a measurement with the persistence id the list endpoint now exposes (FOR-187). */
+  private static StoredBodyMeasurement stored(BodyMeasurement measurement) {
+    return new StoredBodyMeasurement(UUID.randomUUID(), measurement);
+  }
 
   private static BodyMeasurement measurement(Instant measuredAt, double weightKg) {
     return new BodyMeasurement(
@@ -210,8 +221,8 @@ class BodyMeasurementControllerTest {
     when(service.list())
         .thenReturn(
             List.of(
-                measurement(Instant.parse("2026-07-05T08:00:00Z"), 79.5),
-                measurement(Instant.parse("2026-07-01T08:00:00Z"), 80.0)));
+                stored(measurement(Instant.parse("2026-07-05T08:00:00Z"), 79.5)),
+                stored(measurement(Instant.parse("2026-07-01T08:00:00Z"), 80.0))));
 
     mockMvc
         .perform(get(PATH))
@@ -227,8 +238,9 @@ class BodyMeasurementControllerTest {
     when(service.list())
         .thenReturn(
             List.of(
-                measurementWithMuscleAndWater(
-                    Instant.parse("2026-07-05T08:00:00Z"), 79.5, 62.8, 58.0)));
+                stored(
+                    measurementWithMuscleAndWater(
+                        Instant.parse("2026-07-05T08:00:00Z"), 79.5, 62.8, 58.0))));
 
     mockMvc
         .perform(get(PATH))
@@ -241,7 +253,8 @@ class BodyMeasurementControllerTest {
   void getReturnsBmiCategoryForMeasurementWithBmi() throws Exception {
     // 22.7 falls in the SALUDABLE band (18.5 <= bmi < 25.0), per FOR-101.
     when(service.list())
-        .thenReturn(List.of(measurementWithBmi(Instant.parse("2026-07-05T08:00:00Z"), 73.6, 22.7)));
+        .thenReturn(
+            List.of(stored(measurementWithBmi(Instant.parse("2026-07-05T08:00:00Z"), 73.6, 22.7))));
 
     mockMvc
         .perform(get(PATH))
@@ -251,9 +264,45 @@ class BodyMeasurementControllerTest {
   }
 
   @Test
+  void getExposesTheMeasurementIdSoItCanBeAddressed() throws Exception {
+    StoredBodyMeasurement one = stored(measurement(Instant.parse("2026-07-05T08:00:00Z"), 79.5));
+    when(service.list()).thenReturn(List.of(one));
+
+    mockMvc
+        .perform(get(PATH))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].id").value(one.id().toString()));
+  }
+
+  @Test
+  void deleteRemovesTheMeasurementAndAnswersNoContent() throws Exception {
+    UUID id = UUID.randomUUID();
+
+    mockMvc.perform(delete(PATH + "/" + id)).andExpect(status().isNoContent());
+
+    verify(service).delete(id);
+  }
+
+  /**
+   * A measurement that does not exist and one belonging to another account answer the same 404 —
+   * the service throws for both, so the response never confirms an id exists (ADR-002).
+   */
+  @Test
+  void deleteAnswersNotFoundWhenTheMeasurementIsNotTheCallers() throws Exception {
+    UUID id = UUID.randomUUID();
+    doThrow(new NotFoundException("Medición no encontrada.")).when(service).delete(id);
+
+    mockMvc
+        .perform(delete(PATH + "/" + id))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+  }
+
+  @Test
   void getOmitsBmiCategoryWhenBmiIsNull() throws Exception {
     when(service.list())
-        .thenReturn(List.of(measurementWithBmi(Instant.parse("2026-07-05T08:00:00Z"), 73.6, null)));
+        .thenReturn(
+            List.of(stored(measurementWithBmi(Instant.parse("2026-07-05T08:00:00Z"), 73.6, null))));
 
     mockMvc
         .perform(get(PATH))

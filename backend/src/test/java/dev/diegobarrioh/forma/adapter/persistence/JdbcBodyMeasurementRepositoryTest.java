@@ -3,6 +3,7 @@ package dev.diegobarrioh.forma.adapter.persistence;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.diegobarrioh.forma.application.BodyMeasurementRepository;
+import dev.diegobarrioh.forma.application.StoredBodyMeasurement;
 import dev.diegobarrioh.forma.bootstrap.LegacyUserBootstrap;
 import dev.diegobarrioh.forma.domain.BodyMeasurement;
 import dev.diegobarrioh.forma.domain.MeasurementSource;
@@ -28,6 +29,7 @@ import org.springframework.test.context.ActiveProfiles;
 class JdbcBodyMeasurementRepositoryTest {
 
   private static final UUID OWNER = LegacyUserBootstrap.PLACEHOLDER_USER_ID;
+  private static final UUID OTHER_OWNER = UUID.randomUUID();
 
   @Autowired private BodyMeasurementRepository repository;
   @Autowired private JdbcTemplate jdbcTemplate;
@@ -36,6 +38,23 @@ class JdbcBodyMeasurementRepositoryTest {
   @org.junit.jupiter.api.BeforeEach
   void clearTable() {
     jdbcTemplate.update("DELETE FROM body_measurements");
+    jdbcTemplate.update("DELETE FROM users WHERE id = ?", OTHER_OWNER);
+    jdbcTemplate.update(
+        "INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)",
+        OTHER_OWNER,
+        "body-other-owner@test.local",
+        "!");
+  }
+
+  /**
+   * Leaves no rows referencing {@code OTHER_OWNER} behind: a later test class sharing this named
+   * in-memory H2 DB (ADR-007) that blanket-deletes non-placeholder {@code users} would otherwise
+   * hit an FK violation — same guard as {@code JdbcGoalRepositoryTest}.
+   */
+  @org.junit.jupiter.api.AfterEach
+  void cleanUpOtherOwner() {
+    jdbcTemplate.update("DELETE FROM body_measurements");
+    jdbcTemplate.update("DELETE FROM users WHERE id = ?", OTHER_OWNER);
   }
 
   @Test
@@ -119,6 +138,73 @@ class JdbcBodyMeasurementRepositoryTest {
     assertThat(stored)
         .extracting(BodyMeasurement::measuredAt)
         .containsExactly(newer.measuredAt(), older.measuredAt());
+  }
+
+  /**
+   * The row's primary key never left this adapter before FOR-187: the domain type carries no
+   * identity, so a caller had no way to name one measurement among several. {@code listWithIds}
+   * lends the persistence id to the delivery layer without turning the domain value object into an
+   * entity.
+   */
+  @Test
+  void listWithIdsCarriesThePersistenceIdAlongsideEachMeasurement() {
+    BodyMeasurement newer = measurement("2026-07-06T08:00:00Z", 74.0);
+    BodyMeasurement older = measurement("2026-07-05T08:00:00Z", 75.0);
+    repository.save(OWNER, older);
+    repository.save(OWNER, newer);
+
+    List<StoredBodyMeasurement> stored = repository.listWithIds(OWNER);
+
+    // Same order as list(): newest first.
+    assertThat(stored)
+        .extracting(s -> s.measurement().measuredAt())
+        .containsExactly(newer.measuredAt(), older.measuredAt());
+    assertThat(stored).extracting(StoredBodyMeasurement::id).doesNotContainNull();
+    // Two rows, two distinct ids — the id is what makes them addressable.
+    assertThat(stored).extracting(StoredBodyMeasurement::id).doesNotHaveDuplicates();
+  }
+
+  @Test
+  void deleteRemovesOnlyTheAddressedMeasurement() {
+    repository.save(OWNER, measurement("2026-07-05T08:00:00Z", 75.0));
+    repository.save(OWNER, measurement("2026-07-06T08:00:00Z", 74.0));
+    StoredBodyMeasurement target = repository.listWithIds(OWNER).get(0);
+
+    assertThat(repository.delete(OWNER, target.id())).isTrue();
+
+    assertThat(repository.list(OWNER))
+        .extracting(BodyMeasurement::measuredAt)
+        .containsExactly(Instant.parse("2026-07-05T08:00:00Z"));
+  }
+
+  @Test
+  void deleteReportsNothingRemovedForAnUnknownId() {
+    repository.save(OWNER, measurement("2026-07-05T08:00:00Z", 75.0));
+
+    assertThat(repository.delete(OWNER, UUID.randomUUID())).isFalse();
+    assertThat(repository.list(OWNER)).hasSize(1);
+  }
+
+  /** Owner scoping is enforced in SQL, not by the caller checking first (ADR-002). */
+  @Test
+  void deleteLeavesAnotherOwnersMeasurementAlone() {
+    repository.save(OTHER_OWNER, measurement("2026-07-05T08:00:00Z", 75.0));
+    UUID otherOwnersId = repository.listWithIds(OTHER_OWNER).get(0).id();
+
+    assertThat(repository.delete(OWNER, otherOwnersId)).isFalse();
+    assertThat(repository.list(OTHER_OWNER)).hasSize(1);
+  }
+
+  private static BodyMeasurement measurement(String measuredAt, double weightKg) {
+    return new BodyMeasurement(
+        Instant.parse(measuredAt),
+        MeasurementSource.MANUAL,
+        weightKg,
+        null,
+        null,
+        null,
+        null,
+        null);
   }
 
   @Test

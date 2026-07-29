@@ -64,6 +64,16 @@
   align-items: start;
 }
 
+/*
+ * A grid item's automatic minimum size is its content size, so the history card
+ * grew to whatever its (non-wrapping) table wanted and pushed the page into a
+ * horizontal scrollbar — which is what adding the actions column did. Capping
+ * the item is what lets `.tableScroll` scroll the table instead of the page.
+ */
+.historyRow > * {
+  min-width: 0;
+}
+
 .panel {
   min-width: 0;
 }
@@ -197,6 +207,55 @@
   .historyRow {
     grid-template-columns: 2fr 1fr;
   }
+}
+
+/* Row action: an icon target, sized to stay tappable without widening the
+   table's last column (ui-guidelines: 44px minimum touch target). */
+.deleteRow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.deleteRow:hover:not(:disabled) {
+  color: var(--color-danger);
+  background-color: color-mix(in srgb, var(--color-danger) 12%, transparent);
+}
+
+.deleteRow:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Delete failures report in place, above the table (FOR-187) — same treatment
+   as the integrations section's action errors. */
+.actionError {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-3);
+  font-size: var(--font-size-sm);
+  color: var(--color-danger);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-md);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* Section tabs replace the always-visible layout on small screens: only the

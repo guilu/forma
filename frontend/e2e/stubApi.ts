@@ -23,8 +23,11 @@ const MEASUREMENTS = [
   { measuredAt: '2026-07-22T07:30:00Z', weightKg: 73.3, bodyFatPercentage: 15.4, bmi: 22.3 },
   { measuredAt: '2026-07-21T07:30:00Z', weightKg: 73.3, bodyFatPercentage: 15.9, bmi: 22.3 },
   { measuredAt: '2026-07-20T07:30:00Z', weightKg: 73.0, bodyFatPercentage: 16.0, bmi: 22.2 },
-].map((m) => ({
+].map((m, index) => ({
   ...m,
+  // The list endpoint carries the stored row's id (FOR-187); the delete action
+  // in the history table is disabled without it.
+  id: `00000000-0000-4000-8000-00000000000${index}`,
   source: 'MANUAL',
   fatMassKg: Number((m.weightKg * (m.bodyFatPercentage / 100)).toFixed(1)),
   leanMassKg: Number((m.weightKg * (1 - m.bodyFatPercentage / 100)).toFixed(1)),

@@ -1,6 +1,7 @@
 package dev.diegobarrioh.forma.delivery.body;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import dev.diegobarrioh.forma.application.StoredBodyMeasurement;
 import dev.diegobarrioh.forma.domain.BmiCategory;
 import dev.diegobarrioh.forma.domain.BodyMeasurement;
 import java.time.Instant;
@@ -23,6 +24,7 @@ import java.time.Instant;
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record BodyMeasurementResponse(
+    String id,
     Instant measuredAt,
     String source,
     double weightKg,
@@ -35,10 +37,28 @@ public record BodyMeasurementResponse(
     Double waterPercentage,
     String notes) {
 
-  /** Maps a domain measurement to its API read model. */
+  /**
+   * Maps a stored measurement — id included — to its API read model (FOR-187). This is what {@code
+   * GET} returns, and the id is what {@code DELETE /{id}} addresses.
+   */
+  public static BodyMeasurementResponse from(StoredBodyMeasurement stored) {
+    return from(stored.measurement(), stored.id().toString());
+  }
+
+  /**
+   * Maps a measurement with no stored row behind it yet: the {@code POST} response, whose id the
+   * create use case does not return (the row's key is generated in the persistence adapter). {@code
+   * id} is then absent from the JSON rather than null or invented — a client that needs it re-reads
+   * the list.
+   */
   public static BodyMeasurementResponse from(BodyMeasurement measurement) {
+    return from(measurement, null);
+  }
+
+  private static BodyMeasurementResponse from(BodyMeasurement measurement, String id) {
     BmiCategory category = BmiCategory.classify(measurement.bmi());
     return new BodyMeasurementResponse(
+        id,
         measurement.measuredAt(),
         measurement.source().name(),
         measurement.weightKg(),

@@ -4,8 +4,11 @@ import dev.diegobarrioh.forma.application.BodyMeasurementService;
 import dev.diegobarrioh.forma.delivery.ApiPaths;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -36,10 +39,25 @@ public class BodyMeasurementController {
     this.service = service;
   }
 
-  /** Lists measurements, most recent first (FOR-16 order). Empty list when none exist. */
+  /**
+   * Lists measurements, most recent first (FOR-16 order). Empty list when none exist. Each item
+   * carries the {@code id} that {@link #delete} addresses (FOR-187).
+   */
   @GetMapping
   public List<BodyMeasurementResponse> list() {
     return service.list().stream().map(BodyMeasurementResponse::from).toList();
+  }
+
+  /**
+   * Deletes one of the caller's measurements (FOR-187). 204 on success; 404 both when no such
+   * measurement exists and when it belongs to another account — the two are deliberately
+   * indistinguishable (ADR-002), mapped by the FOR-88 {@code GlobalExceptionHandler} from the
+   * exception {@link BodyMeasurementService#delete} throws.
+   */
+  @DeleteMapping("/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void delete(@PathVariable UUID id) {
+    service.delete(id);
   }
 
   /** Records a manually entered measurement ({@code source = MANUAL}) and returns it. */

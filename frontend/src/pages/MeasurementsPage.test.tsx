@@ -5,9 +5,11 @@ import { MeasurementsPage } from './MeasurementsPage';
 import { ApiRequestError } from '../api/client';
 import {
   createBodyMeasurement,
+  deleteBodyMeasurement,
   listBodyMeasurements,
   type BodyMeasurement,
 } from '../api/bodyMeasurements';
+import { NotificationProvider } from '../components/NotificationProvider';
 
 // The page reads via listBodyMeasurements and the manual entry form (reused
 // as-is) writes via createBodyMeasurement — both go through the shared API
@@ -15,13 +17,25 @@ import {
 vi.mock('../api/bodyMeasurements', () => ({
   listBodyMeasurements: vi.fn(),
   createBodyMeasurement: vi.fn(),
+  deleteBodyMeasurement: vi.fn(),
 }));
+
+/** Deleting a measurement reports through the shared toast region (FOR-123). */
+function renderPage() {
+  return render(
+    <NotificationProvider>
+      <MeasurementsPage />
+    </NotificationProvider>,
+  );
+}
 
 const listMock = vi.mocked(listBodyMeasurements);
 const createMock = vi.mocked(createBodyMeasurement);
+const deleteMock = vi.mocked(deleteBodyMeasurement);
 
 const SINGLE: BodyMeasurement[] = [
   {
+    id: 'm1',
     measuredAt: '2026-07-05T08:00:00Z',
     source: 'MANUAL',
     weightKg: 78.4,
@@ -38,6 +52,7 @@ const SINGLE: BodyMeasurement[] = [
 // series as "Todo" — exercising the "cap ranges to available data" rule.
 const MULTI: BodyMeasurement[] = [
   {
+    id: 'm2',
     measuredAt: '2026-07-05T08:00:00Z',
     source: 'MANUAL',
     weightKg: 72.0,
@@ -46,6 +61,7 @@ const MULTI: BodyMeasurement[] = [
     leanMassKg: 61.9,
   },
   {
+    id: 'm3',
     measuredAt: '2026-06-25T08:00:00Z',
     source: 'WITHINGS',
     weightKg: 72.5,
@@ -54,6 +70,7 @@ const MULTI: BodyMeasurement[] = [
     leanMassKg: 62.1,
   },
   {
+    id: 'm4',
     measuredAt: '2026-06-15T08:00:00Z',
     source: 'MANUAL',
     weightKg: 73.0,
@@ -62,6 +79,7 @@ const MULTI: BodyMeasurement[] = [
     leanMassKg: 62.4,
   },
   {
+    id: 'm5',
     measuredAt: '2026-06-05T08:00:00Z',
     source: 'MANUAL',
     weightKg: 73.5,
@@ -70,6 +88,7 @@ const MULTI: BodyMeasurement[] = [
     leanMassKg: 62.7,
   },
   {
+    id: 'm6',
     measuredAt: '2026-05-26T08:00:00Z',
     source: 'MANUAL',
     weightKg: 74.0,
@@ -78,6 +97,7 @@ const MULTI: BodyMeasurement[] = [
     leanMassKg: 62.9,
   },
   {
+    id: 'm7',
     measuredAt: '2026-05-16T08:00:00Z',
     source: '',
     weightKg: 74.3,
@@ -91,18 +111,19 @@ describe('MeasurementsPage', () => {
   beforeEach(() => {
     listMock.mockReset();
     createMock.mockReset();
+    deleteMock.mockReset();
   });
 
   it('shows a loading state while the initial fetch is in flight', () => {
     listMock.mockReturnValue(new Promise(() => {}));
-    render(<MeasurementsPage />);
+    renderPage();
 
     expect(screen.getByRole('status')).toHaveTextContent('Cargando tus mediciones…');
   });
 
   it('shows the empty state with a CTA when there are no measurements', async () => {
     listMock.mockResolvedValue([]);
-    render(<MeasurementsPage />);
+    renderPage();
 
     expect(await screen.findByText('Aún no hay mediciones.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Registrar medición' })).toBeInTheDocument();
@@ -110,7 +131,7 @@ describe('MeasurementsPage', () => {
 
   it('shows an error state with a retry action on load failure', async () => {
     listMock.mockRejectedValueOnce(new Error('network down'));
-    render(<MeasurementsPage />);
+    renderPage();
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'No se pudieron cargar tus mediciones.',
@@ -127,7 +148,7 @@ describe('MeasurementsPage', () => {
 
   it('renders latest metric cards without a delta for a single measurement', async () => {
     listMock.mockResolvedValue(SINGLE);
-    render(<MeasurementsPage />);
+    renderPage();
 
     // Metric cards are direct siblings of the page's <h1> (no intervening <h2>
     // section heading), so per FOR-112 they must render as <h2> to avoid
@@ -144,7 +165,7 @@ describe('MeasurementsPage', () => {
 
   it('renders the placeholder water tile and the body-distribution card (real muscle/fat, placeholder bone/water)', async () => {
     listMock.mockResolvedValue(SINGLE);
-    render(<MeasurementsPage />);
+    renderPage();
 
     // Placeholder "Agua corporal" tile — no "vs semana pasada" delta.
     expect(
@@ -171,7 +192,7 @@ describe('MeasurementsPage', () => {
   it('switches the active mobile tab panel when a tab is selected', async () => {
     listMock.mockResolvedValue(MULTI);
     const user = userEvent.setup();
-    render(<MeasurementsPage />);
+    renderPage();
 
     await screen.findByRole('heading', { name: 'Peso' });
 
@@ -200,7 +221,7 @@ describe('MeasurementsPage', () => {
 
   it('renders the weight evolution chart with a range selector capped to available data', async () => {
     listMock.mockResolvedValue(MULTI);
-    render(<MeasurementsPage />);
+    renderPage();
 
     // Same reasoning as the metric cards above: no <h2> section heading sits
     // between the page <h1> and this chart's title (FOR-112).
@@ -216,7 +237,7 @@ describe('MeasurementsPage', () => {
 
   it('lists recent measurements in the history table with the expected columns', async () => {
     listMock.mockResolvedValue(MULTI);
-    render(<MeasurementsPage />);
+    renderPage();
 
     // No <h2> section heading between the page <h1> and this card (FOR-112).
     expect(
@@ -235,7 +256,7 @@ describe('MeasurementsPage', () => {
 
   it('distinguishes manual and Withings measurements, and gives an unknown source a neutral label', async () => {
     listMock.mockResolvedValue(MULTI);
-    render(<MeasurementsPage />);
+    renderPage();
 
     await screen.findByRole('table');
     await userEvent.setup().click(screen.getByRole('button', { name: 'Ver todas las mediciones' }));
@@ -248,7 +269,7 @@ describe('MeasurementsPage', () => {
   it('opens the manual entry form in a modal and closes it with Cancelar', async () => {
     listMock.mockResolvedValue(SINGLE);
     const user = userEvent.setup();
-    render(<MeasurementsPage />);
+    renderPage();
 
     await screen.findByRole('heading', { name: 'Peso' });
     await user.click(screen.getByRole('button', { name: '+ Registrar medición' }));
@@ -271,7 +292,7 @@ describe('MeasurementsPage', () => {
       bmi: 23.7,
     });
     const user = userEvent.setup();
-    render(<MeasurementsPage />);
+    renderPage();
 
     await screen.findByRole('heading', { name: 'Peso' });
     await user.click(screen.getByRole('button', { name: '+ Registrar medición' }));
@@ -301,7 +322,7 @@ describe('MeasurementsPage', () => {
     listMock.mockResolvedValue(SINGLE);
     createMock.mockRejectedValue(new ApiRequestError(400, 'Request validation failed'));
     const user = userEvent.setup();
-    render(<MeasurementsPage />);
+    renderPage();
 
     await screen.findByRole('heading', { name: 'Peso' });
     await user.click(screen.getByRole('button', { name: '+ Registrar medición' }));
@@ -321,7 +342,7 @@ describe('MeasurementsPage', () => {
   it('shows field-level validation errors close to fields without calling the API', async () => {
     listMock.mockResolvedValue(SINGLE);
     const user = userEvent.setup();
-    render(<MeasurementsPage />);
+    renderPage();
 
     await screen.findByRole('heading', { name: 'Peso' });
     await user.click(screen.getByRole('button', { name: '+ Registrar medición' }));
@@ -329,5 +350,66 @@ describe('MeasurementsPage', () => {
 
     expect(screen.getAllByText('Este campo es obligatorio.').length).toBeGreaterThan(0);
     expect(createMock).not.toHaveBeenCalled();
+  });
+
+  describe('deleting a measurement', () => {
+    /** Names the delete action for the row whose date cell reads `date`. */
+    function deleteButtonFor(date: string) {
+      return within(screen.getByText(date).closest('tr') as HTMLElement).getByRole('button', {
+        name: /Eliminar/,
+      });
+    }
+
+    it('asks for confirmation before deleting, then removes the row and reports it', async () => {
+      listMock.mockResolvedValueOnce(SINGLE).mockResolvedValueOnce([]);
+      deleteMock.mockResolvedValue(undefined);
+      const user = userEvent.setup();
+      renderPage();
+
+      await screen.findByRole('table');
+      await user.click(deleteButtonFor('5 jul'));
+
+      // Destructive confirmation first (FOR-63 pattern), no call yet.
+      const dialog = await screen.findByRole('dialog');
+      expect(deleteMock).not.toHaveBeenCalled();
+      await user.click(within(dialog).getByRole('button', { name: 'Eliminar' }));
+
+      await waitFor(() => expect(deleteMock).toHaveBeenCalledWith('m1'));
+      // The list is re-read rather than patched locally: every card and chart on
+      // the page derives from it.
+      await waitFor(() => expect(listMock).toHaveBeenCalledTimes(2));
+      expect(await screen.findByRole('log')).toHaveTextContent('Medición eliminada.');
+    });
+
+    it('does not call the API when the user backs out', async () => {
+      listMock.mockResolvedValue(SINGLE);
+      const user = userEvent.setup();
+      renderPage();
+
+      await screen.findByRole('table');
+      await user.click(deleteButtonFor('5 jul'));
+      const dialog = await screen.findByRole('dialog');
+      await user.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(deleteMock).not.toHaveBeenCalled();
+    });
+
+    it('surfaces the error and keeps the row when the delete fails', async () => {
+      listMock.mockResolvedValue(SINGLE);
+      deleteMock.mockRejectedValue(new ApiRequestError(404, 'No existe una medición con ese id.'));
+      const user = userEvent.setup();
+      renderPage();
+
+      await screen.findByRole('table');
+      await user.click(deleteButtonFor('5 jul'));
+      const dialog = await screen.findByRole('dialog');
+      await user.click(within(dialog).getByRole('button', { name: 'Eliminar' }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('No existe una medición');
+      // Still listed, and no success toast for a call that did not succeed.
+      expect(screen.getByText('5 jul')).toBeInTheDocument();
+      expect(screen.queryByText('Medición eliminada.')).not.toBeInTheDocument();
+    });
   });
 });

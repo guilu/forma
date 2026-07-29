@@ -3,15 +3,23 @@ import { BodyFigure } from '../components/BodyFigure';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { ChartContainer } from '../components/ChartContainer';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
+import { Icon } from '../components/Icon';
 import { LineChart, type ChartPoint } from '../components/LineChart';
 import { LoadingState } from '../components/LoadingState';
 import { MeasurementForm } from '../components/MeasurementForm';
 import { MetricCard } from '../components/MetricCard';
 import { Modal } from '../components/Modal';
 import { StatusPill } from '../components/StatusPill';
-import { listBodyMeasurements, type BodyMeasurement } from '../api/bodyMeasurements';
+import { useNotify } from '../components/NotificationProvider';
+import { ApiRequestError } from '../api/client';
+import {
+  deleteBodyMeasurement,
+  listBodyMeasurements,
+  type BodyMeasurement,
+} from '../api/bodyMeasurements';
 import styles from './MeasurementsPage.module.css';
 
 /**
@@ -239,6 +247,7 @@ function renderContent(
       measurements={state.measurements}
       activeTab={activeTab}
       setActiveTab={setActiveTab}
+      reload={reload}
     />
   );
 }
@@ -247,9 +256,11 @@ interface DashboardProps {
   readonly measurements: BodyMeasurement[];
   readonly activeTab: TabKey;
   readonly setActiveTab: (tab: TabKey) => void;
+  /** Re-reads the list: every card and chart on this page derives from it. */
+  readonly reload: () => void;
 }
 
-function MeasurementsDashboard({ measurements, activeTab, setActiveTab }: DashboardProps) {
+function MeasurementsDashboard({ measurements, activeTab, setActiveTab, reload }: DashboardProps) {
   const latest = measurements[0];
 
   return (
@@ -331,7 +342,7 @@ function MeasurementsDashboard({ measurements, activeTab, setActiveTab }: Dashbo
         className={styles.panel}
       >
         <div className={styles.historyRow}>
-          <HistoryTable measurements={measurements} />
+          <HistoryTable measurements={measurements} onDeleted={reload} />
           <BodyDistributionCard latest={latest} />
         </div>
       </section>
@@ -454,12 +465,55 @@ function WeightEvolutionChart({ measurements }: { readonly measurements: BodyMea
   );
 }
 
-function HistoryTable({ measurements }: { readonly measurements: BodyMeasurement[] }) {
+/**
+ * The history table, with a per-row delete (FOR-187).
+ *
+ * <p>Deleting re-reads the whole list rather than dropping the row locally:
+ * every metric card, sparkline and chart on this page is derived from the same
+ * array, so a local splice would leave the rest of the screen describing a
+ * measurement that no longer exists.
+ */
+function HistoryTable({
+  measurements,
+  onDeleted,
+}: {
+  readonly measurements: BodyMeasurement[];
+  readonly onDeleted: () => void;
+}) {
+  const notify = useNotify();
   const [expanded, setExpanded] = useState(false);
+  const [target, setTarget] = useState<BodyMeasurement | undefined>(undefined);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | undefined>(undefined);
   const rows = expanded ? measurements : measurements.slice(0, HISTORY_PREVIEW_ROWS);
+
+  async function confirmDelete() {
+    if (!target?.id) return;
+    setPending(true);
+    setError(undefined);
+    try {
+      await deleteBodyMeasurement(target.id);
+      setTarget(undefined);
+      notify.success('Medición eliminada.');
+      onDeleted();
+    } catch (caught) {
+      setError(
+        caught instanceof ApiRequestError
+          ? caught.message
+          : 'No se pudo eliminar la medición. Inténtalo de nuevo.',
+      );
+    } finally {
+      setPending(false);
+    }
+  }
 
   return (
     <Card title="Últimas mediciones" headingLevel={2}>
+      {error && (
+        <p className={styles.actionError} role="alert">
+          {error}
+        </p>
+      )}
       <div className={styles.tableScroll}>
         <table className={styles.table}>
           <thead>
@@ -470,11 +524,16 @@ function HistoryTable({ measurements }: { readonly measurements: BodyMeasurement
               <th scope="col">Masa muscular</th>
               <th scope="col">IMC</th>
               <th scope="col">Fuente</th>
+              {/* The column exists for screen readers; its heading would be
+                  noise next to a row of identical buttons. */}
+              <th scope="col">
+                <span className={styles.srOnly}>Acciones</span>
+              </th>
             </tr>
           </thead>
           <tbody>
             {rows.map((m) => (
-              <tr key={m.measuredAt}>
+              <tr key={m.id ?? m.measuredAt}>
                 <td>{formatDate(m.measuredAt)}</td>
                 <td>{formatValue(m.weightKg)} kg</td>
                 <td>{formatValue(m.bodyFatPercentage)} %</td>
@@ -482,6 +541,24 @@ function HistoryTable({ measurements }: { readonly measurements: BodyMeasurement
                 <td>{formatValue(m.bmi)}</td>
                 <td>
                   <StatusPill kind="source" value={m.source || 'UNKNOWN'} />
+                </td>
+                <td>
+                  {/* Icon-only: the label spelled out costs a column of width
+                      the table does not have, and every row would repeat the
+                      same word. The accessible name names the row's date, so
+                      it is never just "Eliminar" out of context. */}
+                  <button
+                    type="button"
+                    className={styles.deleteRow}
+                    disabled={!m.id}
+                    aria-label={`Eliminar la medición del ${formatDate(m.measuredAt)}`}
+                    onClick={() => {
+                      setError(undefined);
+                      setTarget(m);
+                    }}
+                  >
+                    <Icon name="trash" size={18} />
+                  </button>
                 </td>
               </tr>
             ))}
@@ -492,6 +569,24 @@ function HistoryTable({ measurements }: { readonly measurements: BodyMeasurement
         <Button variant="ghost" type="button" onClick={() => setExpanded(true)}>
           Ver todas las mediciones
         </Button>
+      )}
+
+      {target && (
+        // Shared destructive-confirmation pattern (FOR-63).
+        <ConfirmDialog
+          title="Eliminar medición"
+          message={`¿Seguro que quieres eliminar la medición del ${formatDate(
+            target.measuredAt,
+          )}? Esta acción no se puede deshacer${
+            target.source === 'WITHINGS'
+              ? ', y una medición importada no vuelve al sincronizar de nuevo'
+              : ''
+          }.`}
+          confirmLabel="Eliminar"
+          pending={pending}
+          onConfirm={confirmDelete}
+          onCancel={() => setTarget(undefined)}
+        />
       )}
     </Card>
   );
