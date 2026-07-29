@@ -136,6 +136,29 @@
   --shadow-accent-glow: 0 8px 24px -4px rgb(133 245 92 / 35%);
 
   /*
+   * The danger counterpart of the ramp above, for the confirm action of a
+   * destructive dialog: the same shape of treatment as the primary CTA, in red,
+   * so "this is the button that does it" reads the same way in both.
+   *
+   * Unlike the accent ramp, this one is picked for contrast rather than
+   * inherited from the logotype, and it carries a WHITE label. Against #ffffff:
+   *
+   *        stop      colour     ratio
+   *          0%     #a02f22      7.18
+   *         50%     #ba3427      5.83
+   *        100%     #d33a2c      4.76
+   *
+   * Every stop clears AA (4.5:1), which is the point of stopping the bright end
+   * at #d33a2c: the more obvious #e74c3c only reaches 3.82:1, so a white label
+   * on the bright corner of the button would fail. Both themes use the same
+   * ramp — a filled button carries its own background, so nothing about it
+   * depends on the surface underneath.
+   */
+  --gradient-danger: linear-gradient(135deg, #a02f22 0%, #d33a2c 100%);
+  --color-on-gradient-danger: #ffffff;
+  --shadow-danger-glow: 0 8px 24px -4px rgb(211 58 44 / 35%);
+
+  /*
    * Spacing scale. --space-2/4/5/6 already matched the template's
    * base/stack-gap-sm (8px), stack-gap-md (16px), card-padding/gutter (24px)
    * and stack-gap-lg (32px) 1:1 -- no change needed there. The template's
@@ -361,6 +384,14 @@
   --gradient-accent: linear-gradient(135deg, #0b755f 0%, #85f55c 100%);
   --color-on-gradient: #10141a;
   --shadow-accent-glow: 0 8px 24px -4px rgb(133 245 92 / 35%);
+
+  /* Also identical to the dark theme, and for a stronger reason than the accent
+   * ramp: this one was chosen so a white label clears AA on every stop, which
+   * is a property of the button's own fill and not of the page behind it. See
+   * the dark block for the contrast table. */
+  --gradient-danger: linear-gradient(135deg, #a02f22 0%, #d33a2c 100%);
+  --color-on-gradient-danger: #ffffff;
+  --shadow-danger-glow: 0 8px 24px -4px rgb(211 58 44 / 35%);
 
   --shadow-card: 0 1px 3px rgba(15, 26, 19, 0.08);
 }

@@ -350,6 +350,68 @@ test.describe('settings grid on a phone', () => {
   });
 });
 
+/**
+ * The confirm dialog's destructive action carries a red gradient, the danger
+ * counterpart of the primary CTA's brand ramp. Both themes get the same ramp,
+ * so the check that matters is the one a stylesheet cannot make on its own:
+ * that the label stays legible against *every* stop of it.
+ */
+test.describe('destructive confirmation button', () => {
+  test.use({ viewport: DESKTOP });
+
+  /** WCAG relative luminance of an `rgb(r, g, b)` string. */
+  function luminance(color: string): number {
+    const [r, g, b] = (color.match(/\d+(\.\d+)?/g) ?? []).slice(0, 3).map(Number);
+    const channel = (value: number) => {
+      const s = value / 255;
+      return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+    };
+    return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+  }
+
+  function contrast(a: string, b: string): number {
+    const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+    return (light + 0.05) / (dark + 0.05);
+  }
+
+  for (const theme of ['dark', 'light'] as const) {
+    test(`is a red gradient with a legible label in the ${theme} theme`, async ({ page }) => {
+      await gotoApp(page, '/app/measurements');
+      await page.evaluate((value) => {
+        document.documentElement.setAttribute('data-theme', value);
+      }, theme);
+
+      await page
+        .getByRole('button', { name: /Eliminar la medición/ })
+        .first()
+        .click();
+      const confirm = page
+        .getByRole('dialog')
+        .getByRole('button', { name: 'Eliminar', exact: true });
+
+      const style = await confirm.evaluate((button) => {
+        const computed = getComputedStyle(button);
+        return { color: computed.color, background: computed.backgroundImage };
+      });
+
+      expect(style.background, 'The confirm action is not painted with a gradient').toContain(
+        'gradient',
+      );
+
+      // Every colour stop the ramp resolves to, not just its endpoints.
+      const stops = style.background.match(/rgba?\([^)]+\)/g) ?? [];
+      expect(stops.length, `No colour stops found in "${style.background}"`).toBeGreaterThan(1);
+      for (const stop of stops) {
+        const ratio = contrast(style.color, stop);
+        expect(
+          Math.round(ratio * 100) / 100,
+          `Label ${style.color} on stop ${stop} is only ${ratio.toFixed(2)}:1`,
+        ).toBeGreaterThanOrEqual(4.5);
+      }
+    });
+  }
+});
+
 test.describe('glass chrome', () => {
   test.use({ viewport: PHONE });
 
