@@ -121,12 +121,35 @@ describe('MeasurementsPage', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Cargando tus mediciones…');
   });
 
-  it('shows the empty state with a CTA when there are no measurements', async () => {
+  /**
+   * With nothing to list, the header action and the empty state's own CTA are
+   * the same offer twice over. The empty state keeps it — it sits with the
+   * sentence explaining why the page is blank.
+   */
+  it('shows the empty state with a single CTA when there are no measurements', async () => {
     listMock.mockResolvedValue([]);
     renderPage();
 
     expect(await screen.findByText('Aún no hay mediciones.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Registrar medición' })).toBeInTheDocument();
+    // Deliberately matched loosely: the header action and the empty state's own
+    // CTA differ only by the "+", so an exact name would pass while both are on
+    // screen — which is the duplication this asserts against.
+    expect(screen.getAllByRole('button', { name: /Registrar medición/ })).toHaveLength(1);
+    expect(screen.getByRole('button', { name: '+ Registrar medición' })).toBeInTheDocument();
+  });
+
+  it('opens the form from the empty state', async () => {
+    listMock.mockResolvedValue([]);
+    const user = userEvent.setup();
+    renderPage();
+
+    // Wait for the empty state before reaching for the CTA: while the page is
+    // still loading, the *header* action carries the same name, and clicking
+    // that one lands on a node the state change is about to unmount.
+    await screen.findByText('Aún no hay mediciones.');
+    await user.click(screen.getByRole('button', { name: '+ Registrar medición' }));
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
   });
 
   it('shows an error state with a retry action on load failure', async () => {

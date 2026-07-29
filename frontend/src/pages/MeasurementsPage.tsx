@@ -187,9 +187,16 @@ export function MeasurementsPage() {
           <h1 className={styles.title}>Mediciones</h1>
           <p className={styles.subtitle}>Controla tu composición corporal y evolución.</p>
         </div>
-        <Button type="button" onClick={() => setFormOpen(true)}>
-          + Registrar medición
-        </Button>
+        {/* Hidden while the page is empty: the empty state offers the same
+            action, next to the sentence that explains why the page is blank.
+            Two identical buttons on an otherwise bare screen read as a mistake.
+            It stays up here for every other state, including the error one,
+            where the empty state is not rendered at all. */}
+        {state.status !== 'empty' && (
+          <Button type="button" onClick={() => setFormOpen(true)}>
+            + Registrar medición
+          </Button>
+        )}
       </header>
 
       {renderContent(state, activeTab, setActiveTab, () => setFormOpen(true), load)}
@@ -235,7 +242,7 @@ function renderContent(
         title="Aún no hay mediciones."
         action={
           <Button type="button" onClick={openForm}>
-            Registrar medición
+            + Registrar medición
           </Button>
         }
       />
