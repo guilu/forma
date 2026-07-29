@@ -35,6 +35,26 @@ to override locally; `.env` is gitignored.
 | `SPRING_DATASOURCE_PASSWORD` | backend | `forma_local_password` | **yes** | **Required in `prod`**. |
 | `SPRING_PROFILES_ACTIVE` | backend | (none → local defaults) | no | Set to `prod` for real deployments. |
 | `VITE_API_BASE_URL` | **frontend (public)** | `http://localhost:8080` | no | Bundled into the SPA; never a secret. |
+| `WITHINGS_CLIENT_ID` | backend | (empty) | no | Withings application id. Empty disables connecting, with a named error. |
+| `WITHINGS_CLIENT_SECRET` | backend | (empty) | **yes** | Withings application secret. |
+| `WITHINGS_REDIRECT_URI` | backend | `https://forma.diegobarrioh.dev/auth` | no | Must match the URI registered with Withings exactly. |
+| `WITHINGS_TOKEN_ENC_KEY` | backend | (empty) | **yes** | Key for encrypting stored provider tokens. `openssl rand -base64 32`. |
+| `FORMA_BOOTSTRAP_LEGACY_USER_PASSWORD` | backend | (empty) | **yes** | Activates the pre-auth placeholder account (FOR-145). |
+
+### Getting a variable into the backend container
+
+Listing a variable in `.env` is not enough. Compose reads `.env` to interpolate
+`${...}` **into `compose.yaml` itself**; it does not forward that file to any
+service. A variable only reaches the JVM if it also appears under the backend
+service's `environment:` block. A value set in `.env` and missing from that block
+is silently absent inside the container — which is exactly how a deployed backend
+ended up building a Withings authorization URL with an empty `client_id`.
+
+To check what a running container actually received:
+
+```bash
+docker compose exec backend printenv | grep WITHINGS
+```
 
 ## Backend configuration loading
 

@@ -24,11 +24,15 @@ import org.springframework.stereotype.Service;
 public class BodyMeasurementService {
 
   private final BodyMeasurementRepository repository;
+  private final UserProfileRepository profileRepository;
   private final CurrentUserProvider currentUserProvider;
 
   public BodyMeasurementService(
-      BodyMeasurementRepository repository, CurrentUserProvider currentUserProvider) {
+      BodyMeasurementRepository repository,
+      UserProfileRepository profileRepository,
+      CurrentUserProvider currentUserProvider) {
     this.repository = repository;
+    this.profileRepository = profileRepository;
     this.currentUserProvider = currentUserProvider;
   }
 
@@ -65,9 +69,41 @@ public class BodyMeasurementService {
   /**
    * Lists the caller's stored measurements, most recent first (FOR-16 default order), each paired
    * with its row id so the delivery layer can expose something to delete (FOR-187).
+   *
+   * <p>When a stored/imported measurement has no BMI but the caller's profile has a height, the
+   * read model derives BMI as {@code weightKg / heightMeters^2}. The derived value is returned only
+   * in this read path; it is not written back to {@code body_measurements}, so provider/manual
+   * source data remains untouched and historical Withings rows become display-complete without a
+   * re-sync.
    */
   public List<StoredBodyMeasurement> list() {
-    return repository.listWithIds(currentUserProvider.currentUserId());
+    UUID userId = currentUserProvider.currentUserId();
+    Double heightCm =
+        profileRepository.find(userId).map(profile -> profile.heightCm()).orElse(null);
+    return repository.listWithIds(userId).stream()
+        .map(stored -> withDerivedBmi(stored, heightCm))
+        .toList();
+  }
+
+  private static StoredBodyMeasurement withDerivedBmi(
+      StoredBodyMeasurement stored, Double heightCm) {
+    BodyMeasurement measurement = stored.measurement();
+    if (measurement.bmi() != null || heightCm == null || heightCm <= 0) {
+      return stored;
+    }
+    double heightMeters = heightCm / 100.0;
+    double derivedBmi = measurement.weightKg() / (heightMeters * heightMeters);
+    return new StoredBodyMeasurement(
+        stored.id(),
+        new BodyMeasurement(
+            measurement.measuredAt(),
+            measurement.source(),
+            measurement.weightKg(),
+            measurement.bodyFatPercentage(),
+            derivedBmi,
+            measurement.muscleMassKg(),
+            measurement.waterPercentage(),
+            measurement.notes()));
   }
 
   /**

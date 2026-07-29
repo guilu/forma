@@ -52,6 +52,21 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-forma}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-forma}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-forma_local_password}
+      # Withings OAuth (FOR-131). These MUST be listed here to reach the
+      # container: Compose reads `.env` to interpolate `${...}` *into this file*,
+      # it does not forward the file's contents to any service. A variable set in
+      # `.env` but absent from this block simply never exists inside the JVM —
+      # which is how the deployed backend ended up building an authorization URL
+      # with an empty client_id. Empty defaults keep a fresh checkout running
+      # with no setup; the adapter reports the missing variable by name when
+      # someone actually presses "Conectar".
+      WITHINGS_CLIENT_ID: ${WITHINGS_CLIENT_ID:-}
+      WITHINGS_CLIENT_SECRET: ${WITHINGS_CLIENT_SECRET:-}
+      WITHINGS_REDIRECT_URI: ${WITHINGS_REDIRECT_URI:-https://forma.diegobarrioh.dev/auth}
+      WITHINGS_TOKEN_ENC_KEY: ${WITHINGS_TOKEN_ENC_KEY:-}
+      # Activates the pre-auth placeholder account (FOR-145, ADR-012). Same
+      # pass-through gap as the Withings block above.
+      FORMA_BOOTSTRAP_LEGACY_USER_PASSWORD: ${FORMA_BOOTSTRAP_LEGACY_USER_PASSWORD:-}
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     healthcheck:

@@ -2,7 +2,8 @@
  * Body measurements API calls (FOR-18), built on the shared {@link apiClient}
  * boundary (ADR-006 — no ad-hoc `fetch`). Types mirror the FOR-17 contract
  * (specs/FOR-17/api.md); the frontend never recomputes derived values, it only
- * reads them from the response.
+ * reads them from the response. BMI may be backend-derived from the caller's
+ * profile height when the stored measurement has no provider/manual BMI.
  */
 import { apiClient, type ApiClient } from './client';
 
@@ -28,8 +29,8 @@ export interface BodyMeasurement {
   readonly measuredAt: string;
   readonly source: string;
   readonly weightKg: number;
-  readonly bodyFatPercentage: number;
-  readonly bmi: number;
+  readonly bodyFatPercentage?: number;
+  readonly bmi?: number;
   readonly fatMassKg?: number;
   readonly leanMassKg?: number;
   readonly notes?: string;

@@ -66,6 +66,48 @@ class WithingsOAuthAdapterTest {
     assertThat(url).doesNotContain(CLIENT_SECRET);
   }
 
+  /**
+   * Without a configured client id the adapter used to build a perfectly well-formed URL carrying
+   * {@code client_id=} — so the user was redirected to Withings, signed in, picked their account,
+   * and only then met Withings' own "Missing client_id or scope in the request parameters". The
+   * failure has to happen here, before anyone leaves the app.
+   */
+  @Test
+  void buildAuthorizationUrlRefusesToSendTheUserToWithingsWithoutAClientId() {
+    WithingsOAuthAdapter unconfigured =
+        new WithingsOAuthAdapter(
+            "", CLIENT_SECRET, REDIRECT_URI, SCOPE, AUTHORIZE_URL, TOKEN_URL, transport);
+
+    assertThatThrownBy(() -> unconfigured.buildAuthorizationUrl("state", "challenge"))
+        .isInstanceOf(ProviderOAuthException.class)
+        .hasMessageContaining("Withings");
+  }
+
+  @Test
+  void buildAuthorizationUrlRefusesAWhitespaceOnlyClientId() {
+    WithingsOAuthAdapter unconfigured =
+        new WithingsOAuthAdapter(
+            "   ", CLIENT_SECRET, REDIRECT_URI, SCOPE, AUTHORIZE_URL, TOKEN_URL, transport);
+
+    assertThatThrownBy(() -> unconfigured.buildAuthorizationUrl("state", "challenge"))
+        .isInstanceOf(ProviderOAuthException.class);
+  }
+
+  /**
+   * The same guard on the exchange: a code can only arrive from an authorize URL that was built
+   * with credentials, but the secret is a separate variable and can be the missing one.
+   */
+  @Test
+  void exchangeAuthorizationCodeRefusesWithoutCredentialsInsteadOfCallingWithings() {
+    WithingsOAuthAdapter unconfigured =
+        new WithingsOAuthAdapter(
+            CLIENT_ID, "", REDIRECT_URI, SCOPE, AUTHORIZE_URL, TOKEN_URL, transport);
+
+    assertThatThrownBy(() -> unconfigured.exchangeAuthorizationCode("code", "verifier"))
+        .isInstanceOf(ProviderOAuthException.class);
+    assertThat(transport.lastUrl).isNull();
+  }
+
   @Test
   void exchangeAuthorizationCodeParsesAccessRefreshAndExpiryFromARecordedTokenResponse() {
     transport.nextResponse = fixture("token-response-success.json");
