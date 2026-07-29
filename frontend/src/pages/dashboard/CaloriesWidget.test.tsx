@@ -10,8 +10,13 @@ const nutritionMock = vi.mocked(getNutritionDay);
 const day: NutritionDay = {
   type: 'RUNNING',
   targets: { calories: 2300, proteinG: 160, carbsG: 250, fatG: 70 },
-  meals: [],
+  meals: [
+    { mealType: 'BREAKFAST', name: 'Desayuno', preferredTime: '08:00', optional: false, items: [] },
+  ],
 };
+
+/** No plan for today: the API answers with a day that has no meals. */
+const dayWithoutPlan: NutritionDay = { ...day, targets: { ...day.targets }, meals: [] };
 
 describe('CaloriesWidget', () => {
   beforeEach(() => {
@@ -39,6 +44,19 @@ describe('CaloriesWidget', () => {
     expect(
       screen.getByRole('img', { name: /Calorías consumidas: 92% del objetivo/ }),
     ).toBeInTheDocument();
+  });
+
+  it('says there is no meal plan yet instead of showing calories against a zero target', async () => {
+    nutritionMock.mockResolvedValue(dayWithoutPlan);
+
+    render(<CaloriesWidget />);
+
+    expect(
+      await screen.findByText('No hay un plan de comidas para hoy todavía.'),
+    ).toBeInTheDocument();
+    // No figure and no ring: both would be against a target the user has not set.
+    expect(screen.queryByText(/kcal/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: /Calorías consumidas/ })).not.toBeInTheDocument();
   });
 
   it('shows an error state when the request fails', async () => {

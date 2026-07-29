@@ -20,6 +20,14 @@ interface MacroRingProps {
   readonly proteinG: number;
   readonly carbsG: number;
   readonly fatG: number;
+  /**
+   * When false the text legend is dropped and only the ring renders. For
+   * placements that already name and quantify each macro next to it (the
+   * dashboard's per-macro progress bars), where the legend would print the same
+   * three numbers a second time. The ring keeps its `aria-label`, so the values
+   * stay available without the visual either way.
+   */
+  readonly showLegend?: boolean;
 }
 
 const LEGEND = [
@@ -28,7 +36,7 @@ const LEGEND = [
   { key: 'fat', label: 'Grasas', className: 'fat' },
 ] as const;
 
-export function MacroRing({ proteinG, carbsG, fatG }: MacroRingProps) {
+export function MacroRing({ proteinG, carbsG, fatG, showLegend = true }: MacroRingProps) {
   const total = proteinG + carbsG + fatG;
   const proteinDeg = total > 0 ? (proteinG / total) * 360 : 0;
   const carbsDeg = total > 0 ? (carbsG / total) * 360 : 0;
@@ -50,15 +58,17 @@ export function MacroRing({ proteinG, carbsG, fatG }: MacroRingProps) {
       >
         <div className={styles.hole} aria-hidden="true" />
       </div>
-      <ul className={styles.legend}>
-        {LEGEND.map((entry) => (
-          <li key={entry.key} className={styles.legendItem}>
-            <span className={`${styles.dot} ${styles[entry.className]}`} aria-hidden="true" />
-            <span className={styles.legendLabel}>{entry.label}</span>
-            <span className={styles.legendValue}>{values[entry.key]} g</span>
-          </li>
-        ))}
-      </ul>
+      {showLegend && (
+        <ul className={styles.legend}>
+          {LEGEND.map((entry) => (
+            <li key={entry.key} className={styles.legendItem}>
+              <span className={`${styles.dot} ${styles[entry.className]}`} aria-hidden="true" />
+              <span className={styles.legendLabel}>{entry.label}</span>
+              <span className={styles.legendValue}>{values[entry.key]} g</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

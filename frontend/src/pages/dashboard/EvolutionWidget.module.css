@@ -3,9 +3,26 @@
   flex-direction: column;
   gap: var(--space-3);
   min-width: 0;
-  /* A dashboard widget shares its row with three other cards, so the chart
-     gets the compact end of LineChart's height range. */
-  --chart-height: 140px;
+  /* The chart fills `.chartArea`, which is what actually has a definite height
+     here — see below. */
+  --chart-height: 100%;
+}
+
+/*
+ * The plot takes every pixel the card has left between the headline value and
+ * the range tabs, in both directions: a fixed 140px chart in a card stretched
+ * to its row's height left a dead band underneath, and squeezed the plot into a
+ * strip whose y-axis labels ("74.0 kg") then wrapped onto two lines.
+ *
+ * `flex: 1` gives it a definite height for Recharts to measure (a
+ * content-sized parent collapses to zero — see `LineChart.module.css`), and the
+ * min-height keeps it readable in a card that did not stretch, e.g. the
+ * one-column phone layout.
+ */
+.chartArea {
+  flex: 1;
+  min-height: 140px;
+  min-width: 0;
 }
 
 .value {

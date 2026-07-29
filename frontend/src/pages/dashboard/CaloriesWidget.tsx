@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Card } from '../../components/Card';
+import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
 import { ProgressRing } from '../../components/ProgressRing';
 import { WidgetLoading } from '../../components/WidgetLoading';
@@ -17,10 +18,17 @@ import styles from './CaloriesWidget.module.css';
  * calorie-logging endpoint, so consumption isn't backed. Kept obvious and
  * consistent so both are removed together once a consumption API exists. Day
  * type is hardcoded to `running`, matching NutritionPage.
+ *
+ * <p>With no plan for today the tile says so instead of rendering figures: a
+ * day with no meals carries no calorie target either, and the tile used to show
+ * the placeholder consumed against it — "2120 kcal / Objetivo: 0 kcal / 0%",
+ * three numbers that mean nothing. Same wording as {@link NutritionWidget}, so
+ * the two cards for the same missing plan read as one message.
  */
 type State =
   | { readonly status: 'loading' }
   | { readonly status: 'error' }
+  | { readonly status: 'empty' }
   | { readonly status: 'ready'; readonly day: NutritionDay };
 
 /** Placeholder "consumed so far" kcal — see the file doc comment. */
@@ -35,7 +43,8 @@ export function CaloriesWidget() {
     let active = true;
     getNutritionDay('running')
       .then((day) => {
-        if (active) setState({ status: 'ready', day });
+        if (!active) return;
+        setState(day.meals.length === 0 ? { status: 'empty' } : { status: 'ready', day });
       })
       .catch(() => {
         if (active) setState({ status: 'error' });
@@ -50,6 +59,13 @@ export function CaloriesWidget() {
   }
   if (state.status === 'error') {
     return <ErrorState message="No se pudieron cargar tus calorías de hoy." />;
+  }
+  if (state.status === 'empty') {
+    return (
+      <Card title="Calorías hoy">
+        <EmptyState variant="filtered" title="No hay un plan de comidas para hoy todavía." />
+      </Card>
+    );
   }
 
   const target = state.day.targets.calories;

@@ -4,8 +4,42 @@
   gap: var(--space-4);
 }
 
-.objective {
+/* The ring is the card's focal point, so it centres over the bars rather than
+   sitting flush left as it does beside its legend on the nutrition page. */
+.card > :first-child {
+  justify-content: center;
+}
+
+.macros {
+  list-style: none;
   margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* Label and figure on one line, the bar spanning underneath both. */
+.macro {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+}
+
+.macro > :last-child {
+  grid-column: 1 / -1;
+}
+
+.macroLabel {
+  min-width: 0;
   font-size: var(--font-size-sm);
+  color: var(--color-text);
+}
+
+.macroValue {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  white-space: nowrap;
   color: var(--color-text-muted);
 }

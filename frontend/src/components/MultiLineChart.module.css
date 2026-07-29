@@ -2,6 +2,10 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+  /* Reference box for the legend's own sizing below: the chart is placed in
+     cards of very different widths, and what the legend has to fit into is that
+     card, not the viewport. */
+  container-type: inline-size;
 }
 
 /* Definite height: Recharts measures this box, and a content-sized parent
@@ -24,14 +28,23 @@
   color: var(--color-text-muted);
 }
 
+/*
+ * One row, always. Three series names wrapped onto a second and third line in a
+ * dashboard-width card, which read as three separate legends stacked under the
+ * plot. Instead the text scales with the container: `cqi` is 1% of the card's
+ * inline size, so the whole legend shrinks as the card narrows and the row
+ * holds. The clamp floor stops it going below what is still readable — the
+ * legend is a secondary label (the chart also has an `aria-label` naming every
+ * series), so shrinking it is the right thing to trade.
+ */
 .legend {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-  font-size: var(--font-size-sm);
+  flex-wrap: nowrap;
+  gap: clamp(var(--space-1), 1.6cqi, var(--space-3));
+  font-size: clamp(0.625rem, 3.9cqi, var(--font-size-sm));
   color: var(--color-text-muted);
 }
 
@@ -39,11 +52,14 @@
   display: flex;
   align-items: center;
   gap: var(--space-1);
+  /* Names never break mid-word; the row shrinks by type size, not by wrapping
+     "Músculo (kg)" in half. */
+  white-space: nowrap;
 }
 
 .legendDot {
-  width: 10px;
-  height: 10px;
+  width: 0.75em;
+  height: 0.75em;
   border-radius: 50%;
   flex-shrink: 0;
 }
