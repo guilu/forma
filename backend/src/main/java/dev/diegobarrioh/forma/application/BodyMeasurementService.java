@@ -70,14 +70,16 @@ public class BodyMeasurementService {
    * Lists the caller's stored measurements, most recent first (FOR-16 default order), each paired
    * with its row id so the delivery layer can expose something to delete (FOR-187).
    *
-   * <p>When a stored/imported measurement has no BMI but the caller's profile has a height, the read
-   * model derives BMI as {@code weightKg / heightMeters^2}. The derived value is returned only in
-   * this read path; it is not written back to {@code body_measurements}, so provider/manual source
-   * data remains untouched and historical Withings rows become display-complete without a re-sync.
+   * <p>When a stored/imported measurement has no BMI but the caller's profile has a height, the
+   * read model derives BMI as {@code weightKg / heightMeters^2}. The derived value is returned only
+   * in this read path; it is not written back to {@code body_measurements}, so provider/manual
+   * source data remains untouched and historical Withings rows become display-complete without a
+   * re-sync.
    */
   public List<StoredBodyMeasurement> list() {
     UUID userId = currentUserProvider.currentUserId();
-    Double heightCm = profileRepository.find(userId).map(profile -> profile.heightCm()).orElse(null);
+    Double heightCm =
+        profileRepository.find(userId).map(profile -> profile.heightCm()).orElse(null);
     return repository.listWithIds(userId).stream()
         .map(stored -> withDerivedBmi(stored, heightCm))
         .toList();

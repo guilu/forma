@@ -24,7 +24,8 @@ class BodyMeasurementServiceTest {
   private static final UUID USER_ID = UUID.randomUUID();
 
   private final RecordingRepository repository = new RecordingRepository();
-  private final RecordingUserProfileRepository profileRepository = new RecordingUserProfileRepository();
+  private final RecordingUserProfileRepository profileRepository =
+      new RecordingUserProfileRepository();
   private final BodyMeasurementService service =
       new BodyMeasurementService(repository, profileRepository, () -> USER_ID);
 
@@ -79,21 +80,8 @@ class BodyMeasurementServiceTest {
     profileRepository.profile =
         Optional.of(
             new UserProfile(
-                USER_ID,
-                "Diego",
-                null,
-                null,
-                null,
-                180.0,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                true,
-                null,
-                null));
+                USER_ID, "Diego", null, null, null, 180.0, null, null, null, null, null, null, true,
+                null, null));
 
     List<StoredBodyMeasurement> listed = service.list();
 
