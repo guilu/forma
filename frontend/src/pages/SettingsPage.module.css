@@ -20,12 +20,49 @@
   color: var(--color-text-muted);
 }
 
+/*
+ * Mobile-first: sections stack in a single scrollable column
+ * (docs/8-configuracion.png), then take a fixed number of columns on wider
+ * screens. Fixed rather than `auto-fit`, because two of these cards are meant
+ * to be twice as wide as the rest and a span only means something against a
+ * known column count.
+ *
+ * `align-items` is left at its `stretch` default from the two-column
+ * breakpoint up: cards that share a row match its height, so the grid reads as
+ * rows rather than as a ragged collage. In the single column each row holds
+ * one card, so stretching is exactly its content height — which is what a
+ * phone should show.
+ */
 .grid {
   display: grid;
-  /* Mobile-first: sections stack in a single scrollable column, then flow
-     into a responsive multi-column layout on wider screens
-     (docs/8-configuracion.png). */
-  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-5);
-  align-items: start;
+}
+
+@media (min-width: 48rem) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /*
+   * A card that takes two of the grid's columns: Perfil (against Unidades) and
+   * Conexiones, whose provider rows lay out four things across. Declared from
+   * this breakpoint up, not in the base rule: spanning two columns in the
+   * single-column layout makes the grid create an implicit second track, and
+   * the phone stops being one column at all.
+   */
+  .wide {
+    grid-column: span 2;
+  }
+}
+
+/*
+ * Three columns only past 1400px. The page sits beside the app's sidebar, so
+ * the grid gets ~270px less than the viewport: below this, three tracks leave
+ * each card too narrow for a label and its value on one line.
+ */
+@media (min-width: 87.5rem) {
+  .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }

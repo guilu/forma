@@ -59,7 +59,12 @@ const FIXTURES: ReadonlyArray<readonly [string, unknown]> = [
     {
       name: 'Diego',
       email: 'e2e@forma.test',
-      unitPreferences: { weight: 'KG', height: 'CM' },
+      unitPreferences: {
+        weightUnit: 'KG',
+        heightUnit: 'CM',
+        distanceUnit: 'KM',
+        energyUnit: 'KCAL',
+      },
       themeMode: 'DARK',
     },
   ],
@@ -112,6 +117,36 @@ const FIXTURES: ReadonlyArray<readonly [string, unknown]> = [
     },
   ],
   ['/api/v1/nutrition/days/running', NUTRITION_DAY],
+  // All three provider rows the backend knows about, so the settings checks
+  // see what the UI does with the two FORMA does not offer yet.
+  [
+    '/api/v1/integrations',
+    {
+      providers: [
+        {
+          provider: 'WITHINGS',
+          status: 'DISCONNECTED',
+          connectedAt: null,
+          lastSyncAt: null,
+          lastSyncOutcome: null,
+        },
+        {
+          provider: 'GOOGLE_FIT',
+          status: 'DISCONNECTED',
+          connectedAt: null,
+          lastSyncAt: null,
+          lastSyncOutcome: null,
+        },
+        {
+          provider: 'APPLE_HEALTH',
+          status: 'DISCONNECTED',
+          connectedAt: null,
+          lastSyncAt: null,
+          lastSyncOutcome: null,
+        },
+      ],
+    },
+  ],
   ['/api/v1/training/week', { days: [] }],
   [
     '/api/v1/shopping/list',

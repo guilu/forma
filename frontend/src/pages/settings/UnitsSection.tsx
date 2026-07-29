@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useMountedRef } from '../../hooks/useMountedRef';
 import { Card } from '../../components/Card';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
@@ -40,15 +41,8 @@ type State =
  */
 export function UnitsSection() {
   const [state, setState] = useState<State>({ status: 'loading' });
-  // Guards against a late-resolving fetch calling setState after unmount
-  // (mirrors ShoppingPage's ProductEditModal `active` flag guard, FOR-113).
-  const mountedRef = useRef(true);
-  useEffect(
-    () => () => {
-      mountedRef.current = false;
-    },
-    [],
-  );
+  // Guards against a late-resolving fetch calling setState after unmount.
+  const mountedRef = useMountedRef();
 
   const load = useCallback(() => {
     setState({ status: 'loading' });
@@ -66,7 +60,7 @@ export function UnitsSection() {
           });
         }
       });
-  }, []);
+  }, [mountedRef]);
 
   useEffect(() => {
     load();

@@ -238,6 +238,118 @@ test.describe('dashboard widget internals', () => {
   });
 });
 
+/**
+ * The settings grid: cards of very different content lengths laid out in one
+ * grid, where two of them are meant to be twice as wide as the rest.
+ */
+async function gotoSettings(page: Page): Promise<void> {
+  await gotoApp(page, '/app/settings');
+  // Perfil and Unidades fetch before rendering: measure their real content,
+  // not the loading spinner that stands in for it.
+  await expect(page.getByRole('button', { name: 'Editar perfil' })).toBeVisible();
+}
+
+async function settingsCards(page: Page) {
+  return page
+    .locator('main [class*="grid"]')
+    .first()
+    .evaluate((grid) => ({
+      columns: getComputedStyle(grid).gridTemplateColumns.split(' ').length,
+      cards: [...grid.children].map((card) => {
+        const rect = card.getBoundingClientRect();
+        return {
+          title: card.querySelector('h2')?.textContent?.trim() ?? '(untitled)',
+          top: Math.round(rect.top),
+          left: Math.round(rect.left),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height),
+        };
+      }),
+    }));
+}
+
+test.describe('settings grid on a wide screen', () => {
+  test.use({ viewport: WIDE });
+
+  test('gives Perfil and Conexiones two of the three columns', async ({ page }) => {
+    await gotoSettings(page);
+
+    const { columns, cards } = await settingsCards(page);
+    expect(columns, 'The settings grid is not three columns wide').toBe(3);
+
+    const width = (title: string) => cards.find((card) => card.title.startsWith(title))?.width ?? 0;
+    const single = width('Unidades');
+    expect(single, 'The Unidades card was not found').toBeGreaterThan(0);
+
+    // A two-column card is both tracks plus the gap between them, so it is
+    // wider than two single columns would be on their own.
+    for (const title of ['Perfil y preferencias', 'Conexiones e integraciones']) {
+      expect(
+        width(title),
+        `"${title}" is ${width(title)}px wide next to a ${single}px single column`,
+      ).toBeGreaterThan(single * 1.9);
+    }
+  });
+
+  test('gives every card in a grid row the same height', async ({ page }) => {
+    await gotoSettings(page);
+
+    const { cards } = await settingsCards(page);
+    const rows = new Map<number, typeof cards>();
+    for (const card of cards) {
+      rows.set(card.top, [...(rows.get(card.top) ?? []), card]);
+    }
+
+    expect(rows.size, 'The settings cards did not lay out in rows').toBeGreaterThan(1);
+    for (const [top, row] of rows) {
+      const heights = new Set(row.map((card) => card.height));
+      expect(
+        heights.size,
+        `Row at y=${top} has cards of differing heights: ${row
+          .map((card) => `${card.title} ${card.height}px`)
+          .join(', ')}`,
+      ).toBe(1);
+    }
+  });
+
+  test('offers only the provider FORMA supports today', async ({ page }) => {
+    await gotoSettings(page);
+
+    // Scoped to `main`: the sidebar carries its own Withings status card.
+    const settings = page.locator('main');
+    await expect(settings.getByText('Withings')).toBeVisible();
+    // The API answers with all three; the two without a working integration
+    // must not be offered.
+    await expect(settings.getByText('Google Fit')).toHaveCount(0);
+    await expect(settings.getByText('Apple Health')).toHaveCount(0);
+  });
+});
+
+test.describe('settings grid on a phone', () => {
+  test.use({ viewport: PHONE });
+
+  /**
+   * One column, and there each card is as tall as its own content — the equal
+   * heights above are a property of sharing a row, not of the cards.
+   */
+  test('stacks into one column of content-sized cards', async ({ page }) => {
+    await gotoSettings(page);
+
+    const { cards } = await settingsCards(page);
+    const lefts = new Set(cards.map((card) => card.left));
+    expect(lefts.size, `The cards start at ${lefts.size} different x positions`).toBe(1);
+
+    const tops = new Set(cards.map((card) => card.top));
+    expect(tops.size, 'The cards are not each on their own row').toBe(cards.length);
+
+    const heights = new Set(cards.map((card) => card.height));
+    expect(
+      heights.size,
+      `Every card is ${[...heights].join('/')}px tall, so they are not content-sized`,
+    ).toBeGreaterThan(1);
+  });
+});
+
 test.describe('glass chrome', () => {
   test.use({ viewport: PHONE });
 
