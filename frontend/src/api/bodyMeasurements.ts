@@ -19,6 +19,12 @@ export interface CreateBodyMeasurementRequest {
 
 /** A body measurement as returned by the API, including backend-derived masses. */
 export interface BodyMeasurement {
+  /**
+   * The stored row's id (FOR-187), which {@link deleteBodyMeasurement} addresses.
+   * Absent on the `POST` response, which describes a measurement the create use
+   * case returns without re-reading it — a caller that needs the id re-lists.
+   */
+  readonly id?: string;
   readonly measuredAt: string;
   readonly source: string;
   readonly weightKg: number;
@@ -44,4 +50,16 @@ export function createBodyMeasurement(
 /** Lists measurements, most recent first (FOR-16/FOR-17 default order). */
 export function listBodyMeasurements(client: ApiClient = apiClient): Promise<BodyMeasurement[]> {
   return client.request<BodyMeasurement[]>(MEASUREMENTS_PATH);
+}
+
+/**
+ * Deletes one of the caller's measurements (FOR-187). Rejects with an {@link
+ * ApiRequestError} when the id is unknown *or* belongs to another account — the
+ * backend answers 404 to both on purpose, so callers must not read the failure
+ * as proof the measurement exists somewhere.
+ */
+export function deleteBodyMeasurement(id: string, client: ApiClient = apiClient): Promise<void> {
+  return client.request<void>(`${MEASUREMENTS_PATH}/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
 }

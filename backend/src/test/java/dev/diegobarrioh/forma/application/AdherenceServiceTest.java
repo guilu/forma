@@ -338,5 +338,19 @@ class AdherenceServiceTest {
     public List<BodyMeasurement> list(UUID userId) {
       return List.copyOf(saved.getOrDefault(userId, List.of()));
     }
+
+    /**
+     * Unused here: this fake exists for the read paths ({@code list}). FOR-187's id-aware listing
+     * and delete belong to the measurements use case, which has its own test.
+     */
+    @Override
+    public java.util.List<StoredBodyMeasurement> listWithIds(UUID userId) {
+      throw new UnsupportedOperationException("not used in this test");
+    }
+
+    @Override
+    public boolean delete(UUID userId, UUID id) {
+      throw new UnsupportedOperationException("not used in this test");
+    }
   }
 }

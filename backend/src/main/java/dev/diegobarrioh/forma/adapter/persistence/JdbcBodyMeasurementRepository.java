@@ -1,6 +1,7 @@
 package dev.diegobarrioh.forma.adapter.persistence;
 
 import dev.diegobarrioh.forma.application.BodyMeasurementRepository;
+import dev.diegobarrioh.forma.application.StoredBodyMeasurement;
 import dev.diegobarrioh.forma.domain.BodyMeasurement;
 import dev.diegobarrioh.forma.domain.MeasurementSource;
 import java.math.BigDecimal;
@@ -39,24 +40,36 @@ public class JdbcBodyMeasurementRepository implements BodyMeasurementRepository 
 
   private static final String LIST_SQL =
       """
-      SELECT measured_at, source, weight_kg, body_fat_percentage, bmi, muscle_mass_kg,
+      SELECT id, measured_at, source, weight_kg, body_fat_percentage, bmi, muscle_mass_kg,
         water_percentage, notes
       FROM body_measurements
       WHERE user_id = ?
       ORDER BY measured_at DESC
       """;
 
-  private static final RowMapper<BodyMeasurement> ROW_MAPPER =
+  /**
+   * Scoped by owner in the statement itself: another account's id matches no row, so a cross-user
+   * delete removes nothing and reports as much (ADR-002 — no existence leak).
+   */
+  private static final String DELETE_SQL =
+      """
+      DELETE FROM body_measurements
+      WHERE user_id = ? AND id = ?
+      """;
+
+  private static final RowMapper<StoredBodyMeasurement> ROW_MAPPER =
       (rs, rowNum) ->
-          new BodyMeasurement(
-              rs.getObject("measured_at", OffsetDateTime.class).toInstant(),
-              MeasurementSource.valueOf(rs.getString("source")),
-              rs.getBigDecimal("weight_kg").doubleValue(),
-              toNullableDouble(rs.getBigDecimal("body_fat_percentage")),
-              toNullableDouble(rs.getBigDecimal("bmi")),
-              toNullableDouble(rs.getBigDecimal("muscle_mass_kg")),
-              toNullableDouble(rs.getBigDecimal("water_percentage")),
-              rs.getString("notes"));
+          new StoredBodyMeasurement(
+              rs.getObject("id", UUID.class),
+              new BodyMeasurement(
+                  rs.getObject("measured_at", OffsetDateTime.class).toInstant(),
+                  MeasurementSource.valueOf(rs.getString("source")),
+                  rs.getBigDecimal("weight_kg").doubleValue(),
+                  toNullableDouble(rs.getBigDecimal("body_fat_percentage")),
+                  toNullableDouble(rs.getBigDecimal("bmi")),
+                  toNullableDouble(rs.getBigDecimal("muscle_mass_kg")),
+                  toNullableDouble(rs.getBigDecimal("water_percentage")),
+                  rs.getString("notes")));
 
   private final JdbcTemplate jdbcTemplate;
 
@@ -82,7 +95,17 @@ public class JdbcBodyMeasurementRepository implements BodyMeasurementRepository 
 
   @Override
   public List<BodyMeasurement> list(UUID userId) {
+    return listWithIds(userId).stream().map(StoredBodyMeasurement::measurement).toList();
+  }
+
+  @Override
+  public List<StoredBodyMeasurement> listWithIds(UUID userId) {
     return jdbcTemplate.query(LIST_SQL, ROW_MAPPER, userId);
+  }
+
+  @Override
+  public boolean delete(UUID userId, UUID id) {
+    return jdbcTemplate.update(DELETE_SQL, userId, id) > 0;
   }
 
   private static Double toNullableDouble(BigDecimal value) {

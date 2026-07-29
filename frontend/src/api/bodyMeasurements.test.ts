@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createBodyMeasurement, listBodyMeasurements } from './bodyMeasurements';
+import {
+  createBodyMeasurement,
+  deleteBodyMeasurement,
+  listBodyMeasurements,
+} from './bodyMeasurements';
 import { ApiRequestError, type ApiClient } from './client';
 
 /**
@@ -41,6 +45,38 @@ describe('createBodyMeasurement', () => {
         client,
       ),
     ).rejects.toBeInstanceOf(ApiRequestError);
+  });
+});
+
+describe('deleteBodyMeasurement', () => {
+  it('DELETEs the addressed measurement under the versioned endpoint', async () => {
+    const request = vi.fn().mockResolvedValue(undefined);
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
+
+    await deleteBodyMeasurement('0f7d2f3e-1a4b-4c8d-9e2f-5a6b7c8d9e0f', client);
+
+    expect(request).toHaveBeenCalledWith(
+      '/api/v1/body/measurements/0f7d2f3e-1a4b-4c8d-9e2f-5a6b7c8d9e0f',
+      { method: 'DELETE' },
+    );
+  });
+
+  it('percent-encodes the id rather than pasting it into the path', async () => {
+    const request = vi.fn().mockResolvedValue(undefined);
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
+
+    await deleteBodyMeasurement('../profile', client);
+
+    expect(request).toHaveBeenCalledWith('/api/v1/body/measurements/..%2Fprofile', {
+      method: 'DELETE',
+    });
+  });
+
+  it('propagates ApiRequestError from the client', async () => {
+    const request = vi.fn().mockRejectedValue(new ApiRequestError(404, 'No existe'));
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
+
+    await expect(deleteBodyMeasurement('missing', client)).rejects.toBeInstanceOf(ApiRequestError);
   });
 });
 

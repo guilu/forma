@@ -1,12 +1,15 @@
 package dev.diegobarrioh.forma.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.diegobarrioh.forma.domain.BodyMeasurement;
 import dev.diegobarrioh.forma.domain.MeasurementSource;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -47,25 +50,48 @@ class BodyMeasurementServiceTest {
   }
 
   @Test
-  void listDelegatesToRepository() {
-    BodyMeasurement stored =
-        new BodyMeasurement(
-            Instant.parse("2026-07-05T08:00:00Z"),
-            MeasurementSource.MANUAL,
-            80.0,
-            25.0,
-            24.0,
-            null,
-            null,
-            null);
+  void listDelegatesToRepositoryAndCarriesTheIds() {
+    BodyMeasurement stored = measurement("2026-07-05T08:00:00Z");
     repository.saved.add(stored);
 
-    assertThat(service.list()).containsExactly(stored);
+    assertThat(service.list())
+        .extracting(StoredBodyMeasurement::measurement)
+        .containsExactly(stored);
+    assertThat(service.list()).extracting(StoredBodyMeasurement::id).doesNotContainNull();
+  }
+
+  @Test
+  void deleteRemovesTheCallersMeasurement() {
+    repository.saved.add(measurement("2026-07-05T08:00:00Z"));
+    UUID id = service.list().get(0).id();
+
+    service.delete(id);
+
+    assertThat(service.list()).isEmpty();
+    assertThat(repository.deletedBy).containsExactly(USER_ID);
+  }
+
+  /**
+   * A measurement that does not exist and one that belongs to someone else are the same answer: the
+   * repository scopes the delete by owner, so the service never learns which it was, and a caller
+   * cannot probe for another account's ids (ADR-002).
+   */
+  @Test
+  void deleteReportsNotFoundWhenNothingWasRemoved() {
+    assertThatThrownBy(() -> service.delete(UUID.randomUUID()))
+        .isInstanceOf(NotFoundException.class);
+  }
+
+  private static BodyMeasurement measurement(String measuredAt) {
+    return new BodyMeasurement(
+        Instant.parse(measuredAt), MeasurementSource.MANUAL, 80.0, 25.0, 24.0, null, null, null);
   }
 
   /** In-memory {@link BodyMeasurementRepository} that records saves and returns them on list. */
   private static final class RecordingRepository implements BodyMeasurementRepository {
     private final List<BodyMeasurement> saved = new ArrayList<>();
+    private final Map<UUID, BodyMeasurement> byId = new LinkedHashMap<>();
+    private final List<UUID> deletedBy = new ArrayList<>();
 
     @Override
     public void save(UUID userId, BodyMeasurement measurement) {
@@ -75,6 +101,30 @@ class BodyMeasurementServiceTest {
     @Override
     public List<BodyMeasurement> list(UUID userId) {
       return List.copyOf(saved);
+    }
+
+    @Override
+    public List<StoredBodyMeasurement> listWithIds(UUID userId) {
+      // Ids are assigned on first read and kept stable, mirroring stored rows.
+      for (BodyMeasurement measurement : saved) {
+        if (!byId.containsValue(measurement)) {
+          byId.put(UUID.randomUUID(), measurement);
+        }
+      }
+      return byId.entrySet().stream()
+          .map(entry -> new StoredBodyMeasurement(entry.getKey(), entry.getValue()))
+          .toList();
+    }
+
+    @Override
+    public boolean delete(UUID userId, UUID id) {
+      deletedBy.add(userId);
+      BodyMeasurement removed = byId.remove(id);
+      if (removed == null) {
+        return false;
+      }
+      saved.remove(removed);
+      return true;
     }
   }
 }

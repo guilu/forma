@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
 import { MetricCard } from '../../components/MetricCard';
@@ -110,6 +111,15 @@ function renderContent(state: State) {
         <EmptyState
           variant="filtered"
           title="Aún no hay mediciones. Registra tu primera medición para ver tu resumen."
+          action={
+            // A link, not a button: the entry form lives on the measurements
+            // page and mounting a second copy of it here would give the same
+            // flow two homes. Styled as the primary action so it reads as the
+            // same offer the measurements page makes.
+            <Link className={styles.cta} to="/app/measurements">
+              + Registrar medición
+            </Link>
+          }
         />
       </div>
     );

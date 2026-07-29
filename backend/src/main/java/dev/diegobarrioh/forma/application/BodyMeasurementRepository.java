@@ -32,4 +32,27 @@ public interface BodyMeasurementRepository {
    * @return the measurements, newest first; empty when none are stored
    */
   List<BodyMeasurement> list(UUID userId);
+
+  /**
+   * Same listing as {@link #list(UUID)}, with each measurement paired to the id of the row holding
+   * it (FOR-187) — for callers that must be able to address one measurement, i.e. delete it.
+   *
+   * @param userId the owning account's id
+   * @return the stored measurements, newest first; empty when none are stored
+   */
+  List<StoredBodyMeasurement> listWithIds(UUID userId);
+
+  /**
+   * Deletes {@code userId}'s measurement {@code id} (FOR-187).
+   *
+   * <p>Owner scoping is part of the delete itself, not a check the caller is trusted to make first:
+   * another account's id simply matches no row (ADR-002). The boolean therefore answers "was
+   * anything of yours removed", which is the same answer for an id that does not exist and one that
+   * is not yours — callers must not distinguish the two.
+   *
+   * @param userId the owning account's id
+   * @param id the measurement row's id
+   * @return {@code true} when a row was removed, {@code false} when none matched
+   */
+  boolean delete(UUID userId, UUID id);
 }

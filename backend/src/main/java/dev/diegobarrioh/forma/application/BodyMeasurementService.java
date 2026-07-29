@@ -4,6 +4,7 @@ import dev.diegobarrioh.forma.domain.BodyMeasurement;
 import dev.diegobarrioh.forma.domain.MeasurementSource;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 /**
@@ -61,8 +62,27 @@ public class BodyMeasurementService {
     return measurement;
   }
 
-  /** Lists the caller's stored measurements, most recent first (FOR-16 default order). */
-  public List<BodyMeasurement> list() {
-    return repository.list(currentUserProvider.currentUserId());
+  /**
+   * Lists the caller's stored measurements, most recent first (FOR-16 default order), each paired
+   * with its row id so the delivery layer can expose something to delete (FOR-187).
+   */
+  public List<StoredBodyMeasurement> list() {
+    return repository.listWithIds(currentUserProvider.currentUserId());
+  }
+
+  /**
+   * Deletes one of the caller's measurements (FOR-187).
+   *
+   * <p>The delete is scoped to the caller in the repository, so this never has to read the row
+   * first to check ownership — and never learns whether a rejected id belongs to someone else or to
+   * nobody. Both raise {@link NotFoundException}, which the delivery layer maps to 404 (ADR-002: no
+   * existence leak across accounts).
+   *
+   * @throws NotFoundException when no measurement of the caller's has that id
+   */
+  public void delete(UUID id) {
+    if (!repository.delete(currentUserProvider.currentUserId(), id)) {
+      throw new NotFoundException("No existe una medición con ese identificador.");
+    }
   }
 }

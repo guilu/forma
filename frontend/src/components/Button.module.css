@@ -102,10 +102,43 @@
   border-color: transparent;
 }
 
+/*
+ * The confirm action of a destructive dialog (the only place this variant is
+ * used). It mirrors `.primary` exactly — gradient fill, border-box origin,
+ * lift-on-hover, tinted glow — in the danger ramp, so the button that commits
+ * the action reads with the same weight as the one that commits a normal one.
+ * It used to be an outline, which made "Eliminar" look like the quieter of the
+ * two choices next to a solid "Cancelar".
+ */
 .destructive {
-  color: var(--color-danger);
-  background-color: transparent;
-  border-color: var(--color-danger);
+  color: var(--color-on-gradient-danger);
+  background: var(--gradient-danger);
+  /* Same reason as `.primary`: a gradient is sized to the padding box but
+     painted across the border box, so the 1px transparent ring would show a
+     stretched edge band without this. */
+  background-origin: border-box;
+  border-color: transparent;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--color-danger) 30%, transparent);
+  transition:
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.destructive:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-danger-glow);
+}
+
+/* After the hover rule, same specificity: the press affordance must win. */
+.destructive:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .destructive:hover:not(:disabled),
+  .destructive:active:not(:disabled) {
+    transform: none;
+  }
 }
 
 .spinner {

@@ -86,6 +86,20 @@ describe('BodyWidget', () => {
     expect(screen.queryByRole('heading', { name: 'Peso' })).not.toBeInTheDocument();
   });
 
+  /**
+   * The empty state told the user to register a measurement without offering
+   * any way to do it — the form lives on the measurements page, so the widget
+   * points there rather than mounting a second copy of it.
+   */
+  it('offers a way out of the empty state, to the page that has the form', async () => {
+    listMock.mockResolvedValue([]);
+
+    renderWidget();
+
+    const cta = await screen.findByRole('link', { name: '+ Registrar medición' });
+    expect(cta).toHaveAttribute('href', '/app/measurements');
+  });
+
   it('shows an error state when the request fails', async () => {
     listMock.mockRejectedValue(new Error('network'));
 
