@@ -15,6 +15,21 @@
   grid-column: 1 / -1;
 }
 
+/*
+ * Mid-width band (see `DashboardPage.module.css`): the metrics row drops to three
+ * columns and the six tiles wrap as 3 + 3. That split runs *through* this
+ * block — PESO / GRASA / MASA MUSCULAR on the first line, IMC alongside
+ * CALORÍAS and AGUA on the second — so the four tiles have to be items of the
+ * parent grid rather than of a nested one. `display: contents` removes this
+ * box from the layout and promotes them; `.full` keeps working because it then
+ * spans the parent's three tracks instead of this block's four.
+ */
+@media (min-width: 1101px) and (max-width: 1600px) {
+  .body {
+    display: contents;
+  }
+}
+
 @media (max-width: 1100px) {
   .body {
     grid-column: 1 / -1;
