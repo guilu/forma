@@ -166,6 +166,78 @@ for (const viewport of [TABLET, LAPTOP]) {
   });
 }
 
+/** The widget card whose section heading is `title`. */
+function widget(page: Page, title: string) {
+  return page.locator('main section').filter({ has: page.getByRole('heading', { name: title }) });
+}
+
+test.describe('dashboard widget internals', () => {
+  test.use({ viewport: DESKTOP });
+
+  /**
+   * The three series names used to wrap onto a second and third line, which
+   * reads as three legends stacked under the plot instead of one.
+   */
+  test('the trend legend keeps its three series on one line', async ({ page }) => {
+    await gotoApp(page, '/app');
+
+    const items = await widget(page, 'Tendencia 30 días')
+      .locator('ul li')
+      .evaluateAll((entries) =>
+        entries.map((entry) => ({
+          text: entry.textContent?.trim() ?? '',
+          top: Math.round(entry.getBoundingClientRect().top),
+        })),
+      );
+
+    expect(items.length, 'The trend legend was not found').toBe(3);
+    const tops = new Set(items.map((item) => item.top));
+    expect(
+      tops.size,
+      `The legend wraps onto ${tops.size} lines: ${items.map((i) => `${i.text}@${i.top}`).join(', ')}`,
+    ).toBe(1);
+  });
+
+  /**
+   * The chart had a fixed 140px height, so in a card stretched to its row it
+   * left a dead band underneath and squeezed the plot into a strip.
+   */
+  test('the evolution chart fills the width and the leftover height of its card', async ({
+    page,
+  }) => {
+    await gotoApp(page, '/app');
+
+    const box = await widget(page, 'Evolución').evaluate((card) => {
+      const chart = card.querySelector('[role="img"]');
+      if (!chart) return null;
+      const style = getComputedStyle(card);
+      const chartRect = chart.getBoundingClientRect();
+      return {
+        cardHeight: card.getBoundingClientRect().height,
+        // Content box: `clientWidth` already excludes the border.
+        cardInnerWidth:
+          card.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight),
+        chartHeight: chartRect.height,
+        chartWidth: chartRect.width,
+      };
+    });
+
+    expect(box, 'The evolution chart was not found').not.toBeNull();
+    const { cardHeight, cardInnerWidth, chartHeight, chartWidth } = box!;
+
+    expect(
+      Math.round(chartWidth),
+      `The chart is ${Math.round(chartWidth)}px wide inside a ${Math.round(cardInnerWidth)}px card`,
+    ).toBeGreaterThanOrEqual(Math.round(cardInnerWidth) - 1);
+    // Half the card is a low bar the old fixed 140px failed anyway: the card
+    // stretches to its row, so the value, the tabs and the chart share it.
+    expect(
+      Math.round(chartHeight),
+      `The chart is ${Math.round(chartHeight)}px tall in a ${Math.round(cardHeight)}px card`,
+    ).toBeGreaterThan(cardHeight * 0.5);
+  });
+});
+
 test.describe('glass chrome', () => {
   test.use({ viewport: PHONE });
 

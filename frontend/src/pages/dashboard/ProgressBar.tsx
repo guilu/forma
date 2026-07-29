@@ -12,9 +12,18 @@ interface ProgressBarProps {
   readonly value: number;
   readonly max: number;
   readonly label: string;
+  /**
+   * Fill colour, any CSS colour (e.g. a `var(--…)`). Defaults to the accent.
+   * Set it where several bars sit together and each stands for a different
+   * thing (the dashboard's macros) — never as the only carrier of that
+   * distinction, which is why every bar is also labelled in text.
+   */
+  readonly color?: string;
+  /** Hides the trailing "%" text where the caller prints its own figures. */
+  readonly showPercent?: boolean;
 }
 
-export function ProgressBar({ value, max, label }: ProgressBarProps) {
+export function ProgressBar({ value, max, label, color, showPercent = true }: ProgressBarProps) {
   const percent = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
   return (
     <div className={styles.wrapper}>
@@ -26,9 +35,9 @@ export function ProgressBar({ value, max, label }: ProgressBarProps) {
         aria-valuemin={0}
         aria-valuemax={100}
       >
-        <div className={styles.fill} style={{ width: `${percent}%` }} />
+        <div className={styles.fill} style={{ width: `${percent}%`, backgroundColor: color }} />
       </div>
-      <span className={styles.text}>{percent}%</span>
+      {showPercent && <span className={styles.text}>{percent}%</span>}
     </div>
   );
 }

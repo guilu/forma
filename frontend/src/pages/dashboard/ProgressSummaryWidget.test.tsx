@@ -38,6 +38,9 @@ describe('ProgressSummaryWidget', () => {
     renderWidget();
 
     expect(await screen.findByText('Bajar a 68 kg')).toBeInTheDocument();
+    // The backend's `progress.current` — where the user is now, not just where
+    // they are headed.
+    expect(screen.getByText('Actual: 69.2 kg')).toBeInTheDocument();
     expect(screen.getByText('Objetivo: 68 kg')).toBeInTheDocument();
     // ratio 0.78 -> 78%, straight from the backend (never recomputed).
     expect(screen.getByText('78%')).toBeInTheDocument();
@@ -53,6 +56,8 @@ describe('ProgressSummaryWidget', () => {
 
     expect(await screen.findByText('Sin datos')).toBeInTheDocument();
     expect(screen.getByRole('img', { name: /sin datos todavía/ })).toBeInTheDocument();
+    // `current` is null too, so there is no "Actual" line to show.
+    expect(screen.queryByText(/^Actual:/)).not.toBeInTheDocument();
   });
 
   it('nudges the user to define a goal when there are none', async () => {

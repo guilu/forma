@@ -1,19 +1,29 @@
+/*
+ * Copy on top, ring centred underneath. The two used to sit side by side, which
+ * at a dashboard column's width left the ring a small disc pinned to one edge;
+ * stacked, it gets the card's full width to centre in and the room to be the
+ * card's focal point.
+ */
 .card {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: var(--space-5);
-  flex-wrap: wrap;
 }
 
 .text {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  min-width: 0;
+}
+
+/* Takes the height the card gained from its row, so the ring centres in
+   whatever space is left under the copy instead of hugging it. */
+.ring {
   flex: 1;
-  /* 12rem is the width the text wants before it wraps awkwardly next to the
-     ring; capped at the card's own width so a narrow phone card can't be
-     forced wider than its column. */
-  min-width: min(12rem, 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .heading {

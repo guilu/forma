@@ -82,12 +82,20 @@ function renderContent(state: State) {
   const hasProgress = goal.progress.ratio != null;
   const percent = hasProgress ? Math.round((goal.progress.ratio as number) * 100) : 0;
   const doneMilestones = goal.milestones.filter((m) => m.completed).length;
+  const { current } = goal.progress;
 
   return (
     <div className={styles.card}>
       <div className={styles.text}>
         <p className={styles.heading}>¡Vas por muy buen camino!</p>
         <p className={styles.body}>{goal.title}</p>
+        {/* Where the user is now, straight from the backend's latest linked
+            measurement — `null` until the metric has data, never a stand-in. */}
+        {current != null && (
+          <p className={styles.body}>
+            Actual: {current} {unit}
+          </p>
+        )}
         <p className={styles.body}>
           Objetivo: {goal.target} {unit}
         </p>
@@ -97,22 +105,24 @@ function renderContent(state: State) {
           </p>
         )}
       </div>
-      <ProgressRing
-        value={percent}
-        max={100}
-        label={
-          hasProgress
-            ? `Progreso del objetivo: ${percent}%`
-            : 'Progreso del objetivo: sin datos todavía'
-        }
-        size={104}
-      >
-        {hasProgress ? (
-          <span className={styles.ringValue}>{percent}%</span>
-        ) : (
-          <span className={styles.ringHint}>Sin datos</span>
-        )}
-      </ProgressRing>
+      <div className={styles.ring}>
+        <ProgressRing
+          value={percent}
+          max={100}
+          label={
+            hasProgress
+              ? `Progreso del objetivo: ${percent}%`
+              : 'Progreso del objetivo: sin datos todavía'
+          }
+          size={148}
+        >
+          {hasProgress ? (
+            <span className={styles.ringValue}>{percent}%</span>
+          ) : (
+            <span className={styles.ringHint}>Sin datos</span>
+          )}
+        </ProgressRing>
+      </div>
     </div>
   );
 }

@@ -121,11 +121,15 @@ function renderContent(state: State, metric: MetricKey) {
         <span className={styles.unit}> {unit}</span>
       </p>
       {points.length >= 2 ? (
-        <LineChart
-          points={points}
-          formatValue={(v) => `${v.toFixed(1)} ${unit}`}
-          ariaLabel={`Evolución de ${label.toLowerCase()}: ${points.length} mediciones.`}
-        />
+        // The chart takes whatever height the card has left over, rather than a
+        // fixed 140px that leaves a band of empty card under it.
+        <div className={styles.chartArea}>
+          <LineChart
+            points={points}
+            formatValue={(v) => `${v.toFixed(1)} ${unit}`}
+            ariaLabel={`Evolución de ${label.toLowerCase()}: ${points.length} mediciones.`}
+          />
+        </div>
       ) : (
         <p className={styles.hint}>Registra más mediciones para ver la curva de evolución.</p>
       )}

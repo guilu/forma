@@ -20,7 +20,7 @@ describe('MacrosWidget', () => {
     nutritionMock.mockReset();
   });
 
-  it('renders the macro target ring and the "Objetivo diario" summary line', async () => {
+  it('renders the macro ring above a progress bar per macro', async () => {
     nutritionMock.mockResolvedValue(day);
 
     render(<MacrosWidget />);
@@ -28,9 +28,25 @@ describe('MacrosWidget', () => {
     expect(
       await screen.findByRole('img', { name: /Objetivo de macronutrientes/ }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Objetivo diario:/)).toHaveTextContent(
-      '160 g proteínas · 250 g carbohidratos · 70 g grasas',
-    );
+
+    // One bar per macro, each labelled with its own "consumido / objetivo".
+    expect(screen.getByRole('progressbar', { name: /Proteínas/ })).toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: /Carbohidratos/ })).toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: /Grasas/ })).toBeInTheDocument();
+    // Targets are real (160 / 250 / 70 g); the consumed halves are placeholders.
+    expect(screen.getByText('162 / 160 g')).toBeInTheDocument();
+    expect(screen.getByText('236 / 250 g')).toBeInTheDocument();
+    expect(screen.getByText('68 / 70 g')).toBeInTheDocument();
+  });
+
+  it('says there is no meal plan yet when the day has no meals', async () => {
+    nutritionMock.mockResolvedValue({ ...day, meals: [] });
+
+    render(<MacrosWidget />);
+
+    expect(
+      await screen.findByText('No hay un plan de comidas para hoy todavía.'),
+    ).toBeInTheDocument();
   });
 
   it('shows an error state when the request fails', async () => {
