@@ -106,6 +106,28 @@
   flex: 1;
 }
 
+/*
+ * Mid-width band. A landscape iPad (1180px, 1366px) is wide enough to clear the
+ * 1100px two-column breakpoint, so it was getting the full desktop layout: six
+ * metric tiles across left each one about 180px, too narrow for a headline
+ * value next to its caption. Every row wraps at three columns here — the
+ * metrics row as 3 + 3 (see `BodyWidget.module.css`, which dissolves its tiles
+ * into this grid so they can wrap), the two four-widget rows as 3 + 1.
+ *
+ * The band is not keyed to a "tablet" device width: CSS cannot tell a 1280px
+ * laptop from a 1180px tablet, and the row is equally cramped on either. It
+ * ends at 1600px because that is roughly where six tracks stop breaking their
+ * own content — at 1440px the tiles were still splitting "2120 kcal" across
+ * two lines and stacking the calorie goal onto three.
+ */
+@media (min-width: 1101px) and (max-width: 1600px) {
+  .metrics,
+  .rowFour,
+  .rowThree {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 1100px) {
   .metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));

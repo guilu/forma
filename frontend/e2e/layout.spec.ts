@@ -12,7 +12,12 @@ import { expectGlassSurface, expectNoHorizontalOverflow, expectSinglePageScrolle
  */
 const PHONE = { width: 375, height: 720 };
 const NARROW = { width: 574, height: 720 };
+const TABLET = { width: 1180, height: 820 };
 const DESKTOP = { width: 1280, height: 900 };
+/** Near the top of the mid-width band. */
+const LAPTOP = { width: 1440, height: 900 };
+/** Above the mid-width band, where the dashboard rows are at their widest. */
+const WIDE = { width: 1680, height: 900 };
 
 const APP_ROUTES = ['/app', '/app/measurements', '/app/goals'] as const;
 
@@ -36,7 +41,7 @@ async function gotoApp(page: Page, path: string): Promise<void> {
   await page.waitForFunction(() => document.fonts.ready.then(() => true));
 }
 
-for (const viewport of [PHONE, NARROW, DESKTOP]) {
+for (const viewport of [PHONE, NARROW, TABLET, DESKTOP]) {
   test.describe(`at ${viewport.width}px`, () => {
     test.use({ viewport });
 
@@ -71,18 +76,48 @@ test.describe('dashboard grid', () => {
   });
 });
 
-test.describe('dashboard rows', () => {
-  test.use({ viewport: DESKTOP });
+/**
+ * The boxes actually laid out by a dashboard row.
+ *
+ * <p>Not simply the row's DOM children: the body-composition block is a single
+ * `<div>` holding four tiles, and in the tablet band it becomes
+ * `display: contents` so those tiles join the parent grid directly. An element
+ * with no box of its own reports an empty rect, so it is replaced by the tiles
+ * it dissolves into.
+ *
+ * <p>CSS-module class names are hashed, so a substring match on the authored
+ * name is the stable way to reach a layout container from outside the app.
+ */
+async function rowCards(
+  page: Page,
+  row: string,
+): Promise<{ top: number; left: number; height: number }[]> {
+  return page
+    .locator(`main [class*="${row}"]`)
+    .first()
+    .evaluate((grid) => {
+      const boxes = [...grid.children].flatMap((child) =>
+        getComputedStyle(child).display === 'contents' ? [...child.children] : [child],
+      );
+      return boxes.map((box) => {
+        const rect = box.getBoundingClientRect();
+        return {
+          top: Math.round(rect.top),
+          left: Math.round(rect.left),
+          height: Math.round(rect.height),
+        };
+      });
+    });
+}
 
-  // CSS-module class names are hashed, so a substring match on the authored
-  // name is the stable way to reach a layout container from outside the app.
+test.describe('dashboard rows', () => {
+  test.use({ viewport: WIDE });
+
   for (const row of ['metrics', 'rowFour', 'rowThree']) {
     test(`gives every card in the ${row} row the same height`, async ({ page }) => {
       await gotoApp(page, '/app');
 
-      const heights = await page
-        .locator(`main [class*="${row}"] > *`)
-        .evaluateAll((cards) => cards.map((c) => Math.round(c.getBoundingClientRect().height)));
+      const heights = (await rowCards(page, row)).map((card) => card.height);
 
       expect(heights.length, `No cards found in the ${row} row`).toBeGreaterThan(1);
       expect(
@@ -92,6 +127,44 @@ test.describe('dashboard rows', () => {
     });
   }
 });
+
+/**
+ * On a tablet in landscape the six metric tiles across a single row left each
+ * one about 180px wide — too narrow for a headline value and its caption. The
+ * band below the desktop layout (1101–1600px) wraps every row at three columns
+ * instead.
+ */
+// Both ends of the band: the tablet that prompted it and a laptop near the top
+// edge, where six tracks were still breaking "2120 kcal" across two lines.
+for (const viewport of [TABLET, LAPTOP]) {
+  test.describe(`dashboard grid at ${viewport.width}px`, () => {
+    test.use({ viewport });
+
+    // Cards per row, then rows: metrics is six tiles as 3 + 3, and the two
+    // four-widget rows become 3 + 1.
+    for (const [row, columns, rows] of [
+      ['metrics', 3, 2],
+      ['rowFour', 3, 2],
+      ['rowThree', 3, 2],
+    ] as const) {
+      test(`lays the ${row} row out as ${columns} columns over ${rows} rows`, async ({ page }) => {
+        await gotoApp(page, '/app');
+
+        const cards = await rowCards(page, row);
+        const lefts = new Set(cards.map((card) => card.left));
+        const tops = new Set(cards.map((card) => card.top));
+
+        expect(
+          lefts.size,
+          `The ${row} row has ${lefts.size} columns (x: ${[...lefts].join(', ')})`,
+        ).toBe(columns);
+        expect(tops.size, `The ${row} row has ${tops.size} rows (y: ${[...tops].join(', ')})`).toBe(
+          rows,
+        );
+      });
+    }
+  });
+}
 
 test.describe('glass chrome', () => {
   test.use({ viewport: PHONE });
