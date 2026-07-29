@@ -1,6 +1,9 @@
-import { NavLink } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, NavLink } from 'react-router-dom';
 import { NAV_ITEMS } from '../app/navigation';
 import { Icon } from '../components/Icon';
+import { useMountedRef } from '../hooks/useMountedRef';
+import { listIntegrations, type IntegrationConnection } from '../api/integrations';
 import styles from './Sidebar.module.css';
 
 /**
@@ -11,8 +14,30 @@ import styles from './Sidebar.module.css';
  * <p>FOR-185 dropped the brand lockup from the top of this aside: the global
  * navigation bar now sits above the sidebar rather than beside it, so a brand
  * here would be a second copy directly under the first.
+ *
+ * <p>The Withings card reads the real connection state (FOR-126's
+ * `GET /api/v1/integrations`). It used to print "Conectado" unconditionally —
+ * written before that endpoint existed — which contradicted the settings screen
+ * and, for anyone who had never connected anything, plain reality. While the
+ * state is unknown (in flight, or the request failed) the card is not rendered
+ * at all: a status indicator that cannot read the status is worse than absent.
  */
 export function Sidebar() {
+  const [withings, setWithings] = useState<IntegrationConnection | undefined>(undefined);
+  const mountedRef = useMountedRef();
+
+  useEffect(() => {
+    listIntegrations()
+      .then((connections) => {
+        if (!mountedRef.current) return;
+        setWithings(connections.find((c) => c.providerId === 'WITHINGS'));
+      })
+      .catch(() => {
+        // Silent on purpose: the navigation must not grow an error banner
+        // because a secondary status card could not load.
+      });
+  }, [mountedRef]);
+
   const renderLink = (item: (typeof NAV_ITEMS)[number]) => (
     <NavLink
       key={item.path}
@@ -37,18 +62,25 @@ export function Sidebar() {
       <nav className={styles.nav} aria-label="Navegación principal">
         {NAV_ITEMS.map(renderLink)}
       </nav>
-      <div className={styles.integration}>
-        <div className={styles.integrationHeader}>
-          <span className={styles.integrationLabel}>WITHINGS</span>
-          {/* Static status dot, not a live indicator. A real "sincronizado hace
-              X" timestamp needs the integrations sync backend, which does not
-              exist yet — follow-up story, not part of this change. */}
-          <span className={styles.integrationDot} aria-hidden="true" />
-        </div>
-        {/* "Conectado" reflects the current mock/static integration state only;
-            do not read it as a live sync confirmation (see comment above). */}
-        <p className={styles.integrationStatus}>Conectado</p>
-      </div>
+      {withings && (
+        <Link className={styles.integration} to="/app/settings">
+          <span className={styles.integrationHeader}>
+            <span className={styles.integrationLabel}>WITHINGS</span>
+            <span
+              className={[
+                styles.integrationDot,
+                withings.status === 'CONNECTED' ? '' : styles.integrationDotOff,
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              aria-hidden="true"
+            />
+          </span>
+          <span className={styles.integrationStatus}>
+            {withings.status === 'CONNECTED' ? 'Conectado' : 'No conectado'}
+          </span>
+        </Link>
+      )}
     </aside>
   );
 }

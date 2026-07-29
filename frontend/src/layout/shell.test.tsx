@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { MobileNav } from './MobileNav';
 import { ThemeProvider } from '../theme/ThemeContext';
+import { listIntegrations } from '../api/integrations';
 import styles from './Sidebar.module.css';
 
 // FOR-120: ThemeProvider reads/persists the theme preference through this
@@ -18,6 +19,11 @@ vi.mock('../api/profile', () => ({
   }),
   updateThemeMode: vi.fn().mockResolvedValue(undefined),
 }));
+// The sidebar's integration card reads the real connection state (FOR-57
+// endpoint), mocked here so these shell tests stay network-free.
+vi.mock('../api/integrations', () => ({ listIntegrations: vi.fn() }));
+const integrationsMock = vi.mocked(listIntegrations);
+
 const logoutMock = vi.fn();
 let authStatus: 'authenticated' | 'anonymous' = 'authenticated';
 vi.mock('../auth/AuthContext', () => ({
@@ -48,21 +54,68 @@ function renderTopbar() {
 describe('application shell', () => {
   beforeEach(() => {
     logoutMock.mockReset();
+    integrationsMock.mockReset();
+    integrationsMock.mockResolvedValue([]);
     authStatus = 'authenticated';
   });
 
-  it('renders the Withings integration status as a card in the sidebar footer', () => {
+  /**
+   * The card used to print "Conectado" unconditionally, from before an
+   * integrations backend existed. It contradicted the settings screen — and
+   * the truth — for anyone who had never connected anything.
+   */
+  it('renders the real Withings connection state in the sidebar footer', async () => {
+    integrationsMock.mockResolvedValue([
+      {
+        providerId: 'WITHINGS',
+        providerName: 'Withings',
+        description: 'Sincroniza automáticamente tus datos.',
+        status: 'CONNECTED',
+      },
+    ]);
+
     render(
       <MemoryRouter>
         <Sidebar />
       </MemoryRouter>,
     );
 
-    // FOR-164: the footer moved from a plain icon+text row to a bordered card
-    // with an uppercase "WITHINGS" label; the status copy stays honest
-    // ("Conectado") since there is no real sync-timestamp backend yet.
-    expect(screen.getByText('WITHINGS')).toBeInTheDocument();
+    expect(await screen.findByText('WITHINGS')).toBeInTheDocument();
     expect(screen.getByText('Conectado')).toBeInTheDocument();
+  });
+
+  it('says so when Withings is not connected, instead of claiming it is', async () => {
+    integrationsMock.mockResolvedValue([
+      {
+        providerId: 'WITHINGS',
+        providerName: 'Withings',
+        description: 'Sincroniza automáticamente tus datos.',
+        status: 'NOT_CONNECTED',
+      },
+    ]);
+
+    render(
+      <MemoryRouter>
+        <Sidebar />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('No conectado')).toBeInTheDocument();
+    expect(screen.queryByText('Conectado')).not.toBeInTheDocument();
+  });
+
+  /** A status card that cannot read the status says nothing at all. */
+  it('renders no integration card while the state is unknown', async () => {
+    integrationsMock.mockRejectedValue(new Error('network'));
+
+    render(
+      <MemoryRouter>
+        <Sidebar />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(integrationsMock).toHaveBeenCalled());
+    expect(screen.queryByText('WITHINGS')).not.toBeInTheDocument();
   });
 
   // FOR-164: nav items move from a solid active fill to a subtle tint + right

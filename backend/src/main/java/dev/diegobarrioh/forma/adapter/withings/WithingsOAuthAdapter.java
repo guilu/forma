@@ -25,8 +25,11 @@ import org.springframework.stereotype.Component;
  * driven via {@code forma.integrations.withings.*} (see {@code application.yml}), defaulting to
  * empty placeholders for the secrets — this class does not fail to construct when they are unset
  * (mirroring {@code AesGcmTokenCipher}'s lazy-fail design) so the application can still boot in an
- * environment that never exercises Withings OAuth; a real connect/callback attempt without real
- * credentials fails at the Withings call itself, surfaced as a {@link ProviderOAuthException}.
+ * environment that never exercises Withings OAuth. Every entry point checks the credentials it
+ * needs first and raises {@link ProviderOAuthException} naming the missing environment variable
+ * (see {@code requireConfigured}); notably {@link #buildAuthorizationUrl}, whose output is followed
+ * by the browser and would otherwise fail only on Withings' own error page, long after the user
+ * left the app.
  *
  * <p>Revocation: Withings does not expose a documented, reliable programmatic token-revocation
  * endpoint (resolved as part of spec FOR-131's open question "whether revoke can be tested without
@@ -74,8 +77,32 @@ public class WithingsOAuthAdapter implements ProviderOAuthGateway {
     return IntegrationProvider.WITHINGS;
   }
 
+  /**
+   * Fails when a credential this call needs is missing, rather than letting an incomplete request
+   * reach Withings.
+   *
+   * <p>This is not defensive tidiness. {@link #buildAuthorizationUrl} produces a URL the *browser*
+   * follows, so an empty {@code client_id} does not fail anywhere the backend can see it: the user
+   * is redirected to Withings, signs in, picks their account, and only then meets Withings' own
+   * "Missing client_id or scope in the request parameters" — a dead end three steps from where the
+   * mistake was, with nothing pointing at this app's configuration. The message here names the
+   * environment variable instead, and it is safe to show: it reveals that a variable is unset,
+   * never any value.
+   */
+  private void requireConfigured(String value, String envVarName) {
+    if (value == null || value.isBlank()) {
+      throw new ProviderOAuthException(
+          "La conexión con Withings no está configurada en este entorno (falta "
+              + envVarName
+              + ").");
+    }
+  }
+
   @Override
   public String buildAuthorizationUrl(String state, String codeChallenge) {
+    requireConfigured(clientId, "WITHINGS_CLIENT_ID");
+    requireConfigured(redirectUri, "WITHINGS_REDIRECT_URI");
+    requireConfigured(scope, "forma.integrations.withings.scope");
     return authorizeUrl
         + "?response_type=code"
         + "&client_id="
@@ -93,6 +120,8 @@ public class WithingsOAuthAdapter implements ProviderOAuthGateway {
 
   @Override
   public ExchangedTokens exchangeAuthorizationCode(String code, String codeVerifier) {
+    requireConfigured(clientId, "WITHINGS_CLIENT_ID");
+    requireConfigured(clientSecret, "WITHINGS_CLIENT_SECRET");
     Map<String, String> form = new LinkedHashMap<>();
     form.put("action", "requesttoken");
     form.put("grant_type", "authorization_code");
@@ -106,6 +135,8 @@ public class WithingsOAuthAdapter implements ProviderOAuthGateway {
 
   @Override
   public ExchangedTokens refreshTokens(String refreshToken) {
+    requireConfigured(clientId, "WITHINGS_CLIENT_ID");
+    requireConfigured(clientSecret, "WITHINGS_CLIENT_SECRET");
     Map<String, String> form = new LinkedHashMap<>();
     form.put("action", "requesttoken");
     form.put("grant_type", "refresh_token");
