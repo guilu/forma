@@ -91,14 +91,43 @@ describe('IntegrationsSection', () => {
   });
 
   it('renders available providers with a connect action', async () => {
-    listMock.mockResolvedValue([withings, googleFit, appleHealth]);
+    listMock.mockResolvedValue([withingsAvailable]);
+
+    renderSection();
+
+    expect(await screen.findByText('Withings')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Conectar' })).toBeInTheDocument();
+    expect(screen.getByText('No conectado')).toBeInTheDocument();
+  });
+
+  /**
+   * Only Withings has a working integration. The backend still lists Google
+   * Fit and Apple Health, so the section is what decides not to offer them —
+   * a "Conectar" button that cannot connect is a promise the app can't keep.
+   */
+  it('does not offer a provider FORMA has no integration for', async () => {
+    listMock.mockResolvedValue([withingsAvailable, googleFit, appleHealth]);
+
+    renderSection();
+    await screen.findByText('Withings');
+
+    expect(screen.queryByText('Google Fit')).not.toBeInTheDocument();
+    expect(screen.queryByText('Apple Health')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Conectar' })).toHaveLength(1);
+  });
+
+  /**
+   * Hidden from the *available* list only: a provider the user did connect at
+   * some point stays visible, so it can never become an invisible live
+   * connection they cannot see or revoke.
+   */
+  it('still shows a filtered-out provider that is actually connected', async () => {
+    listMock.mockResolvedValue([{ ...googleFit, status: 'CONNECTED' }]);
 
     renderSection();
 
     expect(await screen.findByText('Google Fit')).toBeInTheDocument();
-    expect(screen.getByText('Apple Health')).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: 'Conectar' })).toHaveLength(2);
-    expect(screen.getAllByText('No conectado')).toHaveLength(2);
+    expect(screen.getByRole('button', { name: 'Desconectar' })).toBeInTheDocument();
   });
 
   it('shows connect, disconnect and manual-sync entry points where supported', async () => {
@@ -110,8 +139,8 @@ describe('IntegrationsSection', () => {
     // Connected provider: sync + disconnect entry points.
     expect(screen.getByRole('button', { name: 'Sincronizar ahora' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Desconectar' })).toBeInTheDocument();
-    // Available providers: connect entry point.
-    expect(screen.getAllByRole('button', { name: 'Conectar' })).toHaveLength(2);
+    // Nothing else on offer: Withings is connected, the other two are filtered.
+    expect(screen.queryByRole('button', { name: 'Conectar' })).not.toBeInTheDocument();
   });
 
   it('shows a sync error clearly with no token/PII when manual sync fails', async () => {
@@ -134,11 +163,11 @@ describe('IntegrationsSection', () => {
   });
 
   it('shows a connect error clearly without sensitive data', async () => {
-    listMock.mockResolvedValue([googleFit]);
+    listMock.mockResolvedValue([withingsAvailable]);
     connectMock.mockRejectedValue(
       new ApiRequestError(
         501,
-        'No se pudo conectar con Google Fit: la integración con proveedores externos todavía no está disponible.',
+        'No se pudo conectar con Withings: la integración con proveedores externos todavía no está disponible.',
         'NOT_IMPLEMENTED',
       ),
     );
@@ -148,7 +177,7 @@ describe('IntegrationsSection', () => {
     await user.click(await screen.findByRole('button', { name: 'Conectar' }));
 
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('No se pudo conectar con Google Fit');
+    expect(alert).toHaveTextContent('No se pudo conectar con Withings');
     expect(alert.textContent).not.toMatch(/token|secret|password|bearer/i);
   });
 
@@ -195,13 +224,12 @@ describe('IntegrationsSection', () => {
   });
 
   it('renders a clean empty connected state alongside the available list', async () => {
-    listMock.mockResolvedValue([googleFit, appleHealth]);
+    listMock.mockResolvedValue([withingsAvailable, googleFit, appleHealth]);
 
     renderSection();
 
     expect(await screen.findByText('Aún no tienes integraciones conectadas.')).toBeInTheDocument();
-    expect(screen.getByText('Google Fit')).toBeInTheDocument();
-    expect(screen.getByText('Apple Health')).toBeInTheDocument();
+    expect(screen.getByText('Withings')).toBeInTheDocument();
   });
 
   it('shows a loading state while providers load', () => {
@@ -258,6 +286,8 @@ describe('IntegrationsSection', () => {
   // Common Pitfalls: "updating only one of the two render sites"), and the
   // accessible name never depends on the (decorative) icon.
   it('renders the same documented fallback icon per provider in both the connected and available lists (FOR-116)', async () => {
+    // A connected provider is never filtered, so all three can be checked on
+    // this side; the available side below only ever offers Withings.
     const allConnected: IntegrationConnection[] = [
       { ...withings, status: 'CONNECTED', lastSyncAt: '2026-07-10T08:15:00Z' },
       { ...googleFit, status: 'CONNECTED', lastSyncAt: '2026-07-10T08:15:00Z' },
@@ -287,18 +317,22 @@ describe('IntegrationsSection', () => {
         .getByText(providerName)
         .closest('li')
         ?.querySelector('svg');
-      const availableIcon = within(availableRender.container)
-        .getByText(providerName)
-        .closest('li')
-        ?.querySelector('svg');
-
       expect(connectedIcon).toHaveAttribute('data-icon', iconName);
-      expect(availableIcon).toHaveAttribute('data-icon', iconName);
     }
+
+    const availableIcon = within(availableRender.container)
+      .getByText('Withings')
+      .closest('li')
+      ?.querySelector('svg');
+    expect(availableIcon).toHaveAttribute('data-icon', expectedIcon.Withings);
   });
 
   it("keeps each provider row's accessible name in visible text, independent of the decorative icon (FOR-116)", async () => {
-    listMock.mockResolvedValue([withings, googleFit, appleHealth]);
+    listMock.mockResolvedValue([
+      withings,
+      { ...googleFit, status: 'CONNECTED' },
+      { ...appleHealth, status: 'CONNECTED' },
+    ]);
 
     renderSection();
     await screen.findByText('Withings');
@@ -316,9 +350,11 @@ describe('IntegrationsSection', () => {
   // component's own doc comment) is now testable.
   describe('success feedback (FOR-123, FOR-63)', () => {
     it('shows a success toast naming the provider after a successful connect', async () => {
-      listMock.mockResolvedValue([googleFit]);
+      listMock.mockResolvedValue([withingsAvailable]);
+      // The contract's non-redirect branch (`ConnectionActionResult`): the
+      // connection is already complete, so this is the case that toasts.
       connectMock.mockResolvedValue({
-        provider: 'GOOGLE_FIT',
+        provider: 'WITHINGS',
         status: 'CONNECTED',
         connectedAt: '2026-07-15T08:00:00Z',
       });
@@ -328,7 +364,7 @@ describe('IntegrationsSection', () => {
       await user.click(await screen.findByRole('button', { name: 'Conectar' }));
 
       const region = await screen.findByRole('log');
-      expect(await within(region).findByText('Conectado con Google Fit.')).toBeInTheDocument();
+      expect(await within(region).findByText('Conectado con Withings.')).toBeInTheDocument();
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 
@@ -373,9 +409,9 @@ describe('IntegrationsSection', () => {
     });
 
     it('does not show a success toast when a call fails — only the existing actionError', async () => {
-      listMock.mockResolvedValue([googleFit]);
+      listMock.mockResolvedValue([withingsAvailable]);
       connectMock.mockRejectedValue(
-        new ApiRequestError(500, 'No se pudo conectar con Google Fit.', 'INTERNAL_ERROR'),
+        new ApiRequestError(500, 'No se pudo conectar con Withings.', 'INTERNAL_ERROR'),
       );
       const user = userEvent.setup();
 
@@ -383,9 +419,9 @@ describe('IntegrationsSection', () => {
       await user.click(await screen.findByRole('button', { name: 'Conectar' }));
 
       expect(await screen.findByRole('alert')).toHaveTextContent(
-        'No se pudo conectar con Google Fit',
+        'No se pudo conectar con Withings',
       );
-      expect(screen.queryByText('Conectado con Google Fit.')).not.toBeInTheDocument();
+      expect(screen.queryByText('Conectado con Withings.')).not.toBeInTheDocument();
     });
 
     it('does not fabricate a success toast when sync resolves NOT_CONNECTED — shows the honest error instead', async () => {
@@ -516,13 +552,16 @@ describe('IntegrationsSection', () => {
       expect(connectMock).toHaveBeenCalledTimes(1);
     });
 
-    // The existing mock immediate-connect providers (Google Fit, Apple
-    // Health — no registered OAuth gateway, FOR-131) must keep behaving
-    // exactly as before this story: no redirect, success toast as usual.
-    it('does not redirect for a provider with no OAuth gateway (mock immediate-connect unchanged)', async () => {
-      listMock.mockResolvedValue([googleFit]);
+    // `ConnectResult`'s other branch: a connect that resolves already
+    // CONNECTED, with no `authorizationUrl`. The handler must treat it as a
+    // completed connection, not navigate anywhere. (Until FOR-131 this was the
+    // only shape, and it is still what the mock immediate-connect path returns
+    // for a provider with no registered gateway — none of which the UI offers
+    // any more, so it is exercised here through Withings.)
+    it('does not redirect when the connect response carries no authorization URL', async () => {
+      listMock.mockResolvedValue([withingsAvailable]);
       connectMock.mockResolvedValue({
-        provider: 'GOOGLE_FIT',
+        provider: 'WITHINGS',
         status: 'CONNECTED',
         connectedAt: '2026-07-15T08:00:00Z',
       });
@@ -531,7 +570,7 @@ describe('IntegrationsSection', () => {
       renderSection();
       await user.click(await screen.findByRole('button', { name: 'Conectar' }));
 
-      expect(await screen.findByRole('log')).toHaveTextContent('Conectado con Google Fit.');
+      expect(await screen.findByRole('log')).toHaveTextContent('Conectado con Withings.');
       expect(assignSpy).not.toHaveBeenCalled();
     });
   });

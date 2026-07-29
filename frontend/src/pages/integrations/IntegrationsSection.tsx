@@ -114,6 +114,24 @@ const PROVIDER_ICON_FALLBACK: Record<IntegrationProviderId, IconName> = {
   APPLE_HEALTH: 'cross',
 };
 
+/**
+ * The providers FORMA actually offers to connect today.
+ *
+ * <p>The backend lists all three it knows about (FOR-126
+ * `IntegrationsListResponse`), but only Withings has a registered OAuth
+ * gateway (FOR-131) — connecting either of the others goes through the mock
+ * immediate-connect path and imports nothing, so the "Conectar" button was a
+ * promise the app cannot keep. Filtering here rather than in
+ * `api/integrations.ts` keeps that client a faithful mirror of the backend;
+ * this is a product decision about what to offer, not a change to what the
+ * backend reports.
+ *
+ * <p>Applied to the *available* list only: a provider the user did connect at
+ * some point stays visible whatever this set says, so a live connection can
+ * never become one they cannot see or revoke.
+ */
+const OFFERED_PROVIDERS: ReadonlySet<IntegrationProviderId> = new Set(['WITHINGS']);
+
 const LOAD_ERROR = 'No se pudieron cargar tus integraciones. Inténtalo de nuevo más tarde.';
 
 const lastSyncFormatter = new Intl.DateTimeFormat('es-ES', {
@@ -270,7 +288,9 @@ function renderContent(
   }
 
   const connected = state.connections.filter((c) => c.status === 'CONNECTED');
-  const available = state.connections.filter((c) => c.status === 'NOT_CONNECTED');
+  const available = state.connections.filter(
+    (c) => c.status === 'NOT_CONNECTED' && OFFERED_PROVIDERS.has(c.providerId),
+  );
 
   return (
     <div className={styles.content}>

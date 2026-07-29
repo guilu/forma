@@ -1,3 +1,4 @@
+import { StrictMode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -36,6 +37,23 @@ describe('UnitsSection', () => {
     render(<UnitsSection />);
 
     expect(screen.getByRole('status')).toHaveTextContent(/cargando/i);
+  });
+
+  /**
+   * StrictMode mounts, unmounts and remounts every component in development.
+   * The unmount cleanup used to leave the "still mounted" ref false forever,
+   * so the second mount's fetch resolved into a discarded `setState` and the
+   * card sat on its spinner for the rest of the session.
+   */
+  it('settles after a StrictMode remount instead of hanging on the spinner', async () => {
+    getProfileMock.mockResolvedValue(PROFILE);
+    render(
+      <StrictMode>
+        <UnitsSection />
+      </StrictMode>,
+    );
+
+    expect(await screen.findByText('Kilogramos (kg)')).toBeInTheDocument();
   });
 
   it('reflects the real persisted unit preference from GET /api/v1/profile', async () => {

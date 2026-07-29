@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useMountedRef } from '../../hooks/useMountedRef';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { ErrorState } from '../../components/ErrorState';
@@ -84,20 +85,17 @@ type State =
  * <p>The "Tema" row remains FOR-62's working {@link ThemeToggle} backed by
  * {@link useTheme} -- unchanged by this story (theme persistence through the
  * backend is FOR-120's scope, not this one's).
+ *
+ * <p>`className` reaches the section's own {@link Card}, so the settings grid
+ * can say how many columns this card takes without wrapping it in another box.
  */
-export function ProfileSection() {
+export function ProfileSection({ className }: { readonly className?: string } = {}) {
   const { mode, resolvedTheme } = useTheme();
   const [state, setState] = useState<State>({ status: 'loading' });
   const [editing, setEditing] = useState(false);
   // Guards against a late-resolving fetch calling setState after unmount
   // (mirrors ShoppingPage's ProductEditModal `active` flag guard, FOR-113).
-  const mountedRef = useRef(true);
-  useEffect(
-    () => () => {
-      mountedRef.current = false;
-    },
-    [],
-  );
+  const mountedRef = useMountedRef();
 
   const load = useCallback(() => {
     setState({ status: 'loading' });
@@ -115,7 +113,7 @@ export function ProfileSection() {
           });
         }
       });
-  }, []);
+  }, [mountedRef]);
 
   useEffect(() => {
     load();
@@ -123,6 +121,7 @@ export function ProfileSection() {
 
   return (
     <Card
+      className={className}
       title="Perfil y preferencias"
       headingLevel={2}
       action={
