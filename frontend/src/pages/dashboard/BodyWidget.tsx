@@ -14,6 +14,12 @@ import styles from './BodyWidget.module.css';
  * recent sparkline and a "{n} medición(es)" caption, from the latest FOR-17
  * measurement. Presentational only — reads API values as returned (ADR-006).
  *
+ * <p>FOR-189 shortened two of the four labels ("Grasa corporal" → "Grasa",
+ * "Masa muscular" → "Músculo"). Four tiles in a row read as a set, and the long
+ * forms wrapped onto a second line while "Peso" and "IMC" did not — the row
+ * looked ragged for no gain in meaning. "Músculo" still labels `leanMassKg`
+ * (lean mass; the domain has no separate muscle-mass field), same as before.
+ *
  * <p>Unlike the earlier version this no longer wraps itself in a
  * `WidgetSection` heading: in the new mockup these are the first summary tiles
  * of the page's metrics row (alongside CALORÍAS / AGUA), not a titled section,
@@ -136,13 +142,13 @@ function renderContent(state: State) {
       select: (m: BodyMeasurement) => m.weightKg,
     },
     {
-      label: 'Grasa corporal',
+      label: 'Grasa',
       value: format(latest.bodyFatPercentage),
       unit: '%',
       select: (m: BodyMeasurement) => m.bodyFatPercentage,
     },
     {
-      label: 'Masa muscular',
+      label: 'Músculo',
       value: format(latest.leanMassKg),
       unit: 'kg',
       select: (m: BodyMeasurement) => m.leanMassKg,

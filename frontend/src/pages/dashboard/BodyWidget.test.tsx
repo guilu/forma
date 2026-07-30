@@ -43,10 +43,14 @@ describe('BodyWidget', () => {
 
     renderWidget();
 
+    // One-word labels (FOR-189): four tiles side by side read as a set, and the
+    // long forms made two of the four wrap while the other two did not.
     expect(await screen.findByRole('heading', { name: 'Peso' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Grasa corporal' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Masa muscular' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Grasa' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Músculo' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'IMC' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Grasa corporal' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Masa muscular' })).not.toBeInTheDocument();
     expect(screen.getByText('73.6')).toBeInTheDocument();
     expect(screen.getByText('14.7')).toBeInTheDocument();
     expect(screen.getByText('62.8')).toBeInTheDocument();

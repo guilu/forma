@@ -59,20 +59,35 @@ for (const viewport of [PHONE, NARROW, TABLET, DESKTOP]) {
 test.describe('dashboard grid', () => {
   test.use({ viewport: NARROW });
 
-  test('collapses to a single column below the mobile breakpoint', async ({ page }) => {
+  /**
+   * One column for the widgets, two for the body tiles (FOR-189). The tiles hold
+   * a short label and a number, so a phone fits two across; every other card is
+   * a list, a chart or a paragraph and gets the full width.
+   */
+  test('collapses to a single column of widgets below the mobile breakpoint', async ({ page }) => {
     await gotoApp(page, '/app');
 
-    // Every card in the metrics row starts at the same x: one column.
-    const lefts = await page
-      .locator('main section')
-      .evaluateAll((cards) => [
-        ...new Set(cards.map((c) => Math.round(c.getBoundingClientRect().left))),
-      ]);
-
+    const tiles = await page
+      .locator('main [class*="body"] > section')
+      .evaluateAll((cards) => cards.map((c) => Math.round(c.getBoundingClientRect().left)));
+    expect(tiles.length, 'The four body tiles were not found').toBe(4);
     expect(
-      lefts,
-      `Cards start at ${lefts.length} different x positions, so the grid is not single-column`,
-    ).toHaveLength(1);
+      new Set(tiles).size,
+      `The body tiles use ${new Set(tiles).size} columns (x: ${[...new Set(tiles)].join(', ')})`,
+    ).toBe(2);
+
+    // Everything that is not one of those tiles still spans the single column.
+    const others = await page
+      .locator('main section')
+      .evaluateAll((cards) =>
+        cards
+          .filter((card) => !card.parentElement?.className.includes('body'))
+          .map((card) => Math.round(card.getBoundingClientRect().left)),
+      );
+    expect(
+      new Set(others).size,
+      `Widgets start at ${new Set(others).size} different x positions`,
+    ).toBe(1);
   });
 });
 
