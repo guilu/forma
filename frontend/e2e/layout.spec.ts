@@ -19,7 +19,7 @@ const LAPTOP = { width: 1440, height: 900 };
 /** Above the mid-width band, where the dashboard rows are at their widest. */
 const WIDE = { width: 1680, height: 900 };
 
-const APP_ROUTES = ['/app', '/app/measurements', '/app/goals'] as const;
+const APP_ROUTES = ['/app', '/app/measurements', '/app/progress'] as const;
 
 test.beforeEach(async ({ page }) => {
   await stubApi(page);
@@ -145,7 +145,9 @@ for (const viewport of [TABLET, LAPTOP]) {
     for (const [row, columns, rows] of [
       ['metrics', 3, 2],
       ['rowFour', 3, 2],
-      ['rowThree', 3, 2],
+      // Two x positions, not three: Evolución took the column the retired
+      // "Tu progreso" card left behind, so it starts at track 1 and spans two.
+      ['rowThree', 2, 2],
     ] as const) {
       test(`lays the ${row} row out as ${columns} columns over ${rows} rows`, async ({ page }) => {
         await gotoApp(page, '/app');

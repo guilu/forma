@@ -241,7 +241,7 @@ describe('application shell', () => {
 
     // Secondary sections are not rendered until "Más" is opened.
     expect(
-      screen.queryByRole('menuitem', { name: 'Objetivos', hidden: true }),
+      screen.queryByRole('menuitem', { name: 'Progreso', hidden: true }),
     ).not.toBeInTheDocument();
 
     // FOR-164: the primary mobile bar is limited to Dashboard, Mediciones and
@@ -263,7 +263,6 @@ describe('application shell', () => {
       'Nutrición',
       'Lista de compra',
       'Progreso',
-      'Objetivos',
     ]);
     expect(
       within(menu).getByRole('menuitem', { name: 'Lista de compra', hidden: true }),
@@ -272,11 +271,12 @@ describe('application shell', () => {
       within(menu).getByRole('menuitem', { name: 'Progreso', hidden: true }),
     ).toBeInTheDocument();
     expect(
-      within(menu).getByRole('menuitem', { name: 'Objetivos', hidden: true }),
-    ).toBeInTheDocument();
-    expect(
       within(menu).getByRole('menuitem', { name: 'Nutrición', hidden: true }),
     ).toBeInTheDocument();
+    // Retired from the UI: the goals feature is no longer reachable anywhere.
+    expect(
+      within(menu).queryByRole('menuitem', { name: 'Objetivos', hidden: true }),
+    ).not.toBeInTheDocument();
   });
 
   it('collapses the "Más" overflow after choosing a section', async () => {
@@ -288,7 +288,7 @@ describe('application shell', () => {
     );
 
     await user.click(screen.getByRole('button', { name: 'Más', hidden: true }));
-    await user.click(screen.getByRole('menuitem', { name: 'Objetivos', hidden: true }));
+    await user.click(screen.getByRole('menuitem', { name: 'Progreso', hidden: true }));
 
     expect(
       screen.queryByRole('menu', { name: 'Más secciones', hidden: true }),

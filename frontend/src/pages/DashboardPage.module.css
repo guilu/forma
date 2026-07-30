@@ -72,12 +72,27 @@
   align-items: stretch;
 }
 
-/* Third row: progress / evolution / shopping / (tip + plan banner). */
+/* Third row: evolution (two tracks) / shopping / (tip + plan banner). */
 .rowThree {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-5);
   align-items: stretch;
+}
+
+/*
+ * Evolución spans two tracks, inheriting the width the retired "Tu progreso"
+ * card left behind: a chart is the one thing in this row that reads better wide,
+ * and it keeps the row full instead of leaving a hole.
+ *
+ * Declared from the two-column breakpoint up, never in the base rule: `span 2`
+ * in the single-column phone layout would make the grid create an implicit
+ * second track and the row would stop being one column.
+ */
+@media (min-width: 581px) {
+  .rowThree > :first-child {
+    grid-column: span 2;
+  }
 }
 
 /*

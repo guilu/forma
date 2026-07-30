@@ -106,7 +106,6 @@ describe('App', () => {
     '/app/nutrition',
     '/app/shopping-list',
     '/app/progress',
-    '/app/goals',
     '/app/settings',
     '/app/settings/integrations',
     '/onboarding',

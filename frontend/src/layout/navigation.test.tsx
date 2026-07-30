@@ -33,6 +33,9 @@ vi.mock('../api/shopping', () => ({
     .mockResolvedValue({ items: [], budget: { weeklyEur: 0, monthlyEur: 0 } }),
 }));
 vi.mock('../api/insights', () => ({
+  // Progreso's insights-history section calls this on mount; without it the
+  // mocked module throws on the missing export and the page never renders.
+  getInsightsHistory: vi.fn().mockResolvedValue([]),
   getWeeklyInsights: vi.fn().mockResolvedValue({
     checkIn: { weekStartDate: '2026-07-06' },
     main: { category: 'BODY', severity: 'INFO', message: 'm', reason: 'r', createdAt: 'now' },
@@ -67,14 +70,14 @@ describe('sidebar navigation', () => {
       await screen.findByRole('heading', { name: 'Hola 👋' }, CHUNK_TIMEOUT),
     ).toBeInTheDocument();
 
-    // "Objetivos" is a secondary section, so it appears once (sidebar only).
-    const link = screen.getByRole('link', { name: 'Objetivos' });
+    // "Progreso" is a secondary section, so it appears once (sidebar only).
+    const link = screen.getByRole('link', { name: 'Progreso' });
     await user.click(link);
 
     // Sections are code-split (app/routes.tsx), so the heading arrives with the
     // route's chunk rather than on the click itself.
     expect(
-      await screen.findByRole('heading', { name: 'Objetivos' }, CHUNK_TIMEOUT),
+      await screen.findByRole('heading', { name: 'Progreso' }, CHUNK_TIMEOUT),
     ).toBeInTheDocument();
     expect(link).toHaveAttribute('aria-current', 'page');
   });
