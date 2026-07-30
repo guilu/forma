@@ -45,7 +45,6 @@ const TrainingPage = lazyPage(() => import('../pages/TrainingPage'), 'TrainingPa
 const NutritionPage = lazyPage(() => import('../pages/NutritionPage'), 'NutritionPage');
 const ShoppingPage = lazyPage(() => import('../pages/ShoppingPage'), 'ShoppingPage');
 const ProgressPage = lazyPage(() => import('../pages/ProgressPage'), 'ProgressPage');
-const GoalsPage = lazyPage(() => import('../pages/GoalsPage'), 'GoalsPage');
 const SettingsPage = lazyPage(() => import('../pages/SettingsPage'), 'SettingsPage');
 const IntegrationsPage = lazyPage(() => import('../pages/IntegrationsPage'), 'IntegrationsPage');
 const NotFoundPage = lazyPage(() => import('../pages/NotFoundPage'), 'NotFoundPage');
@@ -105,7 +104,6 @@ export const routes: RouteObject[] = [
           { path: 'nutrition', element: <NutritionPage /> },
           { path: 'shopping-list', element: <ShoppingPage /> },
           { path: 'progress', element: <ProgressPage /> },
-          { path: 'goals', element: <GoalsPage /> },
           { path: 'settings', element: <SettingsPage /> },
           // FOR-57: standalone sub-route (FOR-58's Ajustes shell isn't built yet —
           // see IntegrationsPage.tsx doc comment).

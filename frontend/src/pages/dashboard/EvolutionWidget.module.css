@@ -21,7 +21,15 @@
  */
 .chartArea {
   flex: 1;
-  min-height: 140px;
+  /*
+   * The floor, not the height: `flex: 1` takes whatever the card has spare.
+   * Raised from 140px when Evolución grew to two dashboard tracks — it is now
+   * the widest card in its row *and* the tallest, so the row no longer hands it
+   * any slack (the retired "Tu progreso" card and its ring used to set the row's
+   * height). At twice the width, a 140px plot reads as a strip rather than a
+   * chart.
+   */
+  min-height: 200px;
   min-width: 0;
 }
 

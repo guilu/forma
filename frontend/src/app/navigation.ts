@@ -32,7 +32,6 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { path: '/app/nutrition', label: 'Nutrición', icon: 'nutrition', primary: false },
   { path: '/app/shopping-list', label: 'Lista de compra', icon: 'shopping', primary: false },
   { path: '/app/progress', label: 'Progreso', icon: 'progress', primary: false },
-  { path: '/app/goals', label: 'Objetivos', icon: 'goals', primary: false },
   /*
    * FOR-185: "Ajustes" is deliberately absent. It moved out of section
    * navigation entirely and into the topbar's account menu, next to "Cerrar

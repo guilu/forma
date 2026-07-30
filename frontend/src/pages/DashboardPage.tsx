@@ -7,7 +7,6 @@ import { TrainingWidget } from './dashboard/TrainingWidget';
 import { NutritionWidget } from './dashboard/NutritionWidget';
 import { MacrosWidget } from './dashboard/MacrosWidget';
 import { TrendWidget } from './dashboard/TrendWidget';
-import { ProgressSummaryWidget } from './dashboard/ProgressSummaryWidget';
 import { EvolutionWidget } from './dashboard/EvolutionWidget';
 import { ShoppingWidget } from './dashboard/ShoppingWidget';
 import { TipWidget } from './dashboard/TipWidget';
@@ -99,7 +98,9 @@ export function DashboardPage() {
       </div>
 
       <div className={styles.rowThree}>
-        <ProgressSummaryWidget />
+        {/* Evolución takes two tracks: it inherited the width the retired
+            "Tu progreso" card left behind, and a chart is what actually uses
+            it (see DashboardPage.module.css `.rowThreeWide`). */}
         <EvolutionWidget />
         <ShoppingWidget />
         <div className={styles.tipColumn}>

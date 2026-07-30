@@ -6,7 +6,6 @@ import { listBodyMeasurements, type BodyMeasurement } from '../api/bodyMeasureme
 import { getTrainingWeek, type TrainingWeek } from '../api/training';
 import { getNutritionDay, type NutritionDay } from '../api/nutrition';
 import { getShoppingList, type ShoppingList } from '../api/shopping';
-import { listGoals, type Goal } from '../api/goals';
 import { getProfile } from '../api/profile';
 import { axe } from '../test/axe';
 
@@ -21,26 +20,13 @@ vi.mock('../api/bodyMeasurements', () => ({ listBodyMeasurements: vi.fn() }));
 vi.mock('../api/training', () => ({ getTrainingWeek: vi.fn() }));
 vi.mock('../api/nutrition', () => ({ getNutritionDay: vi.fn() }));
 vi.mock('../api/shopping', () => ({ getShoppingList: vi.fn() }));
-vi.mock('../api/goals', () => ({ listGoals: vi.fn() }));
 vi.mock('../api/profile', () => ({ getProfile: vi.fn() }));
 
 const listMock = vi.mocked(listBodyMeasurements);
 const trainingMock = vi.mocked(getTrainingWeek);
 const nutritionMock = vi.mocked(getNutritionDay);
 const shoppingMock = vi.mocked(getShoppingList);
-const goalsMock = vi.mocked(listGoals);
 const profileMock = vi.mocked(getProfile);
-
-const goal: Goal = {
-  id: 'g1',
-  title: 'Bajar a 68 kg',
-  metric: 'WEIGHT_KG',
-  target: 68,
-  dueDate: '2026-09-01',
-  status: 'ACTIVE',
-  progress: { current: 69.2, target: 68, ratio: 0.78, source: 'BODY_MEASUREMENT' },
-  milestones: [],
-};
 
 const measurement: BodyMeasurement = {
   measuredAt: '2026-07-05T08:00:00Z',
@@ -110,7 +96,6 @@ function mockAllSuccess() {
   trainingMock.mockResolvedValue(trainingWeek);
   nutritionMock.mockResolvedValue(nutritionDay);
   shoppingMock.mockResolvedValue(shoppingList);
-  goalsMock.mockResolvedValue([goal]);
 }
 
 describe('DashboardPage', () => {
@@ -119,8 +104,6 @@ describe('DashboardPage', () => {
     trainingMock.mockReset();
     nutritionMock.mockReset();
     shoppingMock.mockReset();
-    goalsMock.mockReset();
-    goalsMock.mockResolvedValue([goal]);
     profileMock.mockReset();
     // A saved profile with a name → the greeting personalises to it.
     profileMock.mockResolvedValue({ name: 'Diego', firstRunCompleted: true } as never);
@@ -145,8 +128,12 @@ describe('DashboardPage', () => {
     expect(
       screen.getByRole('heading', { name: 'Tendencia 30 días', level: 2 }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Tu progreso', level: 2 })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Evolución', level: 2 })).toBeInTheDocument();
+    // The goals feature is retired from the UI, and with it the card that was
+    // nothing but a view of one goal's progress.
+    expect(
+      screen.queryByRole('heading', { name: 'Tu progreso', level: 2 }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Lista de compra', level: 2 })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Consejo del día', level: 2 })).toBeInTheDocument();
 
@@ -165,13 +152,11 @@ describe('DashboardPage', () => {
 
     const hrefs = screen.getAllByRole('link').map((el) => el.getAttribute('href'));
     expect(hrefs).toEqual(
-      expect.arrayContaining([
-        '/app/training',
-        '/app/nutrition',
-        '/app/shopping-list',
-        '/app/goals',
-      ]),
+      expect.arrayContaining(['/app/training', '/app/nutrition', '/app/shopping-list']),
     );
+    // Nothing links to the retired goals route — a dead link is worse than a
+    // missing one.
+    expect(hrefs).not.toContain('/app/goals');
   });
 
   it('shows one widget in its empty state while another still renders its data', async () => {
