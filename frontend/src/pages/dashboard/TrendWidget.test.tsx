@@ -43,6 +43,31 @@ describe('TrendWidget', () => {
     expect(await screen.findByRole('img', { name: /Tendencia de peso/ })).toBeInTheDocument();
   });
 
+  /**
+   * The assignment the design asks for: weight green, body fat blue, lean mass
+   * amber. It shipped with fat on the warning token and muscle on info, which
+   * read as "body fat is a warning". Asserted on the legend dots, which are the
+   * one place the colour reaches the DOM as an inline value.
+   */
+  it('paints each series in its assigned token', async () => {
+    listMock.mockResolvedValue([
+      base,
+      { ...base, measuredAt: '2026-06-28T08:00:00Z', weightKg: 74.1 },
+    ]);
+
+    render(<TrendWidget />);
+
+    await screen.findByRole('img', { name: /Tendencia de peso/ });
+    const colourFor = (label: string) => {
+      const item = screen.getByText(label).closest('li') as HTMLElement;
+      return item.querySelector('span')?.getAttribute('style');
+    };
+
+    expect(colourFor('Peso (kg)')).toContain('--color-accent');
+    expect(colourFor('Grasa (%)')).toContain('--color-info');
+    expect(colourFor('Músculo (kg)')).toContain('--color-warning');
+  });
+
   it('shows an error state when the request fails', async () => {
     listMock.mockRejectedValue(new Error('network'));
 

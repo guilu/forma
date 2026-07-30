@@ -83,6 +83,15 @@
   --color-accent-contrast: #003920; /* template: on-primary (was #0a1206) */
   --color-warning: #ffab70; /* template: warning-amber (was #ffd166) */
   --color-danger: #ff5757; /* template: error-pulse (was #ff5f56) */
+  /*
+   * Informational blue (FOR-188). It was already being used — the body-fat trend
+   * line and the "Agua" legend dot both wrote `var(--color-info, #3b82f6)`, a
+   * reference to a token that did not exist, so both silently rendered the
+   * hardcoded fallback and the light theme got a blue picked for a dark
+   * background. Declared for real here, and re-derived below for the light
+   * theme.
+   */
+  --color-info: #3b82f6;
 
   /*
    * FOR-185: the landing's secondary/tertiary accents. The template's palette
@@ -129,7 +138,20 @@
    * logotype colours, the minimal change is to start the ramp at its own 25%
    * point (#2a955e), which puts the whole gradient at >=4.89:1.
    */
-  --gradient-accent: linear-gradient(135deg, #0b755f 0%, #85f55c 100%);
+  /*
+   * The ramp's two ends are their own tokens (FOR-188): a conic gradient cannot
+   * reuse a `linear-gradient` value, and the progress donuts need exactly these
+   * two colours to ramp the completed arc. Declaring the endpoints once and
+   * composing `--gradient-accent` from them keeps the button and the donut on
+   * the same ramp instead of two hardcoded copies drifting apart.
+   */
+  --color-accent-ramp-from: #0b755f;
+  --color-accent-ramp-to: #85f55c;
+  --gradient-accent: linear-gradient(
+    135deg,
+    var(--color-accent-ramp-from) 0%,
+    var(--color-accent-ramp-to) 100%
+  );
   --color-on-gradient: #10141a;
   /* Halo tinted with the ramp's bright end, so the glow reads as the same
    * brand gradient rather than as the flat accent. */
@@ -361,6 +383,11 @@
    * ~5.04:1 on --color-bg) already passes AA and needs no change.
    */
   --color-danger: #c0392b;
+  /*
+   * The dark theme's #3b82f6 is ~2.9:1 on this background — under the 3:1 bar a
+   * chart line or a legend dot needs. Darkened at the same hue to ~5.9:1.
+   */
+  --color-info: #1d4ed8;
 
   /*
    * FOR-185: the template's secondary (#7dde38 lime) and tertiary (#7ed8b6
@@ -381,7 +408,13 @@
    * themes. See the dark block for the full contrast table behind the ink
    * choice and its one known weak spot.
    */
-  --gradient-accent: linear-gradient(135deg, #0b755f 0%, #85f55c 100%);
+  --color-accent-ramp-from: #0b755f;
+  --color-accent-ramp-to: #85f55c;
+  --gradient-accent: linear-gradient(
+    135deg,
+    var(--color-accent-ramp-from) 0%,
+    var(--color-accent-ramp-to) 100%
+  );
   --color-on-gradient: #10141a;
   --shadow-accent-glow: 0 8px 24px -4px rgb(133 245 92 / 35%);
 

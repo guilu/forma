@@ -4,6 +4,7 @@ import { ErrorState } from '../../components/ErrorState';
 import { LineChart, type ChartPoint } from '../../components/LineChart';
 import { WidgetLoading } from '../../components/WidgetLoading';
 import { listBodyMeasurements, type BodyMeasurement } from '../../api/bodyMeasurements';
+import { narrowingRanges, pointsInRange, type RangeOption } from '../chartRanges';
 import { WidgetSection } from './WidgetSection';
 import styles from './EvolutionWidget.module.css';
 
@@ -12,10 +13,12 @@ import styles from './EvolutionWidget.module.css';
  * body trend the user can switch between Peso / Grasa / Músculo, with the
  * latest value highlighted. Real FOR-17 measurement history (ADR-006).
  *
- * <p>The metric selector is real (re-plots a different backed series). The
- * range tabs (7D / 30D / 90D / 1A / Todo) are visual-only: no body-measurement
- * endpoint takes a date-range parameter, so they're inert affordances — the
- * chart always shows the full returned history. Documented gap, not invented.
+ * <p>The metric selector and the range tabs are both real. The tabs used to be
+ * inert decoration, on the grounds that no endpoint takes a date range — but the
+ * range never needed one: the full history is already in hand, and the
+ * measurements page had been filtering it client-side since FOR-52. This widget
+ * now uses that same shared filtering (`pages/chartRanges.ts`) instead of
+ * rendering buttons that do nothing.
  */
 type State =
   | { readonly status: 'loading' }
@@ -35,12 +38,16 @@ const METRICS: Record<
 };
 
 /**
- * Three tabs rather than the mockup's five: they are inert affordances (see the
- * class doc), and five of them cannot fit a one-column phone card without
- * overflowing it, so the set is trimmed to the two ranges a user actually asks
- * for plus "all".
+ * Three tabs rather than the measurements page's five: five buttons do not fit a
+ * widget card, so the set is trimmed to the two windows a user actually asks for
+ * plus "everything". The filtering itself is shared with that page
+ * (`pages/chartRanges.ts`) so the two cannot drift.
  */
-const RANGES = ['7D', '30D', 'Todos'] as const;
+const RANGES: readonly RangeOption[] = [
+  { key: '7D', label: '7D', days: 7 },
+  { key: '30D', label: '30D', days: 30 },
+  { key: 'ALL', label: 'Todos', days: null },
+];
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
@@ -49,6 +56,10 @@ function formatDate(iso: string): string {
 export function EvolutionWidget() {
   const [state, setState] = useState<State>({ status: 'loading' });
   const [metric, setMetric] = useState<MetricKey>('weight');
+  // Keyed by option key, not index: the offered set changes with the data, and
+  // the choice has to survive a metric switch (a different series can offer
+  // different windows).
+  const [rangeKey, setRangeKey] = useState('ALL');
 
   useEffect(() => {
     let active = true;
@@ -85,12 +96,17 @@ export function EvolutionWidget() {
 
   return (
     <WidgetSection id="evolution-widget-title" title="Evolución" action={selector}>
-      {renderContent(state, metric)}
+      {renderContent(state, metric, rangeKey, setRangeKey)}
     </WidgetSection>
   );
 }
 
-function renderContent(state: State, metric: MetricKey) {
+function renderContent(
+  state: State,
+  metric: MetricKey,
+  rangeKey: string,
+  onRangeChange: (key: string) => void,
+) {
   if (state.status === 'loading') {
     return <WidgetLoading label="Cargando tu evolución…" rows={2} />;
   }
@@ -106,13 +122,20 @@ function renderContent(state: State, metric: MetricKey) {
   const { label, unit, select } = METRICS[metric];
   const chrono = [...state.history].reverse();
 
-  const points: ChartPoint[] = chrono.flatMap((m) => {
+  const allPoints: ChartPoint[] = chrono.flatMap((m) => {
     const value = select(m);
     return value === undefined
       ? []
       : [{ t: Date.parse(m.measuredAt), y: value, dateLabel: formatDate(m.measuredAt) }];
   });
-  const latest = points[points.length - 1];
+  const ranges = narrowingRanges(allPoints, RANGES);
+  // The stored choice may not be on offer for this series (a metric with fewer
+  // points offers fewer windows); fall back to the last option, always "todos".
+  const active = ranges.find((range) => range.key === rangeKey) ?? ranges[ranges.length - 1];
+  const points = pointsInRange(allPoints, active.days);
+  // The headline stays the newest measurement of the metric, not of the window:
+  // it answers "where am I now", which the range does not change.
+  const latest = allPoints[allPoints.length - 1];
 
   return (
     <div className={styles.card}>
@@ -133,14 +156,23 @@ function renderContent(state: State, metric: MetricKey) {
       ) : (
         <p className={styles.hint}>Registra más mediciones para ver la curva de evolución.</p>
       )}
-      {/* Range tabs — visual only (no date-range endpoint). */}
-      <div className={styles.ranges} aria-hidden="true">
-        {RANGES.map((r) => (
-          <span key={r} className={r === '30D' ? styles.rangeActive : styles.range}>
-            {r}
-          </span>
-        ))}
-      </div>
+      {/* One option is not a choice: with too little history to narrow, the
+          group would render a single button that cannot change the chart. */}
+      {ranges.length > 1 && (
+        <div className={styles.ranges} role="group" aria-label="Rango del gráfico">
+          {ranges.map((range) => (
+            <button
+              key={range.key}
+              type="button"
+              className={range.key === active.key ? styles.rangeActive : styles.range}
+              aria-pressed={range.key === active.key}
+              onClick={() => onRangeChange(range.key)}
+            >
+              {range.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

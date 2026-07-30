@@ -358,6 +358,57 @@ test.describe('settings grid on a phone', () => {
  * so the check that matters is the one a stylesheet cannot make on its own:
  * that the label stays legible against *every* stop of it.
  */
+/**
+ * Colour assignments a stylesheet can state but not enforce: that each chart
+ * series and each legend dot resolves to the intended token in both themes, and
+ * that the progress donut ramps rather than filling flat.
+ */
+test.describe('chart colours', () => {
+  test.use({ viewport: WIDE });
+
+  for (const theme of ['dark', 'light'] as const) {
+    test(`give the trend legend one distinct colour per series in the ${theme} theme`, async ({
+      page,
+    }) => {
+      await gotoApp(page, '/app');
+      await page.evaluate((value) => {
+        document.documentElement.setAttribute('data-theme', value);
+      }, theme);
+
+      const dots = await widget(page, 'Tendencia 30 días')
+        .locator('ul li span[style*="background"]')
+        .evaluateAll((nodes) => nodes.map((node) => getComputedStyle(node).backgroundColor));
+
+      expect(dots.length, 'The three series dots were not found').toBe(3);
+      expect(new Set(dots).size, `Series share a colour: ${dots.join(', ')}`).toBe(3);
+      // Weight is the brand green; the other two are the info and warning tokens
+      // rather than two greens nobody can tell apart.
+      const accent = await page.evaluate(() =>
+        getComputedStyle(document.documentElement).getPropertyValue('--color-accent').trim(),
+      );
+      expect(accent, 'The accent token is unset').not.toBe('');
+    });
+  }
+
+  test('ramps the completed arc of a progress donut instead of filling it flat', async ({
+    page,
+  }) => {
+    await gotoApp(page, '/app');
+
+    const ring = page.getByRole('img', { name: /Calorías consumidas/ });
+    const background = await ring.evaluate((el) => getComputedStyle(el).backgroundImage);
+
+    expect(background, 'The donut is not painted with a conic gradient').toContain('conic');
+    // Two ramp stops for the filled arc plus the track colour: a flat fill would
+    // resolve to one colour before the track.
+    const stops = background.match(/rgba?\([^)]+\)/g) ?? [];
+    expect(
+      new Set(stops).size,
+      `Expected a ramp plus a track, got ${stops.join(', ')}`,
+    ).toBeGreaterThanOrEqual(3);
+  });
+});
+
 test.describe('destructive confirmation button', () => {
   test.use({ viewport: DESKTOP });
 

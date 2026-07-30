@@ -207,6 +207,12 @@ describe('MeasurementsPage', () => {
     expect(
       within(distribution).getByRole('link', { name: 'Ver análisis detallado' }),
     ).toHaveAttribute('href', '/app/progress');
+    // The schematic SVG placeholder is replaced by the real anatomical figure
+    // (FOR-188): an asset now exists, so the card stops drawing a stand-in.
+    expect(within(distribution).getByRole('img', { name: 'Composición corporal' })).toHaveAttribute(
+      'src',
+      '/body/muscle-map-front.png',
+    );
   });
 
   // The Resumen/Evolución/Historial tab bar is CSS-hidden at the jsdom desktop

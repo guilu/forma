@@ -118,12 +118,19 @@
   background-color: var(--color-warning);
 }
 
+/*
+ * Bone and water are the two placeholder rows (no such fields on the API), and
+ * the design gives them two greys rather than a colour each: muscle keeps the
+ * brand green and fat the amber, so the eye lands on the two values that are
+ * real. Water is the fainter of the two — same relationship in both themes,
+ * where "fainter" resolves against whatever the surface is.
+ */
 .dotBone {
   background-color: var(--color-text-muted);
 }
 
 .dotWater {
-  background-color: var(--color-info, #3b82f6);
+  background-color: color-mix(in srgb, var(--color-text-muted) 55%, transparent);
 }
 
 .distributionLabel {

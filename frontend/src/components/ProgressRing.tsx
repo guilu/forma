@@ -23,12 +23,26 @@ interface ProgressRingProps {
 
 export function ProgressRing({ value, max, label, children, size = 96 }: ProgressRingProps) {
   const percent = max > 0 ? Math.min(100, Math.max(0, Math.round((value / max) * 100))) : 0;
+  const filled = percent * 3.6;
   const ringStyle = {
     width: size,
     height: size,
-    background: `conic-gradient(var(--color-accent) ${percent * 3.6}deg, var(--color-border) ${
-      percent * 3.6
-    }deg 360deg)`,
+    /*
+     * The completed arc carries the brand ramp rather than a flat accent
+     * (FOR-188): dark at the start, bright at the end, the same two stops as the
+     * primary button — `--color-accent-ramp-from/to`, which is why those exist
+     * as their own tokens (a conic gradient cannot reuse `--gradient-accent`,
+     * which is a `linear-gradient` value).
+     *
+     * The ramp is scaled to the *filled* sweep, not to the full circle, so the
+     * bright end always lands on the arc's tip whatever the percentage — at 20%
+     * a full-circle ramp would leave the arc entirely dark.
+     */
+    background: `conic-gradient(
+      var(--color-accent-ramp-from) 0deg,
+      var(--color-accent-ramp-to) ${filled}deg,
+      var(--color-border) ${filled}deg 360deg
+    )`,
   };
 
   return (

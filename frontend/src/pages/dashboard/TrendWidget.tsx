@@ -78,6 +78,14 @@ function renderContent(state: State) {
     );
   }
 
+  /*
+   * Colour per series, matching the design's assignment (FOR-188): weight green,
+   * body fat blue, lean mass amber. Blue and amber swapped from what shipped —
+   * fat was on the warning token and muscle on info, which read as "fat is a
+   * warning" and left the brand green next to a blue nobody had chosen.
+   * Every series is also named in the legend and in the chart's `ariaLabel`, so
+   * none of this is carried by colour alone.
+   */
   const series: Series[] = [
     {
       label: 'Peso (kg)',
@@ -86,12 +94,12 @@ function renderContent(state: State) {
     },
     {
       label: 'Grasa (%)',
-      color: 'var(--color-warning)',
+      color: 'var(--color-info)',
       points: toPoints(window, (m) => m.bodyFatPercentage),
     },
     {
       label: 'Músculo (kg)',
-      color: 'var(--color-info, #3b82f6)',
+      color: 'var(--color-warning)',
       points: toPoints(window, (m) => m.leanMassKg),
     },
   ].filter((s) => s.points.length > 0);
