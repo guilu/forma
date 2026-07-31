@@ -128,12 +128,16 @@ function seriesFor(measurements: BodyMeasurement[], metric: MetricConfig): Chart
 }
 
 /**
- * Below this the header keeps title and action on one row by shortening the
- * action: "+ Registrar medición" and a title do not both fit a phone, and
- * wrapping the button onto its own row pushed the section tabs and everything
- * under them a further 60px down.
+ * Below this the header shortens its action to "+ Medición".
+ *
+ * <p>It started at 40rem — the width where the long label stops fitting beside
+ * the title at all — and moved to 64rem: fitting is the floor, not the goal.
+ * Through the tablet range the two sat shoulder to shoulder with the button
+ * crowding the subtitle, and the verb adds nothing a "+" next to "Medición" on
+ * a measurements screen does not already say. The full phrase returns on a
+ * desktop, where there is room for it to read as a sentence.
  */
-const NARROW_HEADER = '(max-width: 40rem)';
+const NARROW_HEADER = '(max-width: 64rem)';
 
 export function MeasurementsPage() {
   const narrow = useMediaQuery(NARROW_HEADER);
