@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { TrendWidget } from './TrendWidget';
 import { listBodyMeasurements, type BodyMeasurement } from '../../api/bodyMeasurements';
@@ -7,8 +7,22 @@ vi.mock('../../api/bodyMeasurements', () => ({ listBodyMeasurements: vi.fn() }))
 
 const listMock = vi.mocked(listBodyMeasurements);
 
+/*
+ * Dates are relative to the run, not pinned with fake timers. The widget windows
+ * on the clock, so the fixtures have to move with it — and freezing time instead
+ * left Recharts' own timers queued past the end of the test, which surfaced in
+ * CI as `cancelAnimationFrame is not defined` after the environment tore down.
+ */
+const DAY_MS = 24 * 60 * 60 * 1000;
+const daysAgo = (days: number): string => new Date(Date.now() - days * DAY_MS).toISOString();
+const shortDate = (days: number): string =>
+  new Date(Date.now() - days * DAY_MS).toLocaleDateString('es-ES', {
+    day: 'numeric',
+    month: 'short',
+  });
+
 const base: BodyMeasurement = {
-  measuredAt: '2026-07-05T08:00:00Z',
+  measuredAt: daysAgo(1),
   source: 'MANUAL',
   weightKg: 73.6,
   bodyFatPercentage: 14.7,
@@ -19,16 +33,6 @@ const base: BodyMeasurement = {
 describe('TrendWidget', () => {
   beforeEach(() => {
     listMock.mockReset();
-    // The widget windows on the clock now, so every test here pins it.
-    // `shouldAdvanceTime` keeps timers ticking under the frozen time — without
-    // it testing-library's async waits never resolve and tests time out rather
-    // than failing on their assertion.
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    vi.setSystemTime(new Date('2026-07-30T12:00:00Z'));
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
   });
 
   it('shows honest copy when the window holds fewer than two measurements', async () => {
@@ -41,10 +45,7 @@ describe('TrendWidget', () => {
   });
 
   it('plots the trend line once there are at least two measurements', async () => {
-    listMock.mockResolvedValue([
-      base,
-      { ...base, measuredAt: '2026-07-08T08:00:00Z', weightKg: 74.1 },
-    ]);
+    listMock.mockResolvedValue([base, { ...base, measuredAt: daysAgo(3), weightKg: 74.1 }]);
 
     render(<TrendWidget />);
 
@@ -58,10 +59,7 @@ describe('TrendWidget', () => {
    * one place the colour reaches the DOM as an inline value.
    */
   it('paints each series in its assigned token', async () => {
-    listMock.mockResolvedValue([
-      base,
-      { ...base, measuredAt: '2026-07-08T08:00:00Z', weightKg: 74.1 },
-    ]);
+    listMock.mockResolvedValue([base, { ...base, measuredAt: daysAgo(3), weightKg: 74.1 }]);
 
     render(<TrendWidget />);
 
@@ -83,15 +81,15 @@ describe('TrendWidget', () => {
    * into the last few pixels.
    */
   describe('the 30-day window', () => {
-    const on = (measuredAt: string): BodyMeasurement => ({ ...base, measuredAt });
+    const on = (days: number): BodyMeasurement => ({ ...base, measuredAt: daysAgo(days) });
 
     it('plots only the measurements inside it', async () => {
       listMock.mockResolvedValue([
-        on('2026-07-29T08:00:00Z'),
-        on('2026-07-10T08:00:00Z'),
+        on(1),
+        on(20),
         // Older than 30 days: outside the window the title promises.
-        on('2026-05-02T08:00:00Z'),
-        on('2025-11-11T08:00:00Z'),
+        on(90),
+        on(260),
       ]);
 
       render(<TrendWidget />);
@@ -100,18 +98,18 @@ describe('TrendWidget', () => {
     });
 
     it('labels the axis with the window, not with the data', async () => {
-      listMock.mockResolvedValue([on('2026-07-29T08:00:00Z'), on('2026-07-28T08:00:00Z')]);
+      listMock.mockResolvedValue([on(1), on(2)]);
 
       render(<TrendWidget />);
 
       // The window is fixed: 30 days back from today, to today — regardless of
       // where the first and last measurements happen to sit inside it.
-      expect(await screen.findByText('30 jun')).toBeInTheDocument();
-      expect(screen.getByText('30 jul')).toBeInTheDocument();
+      expect(await screen.findByText(shortDate(30))).toBeInTheDocument();
+      expect(screen.getByText(shortDate(0))).toBeInTheDocument();
     });
 
     it('says the window is empty when every measurement predates it', async () => {
-      listMock.mockResolvedValue([on('2026-05-02T08:00:00Z'), on('2025-11-11T08:00:00Z')]);
+      listMock.mockResolvedValue([on(90), on(260)]);
 
       render(<TrendWidget />);
 
