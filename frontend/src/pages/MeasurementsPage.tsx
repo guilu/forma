@@ -13,6 +13,7 @@ import { MeasurementForm } from '../components/MeasurementForm';
 import { MetricCard } from '../components/MetricCard';
 import { Modal } from '../components/Modal';
 import { StatusPill } from '../components/StatusPill';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import { narrowingRanges, pointsInRange, type RangeOption } from './chartRanges';
 import { useNotify } from '../components/NotificationProvider';
 import { ApiRequestError } from '../api/client';
@@ -126,7 +127,16 @@ function seriesFor(measurements: BodyMeasurement[], metric: MetricConfig): Chart
     .map((p) => ({ t: Date.parse(p.measuredAt), y: p.value, dateLabel: formatDate(p.measuredAt) }));
 }
 
+/**
+ * Below this the header keeps title and action on one row by shortening the
+ * action: "+ Registrar medición" and a title do not both fit a phone, and
+ * wrapping the button onto its own row pushed the section tabs and everything
+ * under them a further 60px down.
+ */
+const NARROW_HEADER = '(max-width: 40rem)';
+
 export function MeasurementsPage() {
+  const narrow = useMediaQuery(NARROW_HEADER);
   const [state, setState] = useState<State>({ status: 'loading' });
   const [formOpen, setFormOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>('resumen');
@@ -162,7 +172,7 @@ export function MeasurementsPage() {
             where the empty state is not rendered at all. */}
         {state.status !== 'empty' && (
           <Button type="button" onClick={() => setFormOpen(true)}>
-            + Registrar medición
+            {narrow ? '+ Medición' : '+ Registrar medición'}
           </Button>
         )}
       </header>
