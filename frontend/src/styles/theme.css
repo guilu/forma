@@ -82,6 +82,15 @@
   --color-accent-strong: #4cdf97;
   --color-accent-contrast: #003920; /* template: on-primary (was #0a1206) */
   --color-warning: #ffab70; /* template: warning-amber (was #ffd166) */
+  /*
+   * The same amber for graphical marks — a legend dot, a chart line, a donut
+   * slice (FOR-189). Split from `--color-warning` because that token also
+   * carries text, and text needs 4.5:1 while a graphical object needs 3:1. The
+   * light theme has to darken the text one to a brown to clear its bar, which
+   * left "Grasa" reading brown on a light card; this one stays amber there.
+   * Never use it for text.
+   */
+  --color-warning-graphic: #ffab70;
   --color-danger: #ff5757; /* template: error-pulse (was #ff5f56) */
   /*
    * Informational blue (FOR-188). It was already being used — the body-fat trend
@@ -377,6 +386,12 @@
    * (below the 4.5:1 normal-text bar). #8f4d13 is ~6.01:1 on --color-bg.
    */
   --color-warning: #8f4d13;
+  /*
+   * Graphical amber, kept amber (see the dark block). #d97706 is ~3.4:1 on
+   * --color-bg — over the 3:1 bar for a non-text mark, and recognisably the
+   * same colour as the dark theme's, which #8f4d13 is not.
+   */
+  --color-warning-graphic: #d97706;
   /*
    * FOR-163: dark danger moved from #ff5f56 to the template's error-pulse
    * (#ff5757) -- a ~1% hue nudge. The existing light counterpart (#c0392b,

@@ -99,7 +99,7 @@ function renderContent(state: State) {
     },
     {
       label: 'Músculo (kg)',
-      color: 'var(--color-warning)',
+      color: 'var(--color-warning-graphic)',
       points: toPoints(window, (m) => m.leanMassKg),
     },
   ].filter((s) => s.points.length > 0);

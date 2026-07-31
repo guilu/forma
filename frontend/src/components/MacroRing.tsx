@@ -43,7 +43,7 @@ export function MacroRing({ proteinG, carbsG, fatG, showLegend = true }: MacroRi
   const values = { protein: proteinG, carbs: carbsG, fat: fatG };
 
   const ringStyle = {
-    background: `conic-gradient(var(--color-accent) 0deg ${proteinDeg}deg, var(--color-warning) ${proteinDeg}deg ${
+    background: `conic-gradient(var(--color-accent) 0deg ${proteinDeg}deg, var(--color-warning-graphic) ${proteinDeg}deg ${
       proteinDeg + carbsDeg
     }deg, var(--color-text-muted) ${proteinDeg + carbsDeg}deg 360deg)`,
   };

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { DashboardPage } from './DashboardPage';
 import { listBodyMeasurements, type BodyMeasurement } from '../api/bodyMeasurements';
@@ -142,6 +143,93 @@ describe('DashboardPage', () => {
     expect(await screen.findByRole('heading', { name: 'Peso', level: 3 })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Calorías hoy', level: 3 })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Agua', level: 3 })).toBeInTheDocument();
+  });
+
+  describe('date navigator', () => {
+    /**
+     * Scoped to the metrics row: the same numbers and the same "no measurements"
+     * copy also appear in Evolución, so a page-wide query matches twice and says
+     * nothing about which widget it found.
+     */
+    const tiles = () => within(screen.getByRole('region', { name: 'Resumen de hoy' }));
+
+    const dated = (measuredAt: string, weightKg: number): BodyMeasurement => ({
+      ...measurement,
+      measuredAt,
+      weightKg,
+      bodyFatPercentage: weightKg / 5,
+      leanMassKg: weightKg - 10,
+      bmi: weightKg / 3,
+    });
+
+    /**
+     * The arrows step through the dates that actually have a measurement, not
+     * through the calendar: an empty day has nothing to show, so offering it
+     * would be a dead end.
+     */
+    it('starts on the newest measurement and shows its values', async () => {
+      mockAllSuccess();
+      listMock.mockResolvedValue([
+        dated('2026-07-05T08:00:00Z', 75),
+        dated('2026-07-01T08:00:00Z', 78),
+      ]);
+
+      renderDashboard();
+
+      expect(await screen.findByText('5 jul 2026')).toBeInTheDocument();
+      expect(tiles().getByText('75.0')).toBeInTheDocument();
+    });
+
+    it('steps back to the previous measurement and re-reads the tiles', async () => {
+      mockAllSuccess();
+      listMock.mockResolvedValue([
+        dated('2026-07-05T08:00:00Z', 75),
+        dated('2026-07-01T08:00:00Z', 78),
+      ]);
+      const user = userEvent.setup();
+
+      renderDashboard();
+      await screen.findByText('5 jul 2026');
+
+      await user.click(screen.getByRole('button', { name: 'Medición anterior' }));
+
+      expect(screen.getByText('1 jul 2026')).toBeInTheDocument();
+      expect(tiles().getByText('78.0')).toBeInTheDocument();
+      expect(tiles().queryByText('75.0')).not.toBeInTheDocument();
+    });
+
+    it('stops at both ends of the history', async () => {
+      mockAllSuccess();
+      listMock.mockResolvedValue([
+        dated('2026-07-05T08:00:00Z', 75),
+        dated('2026-07-01T08:00:00Z', 78),
+      ]);
+      const user = userEvent.setup();
+
+      renderDashboard();
+      await screen.findByText('5 jul 2026');
+
+      // Newest: there is nothing newer to step to.
+      expect(screen.getByRole('button', { name: 'Medición siguiente' })).toBeDisabled();
+
+      await user.click(screen.getByRole('button', { name: 'Medición anterior' }));
+
+      expect(screen.getByRole('button', { name: 'Medición anterior' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Medición siguiente' })).toBeEnabled();
+    });
+
+    it('is not rendered at all when there are no measurements', async () => {
+      mockAllSuccess();
+      listMock.mockResolvedValue([]);
+
+      renderDashboard();
+
+      await waitFor(() =>
+        expect(tiles().getByRole('status')).toHaveTextContent('Aún no hay mediciones'),
+      );
+      expect(screen.queryByRole('button', { name: 'Medición anterior' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Medición siguiente' })).not.toBeInTheDocument();
+    });
   });
 
   it('links each widget to its feature page', async () => {

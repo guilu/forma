@@ -1,11 +1,10 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
 import { MetricCard } from '../../components/MetricCard';
 import { LineChart, type ChartPoint } from '../../components/LineChart';
 import { WidgetLoading } from '../../components/WidgetLoading';
-import { listBodyMeasurements, type BodyMeasurement } from '../../api/bodyMeasurements';
+import { type BodyMeasurement } from '../../api/bodyMeasurements';
 import styles from './BodyWidget.module.css';
 
 /**
@@ -31,14 +30,23 @@ import styles from './BodyWidget.module.css';
  * recomputing it in the UI would duplicate a domain rule (ADR-001), so the
  * caption honestly shows the measurement count instead of an invented delta.
  */
-type State =
+/**
+ * The measurement list is owned by {@link DashboardPage}, not fetched here
+ * (FOR-189): the header's date navigator selects which measurement these tiles
+ * show, and a selection cannot be shared between two components that each fetch
+ * their own copy. This widget is presentational — it renders whichever state it
+ * is handed.
+ */
+export type BodyState =
   | { readonly status: 'loading' }
   | { readonly status: 'error' }
   | { readonly status: 'empty' }
   | {
       readonly status: 'ready';
-      readonly latest: BodyMeasurement;
+      /** Newest first, as the API returns it. */
       readonly history: BodyMeasurement[];
+      /** Index into `history` of the measurement the tiles describe. */
+      readonly selected: number;
     };
 
 const SPARKLINE_WINDOW = 8;
@@ -51,30 +59,7 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 }
 
-export function BodyWidget() {
-  const [state, setState] = useState<State>({ status: 'loading' });
-
-  useEffect(() => {
-    let active = true;
-    listBodyMeasurements()
-      .then((measurements) => {
-        if (!active) return;
-        if (measurements.length === 0) {
-          setState({ status: 'empty' });
-          return;
-        }
-        setState({ status: 'ready', latest: measurements[0], history: measurements });
-      })
-      .catch(() => {
-        if (active) {
-          setState({ status: 'error' });
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-
+export function BodyWidget({ state }: { readonly state: BodyState }) {
   return <div className={styles.body}>{renderContent(state)}</div>;
 }
 
@@ -94,7 +79,7 @@ function sparkline(
     });
 }
 
-function renderContent(state: State) {
+function renderContent(state: BodyState) {
   if (state.status === 'loading') {
     return (
       <div className={styles.full}>
@@ -131,31 +116,38 @@ function renderContent(state: State) {
     );
   }
 
-  const { latest, history } = state;
-  const caption = `${history.length} ${history.length === 1 ? 'medición' : 'mediciones'}`;
+  const { history, selected } = state;
+  const current = history[selected];
+  /*
+   * The sparkline runs up to the selected measurement, not past it: it is the
+   * run-up to the number on the tile, so a line continuing into later dates
+   * would describe something the tile is not showing.
+   */
+  const upToSelected = history.slice(selected);
+  const caption = `${upToSelected.length} ${upToSelected.length === 1 ? 'medición' : 'mediciones'}`;
 
   const tiles = [
     {
       label: 'Peso',
-      value: format(latest.weightKg),
+      value: format(current.weightKg),
       unit: 'kg',
       select: (m: BodyMeasurement) => m.weightKg,
     },
     {
       label: 'Grasa',
-      value: format(latest.bodyFatPercentage),
+      value: format(current.bodyFatPercentage),
       unit: '%',
       select: (m: BodyMeasurement) => m.bodyFatPercentage,
     },
     {
       label: 'Músculo',
-      value: format(latest.leanMassKg),
+      value: format(current.leanMassKg),
       unit: 'kg',
       select: (m: BodyMeasurement) => m.leanMassKg,
     },
     {
       label: 'IMC',
-      value: format(latest.bmi),
+      value: format(current.bmi),
       unit: undefined,
       select: (m: BodyMeasurement) => m.bmi,
     },
@@ -164,7 +156,7 @@ function renderContent(state: State) {
   return (
     <>
       {tiles.map((tile) => {
-        const points = sparkline(history, tile.select);
+        const points = sparkline(upToSelected, tile.select);
         return (
           <MetricCard
             key={tile.label}

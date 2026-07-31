@@ -65,7 +65,7 @@ describe('TrendWidget', () => {
 
     expect(colourFor('Peso (kg)')).toContain('--color-accent');
     expect(colourFor('Grasa (%)')).toContain('--color-info');
-    expect(colourFor('Músculo (kg)')).toContain('--color-warning');
+    expect(colourFor('Músculo (kg)')).toContain('--color-warning-graphic');
   });
 
   it('shows an error state when the request fails', async () => {
