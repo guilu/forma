@@ -106,7 +106,10 @@
     grid-column: 2;
   }
 
+  /* Stacked under the provider's copy, the actions read better ranged right —
+     they end the row rather than starting a new list under the description. */
   .actions {
     grid-column: 1 / -1;
+    justify-content: flex-end;
   }
 }

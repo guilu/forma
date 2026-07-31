@@ -49,6 +49,6 @@
 
 /* The outline follows the input's focus onto the thing you can see. */
 .input:focus-visible + .face {
-  outline: 2px solid var(--color-accent);
+  outline: 2px solid var(--color-accent-strong);
   outline-offset: 2px;
 }

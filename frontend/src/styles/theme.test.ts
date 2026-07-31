@@ -93,17 +93,20 @@ describe('theme.css design tokens (FOR-163 reconciliation)', () => {
     // FOR-185 replaced FOR-163's derived light accent (#006d42, the template's
     // `inverse-primary`) with a brighter brand-chosen green. The guard is kept
     // but re-pointed, so a future silent drift is still caught.
-    it('pins the light accent to the FOR-185 brand green and its readable ink', () => {
-      expect(tokenValue(light, '--color-accent')).toBe('#4caf50');
-      // NOT #ffffff: white on #4caf50 is ~2.78:1, and ~10 components paint
-      // text or icons on an accent fill. #0f1a13 (= light --color-text) is
-      // ~6.42:1 there.
+    it('pins the light accent to the brand green and its readable ink', () => {
+      // FOR-189: brightened to the brand owner's green so light mode reads like
+      // dark. Deliberately not asserted equal to the dark accent (#4cdf97) —
+      // they are a nudge apart, and the value was given as-is.
+      expect(tokenValue(light, '--color-accent')).toBe('#3ce78b');
+      // NOT #ffffff, which would be ~1.5:1 on that green. #0f1a13 (= light
+      // --color-text) is ~11:1 there, and ~10 components paint text or icons on
+      // an accent fill.
       expect(tokenValue(light, '--color-accent-contrast')).toBe('#0f1a13');
     });
 
     it('splits the text-safe accent out from the fill accent (FOR-185)', () => {
-      // The brand green is a fill colour: ~2.58:1 on the light page background,
-      // below the AA 4.5:1 bar. Accent-coloured *text* uses the darkened
+      // The brand green is a fill colour: ~1.5:1 on the light page background,
+      // far below the AA 4.5:1 bar. Accent-coloured *text* uses the darkened
       // counterpart instead (~4.75:1). Dark needs no split — its accent is
       // already ~10.8:1 on its own background — but declares the token anyway
       // so component CSS can name the text role unconditionally.
