@@ -1,9 +1,7 @@
-import { useEffect, useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { NAV_ITEMS } from '../app/navigation';
 import { Icon } from '../components/Icon';
-import { useMountedRef } from '../hooks/useMountedRef';
-import { listIntegrations, type IntegrationConnection } from '../api/integrations';
+import { useIntegrations } from '../integrations/IntegrationsContext';
 import styles from './Sidebar.module.css';
 
 /**
@@ -18,25 +16,20 @@ import styles from './Sidebar.module.css';
  * <p>The Withings card reads the real connection state (FOR-126's
  * `GET /api/v1/integrations`). It used to print "Conectado" unconditionally —
  * written before that endpoint existed — which contradicted the settings screen
- * and, for anyone who had never connected anything, plain reality. While the
- * state is unknown (in flight, or the request failed) the card is not rendered
- * at all: a status indicator that cannot read the status is worse than absent.
+ * and, for anyone who had never connected anything, plain reality.
+ *
+ * <p>It reads that state from the shared {@link useIntegrations} store rather
+ * than fetching its own copy (FOR-189): with two copies, disconnecting in
+ * settings left this card claiming "Conectado" until a full reload. While the
+ * state is unknown — in flight, or the request failed — the card is not
+ * rendered at all: a status indicator that cannot read the status is worse than
+ * absent, and the navigation must not grow an error banner because a secondary
+ * card could not load.
  */
 export function Sidebar() {
-  const [withings, setWithings] = useState<IntegrationConnection | undefined>(undefined);
-  const mountedRef = useMountedRef();
-
-  useEffect(() => {
-    listIntegrations()
-      .then((connections) => {
-        if (!mountedRef.current) return;
-        setWithings(connections.find((c) => c.providerId === 'WITHINGS'));
-      })
-      .catch(() => {
-        // Silent on purpose: the navigation must not grow an error banner
-        // because a secondary status card could not load.
-      });
-  }, [mountedRef]);
+  const { status, connections } = useIntegrations();
+  const withings =
+    status === 'ready' ? connections.find((c) => c.providerId === 'WITHINGS') : undefined;
 
   const renderLink = (item: (typeof NAV_ITEMS)[number]) => (
     <NavLink

@@ -1,6 +1,7 @@
 import { Suspense, useEffect, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { LoadingState } from '../components/LoadingState';
+import { IntegrationsProvider } from '../integrations/IntegrationsContext';
 import { Sidebar } from './Sidebar';
 import { MobileNav } from './MobileNav';
 import styles from './AppShell.module.css';
@@ -41,20 +42,28 @@ export function AppShell() {
   }, [location.pathname]);
 
   return (
-    <div className={styles.shell}>
-      <Sidebar />
-      <main id="main-content" ref={mainRef} tabIndex={-1} className={styles.content}>
-        {/*
+    /*
+     * The integration list is read once here and shared (FOR-189): the
+     * sidebar's status card and the settings section are two views of it, and
+     * with a copy each a disconnect in settings left the card stale until a
+     * reload.
+     */
+    <IntegrationsProvider>
+      <div className={styles.shell}>
+        <Sidebar />
+        <main id="main-content" ref={mainRef} tabIndex={-1} className={styles.content}>
+          {/*
           The pages behind this outlet are code-split (see app/routes.tsx), so
           the boundary sits *inside* the frame: the bar, the sidebar and the
           bottom nav stay on screen while the next section's chunk arrives,
           and only the content area shows the loading state.
         */}
-        <Suspense fallback={<LoadingState message="Cargando la sección…" />}>
-          <Outlet />
-        </Suspense>
-      </main>
-      <MobileNav />
-    </div>
+          <Suspense fallback={<LoadingState message="Cargando la sección…" />}>
+            <Outlet />
+          </Suspense>
+        </main>
+        <MobileNav />
+      </div>
+    </IntegrationsProvider>
   );
 }

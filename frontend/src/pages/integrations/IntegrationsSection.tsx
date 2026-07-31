@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
@@ -13,11 +13,11 @@ import {
   connectIntegration,
   disconnectIntegration,
   isAuthorizationRequired,
-  listIntegrations,
   syncIntegration,
   type IntegrationConnection,
   type IntegrationProviderId,
 } from '../../api/integrations';
+import { useIntegrations } from '../../integrations/IntegrationsContext';
 import styles from './IntegrationsSection.module.css';
 
 /**
@@ -65,10 +65,6 @@ import styles from './IntegrationsSection.module.css';
  * <p>Never renders a token, secret or other credential field — the read model
  * itself ({@link IntegrationConnection}) carries none (ADR-004).
  */
-type State =
-  | { readonly status: 'loading' }
-  | { readonly status: 'error' }
-  | { readonly status: 'ready'; readonly connections: IntegrationConnection[] };
 
 /**
  * FOR-116: researched replacing this generic-icon mapping with each
@@ -152,8 +148,9 @@ function messageFromError(error: unknown, fallback: string): string {
 
 export function IntegrationsSection() {
   const notify = useNotify();
-  const [state, setState] = useState<State>({ status: 'loading' });
-  const [retryToken, setRetryToken] = useState(0);
+  // Shared with the sidebar's status card (FOR-189): two copies of this list
+  // meant a disconnect here left that card claiming "Conectado" until a reload.
+  const { status, connections, refresh } = useIntegrations();
   const [actionError, setActionError] = useState<string | undefined>(undefined);
   const [pendingProviderId, setPendingProviderId] = useState<IntegrationProviderId | undefined>(
     undefined,
@@ -161,25 +158,6 @@ export function IntegrationsSection() {
   const [disconnectTarget, setDisconnectTarget] = useState<IntegrationConnection | undefined>(
     undefined,
   );
-
-  useEffect(() => {
-    let active = true;
-    setState({ status: 'loading' });
-    listIntegrations()
-      .then((connections) => {
-        if (active) {
-          setState({ status: 'ready', connections });
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setState({ status: 'error' });
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, [retryToken]);
 
   async function handleConnect(provider: IntegrationConnection) {
     setActionError(undefined);
@@ -195,6 +173,7 @@ export function IntegrationsSection() {
         return;
       }
       notify.success(`Conectado con ${provider.providerName}.`);
+      refresh();
     } catch (error) {
       setActionError(messageFromError(error, `No se pudo conectar con ${provider.providerName}.`));
     } finally {
@@ -215,6 +194,7 @@ export function IntegrationsSection() {
         setActionError(`No se pudo sincronizar ${provider.providerName}: ya no está conectado.`);
       } else {
         notify.success(`Sincronizado con ${provider.providerName}.`);
+        refresh();
       }
     } catch (error) {
       setActionError(messageFromError(error, `No se pudo sincronizar ${provider.providerName}.`));
@@ -230,6 +210,7 @@ export function IntegrationsSection() {
     try {
       await disconnectIntegration(disconnectTarget.providerId);
       notify.success(`Desconectado de ${disconnectTarget.providerName}.`);
+      refresh();
     } catch (error) {
       setActionError(
         messageFromError(error, `No se pudo desconectar ${disconnectTarget.providerName}.`),
@@ -252,8 +233,14 @@ export function IntegrationsSection() {
         </p>
       )}
 
-      {renderContent(state, pendingProviderId, handleConnect, handleSync, setDisconnectTarget, () =>
-        setRetryToken((t) => t + 1),
+      {renderContent(
+        status,
+        connections,
+        pendingProviderId,
+        handleConnect,
+        handleSync,
+        setDisconnectTarget,
+        refresh,
       )}
 
       {disconnectTarget && (
@@ -272,23 +259,24 @@ export function IntegrationsSection() {
 }
 
 function renderContent(
-  state: State,
+  status: 'loading' | 'error' | 'ready',
+  allConnections: readonly IntegrationConnection[],
   pendingProviderId: IntegrationProviderId | undefined,
   onConnect: (provider: IntegrationConnection) => void,
   onSync: (provider: IntegrationConnection) => void,
   onRequestDisconnect: (provider: IntegrationConnection) => void,
   onRetry: () => void,
 ) {
-  if (state.status === 'loading') {
+  if (status === 'loading') {
     return <LoadingState message="Cargando tus integraciones…" />;
   }
 
-  if (state.status === 'error') {
+  if (status === 'error') {
     return <ErrorState message={LOAD_ERROR} onRetry={onRetry} />;
   }
 
-  const connected = state.connections.filter((c) => c.status === 'CONNECTED');
-  const available = state.connections.filter(
+  const connected = allConnections.filter((c) => c.status === 'CONNECTED');
+  const available = allConnections.filter(
     (c) => c.status === 'NOT_CONNECTED' && OFFERED_PROVIDERS.has(c.providerId),
   );
 

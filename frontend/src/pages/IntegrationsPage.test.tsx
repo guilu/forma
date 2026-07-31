@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { IntegrationsPage } from './IntegrationsPage';
 import { NotificationProvider } from '../components/NotificationProvider';
+import { IntegrationsProvider } from '../integrations/IntegrationsContext';
 import { listIntegrations } from '../api/integrations';
 
 vi.mock('../api/integrations', () => ({
@@ -15,7 +16,9 @@ describe('IntegrationsPage', () => {
     // (App.tsx provides it at the route-tree level; this file mounts the page standalone).
     render(
       <NotificationProvider>
-        <IntegrationsPage />
+        <IntegrationsProvider>
+          <IntegrationsPage />
+        </IntegrationsProvider>
       </NotificationProvider>,
     );
 

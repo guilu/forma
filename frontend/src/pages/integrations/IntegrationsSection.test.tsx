@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { IntegrationsSection } from './IntegrationsSection';
 import { NotificationProvider } from '../../components/NotificationProvider';
+import { IntegrationsProvider } from '../../integrations/IntegrationsContext';
 import { ApiRequestError } from '../../api/client';
 import {
   connectIntegration,
@@ -17,7 +18,11 @@ import { axe } from '../../test/axe';
 function renderSection() {
   return render(
     <NotificationProvider>
-      <IntegrationsSection />
+      {/* The list lives in the shared store since FOR-189; the provider is what
+          calls `listIntegrations`, which these tests mock. */}
+      <IntegrationsProvider>
+        <IntegrationsSection />
+      </IntegrationsProvider>
     </NotificationProvider>,
   );
 }
