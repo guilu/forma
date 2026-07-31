@@ -15,14 +15,27 @@ import type { Page } from '@playwright/test';
  * of hanging the page on a pending request.
  */
 
+/**
+ * Dated relative to the run, one per day ending yesterday — not on fixed dates.
+ * The dashboard's trend card windows on the last 30 days, so a fixture pinned to
+ * July would quietly fall out of that window as real time passed and the chart
+ * would stop rendering, failing checks that have nothing to do with dates.
+ */
+const daysAgo = (days: number): string => {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() - days);
+  date.setUTCHours(7, 30, 0, 0);
+  return date.toISOString();
+};
+
 const MEASUREMENTS = [
-  { measuredAt: '2026-07-26T07:30:00Z', weightKg: 74.0, bodyFatPercentage: 15.0, bmi: 22.5 },
-  { measuredAt: '2026-07-25T07:30:00Z', weightKg: 73.8, bodyFatPercentage: 15.1, bmi: 22.4 },
-  { measuredAt: '2026-07-24T07:30:00Z', weightKg: 73.7, bodyFatPercentage: 15.3, bmi: 22.4 },
-  { measuredAt: '2026-07-23T07:30:00Z', weightKg: 73.4, bodyFatPercentage: 15.6, bmi: 22.3 },
-  { measuredAt: '2026-07-22T07:30:00Z', weightKg: 73.3, bodyFatPercentage: 15.4, bmi: 22.3 },
-  { measuredAt: '2026-07-21T07:30:00Z', weightKg: 73.3, bodyFatPercentage: 15.9, bmi: 22.3 },
-  { measuredAt: '2026-07-20T07:30:00Z', weightKg: 73.0, bodyFatPercentage: 16.0, bmi: 22.2 },
+  { measuredAt: daysAgo(1), weightKg: 74.0, bodyFatPercentage: 15.0, bmi: 22.5 },
+  { measuredAt: daysAgo(2), weightKg: 73.8, bodyFatPercentage: 15.1, bmi: 22.4 },
+  { measuredAt: daysAgo(3), weightKg: 73.7, bodyFatPercentage: 15.3, bmi: 22.4 },
+  { measuredAt: daysAgo(4), weightKg: 73.4, bodyFatPercentage: 15.6, bmi: 22.3 },
+  { measuredAt: daysAgo(5), weightKg: 73.3, bodyFatPercentage: 15.4, bmi: 22.3 },
+  { measuredAt: daysAgo(6), weightKg: 73.3, bodyFatPercentage: 15.9, bmi: 22.3 },
+  { measuredAt: daysAgo(7), weightKg: 73.0, bodyFatPercentage: 16.0, bmi: 22.2 },
 ].map((m, index) => ({
   ...m,
   // The list endpoint carries the stored row's id (FOR-187); the delete action

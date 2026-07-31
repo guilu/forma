@@ -99,7 +99,7 @@ export function DashboardPage() {
       <header className={styles.header}>
         <div className={styles.titles}>
           <h1 className={styles.title}>{name ? `Hola ${name} 👋` : 'Hola 👋'}</h1>
-          <p className={styles.subtitle}>Este es tu resumen de hoy</p>
+          <p className={styles.subtitle}>Este es tu resumen</p>
         </div>
         {/*
           Steps through the dates that actually have a measurement, not through

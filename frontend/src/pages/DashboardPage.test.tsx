@@ -118,7 +118,10 @@ describe('DashboardPage', () => {
     expect(
       await screen.findByRole('heading', { name: 'Hola Diego 👋', level: 1 }),
     ).toBeInTheDocument();
-    expect(screen.getByText('Este es tu resumen de hoy')).toBeInTheDocument();
+    // "de hoy" dropped (FOR-189): the date navigator moves the body tiles off
+    // today, so a subtitle claiming the whole screen is today's would be wrong
+    // half the time.
+    expect(screen.getByText('Este es tu resumen')).toBeInTheDocument();
 
     // Second- and third-row panels each render as a <h2> section heading.
     expect(
