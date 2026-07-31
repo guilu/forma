@@ -288,24 +288,33 @@ async function settingsCards(page: Page) {
 test.describe('settings grid on a wide screen', () => {
   test.use({ viewport: WIDE });
 
-  test('gives Perfil and Conexiones two of the three columns', async ({ page }) => {
+  test('gives Perfil the whole row and pairs Unidades with Integraciones', async ({ page }) => {
     await gotoSettings(page);
 
     const { columns, cards } = await settingsCards(page);
     expect(columns, 'The settings grid is not three columns wide').toBe(3);
 
-    const width = (title: string) => cards.find((card) => card.title.startsWith(title))?.width ?? 0;
-    const single = width('Unidades');
-    expect(single, 'The Unidades card was not found').toBeGreaterThan(0);
+    const card = (title: string) => cards.find((entry) => entry.title.startsWith(title));
+    const units = card('Unidades');
+    const integrations = card('Integraciones');
+    const profile = card('Perfil y preferencias');
+    expect(units, 'The Unidades card was not found').toBeDefined();
+    expect(integrations, 'The Integraciones card was not found').toBeDefined();
+    expect(profile, 'The Perfil card was not found').toBeDefined();
 
-    // A two-column card is both tracks plus the gap between them, so it is
-    // wider than two single columns would be on their own.
-    for (const title of ['Perfil y preferencias', 'Conexiones e integraciones']) {
-      expect(
-        width(title),
-        `"${title}" is ${width(title)}px wide next to a ${single}px single column`,
-      ).toBeGreaterThan(single * 1.9);
-    }
+    // Perfil is every track plus the gaps between them, so it is wider than two
+    // single columns would be on their own.
+    expect(
+      profile!.width,
+      `Perfil is ${profile!.width}px wide next to a ${units!.width}px single column`,
+    ).toBeGreaterThan(units!.width * 1.9);
+
+    // Unidades and Integraciones share a row and a width.
+    expect(
+      integrations!.top,
+      `Unidades sits at y=${units!.top} and Integraciones at y=${integrations!.top}`,
+    ).toBe(units!.top);
+    expect(integrations!.width).toBe(units!.width);
   });
 
   test('gives every card in a grid row the same height', async ({ page }) => {

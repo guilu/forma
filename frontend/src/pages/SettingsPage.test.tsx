@@ -81,9 +81,7 @@ describe('SettingsPage', () => {
       await screen.findByRole('heading', { name: 'Perfil y preferencias', level: 2 }),
     ).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Unidades', level: 2 })).toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', { name: 'Conexiones e integraciones', level: 2 }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Integraciones', level: 2 })).toBeInTheDocument();
     expect(
       screen.getByRole('heading', { name: 'Objetivos por defecto', level: 2 }),
     ).toBeInTheDocument();

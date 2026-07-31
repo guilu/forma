@@ -243,7 +243,7 @@ export function IntegrationsSection() {
   return (
     <section className={styles.wrapper} aria-labelledby="integrations-section-title">
       <h2 id="integrations-section-title" className={styles.title}>
-        Conexiones e integraciones
+        Integraciones
       </h2>
 
       {actionError && (
@@ -292,12 +292,31 @@ function renderContent(
     (c) => c.status === 'NOT_CONNECTED' && OFFERED_PROVIDERS.has(c.providerId),
   );
 
+  /*
+   * Each list is a card only when it has rows. "Disponibles" used to sit there
+   * holding a sentence explaining it was empty — which, with the one offered
+   * provider connected, is the normal state and not news. When both are empty
+   * the connected card stays, since "you have connected nothing" is the one
+   * message worth making room for.
+   */
+  if (connected.length === 0 && available.length === 0) {
+    return (
+      <div className={styles.content}>
+        <Card title="Conectadas">
+          <EmptyState variant="filtered" title="Aún no tienes integraciones conectadas." />
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.content}>
-      <Card title="Conectadas">
-        {connected.length === 0 ? (
+      {connected.length === 0 ? (
+        <Card title="Conectadas">
           <EmptyState variant="filtered" title="Aún no tienes integraciones conectadas." />
-        ) : (
+        </Card>
+      ) : (
+        <Card title="Conectadas">
           <ul className={styles.list}>
             {connected.map((provider) => (
               <li key={provider.providerId} className={styles.row}>
@@ -311,18 +330,28 @@ function renderContent(
                     </span>
                   )}
                 </div>
-                <StatusPill kind="connection" value="Conectado" />
+                <div className={styles.pill}>
+                  <StatusPill kind="connection" value="Conectado" />
+                </div>
                 <div className={styles.actions}>
+                  {/* Icon-only: the word repeats on every row and costs the
+                      width the provider's own copy needs. The accessible name
+                      still says it in full. */}
                   <Button
                     variant="secondary"
                     type="button"
+                    aria-label="Sincronizar ahora"
+                    className={styles.syncButton}
                     loading={pendingProviderId === provider.providerId}
                     onClick={() => onSync(provider)}
                   >
-                    Sincronizar ahora
+                    <Icon name="refresh" size={18} />
                   </Button>
+                  {/* Secondary, not ghost: it sits next to another secondary
+                      action, and a borderless neighbour read as less of a
+                      button than it is. */}
                   <Button
-                    variant="ghost"
+                    variant="secondary"
                     type="button"
                     disabled={pendingProviderId === provider.providerId}
                     onClick={() => onRequestDisconnect(provider)}
@@ -333,13 +362,11 @@ function renderContent(
               </li>
             ))}
           </ul>
-        )}
-      </Card>
+        </Card>
+      )}
 
-      <Card title="Disponibles">
-        {available.length === 0 ? (
-          <EmptyState variant="filtered" title="No hay más integraciones disponibles." />
-        ) : (
+      {available.length > 0 && (
+        <Card title="Disponibles">
           <ul className={styles.list}>
             {available.map((provider) => (
               <li key={provider.providerId} className={styles.row}>
@@ -348,7 +375,9 @@ function renderContent(
                   <span className={styles.name}>{provider.providerName}</span>
                   <span className={styles.description}>{provider.description}</span>
                 </div>
-                <StatusPill kind="connection" value="No conectado" />
+                <div className={styles.pill}>
+                  <StatusPill kind="connection" value="No conectado" />
+                </div>
                 <div className={styles.actions}>
                   <Button
                     variant="primary"
@@ -362,8 +391,8 @@ function renderContent(
               </li>
             ))}
           </ul>
-        )}
-      </Card>
+        </Card>
+      )}
     </div>
   );
 }

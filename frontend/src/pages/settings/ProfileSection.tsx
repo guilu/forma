@@ -125,8 +125,10 @@ export function ProfileSection({ className }: { readonly className?: string } = 
       title="Perfil y preferencias"
       headingLevel={2}
       action={
+        // Flat accent, not the gradient: this is a section's own action, and the
+        // gradient is reserved for the one main call to action on a screen.
         state.status === 'ready' ? (
-          <Button variant="primary" type="button" onClick={() => setEditing(true)}>
+          <Button variant="accent" type="button" onClick={() => setEditing(true)}>
             Editar perfil
           </Button>
         ) : undefined

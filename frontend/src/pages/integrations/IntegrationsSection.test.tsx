@@ -232,6 +232,30 @@ describe('IntegrationsSection', () => {
     expect(screen.getByText('Withings')).toBeInTheDocument();
   });
 
+  /**
+   * With the only offered provider connected there is nothing left to offer, and
+   * the "Disponibles" card sat there holding a sentence saying so. A list with
+   * no rows and no purpose is noise; the card only appears when it has content.
+   */
+  it('drops the available card when everything on offer is connected', async () => {
+    listMock.mockResolvedValue([withings, googleFit, appleHealth]);
+
+    renderSection();
+
+    await screen.findByText('Withings');
+    expect(screen.queryByText('Disponibles')).not.toBeInTheDocument();
+    expect(screen.queryByText('No hay más integraciones disponibles.')).not.toBeInTheDocument();
+    expect(screen.getByText('Conectadas')).toBeInTheDocument();
+  });
+
+  it('titles itself "Integraciones"', async () => {
+    listMock.mockResolvedValue([withings]);
+
+    renderSection();
+
+    expect(await screen.findByRole('heading', { name: 'Integraciones' })).toBeInTheDocument();
+  });
+
   it('shows a loading state while providers load', () => {
     listMock.mockReturnValue(new Promise(() => {}));
 

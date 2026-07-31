@@ -1,6 +1,6 @@
+import { useId } from 'react';
 import { useTheme } from '../theme/ThemeContext';
 import type { ThemeMode } from '../theme/theme';
-import { Button } from './Button';
 import styles from './ThemeToggle.module.css';
 
 const OPTIONS: ReadonlyArray<{ readonly mode: ThemeMode; readonly label: string }> = [
@@ -10,38 +10,38 @@ const OPTIONS: ReadonlyArray<{ readonly mode: ThemeMode; readonly label: string 
 ];
 
 /**
- * Light/dark/system toggle (FOR-62), wired into the Ajustes "Tema" row
- * (previously an inert `Próximamente` placeholder left by FOR-58). Built from
- * the shared {@link Button} primitive as a three-way segmented control rather
- * than a new component, so no per-theme styling is introduced (ADR-006:
- * tokens only) — the selected option simply switches to the `primary`
- * variant.
+ * Light/dark/system control (FOR-62), wired into the Ajustes "Tema" row.
  *
- * <p>Rendered as a labelled `group` of toggle buttons: each option announces
- * its selected state via `aria-pressed` and keeps the app-wide
- * `:focus-visible` outline (spec FOR-62 UI: "labelled control with visible
- * focus; state announced").
+ * <p>A radio group since FOR-189, not three toggle buttons. Three mutually
+ * exclusive choices of one setting is what a radio group *is*: the platform
+ * then gives arrow-key navigation and one tab stop for the set, where the
+ * button version made every option its own stop and left "exactly one is
+ * selected" to `aria-pressed` on three unrelated controls.
+ *
+ * <p>The inputs are visually hidden and their labels carry the segmented look,
+ * so this stays token-driven with no per-theme styling (ADR-006) while keeping
+ * native semantics, keyboard behaviour and focus.
  */
 export function ThemeToggle() {
   const { mode, setMode } = useTheme();
+  // Scoped, so two groups on one page would not join into a single set.
+  const name = useId();
 
   return (
-    <div className={styles.group} role="group" aria-label="Tema">
-      {OPTIONS.map((option) => {
-        const selected = mode === option.mode;
-        return (
-          <Button
-            key={option.mode}
-            type="button"
-            variant={selected ? 'primary' : 'secondary'}
-            aria-pressed={selected}
-            className={styles.option}
-            onClick={() => setMode(option.mode)}
-          >
-            {option.label}
-          </Button>
-        );
-      })}
+    <div className={styles.group} role="radiogroup" aria-label="Tema">
+      {OPTIONS.map((option) => (
+        <label key={option.mode} className={styles.option}>
+          <input
+            className={styles.input}
+            type="radio"
+            name={name}
+            value={option.mode}
+            checked={mode === option.mode}
+            onChange={() => setMode(option.mode)}
+          />
+          <span className={styles.face}>{option.label}</span>
+        </label>
+      ))}
     </div>
   );
 }

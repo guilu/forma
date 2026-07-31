@@ -168,7 +168,9 @@ describe('App', () => {
     );
 
     expect(
-      await screen.findByRole('heading', { name: 'Integraciones' }, CHUNK_TIMEOUT),
+      // The page's <h1> and the section's <h2> share the word since FOR-189
+      // renamed the section, so this pins the page's own heading.
+      await screen.findByRole('heading', { name: 'Integraciones', level: 1 }, CHUNK_TIMEOUT),
     ).toBeInTheDocument();
   });
 

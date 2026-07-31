@@ -19,9 +19,11 @@ describe('IntegrationsPage', () => {
       </NotificationProvider>,
     );
 
-    expect(screen.getByRole('heading', { name: 'Integraciones' })).toBeInTheDocument();
+    // The page's own <h1> and the section's <h2> now carry the same word
+    // (FOR-189 renamed the section), so this pins the level it means.
+    expect(screen.getByRole('heading', { name: 'Integraciones', level: 1 })).toBeInTheDocument();
     expect(
-      await screen.findByRole('heading', { name: 'Conexiones e integraciones' }),
+      await screen.findByRole('heading', { name: 'Integraciones', level: 2 }),
     ).toBeInTheDocument();
     expect(vi.mocked(listIntegrations)).toHaveBeenCalled();
   });

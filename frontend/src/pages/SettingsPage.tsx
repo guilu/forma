@@ -48,13 +48,12 @@ export function SettingsPage() {
       </header>
 
       <div className={styles.grid}>
-        {/* Perfil and Conexiones take two columns each: the first because its
-            two-line rows and the theme switcher need the width, the second
-            because a provider row lays out icon, copy, status and actions
-            across. */}
-        <ProfileSection className={styles.wide} />
+        {/* Perfil spans the row: five fields plus the theme control need it.
+            Unidades and Integraciones then share the next row — the latter fits
+            a single column now that the empty "Disponibles" list is gone. */}
+        <ProfileSection className={styles.full} />
         <UnitsSection />
-        <Card className={styles.wide}>
+        <Card>
           <IntegrationsSection />
         </Card>
         <ObjectivesSection />
