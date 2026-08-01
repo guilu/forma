@@ -147,7 +147,7 @@ export function FoodTable({
                             100 g, and the column header that used to say so is
                             not on screen at this width. */}
                         <p className={styles.basis}>
-                          <span className={styles.basisPill}>100 g</span>
+                          <span className={styles.basisPill}>/100 g</span>
                         </p>
                         <div className={styles.detailActions}>
                           <button

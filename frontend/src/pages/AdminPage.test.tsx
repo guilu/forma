@@ -237,7 +237,7 @@ describe('AdminPage', () => {
       // The ration is a column of its own, so it is not repeated in here.
       expect(screen.queryByText('Ración recomendada')).not.toBeInTheDocument();
       // Without this the figures are grams of nothing in particular.
-      expect(screen.getByText('100 g')).toBeInTheDocument();
+      expect(screen.getByText('/100 g')).toBeInTheDocument();
     });
 
     it('hides the macro columns and opens the row to reach them', async () => {
