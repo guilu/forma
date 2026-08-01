@@ -1,7 +1,7 @@
 import { Fragment } from 'react';
 import { Icon } from '../../components/Icon';
 import type { CatalogFood } from '../../api/foods';
-import { CATEGORY_LABELS } from './foodDisplay';
+import { CATEGORY_LABELS, categoryGlyph } from './foodDisplay';
 import styles from './FoodTable.module.css';
 
 /**
@@ -37,6 +37,18 @@ interface FoodTableProps {
 const categoryLabel = (food: CatalogFood) => (food.category ? CATEGORY_LABELS[food.category] : '—');
 
 const serving = (food: CatalogFood) => (food.servingSizeG ? `${food.servingSizeG} g` : '—');
+
+/**
+ * The five figures behind a row, in the order the detail panel reads them.
+ * Glyphs are decorative; every entry is labelled in words beside it.
+ */
+const details = (food: CatalogFood) => [
+  { glyph: '🏷️', label: 'Categoría', value: categoryLabel(food) },
+  { glyph: '🥩', label: 'Proteínas', value: `${food.proteinG} g` },
+  { glyph: '🍞', label: 'HC (hidratos)', value: `${food.carbsG} g` },
+  { glyph: '💧', label: 'Grasa', value: `${food.fatG} g` },
+  { glyph: '🥄', label: 'Ración recomendada', value: serving(food) },
+];
 
 export function FoodTable({
   foods,
@@ -83,7 +95,7 @@ export function FoodTable({
             const open = food.id === expandedId;
             return (
               <Fragment key={food.id}>
-                <tr>
+                <tr className={open ? styles.openRow : undefined}>
                   <td>
                     <button
                       type="button"
@@ -97,37 +109,56 @@ export function FoodTable({
                         size={16}
                         className={open ? styles.chevronOpen : styles.chevron}
                       />
-                      {food.name}
+                      <span className={styles.glyph} aria-hidden="true">
+                        {categoryGlyph(food.category)}
+                      </span>
+                      <span className={styles.rowName}>{food.name}</span>
                     </button>
                   </td>
                   <td className={styles.numeric}>{food.kcal}</td>
                 </tr>
                 {open && (
-                  <tr id={`food-detail-${food.id}`}>
+                  <tr id={`food-detail-${food.id}`} className={styles.openRow}>
                     <td colSpan={2} className={styles.detailCell}>
-                      <dl className={styles.detail}>
-                        <div>
-                          <dt>Categoría</dt>
-                          <dd>{categoryLabel(food)}</dd>
+                      <div className={styles.detailPanel}>
+                        <dl className={styles.detail}>
+                          {details(food).map((item) => (
+                            <div key={item.label} className={styles.detailItem}>
+                              <span className={styles.detailGlyph} aria-hidden="true">
+                                {item.glyph}
+                              </span>
+                              <div>
+                                <dt>{item.label}</dt>
+                                <dd>{item.value}</dd>
+                              </div>
+                            </div>
+                          ))}
+                        </dl>
+                        {/* Grams of what: the catalog stores every macro per
+                            100 g, and the column header that used to say so is
+                            not on screen at this width. */}
+                        <p className={styles.basis}>Por 100 g</p>
+                        <div className={styles.detailActions}>
+                          <button
+                            type="button"
+                            className={styles.detailEdit}
+                            aria-label={`Editar ${food.name}`}
+                            onClick={() => onEdit(food)}
+                          >
+                            <Icon name="edit" size={16} />
+                            Editar
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.detailDelete}
+                            aria-label={`Eliminar ${food.name}`}
+                            onClick={() => onDelete(food)}
+                          >
+                            <Icon name="trash" size={16} />
+                            Eliminar
+                          </button>
                         </div>
-                        <div>
-                          <dt>Prot.</dt>
-                          <dd>{food.proteinG}</dd>
-                        </div>
-                        <div>
-                          <dt>HC</dt>
-                          <dd>{food.carbsG}</dd>
-                        </div>
-                        <div>
-                          <dt>Grasa</dt>
-                          <dd>{food.fatG}</dd>
-                        </div>
-                        <div>
-                          <dt>Ración</dt>
-                          <dd>{serving(food)}</dd>
-                        </div>
-                      </dl>
-                      {actions(food)}
+                      </div>
                     </td>
                   </tr>
                 )}

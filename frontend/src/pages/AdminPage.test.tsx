@@ -214,6 +214,30 @@ describe('AdminPage', () => {
 
     afterEach(() => matchNarrow(false));
 
+    /**
+     * The panel spells the macros out with their unit. "Prot. 13" in a column
+     * header is readable next to six other columns; alone on a phone it is a
+     * number with no unit and no basis.
+     */
+    it('spells out the macros of the open row with their unit and basis', async () => {
+      matchNarrow(true);
+      listMock.mockResolvedValue([oats]);
+      const user = userEvent.setup();
+
+      renderPage();
+      await user.click(await screen.findByRole('button', { name: /Copos de avena/ }));
+
+      expect(screen.getByText('Proteínas')).toBeInTheDocument();
+      expect(screen.getByText('13 g')).toBeInTheDocument();
+      expect(screen.getByText('HC (hidratos)')).toBeInTheDocument();
+      // Scoped: this food's ration and its carbohydrates are both 60 g, and a
+      // loose text match would pass on either.
+      const ration = screen.getByText('Ración recomendada').closest('div');
+      expect(within(ration!).getByText('60 g')).toBeInTheDocument();
+      // Without this the figures are grams of nothing in particular.
+      expect(screen.getByText('Por 100 g')).toBeInTheDocument();
+    });
+
     it('hides the macro columns and opens the row to reach them', async () => {
       matchNarrow(true);
       listMock.mockResolvedValue([oats, chicken]);

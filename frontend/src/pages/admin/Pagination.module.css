@@ -40,3 +40,11 @@
 .back {
   transform: rotate(180deg);
 }
+
+/* Centred on a phone, where the control is the only thing on its row and an
+   edge-anchored pair of buttons looks dropped there. */
+@media (max-width: 767px) {
+  .pagination {
+    justify-content: center;
+  }
+}

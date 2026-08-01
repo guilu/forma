@@ -60,6 +60,12 @@
   background-color: var(--color-surface-variant);
 }
 
+/* The open row and its panel read as one block lifted out of the list. */
+.openRow > td {
+  background-color: color-mix(in srgb, var(--color-accent) 8%, transparent);
+  border-bottom-color: transparent;
+}
+
 /* Phone layout: the name is the disclosure control for the rest of the row. */
 .rowToggle {
   display: flex;
@@ -94,8 +100,26 @@
   }
 }
 
+.glyph {
+  flex-shrink: 0;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.rowName {
+  min-width: 0;
+  font-weight: 600;
+}
+
 .detailCell {
-  background-color: var(--color-surface-variant);
+  padding-top: 0;
+}
+
+.detailPanel {
+  padding: var(--space-3);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
 }
 
 /* Two columns of label/value: five macros in the space a phone has, still
@@ -103,8 +127,27 @@
 .detail {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: var(--space-2) var(--space-4);
-  margin: 0 0 var(--space-2);
+  gap: var(--space-3) var(--space-4);
+  margin: 0;
+}
+
+.detailItem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/* The ration is the odd one out: its label is twice as long as the macro ones
+   and wrapped to two lines in a half-width cell, leaving the grid ragged. */
+.detailItem:last-child {
+  grid-column: 1 / -1;
+}
+
+.detailGlyph {
+  flex-shrink: 0;
+  font-size: 1rem;
+  line-height: 1.4;
 }
 
 .detail dt {
@@ -114,5 +157,52 @@
 
 .detail dd {
   margin: 0;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+.basis {
+  margin: var(--space-3) 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+/* Two equal halves, both labelled: an icon alone is fine in a desktop row that
+   has six columns of context around it, not for the only two actions on screen.
+   ui-guidelines: 44px minimum touch target. */
+.detailActions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.detailEdit,
+.detailDelete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+/* Tinted fills rather than solid ones: neither action is the page's primary
+   call, and two solid buttons side by side would compete with "+ Alimento". */
+.detailEdit {
+  color: var(--color-accent-strong);
+  background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
+}
+
+.detailDelete {
+  color: var(--color-danger);
+  background-color: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent);
 }
