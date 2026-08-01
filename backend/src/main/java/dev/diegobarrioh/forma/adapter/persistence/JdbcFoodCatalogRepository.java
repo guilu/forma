@@ -2,6 +2,7 @@ package dev.diegobarrioh.forma.adapter.persistence;
 
 import dev.diegobarrioh.forma.application.CatalogFood;
 import dev.diegobarrioh.forma.application.FoodCatalogRepository;
+import dev.diegobarrioh.forma.domain.FoodCategory;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -17,7 +18,7 @@ public class JdbcFoodCatalogRepository implements FoodCatalogRepository {
 
   private static final String COLUMNS =
       "id, name, serving_size_g, kcal, protein_g, carbs_g, fat_g, fiber_g, sugars_g, sodium_mg,"
-          + " saturated_fat_g";
+          + " saturated_fat_g, category";
 
   private static final RowMapper<CatalogFood> ROW_MAPPER =
       (rs, rowNum) ->
@@ -32,7 +33,11 @@ public class JdbcFoodCatalogRepository implements FoodCatalogRepository {
               rs.getBigDecimal("fiber_g"),
               rs.getBigDecimal("sugars_g"),
               rs.getBigDecimal("sodium_mg"),
-              rs.getBigDecimal("saturated_fat_g"));
+              rs.getBigDecimal("saturated_fat_g"),
+              // Nullable by design: a food nobody has classified yet (V35).
+              rs.getString("category") == null
+                  ? null
+                  : FoodCategory.valueOf(rs.getString("category")));
 
   private final JdbcTemplate jdbcTemplate;
 
@@ -50,5 +55,48 @@ public class JdbcFoodCatalogRepository implements FoodCatalogRepository {
     List<CatalogFood> rows =
         jdbcTemplate.query("SELECT " + COLUMNS + " FROM food_catalog WHERE id = ?", ROW_MAPPER, id);
     return rows.stream().findFirst();
+  }
+
+  @Override
+  public void insert(CatalogFood food) {
+    jdbcTemplate.update(
+        "INSERT INTO food_catalog (" + COLUMNS + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        food.id(),
+        food.name(),
+        food.servingSizeG(),
+        food.kcal(),
+        food.proteinG(),
+        food.carbsG(),
+        food.fatG(),
+        food.fiberG(),
+        food.sugarsG(),
+        food.sodiumMg(),
+        food.saturatedFatG(),
+        food.category() == null ? null : food.category().name());
+  }
+
+  @Override
+  public void update(CatalogFood food) {
+    jdbcTemplate.update(
+        "UPDATE food_catalog SET name = ?, serving_size_g = ?, kcal = ?, protein_g = ?,"
+            + " carbs_g = ?, fat_g = ?, fiber_g = ?, sugars_g = ?, sodium_mg = ?,"
+            + " saturated_fat_g = ?, category = ? WHERE id = ?",
+        food.name(),
+        food.servingSizeG(),
+        food.kcal(),
+        food.proteinG(),
+        food.carbsG(),
+        food.fatG(),
+        food.fiberG(),
+        food.sugarsG(),
+        food.sodiumMg(),
+        food.saturatedFatG(),
+        food.category() == null ? null : food.category().name(),
+        food.id());
+  }
+
+  @Override
+  public boolean delete(String id) {
+    return jdbcTemplate.update("DELETE FROM food_catalog WHERE id = ?", id) > 0;
   }
 }

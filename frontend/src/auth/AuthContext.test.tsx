@@ -12,7 +12,11 @@ describe('AuthProvider', () => {
   beforeEach(() => vi.resetAllMocks());
 
   it('bootstraps authenticated and anonymous sessions', async () => {
-    vi.mocked(authApi.getCurrentUser).mockResolvedValue({ id: '1', email: 'user@example.com' });
+    vi.mocked(authApi.getCurrentUser).mockResolvedValue({
+      id: '1',
+      email: 'user@example.com',
+      role: 'USER' as const,
+    });
     const first = renderHook(useAuth, { wrapper });
     await waitFor(() => expect(first.result.current.status).toBe('authenticated'));
     first.unmount();
@@ -23,7 +27,11 @@ describe('AuthProvider', () => {
   });
 
   it('bootstraps exactly once under React StrictMode', async () => {
-    vi.mocked(authApi.getCurrentUser).mockResolvedValue({ id: '1', email: 'user@example.com' });
+    vi.mocked(authApi.getCurrentUser).mockResolvedValue({
+      id: '1',
+      email: 'user@example.com',
+      role: 'USER' as const,
+    });
     const strictWrapper = ({ children }: { children: ReactNode }) => (
       <StrictMode>
         <AuthProvider>{children}</AuthProvider>
@@ -40,7 +48,11 @@ describe('AuthProvider', () => {
     );
     const { result } = renderHook(useAuth, { wrapper });
     await waitFor(() => expect(result.current.bootstrapError).toBe(true));
-    vi.mocked(authApi.getCurrentUser).mockResolvedValue({ id: '1', email: 'user@example.com' });
+    vi.mocked(authApi.getCurrentUser).mockResolvedValue({
+      id: '1',
+      email: 'user@example.com',
+      role: 'USER' as const,
+    });
     await act(() => result.current.refreshCurrentUser());
     expect(result.current.status).toBe('authenticated');
   });
@@ -48,9 +60,13 @@ describe('AuthProvider', () => {
   it('updates state for login, register and logout', async () => {
     vi.mocked(authApi.getCurrentUser).mockRejectedValue(new ApiRequestError(401, 'Unauthorized'));
     vi.mocked(authApi.login)
-      .mockResolvedValueOnce({ id: '1', email: 'login@example.com' })
-      .mockResolvedValueOnce({ id: '2', email: 'new@example.com' });
-    vi.mocked(authApi.register).mockResolvedValue({ id: '2', email: 'new@example.com' });
+      .mockResolvedValueOnce({ id: '1', email: 'login@example.com', role: 'USER' as const })
+      .mockResolvedValueOnce({ id: '2', email: 'new@example.com', role: 'USER' as const });
+    vi.mocked(authApi.register).mockResolvedValue({
+      id: '2',
+      email: 'new@example.com',
+      role: 'USER' as const,
+    });
     const { result } = renderHook(useAuth, { wrapper });
     await waitFor(() => expect(result.current.status).toBe('anonymous'));
     await act(() => result.current.login({ email: 'login@example.com', password: 'secret123' }));
@@ -76,17 +92,27 @@ describe('AuthProvider', () => {
         resolveBootstrap = resolve;
       }),
     );
-    vi.mocked(authApi.login).mockResolvedValue({ id: 'new', email: 'new@example.com' });
+    vi.mocked(authApi.login).mockResolvedValue({
+      id: 'new',
+      email: 'new@example.com',
+      role: 'USER' as const,
+    });
     const { result } = renderHook(useAuth, { wrapper });
 
     await act(() => result.current.login({ email: 'new@example.com', password: 'password1234' }));
     expect(result.current.user?.id).toBe('new');
-    await act(async () => resolveBootstrap({ id: 'old', email: 'old@example.com' }));
+    await act(async () =>
+      resolveBootstrap({ id: 'old', email: 'old@example.com', role: 'USER' as const }),
+    );
     expect(result.current.user?.id).toBe('new');
   });
 
   it('keeps the authenticated state when logout fails', async () => {
-    vi.mocked(authApi.getCurrentUser).mockResolvedValue({ id: '1', email: 'user@example.com' });
+    vi.mocked(authApi.getCurrentUser).mockResolvedValue({
+      id: '1',
+      email: 'user@example.com',
+      role: 'USER' as const,
+    });
     vi.mocked(authApi.logout).mockRejectedValue(new Error('offline'));
     const { result } = renderHook(useAuth, { wrapper });
     await waitFor(() => expect(result.current.status).toBe('authenticated'));
@@ -108,7 +134,9 @@ describe('AuthProvider', () => {
     await expect(
       result.current.login({ email: 'user@example.com', password: 'password1234' }),
     ).rejects.toThrow('invalid credentials');
-    await act(async () => resolveBootstrap({ id: 'existing', email: 'existing@example.com' }));
+    await act(async () =>
+      resolveBootstrap({ id: 'existing', email: 'existing@example.com', role: 'USER' as const }),
+    );
 
     expect(result.current.status).toBe('authenticated');
     expect(result.current.user?.id).toBe('existing');
@@ -121,14 +149,20 @@ describe('AuthProvider', () => {
         resolveBootstrap = resolve;
       }),
     );
-    vi.mocked(authApi.register).mockResolvedValue({ id: 'created', email: 'new@example.com' });
+    vi.mocked(authApi.register).mockResolvedValue({
+      id: 'created',
+      email: 'new@example.com',
+      role: 'USER' as const,
+    });
     vi.mocked(authApi.login).mockRejectedValue(new Error('login unavailable'));
     const { result } = renderHook(useAuth, { wrapper });
 
     await expect(
       result.current.register({ email: 'new@example.com', password: 'password1234' }),
     ).rejects.toThrow('login unavailable');
-    await act(async () => resolveBootstrap({ id: 'existing', email: 'existing@example.com' }));
+    await act(async () =>
+      resolveBootstrap({ id: 'existing', email: 'existing@example.com', role: 'USER' as const }),
+    );
 
     expect(result.current.status).toBe('authenticated');
     expect(result.current.user?.id).toBe('existing');

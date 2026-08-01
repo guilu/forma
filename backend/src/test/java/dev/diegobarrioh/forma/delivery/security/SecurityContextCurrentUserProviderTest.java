@@ -30,7 +30,8 @@ class SecurityContextCurrentUserProviderTest {
   @Test
   void resolvesTheAuthenticatedPrincipalsAccountId() {
     UUID id = UUID.randomUUID();
-    FormaUserPrincipal principal = new FormaUserPrincipal(id, "a@x.com", "{argon2}hash", true);
+    FormaUserPrincipal principal =
+        new FormaUserPrincipal(id, "a@x.com", "{argon2}hash", true, false);
     SecurityContextHolder.getContext()
         .setAuthentication(
             new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities()));
@@ -60,7 +61,8 @@ class SecurityContextCurrentUserProviderTest {
   @Test
   void throwsUnauthorizedWhenTheAuthenticationIsMarkedNotAuthenticated() {
     UUID id = UUID.randomUUID();
-    FormaUserPrincipal principal = new FormaUserPrincipal(id, "a@x.com", "{argon2}hash", true);
+    FormaUserPrincipal principal =
+        new FormaUserPrincipal(id, "a@x.com", "{argon2}hash", true, false);
     UsernamePasswordAuthenticationToken notAuthenticated =
         new UsernamePasswordAuthenticationToken(principal, "credentials");
     assertThat(notAuthenticated.isAuthenticated()).isFalse();

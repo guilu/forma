@@ -149,6 +149,26 @@ public class GlobalExceptionHandler {
   }
 
   /**
+   * The same 403, for a rule enforced by Spring Security's method security rather than by a use
+   * case (FOR-190's {@code @PreAuthorize} on the catalog maintenance endpoints).
+   *
+   * <p>Without this the catch-all below turns an authorisation failure into a 500 — the endpoint
+   * looks broken instead of forbidden, and the log fills with stack traces for what is a routine,
+   * expected answer. The message is deliberately generic: which authority was missing is not the
+   * caller's business.
+   */
+  @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+  @ResponseStatus(HttpStatus.FORBIDDEN)
+  public ApiError handleAccessDenied(
+      org.springframework.security.access.AccessDeniedException ex, HttpServletRequest request) {
+    return ApiError.of(
+        ApiErrorCode.FORBIDDEN,
+        "No tienes permisos para esta acción.",
+        correlationId(request),
+        null);
+  }
+
+  /**
    * No authenticated caller is present where one is required (FOR-145, ADR-012) — reached only as
    * defense-in-depth ({@link
    * dev.diegobarrioh.forma.delivery.security.SecurityContextCurrentUserProvider}'s javadoc): the

@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 
 import dev.diegobarrioh.forma.config.SecurityConfig;
 import dev.diegobarrioh.forma.domain.User;
+import dev.diegobarrioh.forma.domain.UserRole;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -86,7 +87,7 @@ class UserServiceTest {
   @Test
   void findByIdReturnsTheStoredAccount() {
     UUID id = UUID.randomUUID();
-    User stored = new User(id, "a@x.com", "{argon2}hash", null, null, true);
+    User stored = new User(id, "a@x.com", "{argon2}hash", null, null, true, UserRole.USER);
     when(repository.findById(id)).thenReturn(Optional.of(stored));
 
     assertThat(service.findById(id)).isEqualTo(stored);

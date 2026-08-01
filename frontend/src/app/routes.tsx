@@ -6,6 +6,7 @@ import { PublicNotFoundPage } from '../pages/NotFoundPage';
 import { LoginPage } from '../pages/LoginPage';
 import { RegisterPage } from '../pages/RegisterPage';
 import { LandingPage } from '../pages/LandingPage';
+import { RequireAdmin } from '../auth/RequireAdmin';
 import { RequireAuth } from '../auth/RequireAuth';
 
 /**
@@ -47,6 +48,7 @@ const ShoppingPage = lazyPage(() => import('../pages/ShoppingPage'), 'ShoppingPa
 const ProgressPage = lazyPage(() => import('../pages/ProgressPage'), 'ProgressPage');
 const SettingsPage = lazyPage(() => import('../pages/SettingsPage'), 'SettingsPage');
 const IntegrationsPage = lazyPage(() => import('../pages/IntegrationsPage'), 'IntegrationsPage');
+const AdminPage = lazyPage(() => import('../pages/AdminPage'), 'AdminPage');
 const NotFoundPage = lazyPage(() => import('../pages/NotFoundPage'), 'NotFoundPage');
 const OnboardingPage = lazyPage(
   () => import('../pages/onboarding/OnboardingPage'),
@@ -108,6 +110,16 @@ export const routes: RouteObject[] = [
           // FOR-57: standalone sub-route (FOR-58's Ajustes shell isn't built yet —
           // see IntegrationsPage.tsx doc comment).
           { path: 'settings/integrations', element: <IntegrationsPage /> },
+          // FOR-190: admin-only catalog panel. The guard is nested here rather
+          // than in the page so the chunk still loads lazily for everyone.
+          {
+            path: 'admin',
+            element: (
+              <RequireAdmin>
+                <AdminPage />
+              </RequireAdmin>
+            ),
+          },
           { path: '*', element: <NotFoundPage /> },
         ],
       },

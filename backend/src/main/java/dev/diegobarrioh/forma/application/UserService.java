@@ -1,6 +1,7 @@
 package dev.diegobarrioh.forma.application;
 
 import dev.diegobarrioh.forma.domain.User;
+import dev.diegobarrioh.forma.domain.UserRole;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -60,7 +61,9 @@ public class UserService {
     UUID id = UUID.randomUUID();
     String hash = passwordEncoder.encode(rawPassword);
     repository.insert(id, normalizedEmail, hash);
-    return new User(id, normalizedEmail, hash, Instant.now(), null, true);
+    // Registration always creates an ordinary account: an admin is granted deliberately
+    // afterwards (FOR-190), never by being the first to sign up.
+    return new User(id, normalizedEmail, hash, Instant.now(), null, true, UserRole.USER);
   }
 
   /** Looks up an account by id (e.g. to build {@code AuthUserResponse} for the current caller). */

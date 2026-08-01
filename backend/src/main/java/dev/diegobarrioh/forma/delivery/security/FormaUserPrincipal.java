@@ -14,8 +14,8 @@ import org.springframework.security.core.userdetails.UserDetails;
  * satisfy {@link UserDetails}, consumed by {@link FormaUserDetailsService} and read back by {@link
  * SecurityContextCurrentUserProvider}.
  *
- * <p>Every authenticated account carries a single fixed authority, {@code ROLE_USER} — FORMA has no
- * role hierarchy yet.
+ * <p>Authorities come from the account's role (FOR-190). Until then every account carried one fixed
+ * {@code ROLE_USER} — FORMA had no role hierarchy yet.
  */
 public final class FormaUserPrincipal implements UserDetails {
 
@@ -25,25 +25,35 @@ public final class FormaUserPrincipal implements UserDetails {
   private final String email;
   private final String passwordHash;
   private final boolean active;
+  private final boolean admin;
 
-  public FormaUserPrincipal(UUID id, String email, String passwordHash, boolean active) {
+  public FormaUserPrincipal(
+      UUID id, String email, String passwordHash, boolean active, boolean admin) {
     this.id = id;
     this.email = email;
     this.passwordHash = passwordHash;
     this.active = active;
+    this.admin = admin;
   }
 
   public static FormaUserPrincipal from(User user) {
-    return new FormaUserPrincipal(user.id(), user.email(), user.passwordHash(), user.active());
+    return new FormaUserPrincipal(
+        user.id(), user.email(), user.passwordHash(), user.active(), user.isAdmin());
   }
 
   public UUID id() {
     return id;
   }
 
+  /**
+   * {@code ROLE_USER} for everyone, plus {@code ROLE_ADMIN} for an admin — additive, so every
+   * ordinary endpoint keeps working for an admin without a second rule.
+   */
   @Override
   public Collection<? extends GrantedAuthority> getAuthorities() {
-    return List.of(new SimpleGrantedAuthority("ROLE_USER"));
+    return admin
+        ? List.of(new SimpleGrantedAuthority("ROLE_USER"), new SimpleGrantedAuthority("ROLE_ADMIN"))
+        : List.of(new SimpleGrantedAuthority("ROLE_USER"));
   }
 
   @Override
