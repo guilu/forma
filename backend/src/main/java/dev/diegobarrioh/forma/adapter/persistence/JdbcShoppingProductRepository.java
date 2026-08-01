@@ -115,22 +115,34 @@ public class JdbcShoppingProductRepository implements ShoppingProductRepository 
     return new StoredShoppingProduct(id, product);
   }
 
+  /**
+   * Writes only what the account actually overrides.
+   *
+   * <p>The request body carries a whole product, so the row it is written onto has to be reduced to
+   * its differences from the catalog first ({@link ShoppingProduct#asOverridesOf}) — otherwise a
+   * price correction pins the name and package too and the row stops following the catalog.
+   * Standalone rows have no catalog to compare against and are written verbatim.
+   */
   @Override
   public Optional<StoredShoppingProduct> update(UUID userId, String id, ShoppingProduct product) {
+    ShoppingProduct toStore =
+        catalogLinkFor(userId, id)
+            .map(link -> product.referencing(link.storeProductId()).asOverridesOf(link.values()))
+            .orElse(product);
     int updated =
         jdbcTemplate.update(
             "UPDATE shopping_products SET name = ?, url = ?, package_size = ?,"
                 + " estimated_price_eur = ?, price_per_unit_eur = ?, linked_food_item_id = ?,"
                 + " last_checked_at = ?, notes = ?, category = ? WHERE id = ? AND user_id = ?",
-            product.name(),
-            product.url(),
-            product.packageSize(),
-            product.estimatedPriceEur(),
-            product.pricePerUnitEur(),
-            product.linkedFoodItemId(),
-            toOffsetDateTime(product.lastCheckedAt()),
-            product.notes(),
-            product.category().name(),
+            toStore.name(),
+            toStore.url(),
+            toStore.packageSize(),
+            toStore.estimatedPriceEur(),
+            toStore.pricePerUnitEur(),
+            toStore.linkedFoodItemId(),
+            toOffsetDateTime(toStore.lastCheckedAt()),
+            toStore.notes(),
+            toStore.category().name(),
             UUID.fromString(id),
             userId);
     // Re-read rather than echo the argument back: the caller's product carries no
@@ -171,6 +183,34 @@ public class JdbcShoppingProductRepository implements ShoppingProductRepository 
               storeProductId);
     }
     return created;
+  }
+
+  /** The catalog row one of the account's entries points at, and its values. */
+  private record CatalogLink(String storeProductId, StoreProductValues values) {}
+
+  /** Empty when the entry references nothing — a product of the account's own. */
+  private Optional<CatalogLink> catalogLinkFor(UUID userId, String id) {
+    return jdbcTemplate
+        .query(
+            "SELECT s.id, s.name, s.url, s.package_size, s.price_eur, s.food_id, s.category,"
+                + " s.notes FROM shopping_products p"
+                + " JOIN store_product s ON s.id = p.store_product_id"
+                + " WHERE p.id = ? AND p.user_id = ?",
+            (rs, rowNum) ->
+                new CatalogLink(
+                    rs.getString("id"),
+                    new StoreProductValues(
+                        rs.getString("name"),
+                        rs.getString("url"),
+                        rs.getString("package_size"),
+                        rs.getBigDecimal("price_eur"),
+                        rs.getString("food_id"),
+                        ShoppingCategory.valueOf(rs.getString("category")),
+                        rs.getString("notes"))),
+            UUID.fromString(id),
+            userId)
+        .stream()
+        .findFirst();
   }
 
   private Optional<StoredShoppingProduct> findByOwnerAndId(UUID userId, String id) {

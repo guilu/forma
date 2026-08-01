@@ -2,6 +2,7 @@ package dev.diegobarrioh.forma.domain;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Objects;
 
 /**
  * A purchasable shopping product with cost information (FOR-35).
@@ -115,6 +116,73 @@ public record ShoppingProduct(
         notes != null ? notes : catalog.notes(),
         category == ShoppingCategory.OTROS ? catalog.category() : category,
         storeProductId);
+  }
+
+  /**
+   * This product bound to a catalog row (FOR-192).
+   *
+   * <p>A product built from a request body has no reference of its own — the API has no such field
+   * — so whoever knows which row is being written attaches it here, before reducing the product to
+   * its overrides. Without the reference the record would reject the reduced product, since a
+   * standalone one must carry its own name and price.
+   */
+  public ShoppingProduct referencing(String storeProductId) {
+    return new ShoppingProduct(
+        name,
+        url,
+        packageSize,
+        estimatedPriceEur,
+        pricePerUnitEur,
+        linkedFoodItemId,
+        lastCheckedAt,
+        notes,
+        category,
+        storeProductId);
+  }
+
+  /**
+   * The inverse of {@link #resolveWith}: this product reduced to what it actually overrides
+   * (FOR-192).
+   *
+   * <p>Every field equal to the catalog's becomes null, meaning "read this from the catalog". It
+   * exists because the API sends whole products, not patches: an account editing one price posts
+   * back the name, package and link it was shown, and storing those verbatim would pin them — the
+   * row would keep the shelf name it had the day someone corrected a price, for ever.
+   *
+   * <p>{@code category} is the exception, again: its column has been NOT NULL since V7, so "not
+   * set" is spelled {@link ShoppingCategory#OTROS} rather than null, matching how {@code
+   * resolveWith} reads it back.
+   *
+   * <p>Prices compare by value, not by scale — 1.55 and 1.550 are the same price, and treating them
+   * as different would store an override that changes nothing.
+   *
+   * @param catalog the values of the catalog row this product is being written onto. The caller
+   *     establishes that link — a product built from a request body carries no {@code
+   *     storeProductId} of its own, so this cannot be inferred from the product. {@code null} means
+   *     there is nothing to inherit from and leaves it untouched.
+   */
+  public ShoppingProduct asOverridesOf(StoreProductValues catalog) {
+    if (catalog == null) {
+      return this;
+    }
+    return new ShoppingProduct(
+        Objects.equals(name, catalog.name()) ? null : name,
+        Objects.equals(url, catalog.url()) ? null : url,
+        Objects.equals(packageSize, catalog.packageSize()) ? null : packageSize,
+        samePrice(estimatedPriceEur, catalog.priceEur()) ? null : estimatedPriceEur,
+        pricePerUnitEur,
+        Objects.equals(linkedFoodItemId, catalog.foodId()) ? null : linkedFoodItemId,
+        lastCheckedAt,
+        Objects.equals(notes, catalog.notes()) ? null : notes,
+        category == catalog.category() ? ShoppingCategory.OTROS : category,
+        storeProductId);
+  }
+
+  private static boolean samePrice(BigDecimal own, BigDecimal catalog) {
+    if (own == null || catalog == null) {
+      return own == catalog;
+    }
+    return own.compareTo(catalog) == 0;
   }
 
   private static void requirePositivePrice(BigDecimal value, String field, boolean required) {

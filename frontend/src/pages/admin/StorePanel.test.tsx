@@ -155,6 +155,48 @@ describe('AdminPage — the shopping catalog tab', () => {
     expect(within(dialog).getByLabelText('Alimento enlazado')).toHaveValue('oats');
   });
 
+  /**
+   * The catalog's whole point is being able to check a product on the shelf, so the open row links
+   * out to it. A product with no link shows nothing rather than a dead one.
+   */
+  describe('the link to the store', () => {
+    const matchNarrow = (matches: boolean) => {
+      window.matchMedia = ((query: string) => ({
+        matches,
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => false,
+      })) as typeof window.matchMedia;
+    };
+
+    afterEach(() => matchNarrow(false));
+
+    it('opens the product page from the unfolded row', async () => {
+      matchNarrow(true);
+      const user = await openStoreTab();
+      await user.click(await screen.findByRole('button', { name: /Copos de avena Brüggen/ }));
+
+      const link = screen.getByRole('link', { name: /Ver en Mercadona/ });
+      expect(link).toHaveAttribute('href', 'https://tienda.mercadona.es/product/86341');
+      // A link to somebody else's site: never hand them the opener.
+      expect(link).toHaveAttribute('target', '_blank');
+      expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
+    });
+
+    it('shows no link for a product that has none', async () => {
+      matchNarrow(true);
+      const user = await openStoreTab();
+      // Salmón carries no url in this fixture.
+      await user.click(await screen.findByRole('button', { name: /Salmón/ }));
+
+      expect(screen.queryByRole('link', { name: /Ver en/ })).not.toBeInTheDocument();
+    });
+  });
+
   /** A product with no price yet is a real state, not a zero. */
   it('shows an unpriced product as unknown rather than free', async () => {
     listMock.mockResolvedValue([{ ...oats, priceEur: undefined, packageSize: undefined }]);

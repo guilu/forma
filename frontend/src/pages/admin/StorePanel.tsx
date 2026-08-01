@@ -4,6 +4,7 @@ import { Card } from '../../components/Card';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
+import { Icon } from '../../components/Icon';
 import { Modal } from '../../components/Modal';
 import { SelectField } from '../../components/FormField';
 import { listFoods, type CatalogFood } from '../../api/foods';
@@ -67,6 +68,20 @@ const detailsWith = (foodName: (id: string) => string): CatalogDetail<StoreProdu
     value: (product) => (product.foodId ? foodName(product.foodId) : 'Sin enlazar'),
   },
 ];
+
+/**
+ * The link out to the shelf, as a pill under the figures.
+ *
+ * <p>Absent rather than disabled when the product has no url: a dead link that looks live is worse
+ * than no link. `noopener` because the destination is somebody else's site.
+ */
+const storeLink = (product: StoreProduct) =>
+  product.url ? (
+    <a className={styles.linkPill} href={product.url} target="_blank" rel="noopener noreferrer">
+      <Icon name="share" size={14} />
+      {`Ver en ${STORE_LABELS[product.store]}`}
+    </a>
+  ) : undefined;
 
 export function StorePanel() {
   const [store, setStore] = useState<Store | ''>('');
@@ -152,6 +167,7 @@ export function StorePanel() {
             columns={COLUMNS}
             compactColumns={COMPACT_COLUMNS}
             details={details}
+            detailFooter={storeLink}
             narrow={catalog.narrow}
             expandedId={catalog.expandedId}
             onToggle={catalog.toggle}

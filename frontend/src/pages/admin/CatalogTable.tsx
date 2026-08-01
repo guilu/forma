@@ -57,6 +57,8 @@ interface CatalogTableProps<T> {
   readonly details: readonly CatalogDetail<T>[];
   /** Footnote inside the open panel, e.g. the basis of the figures. */
   readonly detailBadge?: string;
+  /** Extra content under the figures of an open row; nothing is rendered when it returns undefined. */
+  readonly detailFooter?: (row: T) => ReactNode;
   readonly narrow: boolean;
   /** Id of the row unfolded on the phone layout; ignored when wide. */
   readonly expandedId?: string;
@@ -76,6 +78,7 @@ export function CatalogTable<T>({
   compactColumns,
   details,
   detailBadge,
+  detailFooter,
   narrow,
   expandedId,
   onToggle,
@@ -146,9 +149,10 @@ export function CatalogTable<T>({
                             </div>
                           ))}
                         </dl>
-                        {detailBadge && (
+                        {(detailBadge || detailFooter) && (
                           <p className={styles.basis}>
-                            <span className={styles.basisPill}>{detailBadge}</span>
+                            {detailBadge && <span className={styles.basisPill}>{detailBadge}</span>}
+                            {detailFooter?.(row)}
                           </p>
                         )}
                         <div className={styles.detailActions}>
