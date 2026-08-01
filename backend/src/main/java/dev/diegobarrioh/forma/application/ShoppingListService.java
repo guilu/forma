@@ -7,6 +7,7 @@ import dev.diegobarrioh.forma.domain.ShoppingUnit;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -34,6 +35,11 @@ import org.springframework.stereotype.Service;
  * ShoppingProductRepository} on every call. {@code shopping_list_items} has no {@code user_id} of
  * its own — item operations are scoped through their owning list's {@code user_id}.
  *
+ * <p><strong>Where a list comes from (FOR-192):</strong> regenerate now seeds the caller's own
+ * product entries from the global {@code store_product} catalog before rebuilding, so a list is
+ * built by REFERENCE to shared reference data rather than from whatever each account happened to
+ * type in. Entries the account already has are untouched, including any price it overrode.
+ *
  * <p><strong>Regenerate (FOR-109):</strong> the repository has no algorithmic "generate a list from
  * nutrition templates" logic — FOR-37's own spec explicitly deferred that ("automatic generation
  * from nutrition templates is a later concern") and the only list ever created was seeded via a
@@ -52,16 +58,19 @@ public class ShoppingListService {
   private final ShoppingProductRepository productRepository;
   private final ShoppingBudgetService budgetService;
   private final CurrentUserProvider currentUserProvider;
+  private final StoreProductRepository storeProductRepository;
 
   public ShoppingListService(
       ShoppingListRepository listRepository,
       ShoppingProductRepository productRepository,
       ShoppingBudgetService budgetService,
-      CurrentUserProvider currentUserProvider) {
+      CurrentUserProvider currentUserProvider,
+      StoreProductRepository storeProductRepository) {
     this.listRepository = listRepository;
     this.productRepository = productRepository;
     this.budgetService = budgetService;
     this.currentUserProvider = currentUserProvider;
+    this.storeProductRepository = storeProductRepository;
   }
 
   /**
@@ -106,6 +115,18 @@ public class ShoppingListService {
    */
   public ShoppingListView regenerate() {
     UUID userId = currentUserProvider.currentUserId();
+    // The account's entries come from the shared catalog (FOR-192): give it one
+    // for every catalog product it does not have yet, then rebuild from its own
+    // entries as before. A new account owns nothing, so without this step it
+    // would regenerate into an empty list for ever.
+    //
+    // Every chain at once, because there is nowhere yet to record which
+    // supermarket a person shops at. When that preference exists this is the
+    // line that reads it.
+    List<String> catalogIds =
+        storeProductRepository.findAll(null).stream().map(CatalogStoreProduct::id).toList();
+    productRepository.addMissingCatalogReferences(userId, catalogIds);
+
     var freshItems =
         productRepository.findAllByOwner(userId).stream()
             .map(

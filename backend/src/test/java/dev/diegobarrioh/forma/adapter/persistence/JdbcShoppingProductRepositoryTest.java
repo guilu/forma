@@ -131,4 +131,77 @@ class JdbcShoppingProductRepositoryTest {
         .satisfies(
             stored -> assertThat(stored.product().category()).isEqualTo(ShoppingCategory.OTROS));
   }
+
+  /**
+   * A catalog reference stores nothing of its own, so everything it shows comes from the catalog
+   * row (FOR-192, V37) — including the aisle, which the NOT NULL column forces to its OTROS default
+   * on insert.
+   */
+  @Test
+  void aCatalogReferenceReadsItsValuesFromTheCatalog() {
+    int created =
+        repository.addMissingCatalogReferences(OWNER, java.util.List.of("mercadona-oats"));
+
+    assertThat(created).isEqualTo(1);
+    assertThat(repository.findAllByOwner(OWNER))
+        .singleElement()
+        .satisfies(
+            stored -> {
+              assertThat(stored.product().name()).isEqualTo("Copos de avena Brüggen");
+              assertThat(stored.product().estimatedPriceEur()).isEqualByComparingTo("1.55");
+              assertThat(stored.product().packageSize()).isEqualTo("500 g");
+              assertThat(stored.product().linkedFoodItemId()).isEqualTo("oats");
+              assertThat(stored.product().category())
+                  .isEqualTo(ShoppingCategory.CEREALES_Y_LEGUMBRES);
+              assertThat(stored.product().storeProductId()).isEqualTo("mercadona-oats");
+            });
+  }
+
+  /** Regenerating twice must not give an account the same product twice. */
+  @Test
+  void addingTheSameReferenceTwiceCreatesOneEntry() {
+    repository.addMissingCatalogReferences(OWNER, java.util.List.of("mercadona-oats"));
+    int created =
+        repository.addMissingCatalogReferences(OWNER, java.util.List.of("mercadona-oats"));
+
+    assertThat(created).isZero();
+    assertThat(repository.findAllByOwner(OWNER)).hasSize(1);
+  }
+
+  /**
+   * The account's own price wins over the catalog's and survives a regenerate — that is the whole
+   * point of an override. The rest of the row keeps reading through to the catalog.
+   */
+  @Test
+  void anOverriddenPriceWinsAndSurvivesAnotherRegenerate() {
+    repository.addMissingCatalogReferences(OWNER, java.util.List.of("mercadona-oats"));
+    jdbcTemplate.update(
+        "UPDATE shopping_products SET estimated_price_eur = 9.99 WHERE store_product_id = ?",
+        "mercadona-oats");
+
+    repository.addMissingCatalogReferences(OWNER, java.util.List.of("mercadona-oats"));
+
+    assertThat(repository.findAllByOwner(OWNER))
+        .singleElement()
+        .satisfies(
+            stored -> {
+              assertThat(stored.product().estimatedPriceEur()).isEqualByComparingTo("9.99");
+              assertThat(stored.product().name()).isEqualTo("Copos de avena Brüggen");
+            });
+  }
+
+  /** An account's own product, with no catalog behind it, keeps working exactly as before. */
+  @Test
+  void aStandaloneProductIsUnaffectedByTheCatalog() {
+    repository.create(OWNER, product("Pan de mi panadería", "2.30"));
+
+    assertThat(repository.findAllByOwner(OWNER))
+        .singleElement()
+        .satisfies(
+            stored -> {
+              assertThat(stored.product().name()).isEqualTo("Pan de mi panadería");
+              assertThat(stored.product().estimatedPriceEur()).isEqualByComparingTo("2.30");
+              assertThat(stored.product().storeProductId()).isNull();
+            });
+  }
 }

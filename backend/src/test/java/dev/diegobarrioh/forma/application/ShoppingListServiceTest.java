@@ -8,6 +8,7 @@ import dev.diegobarrioh.forma.domain.ShoppingListItem;
 import dev.diegobarrioh.forma.domain.ShoppingListStatus;
 import dev.diegobarrioh.forma.domain.ShoppingProduct;
 import dev.diegobarrioh.forma.domain.ShoppingUnit;
+import dev.diegobarrioh.forma.domain.Store;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -28,11 +29,60 @@ class ShoppingListServiceTest {
   private static final Instant GENERATED_AT = Instant.parse("2026-07-06T08:00:00Z");
   private static final UUID USER_ID = UUID.randomUUID();
 
+  /**
+   * The shared catalog a user's entries are created from. Two products is enough: the point is that
+   * regenerate asks for every one of them, not how many there are.
+   */
+  private static final StoreProductRepository CATALOG =
+      new StoreProductRepository() {
+        @Override
+        public List<CatalogStoreProduct> findAll(Store store) {
+          return List.of(catalogProduct("mercadona-oats"), catalogProduct("mercadona-rice"));
+        }
+
+        @Override
+        public Optional<CatalogStoreProduct> findById(String id) {
+          return Optional.empty();
+        }
+
+        @Override
+        public void insert(CatalogStoreProduct product) {
+          throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void update(CatalogStoreProduct product) {
+          throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public boolean delete(String id) {
+          throw new UnsupportedOperationException();
+        }
+      };
+
+  private static CatalogStoreProduct catalogProduct(String id) {
+    return new CatalogStoreProduct(
+        id,
+        Store.MERCADONA,
+        "Producto " + id,
+        null,
+        "1 kg",
+        new BigDecimal("1.95"),
+        null,
+        ShoppingCategory.CEREALES_Y_LEGUMBRES,
+        null);
+  }
+
   private final FakeProductRepository products = new FakeProductRepository();
   private final FakeListRepository lists = new FakeListRepository();
   private final ShoppingListService service =
       new ShoppingListService(
-          lists, products, new ShoppingBudgetService(products, () -> USER_ID), () -> USER_ID);
+          lists,
+          products,
+          new ShoppingBudgetService(products, () -> USER_ID),
+          () -> USER_ID,
+          CATALOG);
 
   @Test
   void resolvesProductNamesAndComputesBudget() {
@@ -67,7 +117,8 @@ class ShoppingListServiceTest {
             listsWithServings,
             linkedProducts,
             new ShoppingBudgetService(linkedProducts, () -> USER_ID),
-            () -> USER_ID);
+            () -> USER_ID,
+            CATALOG);
 
     ShoppingListView view = serviceWithLinkedProduct.currentView();
 
@@ -86,7 +137,8 @@ class ShoppingListServiceTest {
             listsWithRawServings,
             products,
             new ShoppingBudgetService(products, () -> USER_ID),
-            () -> USER_ID);
+            () -> USER_ID,
+            CATALOG);
 
     ShoppingListView view = serviceWithUnlinkedProduct.currentView();
 
@@ -107,6 +159,11 @@ class ShoppingListServiceTest {
               }
 
               @Override
+              public int addMissingCatalogReferences(UUID userId, List<String> storeProductIds) {
+                return 0;
+              }
+
+              @Override
               public StoredShoppingProduct create(UUID userId, ShoppingProduct product) {
                 throw new UnsupportedOperationException();
               }
@@ -118,7 +175,8 @@ class ShoppingListServiceTest {
               }
             },
             new ShoppingBudgetService(products, () -> USER_ID),
-            () -> USER_ID);
+            () -> USER_ID,
+            CATALOG);
 
     ShoppingListView view = serviceWithNoProducts.currentView();
 
@@ -146,7 +204,8 @@ class ShoppingListServiceTest {
             lists,
             productsWithoutUrl,
             new ShoppingBudgetService(productsWithoutUrl, () -> USER_ID),
-            () -> USER_ID);
+            () -> USER_ID,
+            CATALOG);
 
     ShoppingListView view = serviceWithoutUrl.currentView();
 
@@ -167,7 +226,8 @@ class ShoppingListServiceTest {
             listsWithStaleCost,
             products,
             new ShoppingBudgetService(products, () -> USER_ID),
-            () -> USER_ID);
+            () -> USER_ID,
+            CATALOG);
 
     ShoppingListView view = serviceWithStaleCost.currentView();
 
@@ -186,7 +246,8 @@ class ShoppingListServiceTest {
             listsWithQuantityThree,
             products,
             new ShoppingBudgetService(products, () -> USER_ID),
-            () -> USER_ID);
+            () -> USER_ID,
+            CATALOG);
 
     ShoppingListView view = serviceWithQuantityThree.currentView();
 
@@ -225,6 +286,20 @@ class ShoppingListServiceTest {
     assertThat(lists.lastRegeneratedAt()).isNotNull();
   }
 
+  /**
+   * A user's list is built from the shared catalog (FOR-192): regenerate first gives the account an
+   * entry for every catalog product it does not have yet, then rebuilds the list from its entries.
+   * Without that step a new account regenerates into an empty list forever, because it owns
+   * nothing.
+   */
+  @Test
+  void regenerateGivesTheAccountAnEntryForEveryCatalogProduct() {
+    service.regenerate();
+
+    assertThat(products.addedReferences())
+        .containsExactlyInAnyOrder("mercadona-oats", "mercadona-rice");
+  }
+
   @Test
   void regenerateOnEmptyProductCatalogProducesValidEmptyList() {
     ShoppingProductRepository noProducts =
@@ -232,6 +307,11 @@ class ShoppingListServiceTest {
           @Override
           public List<StoredShoppingProduct> findAllByOwner(UUID userId) {
             return List.of();
+          }
+
+          @Override
+          public int addMissingCatalogReferences(UUID userId, List<String> storeProductIds) {
+            return 0;
           }
 
           @Override
@@ -247,7 +327,11 @@ class ShoppingListServiceTest {
         };
     ShoppingListService serviceWithNoProducts =
         new ShoppingListService(
-            lists, noProducts, new ShoppingBudgetService(noProducts, () -> USER_ID), () -> USER_ID);
+            lists,
+            noProducts,
+            new ShoppingBudgetService(noProducts, () -> USER_ID),
+            () -> USER_ID,
+            CATALOG);
 
     ShoppingListView view = serviceWithNoProducts.regenerate();
 
@@ -263,7 +347,8 @@ class ShoppingListServiceTest {
             listsWithNoActive,
             products,
             new ShoppingBudgetService(products, () -> USER_ID),
-            () -> USER_ID);
+            () -> USER_ID,
+            CATALOG);
 
     assertThatThrownBy(serviceWithNoActiveList::regenerate).isInstanceOf(NotFoundException.class);
   }
@@ -301,7 +386,8 @@ class ShoppingListServiceTest {
             listsWithOrphanItem,
             products,
             new ShoppingBudgetService(products, () -> USER_ID),
-            () -> USER_ID);
+            () -> USER_ID,
+            CATALOG);
 
     assertThatThrownBy(() -> serviceWithOrphanItem.updateQuantity("i1", 3))
         .isInstanceOf(NotFoundException.class);
@@ -440,6 +526,7 @@ class ShoppingListServiceTest {
   }
 
   private static final class FakeProductRepository implements ShoppingProductRepository {
+    private final List<String> addedReferences = new ArrayList<>();
     private final String linkedFoodItemId;
     private final boolean withUrl;
 
@@ -481,6 +568,16 @@ class ShoppingListServiceTest {
     @Override
     public Optional<StoredShoppingProduct> update(UUID userId, String id, ShoppingProduct product) {
       throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public int addMissingCatalogReferences(UUID userId, List<String> storeProductIds) {
+      addedReferences.addAll(storeProductIds);
+      return storeProductIds.size();
+    }
+
+    List<String> addedReferences() {
+      return addedReferences;
     }
   }
 }

@@ -26,6 +26,10 @@ import java.time.Instant;
  * @param notes optional free-text note
  * @param category grocery aisle classification (FOR-106); optional on construction — {@code null}
  *     defaults to {@link ShoppingCategory#OTROS} so old rows/callers stay backward compatible
+ * @param storeProductId optional link to the global store catalog (FOR-192, V37). When set, this is
+ *     the account's entry FOR that catalog product and any {@code null} field means "whatever the
+ *     catalog says"; {@link #resolveWith} fills those in. When absent, the product stands alone and
+ *     must carry its own name and price, as every product did before the catalog existed.
  */
 public record ShoppingProduct(
     String name,
@@ -36,17 +40,81 @@ public record ShoppingProduct(
     String linkedFoodItemId,
     Instant lastCheckedAt,
     String notes,
-    ShoppingCategory category) {
+    ShoppingCategory category,
+    String storeProductId) {
 
   public ShoppingProduct {
-    if (name == null || name.isBlank()) {
+    boolean referencesCatalog = storeProductId != null;
+    // A standalone product still has to name and price itself. A reference may
+    // leave both out, because the catalog carries them — the difference between
+    // "the user set this" and "inherit it" is exactly what the nulls encode.
+    if (!referencesCatalog && (name == null || name.isBlank())) {
       throw new IllegalArgumentException("name must not be blank");
     }
-    requirePositivePrice(estimatedPriceEur, "estimatedPriceEur", true);
+    if (name != null && name.isBlank()) {
+      throw new IllegalArgumentException("name must not be blank");
+    }
+    requirePositivePrice(estimatedPriceEur, "estimatedPriceEur", !referencesCatalog);
     requirePositivePrice(pricePerUnitEur, "pricePerUnitEur", false);
     if (category == null) {
       category = ShoppingCategory.OTROS;
     }
+  }
+
+  /**
+   * A product that stands alone, with no catalog behind it — the shape every product had before
+   * FOR-192, kept so the callers that create one do not have to say "and no catalog" every time.
+   */
+  public ShoppingProduct(
+      String name,
+      String url,
+      String packageSize,
+      BigDecimal estimatedPriceEur,
+      BigDecimal pricePerUnitEur,
+      String linkedFoodItemId,
+      Instant lastCheckedAt,
+      String notes,
+      ShoppingCategory category) {
+    this(
+        name,
+        url,
+        packageSize,
+        estimatedPriceEur,
+        pricePerUnitEur,
+        linkedFoodItemId,
+        lastCheckedAt,
+        notes,
+        category,
+        null);
+  }
+
+  /**
+   * This product with every unset field taken from the catalog row it references (FOR-192).
+   *
+   * <p>Field by field, not all-or-nothing: an account that corrected the price of one product still
+   * sees the catalog's name, package and link for it. {@code category} is special — the record
+   * defaults it to {@link ShoppingCategory#OTROS} rather than leaving it null, so an entry still
+   * sitting on that default takes the catalog's aisle instead; a product deliberately filed under
+   * "Otros" in the catalog is unaffected, since both agree.
+   *
+   * @param catalog the referenced product's values; {@code null} leaves this product untouched,
+   *     which is what a dangling or absent reference must do — never blank the row
+   */
+  public ShoppingProduct resolveWith(StoreProductValues catalog) {
+    if (catalog == null) {
+      return this;
+    }
+    return new ShoppingProduct(
+        name != null ? name : catalog.name(),
+        url != null ? url : catalog.url(),
+        packageSize != null ? packageSize : catalog.packageSize(),
+        estimatedPriceEur != null ? estimatedPriceEur : catalog.priceEur(),
+        pricePerUnitEur,
+        linkedFoodItemId != null ? linkedFoodItemId : catalog.foodId(),
+        lastCheckedAt,
+        notes != null ? notes : catalog.notes(),
+        category == ShoppingCategory.OTROS ? catalog.category() : category,
+        storeProductId);
   }
 
   private static void requirePositivePrice(BigDecimal value, String field, boolean required) {
