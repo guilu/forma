@@ -62,7 +62,10 @@ describe('AdminPage', () => {
     renderPage();
 
     expect(await screen.findByRole('tab', { name: 'Macros' })).toBeInTheDocument();
-    const table = screen.getByRole('table');
+    // Named for assistive tech without a visible card title repeating the
+    // column header underneath it.
+    const table = screen.getByRole('table', { name: 'Alimentos' });
+    expect(screen.queryByRole('heading', { name: 'Alimentos' })).not.toBeInTheDocument();
     expect(within(table).getByText('Copos de avena')).toBeInTheDocument();
     expect(within(table).getByText('Pechuga pollo')).toBeInTheDocument();
     // The category the sheet carries, rendered as a label rather than the stored token.
@@ -230,10 +233,9 @@ describe('AdminPage', () => {
       expect(screen.getByText('Proteínas')).toBeInTheDocument();
       expect(screen.getByText('13 g')).toBeInTheDocument();
       expect(screen.getByText('HC (hidratos)')).toBeInTheDocument();
-      // Scoped: this food's ration and its carbohydrates are both 60 g, and a
-      // loose text match would pass on either.
-      const ration = screen.getByText('Ración recomendada').closest('div');
-      expect(within(ration!).getByText('60 g')).toBeInTheDocument();
+      expect(screen.getByText('Grasa')).toBeInTheDocument();
+      // The ration is a column of its own, so it is not repeated in here.
+      expect(screen.queryByText('Ración recomendada')).not.toBeInTheDocument();
       // Without this the figures are grams of nothing in particular.
       expect(screen.getByText('Por 100 g')).toBeInTheDocument();
     });
@@ -246,6 +248,9 @@ describe('AdminPage', () => {
       renderPage();
       await screen.findByText('Copos de avena');
 
+      // What a phone keeps: what to eat, what it costs, how much of it.
+      expect(screen.getByRole('columnheader', { name: 'kcal' })).toBeInTheDocument();
+      expect(screen.getByRole('columnheader', { name: 'Ración' })).toBeInTheDocument();
       expect(screen.queryByRole('columnheader', { name: 'HC' })).not.toBeInTheDocument();
       expect(
         screen.queryByRole('button', { name: /Editar Copos de avena/ }),

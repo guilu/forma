@@ -12,12 +12,16 @@ import styles from './FoodTable.module.css';
  * actions are the part that falls off, and a sideways flick started outside the
  * card scrolled the whole page instead.
  *
- * <p>So the narrow layout drops to what an admin actually scans by — name and
- * kcal — and moves the rest behind a row disclosure: tap the name, the macros
- * and the two actions unfold underneath. Progressive disclosure rather than a
- * second data source: same rows, same page, same order, only the columns
- * differ. One row is open at a time, because two detail panels on a 390 px
- * screen leave nothing of the table visible.
+ * <p>So the narrow layout keeps the three things a catalog is scanned by — what
+ * to eat, what it costs, how much of it — and moves the rest behind a row
+ * disclosure: tap the name, the macros and the two actions unfold underneath.
+ * Progressive disclosure rather than a second data source: same rows, same page,
+ * same order, only the columns differ. One row is open at a time, because two
+ * detail panels on a 390 px screen leave nothing of the table visible.
+ *
+ * <p>Three columns fit 390 px only at the smaller type size the narrow layout
+ * uses; the point of dropping four columns was to stop scrolling sideways, so
+ * the type shrinks rather than the row overflowing again.
  *
  * <p>The alternative — a card per food — was rejected: it loses the column
  * alignment that makes a catalog comparable at a glance, which is the whole
@@ -39,15 +43,16 @@ const categoryLabel = (food: CatalogFood) => (food.category ? CATEGORY_LABELS[fo
 const serving = (food: CatalogFood) => (food.servingSizeG ? `${food.servingSizeG} g` : '—');
 
 /**
- * The five figures behind a row, in the order the detail panel reads them.
+ * The figures behind a row, in the order the detail panel reads them. The
+ * ration is not among them: it is a column of its own at this width, and a
+ * value shown twice is a value that can look like two different things.
  * Glyphs are decorative; every entry is labelled in words beside it.
  */
 const details = (food: CatalogFood) => [
   { glyph: '🏷️', label: 'Categoría', value: categoryLabel(food) },
-  { glyph: '🥩', label: 'Proteínas', value: `${food.proteinG} g` },
   { glyph: '🍞', label: 'HC (hidratos)', value: `${food.carbsG} g` },
+  { glyph: '🥩', label: 'Proteínas', value: `${food.proteinG} g` },
   { glyph: '💧', label: 'Grasa', value: `${food.fatG} g` },
-  { glyph: '🥄', label: 'Ración recomendada', value: serving(food) },
 ];
 
 export function FoodTable({
@@ -81,12 +86,15 @@ export function FoodTable({
 
   if (narrow) {
     return (
-      <table className={styles.table}>
+      <table className={`${styles.table} ${styles.compact}`} aria-label="Alimentos">
         <thead>
           <tr>
             <th scope="col">Alimento</th>
             <th scope="col" className={styles.numeric}>
               kcal
+            </th>
+            <th scope="col" className={styles.numeric}>
+              Ración
             </th>
           </tr>
         </thead>
@@ -116,10 +124,11 @@ export function FoodTable({
                     </button>
                   </td>
                   <td className={styles.numeric}>{food.kcal}</td>
+                  <td className={styles.numeric}>{serving(food)}</td>
                 </tr>
                 {open && (
                   <tr id={`food-detail-${food.id}`} className={styles.openRow}>
-                    <td colSpan={2} className={styles.detailCell}>
+                    <td colSpan={3} className={styles.detailCell}>
                       <div className={styles.detailPanel}>
                         <dl className={styles.detail}>
                           {details(food).map((item) => (
@@ -171,7 +180,7 @@ export function FoodTable({
   }
 
   return (
-    <table className={styles.table}>
+    <table className={styles.table} aria-label="Alimentos">
       <thead>
         <tr>
           <th scope="col">Alimento</th>

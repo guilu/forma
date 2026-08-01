@@ -133,8 +133,11 @@ export function AdminPage() {
         {state.status === 'error' && (
           <ErrorState message="No se pudo cargar el catálogo." onRetry={load} />
         )}
+        {/* The card carries no title: it sat directly above a column header
+            saying the same word, and the table names itself for assistive
+            tech. */}
         {state.status === 'ready' && (
-          <Card title="Alimentos" headingLevel={2}>
+          <Card>
             <FoodTable
               foods={visible}
               narrow={narrow}

@@ -10,6 +10,22 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+/* Three columns plus a chevron and a glyph only fit 390 px at this size. The
+   type shrinks so the row does not overflow — the whole reason the phone layout
+   exists is that nothing should be reachable by scrolling sideways. */
+.compact th,
+.compact td {
+  padding: var(--space-2);
+  font-size: var(--font-size-sm);
+}
+
+/* The two figures take what they need; the name column absorbs the rest and
+   wraps, which beats truncating a food's name to fit. */
+.compact .numeric {
+  width: 1%;
+  white-space: nowrap;
+}
+
 .table th {
   font-size: var(--font-size-sm);
   font-weight: 600;
@@ -136,12 +152,6 @@
   align-items: flex-start;
   gap: var(--space-2);
   min-width: 0;
-}
-
-/* The ration is the odd one out: its label is twice as long as the macro ones
-   and wrapped to two lines in a half-width cell, leaving the grid ragged. */
-.detailItem:last-child {
-  grid-column: 1 / -1;
 }
 
 .detailGlyph {
