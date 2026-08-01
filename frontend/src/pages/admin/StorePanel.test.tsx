@@ -1,0 +1,167 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
+import { AdminPage } from '../AdminPage';
+import { NotificationProvider } from '../../components/NotificationProvider';
+import { listFoods } from '../../api/foods';
+import {
+  deleteStoreProduct,
+  listStoreProducts,
+  updateStoreProduct,
+  type StoreProduct,
+} from '../../api/storeProducts';
+
+vi.mock('../../api/foods', () => ({
+  listFoods: vi.fn(),
+  createFood: vi.fn(),
+  updateFood: vi.fn(),
+  deleteFood: vi.fn(),
+}));
+vi.mock('../../api/storeProducts', () => ({
+  listStoreProducts: vi.fn(),
+  createStoreProduct: vi.fn(),
+  updateStoreProduct: vi.fn(),
+  deleteStoreProduct: vi.fn(),
+}));
+
+const listMock = vi.mocked(listStoreProducts);
+const updateMock = vi.mocked(updateStoreProduct);
+const deleteMock = vi.mocked(deleteStoreProduct);
+
+const oats: StoreProduct = {
+  id: 'mercadona-oats',
+  store: 'MERCADONA',
+  name: 'Copos de avena Brüggen',
+  foodId: 'oats',
+  packageSize: '500 g',
+  priceEur: 1.55,
+  url: 'https://tienda.mercadona.es/product/86341',
+  category: 'CEREALES_Y_LEGUMBRES',
+};
+
+const salmon: StoreProduct = {
+  id: 'mercadona-salmon',
+  store: 'MERCADONA',
+  name: 'Salmón',
+  foodId: 'salmon',
+  packageSize: 'kg',
+  priceEur: 14.5,
+  category: 'PROTEINAS',
+  notes: 'Principal variable de presupuesto',
+};
+
+async function openStoreTab() {
+  const user = userEvent.setup();
+  render(
+    <MemoryRouter>
+      <NotificationProvider>
+        <AdminPage />
+      </NotificationProvider>
+    </MemoryRouter>,
+  );
+  await user.click(await screen.findByRole('tab', { name: 'Compra' }));
+  return user;
+}
+
+describe('AdminPage — the shopping catalog tab', () => {
+  beforeEach(() => {
+    vi.mocked(listFoods).mockResolvedValue([]);
+    listMock.mockReset();
+    updateMock.mockReset();
+    deleteMock.mockReset();
+    listMock.mockResolvedValue([oats, salmon]);
+  });
+
+  afterEach(() => vi.clearAllMocks());
+
+  it('lists the catalog with its store, price and package', async () => {
+    await openStoreTab();
+
+    const table = await screen.findByRole('table', { name: 'Productos' });
+    expect(within(table).getByText('Copos de avena Brüggen')).toBeInTheDocument();
+    // Both rows carry the chain: it is a column, not a tab.
+    expect(within(table).getAllByText('Mercadona')).toHaveLength(2);
+    // Labels, not the stored tokens.
+    expect(within(table).getByText('Cereales y legumbres')).toBeInTheDocument();
+    expect(within(table).getByText('1,55 €')).toBeInTheDocument();
+    expect(within(table).getByText('500 g')).toBeInTheDocument();
+  });
+
+  /**
+   * One table holds every chain (V36), so the filter is a query rather than a
+   * tab per supermarket — adding Carrefour must not add a tab.
+   */
+  it('narrows the catalog to one chain', async () => {
+    const user = await openStoreTab();
+    await screen.findByText('Copos de avena Brüggen');
+
+    await user.selectOptions(screen.getByLabelText('Tienda'), 'MERCADONA');
+
+    await waitFor(() => expect(listMock).toHaveBeenLastCalledWith('MERCADONA'));
+  });
+
+  it('edits a product through a form and re-reads the list', async () => {
+    updateMock.mockResolvedValue({ ...oats, name: 'Avena Brüggen' });
+    const user = await openStoreTab();
+    await screen.findByText('Copos de avena Brüggen');
+
+    await user.click(screen.getByRole('button', { name: /Editar Copos de avena Brüggen/ }));
+    const dialog = await screen.findByRole('dialog');
+    const name = within(dialog).getByLabelText('Nombre');
+    await user.clear(name);
+    await user.type(name, 'Avena Brüggen');
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+
+    await waitFor(() =>
+      expect(updateMock).toHaveBeenCalledWith(
+        'mercadona-oats',
+        expect.objectContaining({ name: 'Avena Brüggen', store: 'MERCADONA' }),
+      ),
+    );
+    await waitFor(() => expect(listMock).toHaveBeenCalledTimes(2));
+  });
+
+  it('asks before deleting and removes the product once confirmed', async () => {
+    deleteMock.mockResolvedValue(undefined);
+    const user = await openStoreTab();
+    await screen.findByText('Salmón');
+
+    await user.click(screen.getByRole('button', { name: /Eliminar Salmón/ }));
+    expect(deleteMock).not.toHaveBeenCalled();
+
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Eliminar' }),
+    );
+
+    await waitFor(() => expect(deleteMock).toHaveBeenCalledWith('mercadona-salmon'));
+  });
+
+  /**
+   * The linked food is a select over the food catalog. When the catalog request
+   * fails or has not landed, a product's own food is not among the options — and
+   * a select whose value matches no option renders blank. It showed "Sin
+   * enlazar" over a product that was linked: the control was lying about the
+   * data, and the operator's next save would be made on that reading.
+   */
+  it('still shows the linked food when the catalog options have not loaded', async () => {
+    vi.mocked(listFoods).mockResolvedValue([]);
+    const user = await openStoreTab();
+    await screen.findByText('Copos de avena Brüggen');
+
+    await user.click(screen.getByRole('button', { name: /Editar Copos de avena Brüggen/ }));
+    const dialog = await screen.findByRole('dialog');
+
+    expect(within(dialog).getByLabelText('Alimento enlazado')).toHaveValue('oats');
+  });
+
+  /** A product with no price yet is a real state, not a zero. */
+  it('shows an unpriced product as unknown rather than free', async () => {
+    listMock.mockResolvedValue([{ ...oats, priceEur: undefined, packageSize: undefined }]);
+
+    await openStoreTab();
+
+    const row = (await screen.findByText('Copos de avena Brüggen')).closest('tr');
+    expect(within(row!).getAllByText('—').length).toBeGreaterThan(0);
+  });
+});
