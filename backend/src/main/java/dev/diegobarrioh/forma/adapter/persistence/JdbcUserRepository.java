@@ -32,7 +32,11 @@ public class JdbcUserRepository implements UserRepository {
               rs.getTimestamp("last_login_at") == null
                   ? null
                   : rs.getTimestamp("last_login_at").toInstant(),
-              rs.getBoolean("is_active"));
+              rs.getBoolean("is_active"),
+              // V35 added the column with a NOT NULL default, so this is never absent on a
+              // migrated database; valueOf would throw on an unknown value, which is what a CHECK
+              // constraint violation deserves.
+              dev.diegobarrioh.forma.domain.UserRole.valueOf(rs.getString("role")));
 
   private final JdbcTemplate jdbcTemplate;
 
@@ -45,7 +49,7 @@ public class JdbcUserRepository implements UserRepository {
     try {
       User user =
           jdbcTemplate.queryForObject(
-              "SELECT id, email, password_hash, created_at, last_login_at, is_active"
+              "SELECT id, email, password_hash, created_at, last_login_at, is_active, role"
                   + " FROM users WHERE email = ?",
               USER_ROW_MAPPER,
               email);
@@ -60,7 +64,7 @@ public class JdbcUserRepository implements UserRepository {
     try {
       User user =
           jdbcTemplate.queryForObject(
-              "SELECT id, email, password_hash, created_at, last_login_at, is_active"
+              "SELECT id, email, password_hash, created_at, last_login_at, is_active, role"
                   + " FROM users WHERE id = ?",
               USER_ROW_MAPPER,
               id);

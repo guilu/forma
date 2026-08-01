@@ -24,7 +24,8 @@ public record FoodCatalogResponse(
     BigDecimal fiberG,
     BigDecimal sugarsG,
     BigDecimal sodiumMg,
-    BigDecimal saturatedFatG) {
+    BigDecimal saturatedFatG,
+    String category) {
 
   /** Maps a persisted catalog food to its API read model. */
   public static FoodCatalogResponse from(CatalogFood food) {
@@ -39,6 +40,7 @@ public record FoodCatalogResponse(
         food.fiberG(),
         food.sugarsG(),
         food.sodiumMg(),
-        food.saturatedFatG());
+        food.saturatedFatG(),
+        food.category() == null ? null : food.category().name());
   }
 }

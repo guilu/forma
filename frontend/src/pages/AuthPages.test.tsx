@@ -56,7 +56,7 @@ describe('auth pages', () => {
     vi.mocked(useAuth).mockReturnValue(
       authState({
         status: 'authenticated',
-        user: { id: '1', email: 'user@example.com' },
+        user: { id: '1', email: 'user@example.com', role: 'USER' as const },
       }),
     );
     render(
@@ -185,7 +185,7 @@ describe('auth pages', () => {
     vi.mocked(useAuth).mockReturnValue(
       authState({
         status: 'authenticated',
-        user: { id: '1', email: 'user@example.com' },
+        user: { id: '1', email: 'user@example.com', role: 'USER' as const },
       }),
     );
     render(

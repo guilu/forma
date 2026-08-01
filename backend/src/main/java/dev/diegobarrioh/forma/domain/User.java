@@ -28,4 +28,18 @@ public record User(
     String passwordHash,
     Instant createdAt,
     Instant lastLoginAt,
-    boolean active) {}
+    boolean active,
+    UserRole role) {
+
+  public User {
+    // Never null: a row with no role is a row nobody can authorise, and the column is NOT NULL
+    // DEFAULT 'USER' (V35). Defaulting here too means an in-memory User built by a test or a
+    // mapper that forgets the field is an ordinary user, never an accidental admin.
+    role = role == null ? UserRole.USER : role;
+  }
+
+  /** Whether this account maintains the shared reference catalogs. */
+  public boolean isAdmin() {
+    return role == UserRole.ADMIN;
+  }
+}

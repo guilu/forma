@@ -614,3 +614,81 @@ test.describe('code splitting', () => {
     expect(modules.length, 'No scripts were loaded at all').toBeGreaterThan(0);
   });
 });
+
+/**
+ * The catalog table used to run seven columns wide on a phone. It scrolled
+ * sideways inside its card — and, because the "Acciones" header was an
+ * absolutely positioned sr-only span with no positioned ancestor, its
+ * containing block was the viewport rather than the scroller, so it escaped the
+ * clip and stretched the *document* to 723 px. A sideways flick anywhere on the
+ * page then dragged the whole layout.
+ */
+test.describe('the admin catalog on a phone', () => {
+  const FOODS = Array.from({ length: 12 }, (_, index) => ({
+    id: `food-${index}`,
+    name: `Alimento de nombre largo ${index}`,
+    kcal: 100 + index,
+    proteinG: 12.5,
+    carbsG: 60,
+    fatG: 3.4,
+    servingSizeG: 60,
+    category: 'PROTEINA',
+  }));
+
+  test.beforeEach(async ({ page }) => {
+    // Registered after `stubApi`, so these win: Playwright tries the most
+    // recently added route first.
+    await page.route('**/api/v1/auth/me', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ id: 'e2e-user', email: 'e2e@forma.test', role: 'ADMIN' }),
+      }),
+    );
+    await page.route('**/api/v1/foods', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(FOODS),
+      }),
+    );
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/app/admin');
+    await expect(page.getByRole('table')).toBeVisible();
+  });
+
+  test('never widens the page past the viewport', async ({ page }) => {
+    const { scrollWidth, clientWidth } = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+    }));
+    expect(
+      scrollWidth,
+      `The page scrolls sideways: ${scrollWidth}px in a ${clientWidth}px viewport`,
+    ).toBeLessThanOrEqual(clientWidth);
+  });
+
+  test('reaches the macros and the actions of a row without scrolling sideways', async ({
+    page,
+  }) => {
+    const first = page.getByRole('button', { name: 'Alimento de nombre largo 0' });
+    await expect(first).toHaveAttribute('aria-expanded', 'false');
+    await first.click();
+
+    const edit = page.getByRole('button', { name: 'Editar Alimento de nombre largo 0' });
+    await expect(edit).toBeVisible();
+    const box = await edit.boundingBox();
+    expect(box, 'The edit action has no box').not.toBeNull();
+    expect(box!.x + box!.width).toBeLessThanOrEqual(390);
+  });
+
+  test('pages the catalog instead of running it off the bottom', async ({ page }) => {
+    await expect(page.getByText('Página 1 de 2')).toBeVisible();
+    await expect(page.getByText('Alimento de nombre largo 10')).toBeHidden();
+
+    await page.getByRole('button', { name: 'Página siguiente' }).click();
+
+    await expect(page.getByText('Alimento de nombre largo 10')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Página siguiente' })).toBeDisabled();
+  });
+});

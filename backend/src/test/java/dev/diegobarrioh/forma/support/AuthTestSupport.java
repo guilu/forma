@@ -21,7 +21,16 @@ public final class AuthTestSupport {
   /** Authenticates as an arbitrary account id/email (e.g. a freshly registered test user). */
   public static RequestPostProcessor asUser(UUID id, String email) {
     return SecurityMockMvcRequestPostProcessors.user(
-        new FormaUserPrincipal(id, email, "{noop}unused", true));
+        new FormaUserPrincipal(id, email, "{noop}unused", true, false));
+  }
+
+  /**
+   * Authenticates as an account that also carries {@code ROLE_ADMIN} (FOR-190) — for the catalog
+   * maintenance endpoints. Everything else behaves identically: an admin is a user too.
+   */
+  public static RequestPostProcessor asAdmin(UUID id, String email) {
+    return SecurityMockMvcRequestPostProcessors.user(
+        new FormaUserPrincipal(id, email, "{noop}unused", true, true));
   }
 
   /**
@@ -43,7 +52,7 @@ public final class AuthTestSupport {
    * authentication across tests.
    */
   public static void authenticateThreadAs(UUID id, String email) {
-    FormaUserPrincipal principal = new FormaUserPrincipal(id, email, "{noop}unused", true);
+    FormaUserPrincipal principal = new FormaUserPrincipal(id, email, "{noop}unused", true, false);
     SecurityContextHolder.getContext()
         .setAuthentication(
             new UsernamePasswordAuthenticationToken(

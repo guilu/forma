@@ -93,7 +93,7 @@ describe('LandingPage', () => {
   it('shows authenticated access without an unnecessary login form', () => {
     mockLanding({
       status: 'authenticated',
-      user: { id: 'user-1', email: 'persona@example.com' },
+      user: { id: 'user-1', email: 'persona@example.com', role: 'USER' as const },
     });
     renderLanding();
 
@@ -129,7 +129,9 @@ describe('LandingPage', () => {
         status,
         bootstrapError,
         user:
-          status === 'authenticated' ? { id: 'user-1', email: 'persona@example.com' } : undefined,
+          status === 'authenticated'
+            ? { id: 'user-1', email: 'persona@example.com', role: 'USER' as const }
+            : undefined,
       });
       const { container } = renderLanding();
       expect(await axe(container)).toHaveNoViolations();

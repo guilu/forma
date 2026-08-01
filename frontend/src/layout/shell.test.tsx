@@ -27,10 +27,14 @@ const integrationsMock = vi.mocked(listIntegrations);
 
 const logoutMock = vi.fn();
 let authStatus: 'authenticated' | 'anonymous' = 'authenticated';
+let authRole: 'USER' | 'ADMIN' = 'USER';
 vi.mock('../auth/AuthContext', () => ({
   useAuth: () => ({
     status: authStatus,
-    user: authStatus === 'authenticated' ? { id: 'user-1', email: 'persona@example.com' } : null,
+    user:
+      authStatus === 'authenticated'
+        ? { id: 'user-1', email: 'persona@example.com', role: authRole }
+        : null,
     logout: logoutMock,
   }),
 }));
@@ -58,6 +62,7 @@ describe('application shell', () => {
     integrationsMock.mockReset();
     integrationsMock.mockResolvedValue([]);
     authStatus = 'authenticated';
+    authRole = 'USER';
   });
 
   /**
@@ -180,6 +185,45 @@ describe('application shell', () => {
     );
     await user.click(within(menu).getByRole('menuitem', { name: 'Cerrar sesión' }));
     expect(logoutMock).toHaveBeenCalled();
+  });
+
+  /**
+   * The catalog maintenance screens (FOR-190). The entry only exists for an admin — and only as a
+   * courtesy: every endpoint behind it enforces the authority server-side, so hiding the link is
+   * about not offering a dead end, never about access control.
+   */
+  it('offers "Administrar" above "Ajustes" for an admin', async () => {
+    authRole = 'ADMIN';
+    const user = userEvent.setup();
+    renderTopbar();
+
+    await user.click(screen.getByRole('button', { name: 'Cuenta: persona@example.com' }));
+
+    const menu = screen.getByRole('menu', { name: 'Cuenta' });
+    const items = within(menu).getAllByRole('menuitem');
+    expect(items.map((item) => item.textContent?.trim())).toEqual([
+      'Administrar',
+      'Ajustes',
+      'Cerrar sesión',
+    ]);
+    expect(within(menu).getByRole('menuitem', { name: 'Administrar' })).toHaveAttribute(
+      'href',
+      '/app/admin',
+    );
+  });
+
+  it('does not offer it to an ordinary account', async () => {
+    authRole = 'USER';
+    const user = userEvent.setup();
+    renderTopbar();
+
+    await user.click(screen.getByRole('button', { name: 'Cuenta: persona@example.com' }));
+
+    expect(
+      within(screen.getByRole('menu', { name: 'Cuenta' })).queryByRole('menuitem', {
+        name: 'Administrar',
+      }),
+    ).not.toBeInTheDocument();
   });
 
   it('closes the account menu when focus leaves it', async () => {

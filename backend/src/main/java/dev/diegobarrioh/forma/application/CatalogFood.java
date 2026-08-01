@@ -1,5 +1,6 @@
 package dev.diegobarrioh.forma.application;
 
+import dev.diegobarrioh.forma.domain.FoodCategory;
 import java.math.BigDecimal;
 
 /**
@@ -34,4 +35,5 @@ public record CatalogFood(
     BigDecimal fiberG,
     BigDecimal sugarsG,
     BigDecimal sodiumMg,
-    BigDecimal saturatedFatG) {}
+    BigDecimal saturatedFatG,
+    FoodCategory category) {}

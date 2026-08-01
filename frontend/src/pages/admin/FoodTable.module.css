@@ -1,0 +1,242 @@
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Three columns plus a chevron and a glyph only fit 390 px at this size. The
+   type shrinks so the row does not overflow — the whole reason the phone layout
+   exists is that nothing should be reachable by scrolling sideways. */
+.compact th,
+.compact td {
+  padding: var(--space-2);
+  font-size: var(--font-size-sm);
+}
+
+/* The two figures take what they need; the name column absorbs the rest and
+   wraps, which beats truncating a food's name to fit. */
+.compact .numeric {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.table th {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Figures line up on their units, which is the point of keeping this a table.
+   Selector matches the `.table th`/`.table td` specificity above it — a bare
+   `.numeric` loses to it and silently does nothing. */
+.table th.numeric,
+.table td.numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The actions column takes only what the two icons need, so the row's data
+   keeps the width instead of a gap growing in the middle of it. */
+.actionsHeader {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.rowActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+
+/* ui-guidelines: 44px minimum touch target. */
+.rowAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.rowAction:hover {
+  color: var(--color-text);
+  background-color: var(--color-surface-variant);
+}
+
+/* The open row and its panel read as one block lifted out of the list. */
+.openRow > td {
+  background-color: color-mix(in srgb, var(--color-accent) 8%, transparent);
+  border-bottom-color: transparent;
+}
+
+/* Phone layout: the name is the disclosure control for the rest of the row. */
+.rowToggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.chevron,
+.chevronOpen {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  transition: transform 150ms ease;
+}
+
+.chevronOpen {
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chevron,
+  .chevronOpen {
+    transition: none;
+  }
+}
+
+.glyph {
+  flex-shrink: 0;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.rowName {
+  min-width: 0;
+  font-weight: 600;
+}
+
+.detailCell {
+  padding-top: 0;
+}
+
+.detailPanel {
+  padding: var(--space-3);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+/* Two columns of label/value: five macros in the space a phone has, still
+   aligned so the numbers can be compared down the list. */
+.detail {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3) var(--space-4);
+  margin: 0;
+}
+
+.detailItem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.detailGlyph {
+  flex-shrink: 0;
+  font-size: 1rem;
+  line-height: 1.4;
+}
+
+.detail dt {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.detail dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The basis of the figures above, as a tag rather than a sentence. It sits on
+   the right so it reads as an annotation on the block, not as a sixth value. */
+.basis {
+  display: flex;
+  justify-content: flex-end;
+  margin: var(--space-3) 0 0;
+}
+
+.basisPill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 2px var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-accent-strong);
+  background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  border-radius: 999px;
+}
+
+/* The bullet. Decorative, so it is drawn rather than typed: a literal "•" in
+   the markup would be read out by a screen reader. */
+.basisPill::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--color-accent-strong);
+}
+
+/* Two equal halves, both labelled: an icon alone is fine in a desktop row that
+   has six columns of context around it, not for the only two actions on screen.
+   ui-guidelines: 44px minimum touch target. */
+.detailActions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.detailEdit,
+.detailDelete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+/* Tinted fills rather than solid ones: neither action is the page's primary
+   call, and two solid buttons side by side would compete with "+ Alimento". */
+.detailEdit {
+  color: var(--color-accent-strong);
+  background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
+}
+
+.detailDelete {
+  color: var(--color-danger);
+  background-color: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent);
+}

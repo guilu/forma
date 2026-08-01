@@ -143,6 +143,24 @@ export function Topbar() {
               {accountOpen && (
                 <div className={styles.accountMenu} role="menu" aria-label="Cuenta">
                   {/*
+                    Catalog maintenance (FOR-190), above the ordinary settings
+                    because it is the rarer, wider-reaching destination. Shown
+                    only to an admin as a courtesy — the endpoints behind it
+                    enforce the role themselves, so this is about not offering a
+                    dead end rather than about access control.
+                  */}
+                  {user?.role === 'ADMIN' && (
+                    <Link
+                      className={styles.accountMenuItem}
+                      role="menuitem"
+                      to="/app/admin"
+                      onClick={() => setAccountOpen(false)}
+                    >
+                      <Icon name="settings" size={18} />
+                      Administrar
+                    </Link>
+                  )}
+                  {/*
                    * "Ajustes" lives here rather than in the section navigation
                    * (see app/navigation.ts): it is account chrome, not a
                    * product section, so it belongs next to signing out.

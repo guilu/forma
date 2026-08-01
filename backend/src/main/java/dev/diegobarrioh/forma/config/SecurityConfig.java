@@ -13,6 +13,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -34,6 +35,9 @@ import org.springframework.web.cors.CorsConfigurationSource;
  * full rationale; this class implements its "Spring Security filter chain" section.
  */
 @Configuration
+// Turns on @PreAuthorize (FOR-190): the catalog maintenance endpoints are the first rules that
+// depend on an authority rather than merely on being authenticated.
+@EnableMethodSecurity
 @EnableWebSecurity
 public class SecurityConfig {
 
