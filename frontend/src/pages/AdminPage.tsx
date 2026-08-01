@@ -3,15 +3,16 @@ import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { ErrorState } from '../components/ErrorState';
-import { Icon } from '../components/Icon';
 import { LoadingState } from '../components/LoadingState';
 import { Modal } from '../components/Modal';
 import { useNotify } from '../components/NotificationProvider';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useMountedRef } from '../hooks/useMountedRef';
 import { ApiRequestError } from '../api/client';
 import { deleteFood, listFoods, type CatalogFood } from '../api/foods';
 import { FoodForm } from './admin/FoodForm';
-import { CATEGORY_LABELS } from './admin/foodDisplay';
+import { FoodTable } from './admin/FoodTable';
+import { Pagination } from './admin/Pagination';
 import styles from './AdminPage.module.css';
 
 /**
@@ -34,6 +35,12 @@ type State =
 
 const TABS = [{ key: 'macros', label: 'Macros' }] as const;
 
+/** Rows per page. Ten fills a phone screen without the card growing past it. */
+const PAGE_SIZE = 10;
+
+/** Below this the table drops to two columns — see `FoodTable`. */
+const NARROW = '(max-width: 767px)';
+
 export function AdminPage() {
   const notify = useNotify();
   const mountedRef = useMountedRef();
@@ -42,6 +49,17 @@ export function AdminPage() {
   const [deleting, setDeleting] = useState<CatalogFood | undefined>(undefined);
   const [pending, setPending] = useState(false);
   const [actionError, setActionError] = useState<string | undefined>(undefined);
+  const [page, setPage] = useState(0);
+  const [expandedId, setExpandedId] = useState<string | undefined>(undefined);
+  const narrow = useMediaQuery(NARROW);
+
+  const foods = state.status === 'ready' ? state.foods : [];
+  const pageCount = Math.max(1, Math.ceil(foods.length / PAGE_SIZE));
+  // Clamped on read rather than corrected in an effect: deleting the last row of
+  // the last page shrinks the catalog under the current page, and a render that
+  // shows an empty table before an effect fixes it is a flicker users notice.
+  const currentPage = Math.min(page, pageCount - 1);
+  const visible = foods.slice(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE);
 
   const load = useCallback(() => {
     listFoods()
@@ -117,63 +135,29 @@ export function AdminPage() {
         )}
         {state.status === 'ready' && (
           <Card title="Alimentos" headingLevel={2}>
-            <div className={styles.tableScroll}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th scope="col">Alimento</th>
-                    <th scope="col">Categoría</th>
-                    <th scope="col">kcal</th>
-                    <th scope="col">Prot.</th>
-                    <th scope="col">HC</th>
-                    <th scope="col">Grasa</th>
-                    <th scope="col">Ración</th>
-                    <th scope="col">
-                      <span className={styles.srOnly}>Acciones</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {state.foods.map((food) => (
-                    <tr key={food.id}>
-                      <td>{food.name}</td>
-                      <td>{food.category ? CATEGORY_LABELS[food.category] : '—'}</td>
-                      <td>{food.kcal}</td>
-                      <td>{food.proteinG}</td>
-                      <td>{food.carbsG}</td>
-                      <td>{food.fatG}</td>
-                      <td>{food.servingSizeG ? `${food.servingSizeG} g` : '—'}</td>
-                      <td>
-                        <div className={styles.rowActions}>
-                          <button
-                            type="button"
-                            className={styles.rowAction}
-                            aria-label={`Editar ${food.name}`}
-                            onClick={() => {
-                              setActionError(undefined);
-                              setEditing(food);
-                            }}
-                          >
-                            <Icon name="edit" size={18} />
-                          </button>
-                          <button
-                            type="button"
-                            className={styles.rowAction}
-                            aria-label={`Eliminar ${food.name}`}
-                            onClick={() => {
-                              setActionError(undefined);
-                              setDeleting(food);
-                            }}
-                          >
-                            <Icon name="trash" size={18} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <FoodTable
+              foods={visible}
+              narrow={narrow}
+              expandedId={expandedId}
+              onToggle={(id) => setExpandedId((open) => (open === id ? undefined : id))}
+              onEdit={(food) => {
+                setActionError(undefined);
+                setEditing(food);
+              }}
+              onDelete={(food) => {
+                setActionError(undefined);
+                setDeleting(food);
+              }}
+            />
+            <Pagination
+              page={currentPage}
+              pageCount={pageCount}
+              onChange={(next) => {
+                setPage(next);
+                // The open row belongs to the page that just left.
+                setExpandedId(undefined);
+              }}
+            />
           </Card>
         )}
       </section>

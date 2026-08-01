@@ -1,0 +1,118 @@
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.table th {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Figures line up on their units, which is the point of keeping this a table.
+   Selector matches the `.table th`/`.table td` specificity above it — a bare
+   `.numeric` loses to it and silently does nothing. */
+.table th.numeric,
+.table td.numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The actions column takes only what the two icons need, so the row's data
+   keeps the width instead of a gap growing in the middle of it. */
+.actionsHeader {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.rowActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+
+/* ui-guidelines: 44px minimum touch target. */
+.rowAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.rowAction:hover {
+  color: var(--color-text);
+  background-color: var(--color-surface-variant);
+}
+
+/* Phone layout: the name is the disclosure control for the rest of the row. */
+.rowToggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.chevron,
+.chevronOpen {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  transition: transform 150ms ease;
+}
+
+.chevronOpen {
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chevron,
+  .chevronOpen {
+    transition: none;
+  }
+}
+
+.detailCell {
+  background-color: var(--color-surface-variant);
+}
+
+/* Two columns of label/value: five macros in the space a phone has, still
+   aligned so the numbers can be compared down the list. */
+.detail {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-2) var(--space-4);
+  margin: 0 0 var(--space-2);
+}
+
+.detail dt {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.detail dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}

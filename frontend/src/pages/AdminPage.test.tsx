@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
@@ -130,5 +130,112 @@ describe('AdminPage', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo eliminar');
     expect(screen.getByText('Copos de avena')).toBeInTheDocument();
+  });
+
+  /**
+   * The catalog is already 23 foods and grows with every store sheet loaded into
+   * it, so the table pages rather than rendering the lot.
+   */
+  describe('pagination', () => {
+    const many = (count: number): CatalogFood[] =>
+      Array.from({ length: count }, (_, index) => ({
+        ...oats,
+        id: `food-${index}`,
+        name: `Alimento ${index}`,
+      }));
+
+    it('shows one page at a time and moves through the rest', async () => {
+      listMock.mockResolvedValue(many(12));
+      const user = userEvent.setup();
+
+      renderPage();
+      await screen.findByText('Alimento 0');
+
+      expect(screen.getAllByRole('row')).toHaveLength(11); // 10 foods + the header
+      expect(screen.queryByText('Alimento 10')).not.toBeInTheDocument();
+      expect(screen.getByText('Página 1 de 2')).toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: 'Página siguiente' }));
+
+      expect(await screen.findByText('Alimento 10')).toBeInTheDocument();
+      expect(screen.queryByText('Alimento 0')).not.toBeInTheDocument();
+      expect(screen.getByText('Página 2 de 2')).toBeInTheDocument();
+    });
+
+    it('stays out of the way while everything fits on one page', async () => {
+      listMock.mockResolvedValue([oats, chicken]);
+
+      renderPage();
+      await screen.findByText('Copos de avena');
+
+      expect(screen.queryByRole('button', { name: 'Página siguiente' })).not.toBeInTheDocument();
+    });
+
+    /**
+     * Deleting the only row of the last page used to leave the table on a page
+     * that no longer exists — an empty table with no way back.
+     */
+    it('falls back a page when the last row of the last one goes', async () => {
+      listMock.mockResolvedValueOnce(many(11)).mockResolvedValue(many(10));
+      deleteMock.mockResolvedValue(undefined);
+      const user = userEvent.setup();
+
+      renderPage();
+      await screen.findByText('Alimento 0');
+      await user.click(screen.getByRole('button', { name: 'Página siguiente' }));
+
+      await user.click(await screen.findByRole('button', { name: /Eliminar Alimento 10/ }));
+      await user.click(
+        within(await screen.findByRole('dialog')).getByRole('button', { name: 'Eliminar' }),
+      );
+
+      expect(await screen.findByText('Alimento 0')).toBeInTheDocument();
+    });
+  });
+
+  /**
+   * Seven columns do not fit a phone. The table drops to name + kcal there and
+   * the rest of the row — macros and actions — opens on demand, so nothing is
+   * reachable only by scrolling sideways.
+   */
+  describe('on a phone', () => {
+    const matchNarrow = (matches: boolean) => {
+      window.matchMedia = ((query: string) => ({
+        matches,
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => false,
+      })) as typeof window.matchMedia;
+    };
+
+    afterEach(() => matchNarrow(false));
+
+    it('hides the macro columns and opens the row to reach them', async () => {
+      matchNarrow(true);
+      listMock.mockResolvedValue([oats, chicken]);
+      const user = userEvent.setup();
+
+      renderPage();
+      await screen.findByText('Copos de avena');
+
+      expect(screen.queryByRole('columnheader', { name: 'HC' })).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: /Editar Copos de avena/ }),
+      ).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: /Copos de avena/ }));
+
+      expect(screen.getByRole('button', { name: /Editar Copos de avena/ })).toBeInTheDocument();
+      expect(screen.getByText('Carbohidrato')).toBeInTheDocument();
+      // One row open at a time: the phone has no room for two detail panels.
+      await user.click(screen.getByRole('button', { name: /Pechuga pollo/ }));
+      expect(
+        screen.queryByRole('button', { name: /Editar Copos de avena/ }),
+      ).not.toBeInTheDocument();
+    });
   });
 });

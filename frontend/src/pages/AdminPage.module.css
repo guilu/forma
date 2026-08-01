@@ -58,57 +58,6 @@
   cursor: pointer;
 }
 
-.tableScroll {
-  overflow-x: auto;
-}
-
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  white-space: nowrap;
-}
-
-.table th,
-.table td {
-  padding: var(--space-2) var(--space-3);
-  text-align: left;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.table th {
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.rowActions {
-  display: flex;
-  gap: var(--space-1);
-}
-
-/* Icon targets, sized to stay tappable without widening the last column
-   (ui-guidelines: 44px minimum touch target). */
-.rowAction {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius-md);
-  background: none;
-  color: var(--color-text-muted);
-  cursor: pointer;
-}
-
-.rowAction:hover {
-  color: var(--color-text);
-  background-color: var(--color-surface-variant);
-}
-
 .actionError {
   margin: 0 0 var(--space-3);
   padding: var(--space-3);
@@ -116,16 +65,4 @@
   color: var(--color-danger);
   border: 1px solid var(--color-danger);
   border-radius: var(--radius-md);
-}
-
-.srOnly {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
 }
