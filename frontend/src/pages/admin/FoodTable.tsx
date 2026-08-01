@@ -146,7 +146,9 @@ export function FoodTable({
                         {/* Grams of what: the catalog stores every macro per
                             100 g, and the column header that used to say so is
                             not on screen at this width. */}
-                        <p className={styles.basis}>Por 100 g</p>
+                        <p className={styles.basis}>
+                          <span className={styles.basisPill}>100 g</span>
+                        </p>
                         <div className={styles.detailActions}>
                           <button
                             type="button"

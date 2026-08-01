@@ -171,10 +171,34 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* The basis of the figures above, as a tag rather than a sentence. It sits on
+   the right so it reads as an annotation on the block, not as a sixth value. */
 .basis {
+  display: flex;
+  justify-content: flex-end;
   margin: var(--space-3) 0 0;
+}
+
+.basisPill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 2px var(--space-2);
   font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
+  font-weight: 600;
+  color: var(--color-accent-strong);
+  background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  border-radius: 999px;
+}
+
+/* The bullet. Decorative, so it is drawn rather than typed: a literal "•" in
+   the markup would be read out by a screen reader. */
+.basisPill::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--color-accent-strong);
 }
 
 /* Two equal halves, both labelled: an icon alone is fine in a desktop row that
