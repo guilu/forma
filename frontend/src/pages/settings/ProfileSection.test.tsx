@@ -240,7 +240,7 @@ describe('ProfileSection', () => {
     const description = label.nextElementSibling;
     expect(description).toHaveTextContent('Sistema (Oscuro)');
 
-    await user.click(screen.getByRole('button', { name: 'Claro' }));
+    await user.click(screen.getByRole('radio', { name: 'Claro' }));
 
     expect(description).toHaveTextContent('Claro');
     expect(document.documentElement.getAttribute('data-theme')).toBe('light');

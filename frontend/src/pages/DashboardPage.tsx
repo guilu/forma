@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Icon } from '../components/Icon';
 import { WaterTracker } from '../components/WaterTracker';
-import { BodyWidget } from './dashboard/BodyWidget';
+import { BodyWidget, type BodyState } from './dashboard/BodyWidget';
 import { CaloriesWidget } from './dashboard/CaloriesWidget';
 import { TrainingWidget } from './dashboard/TrainingWidget';
 import { NutritionWidget } from './dashboard/NutritionWidget';
@@ -13,6 +13,7 @@ import { TipWidget } from './dashboard/TipWidget';
 import { PlanBanner } from './dashboard/PlanBanner';
 import { WidgetSection } from './dashboard/WidgetSection';
 import { getProfile } from '../api/profile';
+import { listBodyMeasurements, type BodyMeasurement } from '../api/bodyMeasurements';
 import styles from './DashboardPage.module.css';
 
 /**
@@ -33,12 +34,11 @@ import styles from './DashboardPage.module.css';
  * `specs/FOR-51/ui.md`. Hydration and per-meal calories are placeholder
  * template data — see {@link WaterTracker} / {@link NutritionWidget}.
  */
-const TODAY = new Intl.DateTimeFormat('es-ES', {
-  weekday: 'long',
+const MEASURED_ON = new Intl.DateTimeFormat('es-ES', {
   day: 'numeric',
-  month: 'long',
+  month: 'short',
   year: 'numeric',
-}).format(new Date());
+});
 
 function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
@@ -63,28 +63,81 @@ export function DashboardPage() {
     };
   }, []);
 
+  /*
+   * The measurement history is fetched here rather than inside BodyWidget: the
+   * header's navigator and the tiles are two views of one selection, and a
+   * selection cannot be shared between components that each fetch their own
+   * copy (FOR-189).
+   */
+  const [history, setHistory] = useState<BodyMeasurement[] | undefined>(undefined);
+  const [failed, setFailed] = useState(false);
+  const [selected, setSelected] = useState(0);
+  useEffect(() => {
+    let active = true;
+    listBodyMeasurements()
+      .then((measurements) => {
+        if (active) setHistory(measurements);
+      })
+      .catch(() => {
+        if (active) setFailed(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const body: BodyState = failed
+    ? { status: 'error' }
+    : history === undefined
+      ? { status: 'loading' }
+      : history.length === 0
+        ? { status: 'empty' }
+        : { status: 'ready', history, selected: Math.min(selected, history.length - 1) };
+
   return (
     <div className={styles.wrapper}>
       <header className={styles.header}>
         <div className={styles.titles}>
           <h1 className={styles.title}>{name ? `Hola ${name} 👋` : 'Hola 👋'}</h1>
-          <p className={styles.subtitle}>Este es tu resumen de hoy</p>
+          <p className={styles.subtitle}>Este es tu resumen</p>
         </div>
-        {/* Date navigator — visual only (no date-parameterised read model). */}
-        <div className={styles.dateNav} aria-hidden="true">
-          <span className={styles.dateArrow}>
-            <Icon name="chevron" size={16} className={styles.dateArrowPrev} />
-          </span>
-          <span className={styles.date}>{capitalize(TODAY)}</span>
-          <span className={styles.dateArrow}>
-            <Icon name="chevron" size={16} />
-          </span>
-        </div>
+        {/*
+          Steps through the dates that actually have a measurement, not through
+          the calendar: a day with nothing recorded has nothing to show. Absent
+          entirely with no measurements — a navigator over an empty history is a
+          control that cannot do anything.
+        */}
+        {body.status === 'ready' && (
+          <div className={styles.dateNav}>
+            <button
+              type="button"
+              className={styles.dateArrow}
+              aria-label="Medición anterior"
+              // `history` is newest-first, so "previous" walks the index up.
+              disabled={body.selected >= body.history.length - 1}
+              onClick={() => setSelected((index) => index + 1)}
+            >
+              <Icon name="chevron" size={16} className={styles.dateArrowPrev} />
+            </button>
+            <span className={styles.date}>
+              {capitalize(MEASURED_ON.format(new Date(body.history[body.selected].measuredAt)))}
+            </span>
+            <button
+              type="button"
+              className={styles.dateArrow}
+              aria-label="Medición siguiente"
+              disabled={body.selected <= 0}
+              onClick={() => setSelected((index) => index - 1)}
+            >
+              <Icon name="chevron" size={16} />
+            </button>
+          </div>
+        )}
       </header>
 
       <WidgetSection id="metrics-row-title" title="Resumen de hoy" titleHidden surface={false}>
         <div className={styles.metrics}>
-          <BodyWidget />
+          <BodyWidget state={body} />
           <CaloriesWidget />
           <WaterTracker />
         </div>

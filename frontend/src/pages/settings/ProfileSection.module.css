@@ -68,11 +68,14 @@
   color: var(--color-accent-strong);
 }
 
+/* Label and control sit together on the left (FOR-189). They used to be pushed
+   to opposite ends of a full-width card, which on a wide screen left the theme
+   options a screen away from the word "Tema". */
 .themeRow {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-5);
   margin-top: var(--space-5);
   padding-top: var(--space-4);
   border-top: 1px solid var(--color-border);

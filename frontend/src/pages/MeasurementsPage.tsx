@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BodyFigure } from '../components/BodyFigure';
+import { BodyMuscleMap } from '../components/BodyMuscleMap';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { ChartContainer } from '../components/ChartContainer';
@@ -13,6 +13,8 @@ import { MeasurementForm } from '../components/MeasurementForm';
 import { MetricCard } from '../components/MetricCard';
 import { Modal } from '../components/Modal';
 import { StatusPill } from '../components/StatusPill';
+import { useMediaQuery } from '../hooks/useMediaQuery';
+import { narrowingRanges, pointsInRange, type RangeOption } from './chartRanges';
 import { useNotify } from '../components/NotificationProvider';
 import { ApiRequestError } from '../api/client';
 import {
@@ -69,7 +71,6 @@ const TABS: ReadonlyArray<{ key: TabKey; label: string }> = [
 
 const SPARKLINE_WINDOW = 8;
 const HISTORY_PREVIEW_ROWS = 5;
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * FOR-164 hybrid placeholders (`docs/2-mediciones.png`). Body-water % and the
@@ -100,12 +101,6 @@ const METRICS: readonly MetricConfig[] = [
   { key: 'bmi', label: 'IMC', value: (m) => m.bmi },
 ];
 
-interface RangeOption {
-  readonly key: string;
-  readonly label: string;
-  readonly days: number | null;
-}
-
 const RANGE_OPTIONS: readonly RangeOption[] = [
   { key: '7D', label: '7D', days: 7 },
   { key: '1M', label: '1M', days: 30 },
@@ -132,33 +127,20 @@ function seriesFor(measurements: BodyMeasurement[], metric: MetricConfig): Chart
     .map((p) => ({ t: Date.parse(p.measuredAt), y: p.value, dateLabel: formatDate(p.measuredAt) }));
 }
 
-/** Points within `days` of the latest point; the full series when `days` is null. */
-function pointsInRange(points: ChartPoint[], days: number | null): ChartPoint[] {
-  if (days === null || points.length === 0) {
-    return points;
-  }
-  const latestT = points[points.length - 1].t;
-  const cutoff = latestT - days * DAY_MS;
-  return points.filter((p) => p.t >= cutoff);
-}
-
 /**
- * Only offers a range button when it actually narrows the view below the
- * full history (spec FOR-52: "cap chart range options to the data actually
- * available") — otherwise a button would show the exact same series as
- * "Todo", which isn't a meaningful choice. "Todo" is always offered.
+ * Below this the header shortens its action to "+ Medición".
+ *
+ * <p>It started at 40rem — the width where the long label stops fitting beside
+ * the title at all — and moved to 64rem: fitting is the floor, not the goal.
+ * Through the tablet range the two sat shoulder to shoulder with the button
+ * crowding the subtitle, and the verb adds nothing a "+" next to "Medición" on
+ * a measurements screen does not already say. The full phrase returns on a
+ * desktop, where there is room for it to read as a sentence.
  */
-function availableRanges(points: ChartPoint[]): readonly RangeOption[] {
-  return RANGE_OPTIONS.filter((option) => {
-    if (option.days === null) {
-      return true;
-    }
-    const filtered = pointsInRange(points, option.days);
-    return filtered.length >= 2 && filtered.length < points.length;
-  });
-}
+const NARROW_HEADER = '(max-width: 64rem)';
 
 export function MeasurementsPage() {
+  const narrow = useMediaQuery(NARROW_HEADER);
   const [state, setState] = useState<State>({ status: 'loading' });
   const [formOpen, setFormOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>('resumen');
@@ -194,7 +176,7 @@ export function MeasurementsPage() {
             where the empty state is not rendered at all. */}
         {state.status !== 'empty' && (
           <Button type="button" onClick={() => setFormOpen(true)}>
-            + Registrar medición
+            {narrow ? '+ Medición' : '+ Registrar medición'}
           </Button>
         )}
       </header>
@@ -358,11 +340,15 @@ function MeasurementsDashboard({ measurements, activeTab, setActiveTab, reload }
 }
 
 /**
- * "Distribución corporal" card (FOR-164 mockup): a placeholder body figure plus
- * a composition legend. Músculo (`leanMassKg`) and Grasa (`fatMassKg`) are REAL
+ * "Distribución corporal" card (FOR-164 mockup): the anatomical figure plus a
+ * composition legend. Músculo (`leanMassKg`) and Grasa (`fatMassKg`) are REAL
  * when the measurement carries them; Hueso and Agua are isolated placeholders
- * (no such fields on the API — see {@link PLACEHOLDER}). Swap {@link BodyFigure}
- * for the real asset pack later.
+ * (no such fields on the API — see {@link PLACEHOLDER}), which is why the design
+ * gives those two greys and keeps colour for the two real values.
+ *
+ * <p>FOR-188 replaced the schematic {@link BodyFigure} with the real asset
+ * ({@link BodyMuscleMap}). The tint is baked into that asset, so the figure is
+ * still not driven by per-muscle data.
  */
 function BodyDistributionCard({ latest }: { readonly latest: BodyMeasurement }) {
   const rows = [
@@ -403,7 +389,7 @@ function BodyDistributionCard({ latest }: { readonly latest: BodyMeasurement }) 
   return (
     <Card title="Distribución corporal" headingLevel={2}>
       <div className={styles.distribution}>
-        <BodyFigure variant="strength" active size={168} label="Composición corporal" />
+        <BodyMuscleMap size={168} label="Composición corporal" />
         <ul className={styles.distributionLegend}>
           {rows.map((row) => (
             <li key={row.key} className={styles.distributionItem}>
@@ -425,7 +411,7 @@ function BodyDistributionCard({ latest }: { readonly latest: BodyMeasurement }) 
 
 function WeightEvolutionChart({ measurements }: { readonly measurements: BodyMeasurement[] }) {
   const allPoints = seriesFor(measurements, METRICS[0]);
-  const ranges = availableRanges(allPoints);
+  const ranges = narrowingRanges(allPoints, RANGE_OPTIONS);
   const [selectedRange, setSelectedRange] = useState('ALL');
   const active = ranges.find((r) => r.key === selectedRange) ?? ranges[ranges.length - 1];
   const points = pointsInRange(allPoints, active.days);
@@ -438,19 +424,23 @@ function WeightEvolutionChart({ measurements }: { readonly measurements: BodyMea
       state={points.length >= 2 ? 'ready' : 'empty'}
       emptyMessage="Necesitas al menos dos mediciones para ver la evolución."
       action={
-        <div className={styles.rangeSelector} role="group" aria-label="Rango del gráfico">
-          {ranges.map((range) => (
-            <button
-              key={range.key}
-              type="button"
-              className={styles.rangeButton}
-              aria-pressed={range.key === active.key}
-              onClick={() => setSelectedRange(range.key)}
-            >
-              {range.label}
-            </button>
-          ))}
-        </div>
+        // Hidden when only "Todo" survives: a single-button range selector
+        // cannot change what is plotted (same rule as the dashboard widget).
+        ranges.length > 1 ? (
+          <div className={styles.rangeSelector} role="group" aria-label="Rango del gráfico">
+            {ranges.map((range) => (
+              <button
+                key={range.key}
+                type="button"
+                className={styles.rangeButton}
+                aria-pressed={range.key === active.key}
+                onClick={() => setSelectedRange(range.key)}
+              >
+                {range.label}
+              </button>
+            ))}
+          </div>
+        ) : undefined
       }
     >
       {points.length >= 2 && (

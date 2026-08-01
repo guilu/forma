@@ -30,6 +30,7 @@ export type IconName =
   | 'check'
   | 'externalLink'
   | 'trash'
+  | 'refresh'
   | 'upload'
   | 'checkCircle'
   | 'arrowRight'
@@ -80,6 +81,8 @@ const PATHS: Record<IconName, string> = {
   externalLink: 'M14 4h6v6M20 4l-9 9M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5',
   // Trash can — destructive delete affordance (progress photo gallery, FOR-144).
   trash: 'M4 7h16M9 7V4h6v3M10 11v6M14 11v6M6 7l1 13h10l1-13',
+  // Two arcs with arrowheads — the conventional "sync / do it again" mark.
+  refresh: 'M20 12a8 8 0 0 1-13.7 5.7M4 12a8 8 0 0 1 13.7-5.7M4 18v-4h4M20 6v4h-4',
   // Upward arrow into a tray — upload affordance (progress photo upload, FOR-144).
   upload: 'M12 15V4M8 8l4-4 4 4M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3',
   // Circled checkmark — capability bullet on the public landing (FOR-185),

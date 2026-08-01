@@ -47,9 +47,15 @@
   }
 }
 
-/* Kept in step with the dashboard rows' single-column breakpoint. */
+/*
+ * Two across on a phone (FOR-189), where the dashboard's own rows collapse to
+ * one column. These tiles are a short label plus a number, so two fit
+ * comfortably; every other card in the row is a list, a chart or a paragraph and
+ * keeps the full width. Four full-width tiles pushed everything else a screen
+ * further down for no reason.
+ */
 @media (max-width: 580px) {
   .body {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

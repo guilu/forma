@@ -82,7 +82,25 @@
   --color-accent-strong: #4cdf97;
   --color-accent-contrast: #003920; /* template: on-primary (was #0a1206) */
   --color-warning: #ffab70; /* template: warning-amber (was #ffd166) */
+  /*
+   * The same amber for graphical marks — a legend dot, a chart line, a donut
+   * slice (FOR-189). Split from `--color-warning` because that token also
+   * carries text, and text needs 4.5:1 while a graphical object needs 3:1. The
+   * light theme has to darken the text one to a brown to clear its bar, which
+   * left "Grasa" reading brown on a light card; this one stays amber there.
+   * Never use it for text.
+   */
+  --color-warning-graphic: #ffab70;
   --color-danger: #ff5757; /* template: error-pulse (was #ff5f56) */
+  /*
+   * Informational blue (FOR-188). It was already being used — the body-fat trend
+   * line and the "Agua" legend dot both wrote `var(--color-info, #3b82f6)`, a
+   * reference to a token that did not exist, so both silently rendered the
+   * hardcoded fallback and the light theme got a blue picked for a dark
+   * background. Declared for real here, and re-derived below for the light
+   * theme.
+   */
+  --color-info: #3b82f6;
 
   /*
    * FOR-185: the landing's secondary/tertiary accents. The template's palette
@@ -129,7 +147,20 @@
    * logotype colours, the minimal change is to start the ramp at its own 25%
    * point (#2a955e), which puts the whole gradient at >=4.89:1.
    */
-  --gradient-accent: linear-gradient(135deg, #0b755f 0%, #85f55c 100%);
+  /*
+   * The ramp's two ends are their own tokens (FOR-188): a conic gradient cannot
+   * reuse a `linear-gradient` value, and the progress donuts need exactly these
+   * two colours to ramp the completed arc. Declaring the endpoints once and
+   * composing `--gradient-accent` from them keeps the button and the donut on
+   * the same ramp instead of two hardcoded copies drifting apart.
+   */
+  --color-accent-ramp-from: #0b755f;
+  --color-accent-ramp-to: #85f55c;
+  --gradient-accent: linear-gradient(
+    135deg,
+    var(--color-accent-ramp-from) 0%,
+    var(--color-accent-ramp-to) 100%
+  );
   --color-on-gradient: #10141a;
   /* Halo tinted with the ramp's bright end, so the glow reads as the same
    * brand gradient rather than as the flat accent. */
@@ -318,17 +349,24 @@
   --color-text-secondary: #3c4a42;
 
   /*
-   * FOR-185: the light accent is a product decision, not a derivation. It was
-   * #006d42 (the template's `inverse-primary`, chosen by FOR-163 because it is
-   * the M3 role for "`primary` on an opposite-brightness surface"); the brand
-   * owner asked for a brighter, more saturated green so light mode reads
-   * closer to dark.
+   * FOR-189: the light accent is #3ce78b at the brand owner's request, so light
+   * mode reads as the same green rather than a duller cousin of it. It was
+   * #4caf50, itself a FOR-185 brightening of #006d42.
    *
-   * #4caf50 on --color-bg (#f4f7f5) is only ~2.58:1, so this token is for
-   * fills, borders and tints -- NOT for text. Accent-coloured text uses
-   * --color-accent-strong below.
+   * Not quite the dark theme's accent, which is #4cdf97 — the two are a nudge
+   * apart in hue and lightness, kept as given rather than silently unified.
+   *
+   * This is a FILL token and only a fill token. #3ce78b on --color-bg (#f4f7f5)
+   * is ~1.50:1, so nothing legible can be painted *in* it on a light surface;
+   * text on an accent fill uses --color-accent-contrast (~11:1 against this
+   * green) and accent-coloured text uses --color-accent-strong. The previous
+   * value was 2.58:1 — also below every bar, so this changes the degree, not
+   * the rule.
+   *
+   * The one place that rule was being broken is the focus ring, which needs
+   * 3:1 to be seen: it moves to --color-accent-strong (see global.css).
    */
-  --color-accent: #4caf50;
+  --color-accent: #3ce78b;
   /*
    * FOR-185: the text-safe counterpart, same hue family darkened until it
    * clears AA -- #2e7d32 is ~4.75:1 on --color-bg. This is what fixes the
@@ -356,11 +394,22 @@
    */
   --color-warning: #8f4d13;
   /*
+   * Graphical amber, kept amber (see the dark block). #d97706 is ~3.4:1 on
+   * --color-bg — over the 3:1 bar for a non-text mark, and recognisably the
+   * same colour as the dark theme's, which #8f4d13 is not.
+   */
+  --color-warning-graphic: #d97706;
+  /*
    * FOR-163: dark danger moved from #ff5f56 to the template's error-pulse
    * (#ff5757) -- a ~1% hue nudge. The existing light counterpart (#c0392b,
    * ~5.04:1 on --color-bg) already passes AA and needs no change.
    */
   --color-danger: #c0392b;
+  /*
+   * The dark theme's #3b82f6 is ~2.9:1 on this background — under the 3:1 bar a
+   * chart line or a legend dot needs. Darkened at the same hue to ~5.9:1.
+   */
+  --color-info: #1d4ed8;
 
   /*
    * FOR-185: the template's secondary (#7dde38 lime) and tertiary (#7ed8b6
@@ -381,7 +430,13 @@
    * themes. See the dark block for the full contrast table behind the ink
    * choice and its one known weak spot.
    */
-  --gradient-accent: linear-gradient(135deg, #0b755f 0%, #85f55c 100%);
+  --color-accent-ramp-from: #0b755f;
+  --color-accent-ramp-to: #85f55c;
+  --gradient-accent: linear-gradient(
+    135deg,
+    var(--color-accent-ramp-from) 0%,
+    var(--color-accent-ramp-to) 100%
+  );
   --color-on-gradient: #10141a;
   --shadow-accent-glow: 0 8px 24px -4px rgb(133 245 92 / 35%);
 

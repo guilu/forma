@@ -4,9 +4,15 @@
   gap: var(--space-5);
 }
 
+/*
+ * Title and action share a row at every width (FOR-189). It used to wrap, which
+ * on a phone put the button on its own line under the subtitle and pushed the
+ * section tabs — and everything below them — a further row down. The subtitle
+ * takes as many lines as it needs instead; the action shortens (see
+ * `NARROW_HEADER` in the page) rather than the row breaking.
+ */
 .header {
   display: flex;
-  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-4);
@@ -16,6 +22,13 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+  /* A flex item's automatic minimum size is its content, so without this the
+     subtitle refuses to wrap and pushes the button off the row. */
+  min-width: 0;
+}
+
+.header > :last-child {
+  flex-shrink: 0;
 }
 
 .title {
@@ -79,9 +92,15 @@
 }
 
 /* Distribución corporal (FOR-164): figure + composition legend. */
+/*
+ * Figure beside the legend while both fit; once the card is too narrow for that
+ * the figure wraps onto its own line and centres there (FOR-189) instead of
+ * hanging off the left edge with the legend's text below it.
+ */
 .distribution {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: var(--space-5);
   flex-wrap: wrap;
 }
@@ -115,15 +134,22 @@
 }
 
 .dotFat {
-  background-color: var(--color-warning);
+  background-color: var(--color-warning-graphic);
 }
 
+/*
+ * Bone and water are the two placeholder rows (no such fields on the API), and
+ * the design gives them two greys rather than a colour each: muscle keeps the
+ * brand green and fat the amber, so the eye lands on the two values that are
+ * real. Water is the fainter of the two — same relationship in both themes,
+ * where "fainter" resolves against whatever the surface is.
+ */
 .dotBone {
   background-color: var(--color-text-muted);
 }
 
 .dotWater {
-  background-color: var(--color-info, #3b82f6);
+  background-color: color-mix(in srgb, var(--color-text-muted) 55%, transparent);
 }
 
 .distributionLabel {

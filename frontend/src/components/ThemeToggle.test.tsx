@@ -33,27 +33,30 @@ describe('ThemeToggle (FOR-62)', () => {
   it('renders a labelled group with light/dark/system options', () => {
     renderToggle();
 
-    expect(screen.getByRole('group', { name: 'Tema' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Claro' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Oscuro' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Sistema' })).toBeInTheDocument();
+    // Radios, not toggle buttons (FOR-189): three mutually exclusive choices of
+    // one setting is exactly what a radio group is, and it gets arrow-key
+    // navigation from the platform instead of three separate tab stops.
+    expect(screen.getByRole('radiogroup', { name: 'Tema' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Claro' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Oscuro' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Sistema' })).toBeInTheDocument();
   });
 
-  it('marks the active option as pressed, and clicking switches data-theme', async () => {
+  it('marks the active option as checked, and clicking switches data-theme', async () => {
     const user = userEvent.setup();
     renderToggle();
 
     // Default mode ("system", no stored preference) starts on "Sistema".
-    expect(screen.getByRole('button', { name: 'Sistema' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: 'Claro' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('radio', { name: 'Sistema' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Claro' })).not.toBeChecked();
 
-    await user.click(screen.getByRole('button', { name: 'Oscuro' }));
-    expect(screen.getByRole('button', { name: 'Oscuro' })).toHaveAttribute('aria-pressed', 'true');
+    await user.click(screen.getByRole('radio', { name: 'Oscuro' }));
+    expect(screen.getByRole('radio', { name: 'Oscuro' })).toBeChecked();
     expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
 
-    await user.click(screen.getByRole('button', { name: 'Claro' }));
-    expect(screen.getByRole('button', { name: 'Claro' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: 'Oscuro' })).toHaveAttribute('aria-pressed', 'false');
+    await user.click(screen.getByRole('radio', { name: 'Claro' }));
+    expect(screen.getByRole('radio', { name: 'Claro' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Oscuro' })).not.toBeChecked();
     expect(document.documentElement.getAttribute('data-theme')).toBe('light');
   });
 });

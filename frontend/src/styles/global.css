@@ -77,6 +77,9 @@ h4 {
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-accent);
+  /* The text-safe accent, not the fill one (FOR-189): a focus ring has to clear
+     3:1 against its background to be seen at all, and the light theme's fill
+     accent is ~1.5:1 there. This token is ~4.75:1. */
+  outline: 2px solid var(--color-accent-strong);
   outline-offset: 2px;
 }

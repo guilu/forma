@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MeasurementsPage } from './MeasurementsPage';
@@ -207,6 +207,12 @@ describe('MeasurementsPage', () => {
     expect(
       within(distribution).getByRole('link', { name: 'Ver análisis detallado' }),
     ).toHaveAttribute('href', '/app/progress');
+    // The schematic SVG placeholder is replaced by the real anatomical figure
+    // (FOR-188): an asset now exists, so the card stops drawing a stand-in.
+    expect(within(distribution).getByRole('img', { name: 'Composición corporal' })).toHaveAttribute(
+      'src',
+      '/body/muscle-map-front.png',
+    );
   });
 
   // The Resumen/Evolución/Historial tab bar is CSS-hidden at the jsdom desktop
@@ -373,6 +379,52 @@ describe('MeasurementsPage', () => {
 
     expect(screen.getAllByText('Este campo es obligatorio.').length).toBeGreaterThan(0);
     expect(createMock).not.toHaveBeenCalled();
+  });
+
+  /**
+   * On a phone the header put the button on its own row under the subtitle,
+   * which pushed the section tabs and everything below them further down. Title
+   * and button now share a row; the button loses the verb to fit.
+   */
+  describe('the header on a narrow screen', () => {
+    const matchNarrow = (matches: boolean) => {
+      window.matchMedia = ((query: string) => ({
+        matches,
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => false,
+      })) as typeof window.matchMedia;
+    };
+
+    afterEach(() => {
+      // The suite-wide stub (src/test/setup.ts) answers "no match", i.e. wide.
+      matchNarrow(false);
+    });
+
+    it('shortens the register action', async () => {
+      matchNarrow(true);
+      listMock.mockResolvedValue(SINGLE);
+      renderPage();
+
+      expect(await screen.findByRole('button', { name: '+ Medición' })).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: '+ Registrar medición' }),
+      ).not.toBeInTheDocument();
+    });
+
+    it('keeps the full label with room for it', async () => {
+      matchNarrow(false);
+      listMock.mockResolvedValue(SINGLE);
+      renderPage();
+
+      expect(
+        await screen.findByRole('button', { name: '+ Registrar medición' }),
+      ).toBeInTheDocument();
+    });
   });
 
   describe('deleting a measurement', () => {

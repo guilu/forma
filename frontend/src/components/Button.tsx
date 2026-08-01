@@ -1,14 +1,21 @@
 import type { ButtonHTMLAttributes } from 'react';
 import styles from './Button.module.css';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'destructive';
+export type ButtonVariant = 'primary' | 'accent' | 'secondary' | 'ghost' | 'destructive';
 
 /**
  * Base action primitive (FOR-50). Generalizes the accent/outline button pair
  * already used by {@link MeasurementForm} into the four variants the mockups
- * need: `primary` (accent, main action), `secondary` (outline), `ghost`
- * (borderless, low emphasis) and `destructive` (danger, e.g. delete/cancel a
- * plan). Token-driven only — no hardcoded colors.
+ * need: `primary` (the brand gradient, one main action per screen), `accent`
+ * (the same accent as a flat fill), `secondary` (outline), `ghost` (borderless,
+ * low emphasis) and `destructive` (danger, e.g. delete/cancel a plan).
+ * Token-driven only — no hardcoded colors.
+ *
+ * <p>`accent` exists because the gradient is loud enough that two of them on one
+ * screen compete (FOR-189: the settings page had it on "Editar perfil" beside a
+ * gradient CTA elsewhere). It is the same flat treatment the app's segmented
+ * selectors already use for the chosen option, so a filled accent means the same
+ * thing wherever it appears.
  *
  * <p>`loading` implies `disabled` (a pending action must not be re-triggered)
  * and is announced via `aria-busy` rather than swapped text, so callers keep

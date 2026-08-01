@@ -9,16 +9,27 @@ import styles from './TrendWidget.module.css';
 /**
  * "Tendencia 30 días" widget (FOR-164 dashboard mockup): the recent weight /
  * body-fat / lean-mass trends from FOR-17 measurements, overlaid as a
- * multi-series {@link MultiLineChart}. When there aren't enough measurements to
- * plot a line yet (the "1-measurement" variant), it shows the same honest "not
- * enough data" copy the mockup itself renders — no fabricated trend (ADR-006).
+ * multi-series {@link MultiLineChart}.
+ *
+ * <p>The window is thirty *days*, ending today — which is what the card has
+ * always been titled. It used to be the last thirty *measurements* (a
+ * `slice(0, 30)` over the newest-first list), so an account with hundreds of
+ * rows saw ten months of history under a label promising one, with the actual
+ * recent month crushed into the last few pixels.
+ *
+ * <p>The axis is labelled with the window's own bounds rather than with the
+ * first and last measurement in it: the chart answers "the last 30 days", and
+ * the dates should say so even when the data starts partway through. With
+ * nothing to plot inside the window it says that, instead of falling back to
+ * older data the title does not cover (ADR-006 — no fabricated trend).
  */
 type State =
   | { readonly status: 'loading' }
   | { readonly status: 'error' }
   | { readonly status: 'ready'; readonly history: BodyMeasurement[] };
 
-const WINDOW = 30;
+const WINDOW_DAYS = 30;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 function toPoints(
   measurements: readonly BodyMeasurement[],
@@ -30,8 +41,8 @@ function toPoints(
   });
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+function formatTimestamp(epochMs: number): string {
+  return new Date(epochMs).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 }
 
 export function TrendWidget() {
@@ -66,18 +77,30 @@ function renderContent(state: State) {
     return <ErrorState message="No se pudo cargar tu tendencia. Inténtalo de nuevo más tarde." />;
   }
 
-  // Newest-first from the API → most recent window, plotted chronologically.
-  const window = state.history.slice(0, WINDOW).reverse();
+  const now = Date.now();
+  const from = now - WINDOW_DAYS * DAY_MS;
+  // Newest-first from the API → the window, plotted chronologically.
+  const window = state.history
+    .filter((measurement) => Date.parse(measurement.measuredAt) >= from)
+    .reverse();
 
   if (window.length < 2) {
     return (
-      <p className={styles.empty}>
-        Aún no hay suficientes datos para mostrar la tendencia. Sigue registrando tus mediciones
-        para ver tu evolución.
+      <p className={styles.empty} role="status">
+        No hay mediciones en los últimos {WINDOW_DAYS} días. Sigue registrando tus mediciones para
+        ver tu evolución.
       </p>
     );
   }
 
+  /*
+   * Colour per series, matching the design's assignment (FOR-188): weight green,
+   * body fat blue, lean mass amber. Blue and amber swapped from what shipped —
+   * fat was on the warning token and muscle on info, which read as "fat is a
+   * warning" and left the brand green next to a blue nobody had chosen.
+   * Every series is also named in the legend and in the chart's `ariaLabel`, so
+   * none of this is carried by colour alone.
+   */
   const series: Series[] = [
     {
       label: 'Peso (kg)',
@@ -86,12 +109,12 @@ function renderContent(state: State) {
     },
     {
       label: 'Grasa (%)',
-      color: 'var(--color-warning)',
+      color: 'var(--color-info)',
       points: toPoints(window, (m) => m.bodyFatPercentage),
     },
     {
       label: 'Músculo (kg)',
-      color: 'var(--color-info, #3b82f6)',
+      color: 'var(--color-warning-graphic)',
       points: toPoints(window, (m) => m.leanMassKg),
     },
   ].filter((s) => s.points.length > 0);
@@ -99,9 +122,9 @@ function renderContent(state: State) {
   return (
     <MultiLineChart
       series={series}
-      startLabel={formatDate(window[0].measuredAt)}
-      endLabel={formatDate(window[window.length - 1].measuredAt)}
-      ariaLabel={`Tendencia de peso, grasa corporal y masa muscular en las últimas ${window.length} mediciones.`}
+      startLabel={formatTimestamp(from)}
+      endLabel={formatTimestamp(now)}
+      ariaLabel={`Tendencia de peso, grasa corporal y masa muscular en los últimos ${WINDOW_DAYS} días: ${window.length} mediciones.`}
     />
   );
 }

@@ -7,6 +7,7 @@ import { Topbar } from './Topbar';
 import { MobileNav } from './MobileNav';
 import { ThemeProvider } from '../theme/ThemeContext';
 import { listIntegrations } from '../api/integrations';
+import { IntegrationsProvider } from '../integrations/IntegrationsContext';
 import styles from './Sidebar.module.css';
 
 // FOR-120: ThemeProvider reads/persists the theme preference through this
@@ -76,7 +77,9 @@ describe('application shell', () => {
 
     render(
       <MemoryRouter>
-        <Sidebar />
+        <IntegrationsProvider>
+          <Sidebar />
+        </IntegrationsProvider>
       </MemoryRouter>,
     );
 
@@ -96,7 +99,9 @@ describe('application shell', () => {
 
     render(
       <MemoryRouter>
-        <Sidebar />
+        <IntegrationsProvider>
+          <Sidebar />
+        </IntegrationsProvider>
       </MemoryRouter>,
     );
 
@@ -110,7 +115,9 @@ describe('application shell', () => {
 
     render(
       <MemoryRouter>
-        <Sidebar />
+        <IntegrationsProvider>
+          <Sidebar />
+        </IntegrationsProvider>
       </MemoryRouter>,
     );
 
@@ -125,7 +132,9 @@ describe('application shell', () => {
   it('applies the active CSS module class only to the link matching the current route', () => {
     render(
       <MemoryRouter initialEntries={['/app']}>
-        <Sidebar />
+        <IntegrationsProvider>
+          <Sidebar />
+        </IntegrationsProvider>
       </MemoryRouter>,
     );
 
@@ -217,7 +226,9 @@ describe('application shell', () => {
   it('lists only product sections in the sidebar, with no settings entry', () => {
     render(
       <MemoryRouter>
-        <Sidebar />
+        <IntegrationsProvider>
+          <Sidebar />
+        </IntegrationsProvider>
       </MemoryRouter>,
     );
 

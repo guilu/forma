@@ -45,14 +45,18 @@
   }
 
   /*
-   * A card that takes two of the grid's columns: Perfil (against Unidades) and
-   * Conexiones, whose provider rows lay out four things across. Declared from
-   * this breakpoint up, not in the base rule: spanning two columns in the
-   * single-column layout makes the grid create an implicit second track, and
-   * the phone stops being one column at all.
+   * Perfil takes the whole row: it lays five fields plus the theme control
+   * across, and anything narrower wrapped them into a column. Declared from this
+   * breakpoint up, not in the base rule — spanning columns in the single-column
+   * layout makes the grid create implicit tracks and the phone stops being one
+   * column at all.
+   *
+   * Integraciones is a normal single-column card since FOR-189: losing the
+   * empty "Disponibles" list left it short enough to sit beside Unidades, which
+   * is where the two of them read as a pair.
    */
-  .wide {
-    grid-column: span 2;
+  .full {
+    grid-column: 1 / -1;
   }
 }
 

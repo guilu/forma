@@ -2,6 +2,9 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+  /* Reference box for the row layout below: what a provider row has to fit is
+     this card, which is no longer the width of the screen. */
+  container-type: inline-size;
 }
 
 .title {
@@ -59,9 +62,23 @@
   color: var(--color-text-muted);
 }
 
+/*
+ * The pill sizes to its text. It is a grid item, and a grid item stretches to
+ * its track by default — which on a narrow row (where the grid collapses to two
+ * columns below) made "Conectado" a full-width bar rather than a tag.
+ */
+.pill {
+  justify-self: start;
+}
+
 .actions {
   display: flex;
   gap: var(--space-2);
+}
+
+/* Square, so an icon-only action does not keep the padding of a text label. */
+.syncButton {
+  padding-inline: var(--space-3);
 }
 
 .actionError {
@@ -73,19 +90,26 @@
   border-radius: var(--radius-md);
 }
 
-/* Below ~640px, stack each row so actions never get squeezed into a
-   horizontal-scroll layout (ui-guidelines: mobile usability). */
-@media (max-width: 640px) {
+/*
+ * Stack each row when the *card* is narrow, not when the viewport is (FOR-189).
+ * The section now sits in a single grid column on a wide screen, where a
+ * viewport media query would keep the four-across layout and squeeze the
+ * provider's description to one word per line. `cqi` measures the card.
+ */
+@container (max-width: 34rem) {
   .row {
     grid-template-columns: auto 1fr;
     row-gap: var(--space-2);
   }
 
-  .row > :global(span[data-tone]) {
+  .pill {
     grid-column: 2;
   }
 
+  /* Stacked under the provider's copy, the actions read better ranged right —
+     they end the row rather than starting a new list under the description. */
   .actions {
     grid-column: 1 / -1;
+    justify-content: flex-end;
   }
 }

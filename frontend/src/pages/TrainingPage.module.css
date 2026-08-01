@@ -488,7 +488,7 @@
 }
 
 .legendToday {
-  background-color: var(--color-info, #3b82f6);
+  background-color: var(--color-info);
 }
 
 .legendPending {

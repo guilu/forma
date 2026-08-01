@@ -90,6 +90,15 @@
   }
 }
 
+/* Flat accent — the treatment the segmented selectors use for a chosen option.
+   Quieter than `.primary`'s gradient, for an action that matters without being
+   the one thing on the screen. */
+.accent {
+  color: var(--color-accent-contrast);
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
 .secondary {
   color: var(--color-text);
   background-color: transparent;

@@ -4,6 +4,7 @@ import { SettingsPage } from './SettingsPage';
 import { listIntegrations } from '../api/integrations';
 import { ThemeProvider } from '../theme/ThemeContext';
 import { NotificationProvider } from '../components/NotificationProvider';
+import { IntegrationsProvider } from '../integrations/IntegrationsContext';
 import { axe } from '../test/axe';
 
 // The "Tema" row (FOR-62) reads `useTheme()`, and `ProfileSection` (FOR-119)
@@ -14,7 +15,9 @@ function renderSettingsPage() {
   return render(
     <ThemeProvider>
       <NotificationProvider>
-        <SettingsPage />
+        <IntegrationsProvider>
+          <SettingsPage />
+        </IntegrationsProvider>
       </NotificationProvider>
     </ThemeProvider>,
   );
@@ -81,9 +84,7 @@ describe('SettingsPage', () => {
       await screen.findByRole('heading', { name: 'Perfil y preferencias', level: 2 }),
     ).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Unidades', level: 2 })).toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', { name: 'Conexiones e integraciones', level: 2 }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Integraciones', level: 2 })).toBeInTheDocument();
     expect(
       screen.getByRole('heading', { name: 'Objetivos por defecto', level: 2 }),
     ).toBeInTheDocument();

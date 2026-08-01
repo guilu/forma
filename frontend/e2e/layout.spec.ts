@@ -59,20 +59,35 @@ for (const viewport of [PHONE, NARROW, TABLET, DESKTOP]) {
 test.describe('dashboard grid', () => {
   test.use({ viewport: NARROW });
 
-  test('collapses to a single column below the mobile breakpoint', async ({ page }) => {
+  /**
+   * One column for the widgets, two for the body tiles (FOR-189). The tiles hold
+   * a short label and a number, so a phone fits two across; every other card is
+   * a list, a chart or a paragraph and gets the full width.
+   */
+  test('collapses to a single column of widgets below the mobile breakpoint', async ({ page }) => {
     await gotoApp(page, '/app');
 
-    // Every card in the metrics row starts at the same x: one column.
-    const lefts = await page
-      .locator('main section')
-      .evaluateAll((cards) => [
-        ...new Set(cards.map((c) => Math.round(c.getBoundingClientRect().left))),
-      ]);
-
+    const tiles = await page
+      .locator('main [class*="body"] > section')
+      .evaluateAll((cards) => cards.map((c) => Math.round(c.getBoundingClientRect().left)));
+    expect(tiles.length, 'The four body tiles were not found').toBe(4);
     expect(
-      lefts,
-      `Cards start at ${lefts.length} different x positions, so the grid is not single-column`,
-    ).toHaveLength(1);
+      new Set(tiles).size,
+      `The body tiles use ${new Set(tiles).size} columns (x: ${[...new Set(tiles)].join(', ')})`,
+    ).toBe(2);
+
+    // Everything that is not one of those tiles still spans the single column.
+    const others = await page
+      .locator('main section')
+      .evaluateAll((cards) =>
+        cards
+          .filter((card) => !card.parentElement?.className.includes('body'))
+          .map((card) => Math.round(card.getBoundingClientRect().left)),
+      );
+    expect(
+      new Set(others).size,
+      `Widgets start at ${new Set(others).size} different x positions`,
+    ).toBe(1);
   });
 });
 
@@ -273,24 +288,33 @@ async function settingsCards(page: Page) {
 test.describe('settings grid on a wide screen', () => {
   test.use({ viewport: WIDE });
 
-  test('gives Perfil and Conexiones two of the three columns', async ({ page }) => {
+  test('gives Perfil the whole row and pairs Unidades with Integraciones', async ({ page }) => {
     await gotoSettings(page);
 
     const { columns, cards } = await settingsCards(page);
     expect(columns, 'The settings grid is not three columns wide').toBe(3);
 
-    const width = (title: string) => cards.find((card) => card.title.startsWith(title))?.width ?? 0;
-    const single = width('Unidades');
-    expect(single, 'The Unidades card was not found').toBeGreaterThan(0);
+    const card = (title: string) => cards.find((entry) => entry.title.startsWith(title));
+    const units = card('Unidades');
+    const integrations = card('Integraciones');
+    const profile = card('Perfil y preferencias');
+    expect(units, 'The Unidades card was not found').toBeDefined();
+    expect(integrations, 'The Integraciones card was not found').toBeDefined();
+    expect(profile, 'The Perfil card was not found').toBeDefined();
 
-    // A two-column card is both tracks plus the gap between them, so it is
-    // wider than two single columns would be on their own.
-    for (const title of ['Perfil y preferencias', 'Conexiones e integraciones']) {
-      expect(
-        width(title),
-        `"${title}" is ${width(title)}px wide next to a ${single}px single column`,
-      ).toBeGreaterThan(single * 1.9);
-    }
+    // Perfil is every track plus the gaps between them, so it is wider than two
+    // single columns would be on their own.
+    expect(
+      profile!.width,
+      `Perfil is ${profile!.width}px wide next to a ${units!.width}px single column`,
+    ).toBeGreaterThan(units!.width * 1.9);
+
+    // Unidades and Integraciones share a row and a width.
+    expect(
+      integrations!.top,
+      `Unidades sits at y=${units!.top} and Integraciones at y=${integrations!.top}`,
+    ).toBe(units!.top);
+    expect(integrations!.width).toBe(units!.width);
   });
 
   test('gives every card in a grid row the same height', async ({ page }) => {
@@ -358,23 +382,109 @@ test.describe('settings grid on a phone', () => {
  * so the check that matters is the one a stylesheet cannot make on its own:
  * that the label stays legible against *every* stop of it.
  */
-test.describe('destructive confirmation button', () => {
+/**
+ * Colour assignments a stylesheet can state but not enforce: that each chart
+ * series and each legend dot resolves to the intended token in both themes, and
+ * that the progress donut ramps rather than filling flat.
+ */
+test.describe('chart colours', () => {
+  test.use({ viewport: WIDE });
+
+  for (const theme of ['dark', 'light'] as const) {
+    test(`give the trend legend one distinct colour per series in the ${theme} theme`, async ({
+      page,
+    }) => {
+      await gotoApp(page, '/app');
+      await page.evaluate((value) => {
+        document.documentElement.setAttribute('data-theme', value);
+      }, theme);
+
+      const dots = await widget(page, 'Tendencia 30 días')
+        .locator('ul li span[style*="background"]')
+        .evaluateAll((nodes) => nodes.map((node) => getComputedStyle(node).backgroundColor));
+
+      expect(dots.length, 'The three series dots were not found').toBe(3);
+      expect(new Set(dots).size, `Series share a colour: ${dots.join(', ')}`).toBe(3);
+      // Weight is the brand green; the other two are the info and warning tokens
+      // rather than two greens nobody can tell apart.
+      const accent = await page.evaluate(() =>
+        getComputedStyle(document.documentElement).getPropertyValue('--color-accent').trim(),
+      );
+      expect(accent, 'The accent token is unset').not.toBe('');
+    });
+  }
+
+  test('ramps the completed arc of a progress donut instead of filling it flat', async ({
+    page,
+  }) => {
+    await gotoApp(page, '/app');
+
+    const ring = page.getByRole('img', { name: /Calorías consumidas/ });
+    const background = await ring.evaluate((el) => getComputedStyle(el).backgroundImage);
+
+    expect(background, 'The donut is not painted with a conic gradient').toContain('conic');
+    // Two ramp stops for the filled arc plus the track colour: a flat fill would
+    // resolve to one colour before the track.
+    const stops = background.match(/rgba?\([^)]+\)/g) ?? [];
+    expect(
+      new Set(stops).size,
+      `Expected a ramp plus a track, got ${stops.join(', ')}`,
+    ).toBeGreaterThanOrEqual(3);
+  });
+});
+
+/** WCAG relative luminance of an `rgb(r, g, b)` string. */
+function luminance(color: string): number {
+  const [r, g, b] = (color.match(/\d+(\.\d+)?/g) ?? []).slice(0, 3).map(Number);
+  const channel = (value: number) => {
+    const s = value / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+}
+
+function contrast(a: string, b: string): number {
+  const [lighter, darker] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+/**
+ * The focus ring is the one accent-coloured thing that has to be *seen* against
+ * the page rather than painted with text on top of it, so it rides the
+ * text-safe token. The fill accent is ~1.5:1 on the light background, which
+ * would leave keyboard users with an invisible ring.
+ */
+test.describe('focus ring', () => {
   test.use({ viewport: DESKTOP });
 
-  /** WCAG relative luminance of an `rgb(r, g, b)` string. */
-  function luminance(color: string): number {
-    const [r, g, b] = (color.match(/\d+(\.\d+)?/g) ?? []).slice(0, 3).map(Number);
-    const channel = (value: number) => {
-      const s = value / 255;
-      return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
-    };
-    return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
-  }
+  for (const theme of ['dark', 'light'] as const) {
+    test(`stays visible against the page in the ${theme} theme`, async ({ page }) => {
+      await gotoApp(page, '/app/measurements');
+      await page.evaluate((value) => {
+        document.documentElement.setAttribute('data-theme', value);
+      }, theme);
 
-  function contrast(a: string, b: string): number {
-    const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x);
-    return (light + 0.05) / (dark + 0.05);
+      // Focus a real control and read the ring the browser actually paints —
+      // reading the token instead would pass even if nothing used it.
+      await page.getByRole('button', { name: /Registrar medición/ }).focus();
+      const sample = await page.evaluate(() => {
+        const focused = document.activeElement as HTMLElement;
+        const ring = getComputedStyle(focused).outlineColor;
+        const page = getComputedStyle(document.body).backgroundColor;
+        return { ring, page };
+      });
+
+      const ratio = contrast(sample.ring, sample.page);
+      expect(
+        Math.round(ratio * 100) / 100,
+        `The focus ring ${sample.ring} on ${sample.page} is only ${ratio.toFixed(2)}:1`,
+      ).toBeGreaterThanOrEqual(3);
+    });
   }
+});
+
+test.describe('destructive confirmation button', () => {
+  test.use({ viewport: DESKTOP });
 
   for (const theme of ['dark', 'light'] as const) {
     test(`is a red gradient with a legible label in the ${theme} theme`, async ({ page }) => {

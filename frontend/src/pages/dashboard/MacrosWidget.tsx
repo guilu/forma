@@ -50,7 +50,7 @@ const MACROS = [
   {
     key: 'carbs',
     label: 'Carbohidratos',
-    color: 'var(--color-warning)',
+    color: 'var(--color-warning-graphic)',
     target: (t: NutritionDay['targets']) => t.carbsG,
   },
   {
