@@ -1,11 +1,13 @@
 import { useState, type FormEvent } from 'react';
 import { Button } from '../../components/Button';
+import { Icon } from '../../components/Icon';
 import { SelectField, TextField } from '../../components/FormField';
 import { useNotify } from '../../components/NotificationProvider';
 import { ApiRequestError } from '../../api/client';
 import type { CatalogFood } from '../../api/foods';
 import {
   createStoreProduct,
+  fetchLinkImage,
   updateStoreProduct,
   type ShoppingCategory,
   type Store,
@@ -73,6 +75,8 @@ export function StoreProductForm({
   const [url, setUrl] = useState(initial?.url ?? '');
   const [category, setCategory] = useState<ShoppingCategory>(initial?.category ?? 'OTROS');
   const [notes, setNotes] = useState(initial?.notes ?? '');
+  const [imageUrl, setImageUrl] = useState(initial?.imageUrl ?? '');
+  const [imageState, setImageState] = useState<'idle' | 'reading' | 'none'>('idle');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
 
@@ -98,7 +102,8 @@ export function StoreProductForm({
       // and dropping them left every imported product unable to refresh itself
       // and without a photo.
       externalId: initial?.externalId,
-      imageUrl: initial?.imageUrl,
+      // Edited when typed by hand, carried through when it came from an import.
+      imageUrl: imageUrl.trim() === '' ? undefined : imageUrl.trim(),
     };
     try {
       if (creating) {
@@ -117,6 +122,26 @@ export function StoreProductForm({
       );
     } finally {
       setPending(false);
+    }
+  }
+
+  /**
+   * Reads the photo the linked page advertises. Best effort by design: most shops publish an Open
+   * Graph image, some publish none, and the field below is there either way.
+   */
+  async function readImageFromLink() {
+    setImageState('reading');
+    try {
+      const found = await fetchLinkImage(url.trim());
+      setImageUrl(found ?? '');
+      setImageState(found ? 'idle' : 'none');
+    } catch (caught) {
+      setImageState('idle');
+      setError(
+        caught instanceof ApiRequestError
+          ? caught.message
+          : 'No se pudo leer la imagen de ese enlace.',
+      );
     }
   }
 
@@ -223,6 +248,33 @@ export function StoreProductForm({
         disabled={pending}
         onChange={(event) => setUrl(event.target.value)}
       />
+      <div className={styles.imageRow}>
+        <TextField
+          id="product-image"
+          label="Imagen (URL)"
+          type="url"
+          value={imageUrl}
+          disabled={pending}
+          onChange={(event) => {
+            setImageUrl(event.target.value);
+            setImageState('idle');
+          }}
+        />
+        <button
+          type="button"
+          className={styles.readImage}
+          // Nothing to read without a page to read it from.
+          disabled={url.trim() === '' || imageState === 'reading' || pending}
+          onClick={readImageFromLink}
+        >
+          <Icon name="image" size={16} />
+          {imageState === 'reading' ? 'Leyendo…' : 'Obtener imagen'}
+        </button>
+      </div>
+      {imageState === 'none' && (
+        <p className={styles.hint}>Esa página no publica ninguna imagen. Puedes pegar una URL.</p>
+      )}
+
       <TextField
         id="product-notes"
         label="Notas"

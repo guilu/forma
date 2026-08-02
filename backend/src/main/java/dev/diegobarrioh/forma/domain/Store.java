@@ -10,5 +10,11 @@ package dev.diegobarrioh.forma.domain;
  */
 public enum Store {
   MERCADONA,
-  CARREFOUR
+  CARREFOUR,
+  /**
+   * Anything no supermarket we track sells: bought online, at a local shop, at a market stall
+   * (FOR-200). It has no catalogue by definition, so no import and no refresh will ever produce a
+   * row filed under it — those need a shop id, and there is nowhere to get one.
+   */
+  OTRAS
 }

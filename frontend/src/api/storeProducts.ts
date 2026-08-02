@@ -13,7 +13,7 @@ import { apiClient, type ApiClient } from './client';
 const STORE_PRODUCTS_PATH = '/api/v1/store-products';
 
 /** The chains the catalog covers. Adding one is a backend enum value first. */
-export type Store = 'MERCADONA' | 'CARREFOUR';
+export type Store = 'MERCADONA' | 'CARREFOUR' | 'OTRAS';
 
 /** Grocery aisle, shared with the shopping list's own grouping. */
 export type ShoppingCategory =
@@ -114,6 +114,25 @@ export function refreshStoreProduct(
   return client.request<StoreProduct>(`${STORE_PRODUCTS_PATH}/${encodeURIComponent(id)}/refresh`, {
     method: 'POST',
   });
+}
+
+/**
+ * The product photo the page at `url` advertises, if any. Admin only.
+ *
+ * <p>Best effort: most shops publish an Open Graph image, some publish none, and
+ * then the field is filled by hand. Resolves with `undefined` when the page was
+ * read and said nothing — different from rejecting, which means it could not be
+ * read at all.
+ */
+export function fetchLinkImage(
+  url: string,
+  client: ApiClient = apiClient,
+): Promise<string | undefined> {
+  return client
+    .request<{ imageUrl: string | null }>(
+      `${STORE_PRODUCTS_PATH}/link-image?url=${encodeURIComponent(url)}`,
+    )
+    .then((response) => response.imageUrl ?? undefined);
 }
 
 /** Removes a product. Admin only. */

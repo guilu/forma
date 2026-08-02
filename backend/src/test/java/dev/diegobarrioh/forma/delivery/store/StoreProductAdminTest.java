@@ -166,4 +166,30 @@ class StoreProductAdminTest {
             jsonPath("$[?(@.id=='mercadona-sweet-potato')].externalId")
                 .value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.nullValue())));
   }
+
+  /**
+   * The photo lookup makes this server fetch a URL somebody typed, so it is admin-only for the same
+   * reason the import is: an open endpoint here is a way to make our server read what only it can
+   * reach.
+   */
+  @Test
+  void anOrdinaryUserCannotMakeTheServerReadALink() throws Exception {
+    mockMvc
+        .perform(
+            get(PATH + "/link-image")
+                .param("url", "https://tienda.example/producto")
+                .with(asUser(SOMEONE, "someone@forma.test")))
+        .andExpect(status().isForbidden());
+  }
+
+  /** A private address is refused before anything is fetched, and it reads as a bad request. */
+  @Test
+  void refusesToReadAnInternalAddress() throws Exception {
+    mockMvc
+        .perform(
+            get(PATH + "/link-image")
+                .param("url", "http://169.254.169.254/latest/meta-data/")
+                .with(asAdmin(UUID.randomUUID(), "admin@forma.test")))
+        .andExpect(status().isBadRequest());
+  }
 }
