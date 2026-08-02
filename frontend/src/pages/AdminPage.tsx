@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from '../components/Button';
+import { CategoriesPanel } from './admin/CategoriesPanel';
 import { FoodsPanel } from './admin/FoodsPanel';
 import { StorePanel } from './admin/StorePanel';
 import styles from './AdminPage.module.css';
@@ -8,7 +9,7 @@ import styles from './AdminPage.module.css';
  * Catalog maintenance (FOR-190, FOR-191), reachable from the account menu by an
  * admin.
  *
- * <p>Two catalogs, two tabs. **Macros** is the food catalog every plan is built
+ * <p>Three catalogs, three tabs. **Macros** is the food catalog every plan is built
  * from — what a food is worth nutritionally. **Compra** is the store catalog —
  * where that food is bought, in what package and for how much. They are separate
  * tables and separate tabs because they answer different questions and change
@@ -16,6 +17,10 @@ import styles from './AdminPage.module.css';
  *
  * <p>The shopping tab covers every chain rather than one tab per supermarket:
  * the store is a column, so Carrefour will be rows in this same table.
+ *
+ * <p>**Categorías** is the odd one out: it edits and never creates. Which
+ * categories exist is fixed by the domain enums and the database's CHECK
+ * constraints; only how each one is written and drawn is data.
  *
  * <p>`RequireAdmin` keeps non-admins off the route and the account menu hides
  * the link, but neither is what protects the catalogs: every write here is
@@ -25,6 +30,9 @@ import styles from './AdminPage.module.css';
 const TABS = [
   { key: 'macros', label: 'Macros', action: '+ Alimento' },
   { key: 'compra', label: 'Compra', action: '+ Producto' },
+  // No add action: the set of categories is closed by the database's own
+  // constraints, so this tab renames and re-draws them and nothing else.
+  { key: 'categorias', label: 'Categorías', action: undefined },
 ] as const;
 
 type TabKey = (typeof TABS)[number]['key'];
@@ -50,9 +58,11 @@ export function AdminPage() {
           <h1 className={styles.title}>Administrar</h1>
           <p className={styles.subtitle}>Catálogos compartidos por toda la aplicación.</p>
         </div>
-        <Button variant="accent" type="button" onClick={() => setCreating(true)}>
-          {tab.action}
-        </Button>
+        {tab.action && (
+          <Button variant="accent" type="button" onClick={() => setCreating(true)}>
+            {tab.action}
+          </Button>
+        )}
       </header>
 
       <div className={styles.tabs} role="tablist" aria-label="Catálogos">
@@ -81,11 +91,13 @@ export function AdminPage() {
         aria-labelledby={`tab-${active}`}
         className={styles.panel}
       >
-        {active === 'macros' ? (
+        {active === 'macros' && (
           <FoodsPanel creating={creating} onCreateClose={() => setCreating(false)} />
-        ) : (
+        )}
+        {active === 'compra' && (
           <StorePanel creating={creating} onCreateClose={() => setCreating(false)} />
         )}
+        {active === 'categorias' && <CategoriesPanel />}
       </section>
     </div>
   );

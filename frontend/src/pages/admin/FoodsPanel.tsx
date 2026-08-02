@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Card } from '../../components/Card';
 import { Icon } from '../../components/Icon';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
@@ -14,15 +14,23 @@ import { StoreProductForm } from './StoreProductForm';
 import { Pagination } from './Pagination';
 import { CATEGORY_LABELS, categoryGlyph } from './foodDisplay';
 import { useCatalogAdmin } from './useCatalogAdmin';
+import { useCategoryDisplays } from './useCategoryDisplays';
 import styles from './panel.module.css';
 
 /**
  * The Macros tab (FOR-190): the global food catalog every plan is built from.
  */
-const categoryLabel = (food: CatalogFood) => (food.category ? CATEGORY_LABELS[food.category] : '—');
 const serving = (food: CatalogFood) => (food.servingSizeG ? `${food.servingSizeG} g` : '—');
 
-const COLUMNS: CatalogColumn<CatalogFood>[] = [
+const COMPACT_COLUMNS: CatalogColumn<CatalogFood>[] = [
+  { header: 'kcal', value: (food) => food.kcal, numeric: true },
+  { header: 'Ración', value: serving, numeric: true },
+];
+
+/** Built per render: the category label comes from a request now (FOR-197). */
+const columnsWith = (
+  categoryLabel: (food: CatalogFood) => string,
+): CatalogColumn<CatalogFood>[] => [
   { header: 'Categoría', value: categoryLabel },
   { header: 'kcal', value: (food) => food.kcal, numeric: true },
   { header: 'Prot.', value: (food) => food.proteinG, numeric: true },
@@ -31,16 +39,13 @@ const COLUMNS: CatalogColumn<CatalogFood>[] = [
   { header: 'Ración', value: serving, numeric: true },
 ];
 
-const COMPACT_COLUMNS: CatalogColumn<CatalogFood>[] = [
-  { header: 'kcal', value: (food) => food.kcal, numeric: true },
-  { header: 'Ración', value: serving, numeric: true },
-];
-
 /**
  * The ration is not among these: it is a column of its own at this width, and a
  * value shown twice is a value that can look like two different things.
  */
-const DETAILS: CatalogDetail<CatalogFood>[] = [
+const detailsWith = (
+  categoryLabel: (food: CatalogFood) => string,
+): CatalogDetail<CatalogFood>[] => [
   { glyph: '🏷️', label: 'Categoría', value: categoryLabel },
   { glyph: '🍞', label: 'HC (hidratos)', value: (food) => `${food.carbsG} g` },
   { glyph: '🥩', label: 'Proteínas', value: (food) => `${food.proteinG} g` },
@@ -67,6 +72,14 @@ export function FoodsPanel({ creating, onCreateClose }: FoodsPanelProps) {
   const [importingFor, setImportingFor] = useState<CatalogFood | undefined>(undefined);
   const [draft, setDraft] = useState<StoreProduct | undefined>(undefined);
   const [existing, setExisting] = useState<StoreProduct | undefined>(undefined);
+  const categories = useCategoryDisplays('FOOD');
+  const categoryLabel = useCallback(
+    (food: CatalogFood) =>
+      categories.label(food.category, food.category ? CATEGORY_LABELS[food.category] : '—'),
+    [categories],
+  );
+  const columns = useMemo(() => columnsWith(categoryLabel), [categoryLabel]);
+  const details = useMemo(() => detailsWith(categoryLabel), [categoryLabel]);
 
   // Closes whichever way the form was opened: an edit from a row, or a create
   // from the header — the panel does not own the second one.
@@ -121,12 +134,12 @@ export function FoodsPanel({ creating, onCreateClose }: FoodsPanelProps) {
             rows={catalog.visible}
             idOf={(food) => food.id}
             nameOf={(food) => food.name}
-            glyphOf={(food) => categoryGlyph(food.category)}
+            glyphOf={(food) => categories.glyph(food.category, categoryGlyph(food.category))}
             label="Alimentos"
             nameHeader="Alimento"
-            columns={COLUMNS}
+            columns={columns}
             compactColumns={COMPACT_COLUMNS}
-            details={DETAILS}
+            details={details}
             detailBadge="/100 g"
             narrow={catalog.narrow}
             expandedId={catalog.expandedId}

@@ -28,6 +28,7 @@ import {
   shoppingCategoryGlyph,
 } from './storeDisplay';
 import { useCatalogAdmin } from './useCatalogAdmin';
+import { useCategoryDisplays } from './useCategoryDisplays';
 import styles from './panel.module.css';
 
 /**
@@ -42,10 +43,12 @@ import styles from './panel.module.css';
  * copy of what they are buying this week. This is the shared reference the list
  * will eventually be built from.
  */
-const categoryLabel = (product: StoreProduct) => SHOPPING_CATEGORY_LABELS[product.category];
+const fallbackLabel = (product: StoreProduct) => SHOPPING_CATEGORY_LABELS[product.category];
 const packageLabel = (product: StoreProduct) => product.packageSize ?? '—';
 
-const COLUMNS: CatalogColumn<StoreProduct>[] = [
+const columnsWith = (
+  categoryLabel: (product: StoreProduct) => string,
+): CatalogColumn<StoreProduct>[] => [
   { header: 'Tienda', value: (product) => STORE_LABELS[product.store] },
   { header: 'Categoría', value: categoryLabel },
   { header: 'Formato', value: packageLabel },
@@ -61,7 +64,10 @@ const COMPACT_COLUMNS: CatalogColumn<StoreProduct>[] = [
  * slug, and the names come from a request. Falls back to the id when the food
  * catalog has not landed — an id is worse than a name but better than nothing.
  */
-const detailsWith = (foodName: (id: string) => string): CatalogDetail<StoreProduct>[] => [
+const detailsWith = (
+  foodName: (id: string) => string,
+  categoryLabel: (product: StoreProduct) => string,
+): CatalogDetail<StoreProduct>[] => [
   { glyph: '🏪', label: 'Tienda', value: (product) => STORE_LABELS[product.store] },
   { glyph: '🏷️', label: 'Categoría', value: categoryLabel },
   { glyph: '📦', label: 'Formato', value: packageLabel },
@@ -138,9 +144,15 @@ export function StorePanel({ creating, onCreateClose }: StorePanelProps) {
     setEditing(undefined);
     onCreateClose();
   };
+  const categories = useCategoryDisplays('SHOPPING');
+  const categoryLabel = useCallback(
+    (product: StoreProduct) => categories.label(product.category, fallbackLabel(product)),
+    [categories],
+  );
+  const columns = useMemo(() => columnsWith(categoryLabel), [categoryLabel]);
   const details = useMemo(
-    () => detailsWith((id) => foods.find((food) => food.id === id)?.name ?? id),
-    [foods],
+    () => detailsWith((id) => foods.find((food) => food.id === id)?.name ?? id, categoryLabel),
+    [foods, categoryLabel],
   );
 
   // The form links a product to a food by id, so it needs the food catalog. A
@@ -193,7 +205,9 @@ export function StorePanel({ creating, onCreateClose }: StorePanelProps) {
             rows={catalog.visible}
             idOf={(product) => product.id}
             nameOf={(product) => product.name}
-            glyphOf={(product) => shoppingCategoryGlyph(product.category)}
+            glyphOf={(product) =>
+              categories.glyph(product.category, shoppingCategoryGlyph(product.category))
+            }
             mediaOf={(product) => <ProductThumbnail url={product.imageUrl} />}
             extraActions={(product) =>
               // Only what a shop can be asked about: a hand-typed row has no
@@ -212,7 +226,7 @@ export function StorePanel({ creating, onCreateClose }: StorePanelProps) {
             }
             label="Productos"
             nameHeader="Producto"
-            columns={COLUMNS}
+            columns={columns}
             compactColumns={COMPACT_COLUMNS}
             details={details}
             detailFooter={storeLink}
