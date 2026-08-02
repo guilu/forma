@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Badge } from '../components/Badge';
 import { Card } from '../components/Card';
 import { EmptyState } from '../components/EmptyState';
@@ -9,7 +8,6 @@ import { LoadingState } from '../components/LoadingState';
 import { MacroRing } from '../components/MacroRing';
 import { WaterTracker } from '../components/WaterTracker';
 import { getNutritionDay, type NutritionDay, type NutritionMeal } from '../api/nutrition';
-import { getShoppingList } from '../api/shopping';
 import { ProgressBar } from './dashboard/ProgressBar';
 import { formatShortDate } from './dateLabel';
 import styles from './NutritionPage.module.css';
@@ -97,7 +95,6 @@ export function NutritionPage() {
   const [dayType, setDayType] = useState<DayType>('running');
   const [retryToken, setRetryToken] = useState(0);
   const [state, setState] = useState<State>({ status: 'loading' });
-  const [shoppingCount, setShoppingCount] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     let active = true;
@@ -117,23 +114,6 @@ export function NutritionPage() {
       active = false;
     };
   }, [dayType, retryToken]);
-
-  useEffect(() => {
-    let active = true;
-    getShoppingList()
-      .then((list) => {
-        if (active) {
-          setShoppingCount(list.items.length);
-        }
-      })
-      .catch(() => {
-        // The shopping shortcut degrades to a plain link when the count can't load;
-        // it must never block the nutrition page itself.
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
 
   return (
     <div className={styles.wrapper}>
@@ -157,8 +137,6 @@ export function NutritionPage() {
       <DayTypeSelector value={dayType} onChange={setDayType} />
 
       {renderContent(state, dayType, () => setRetryToken((token) => token + 1))}
-
-      <ShoppingShortcut count={shoppingCount} />
     </div>
   );
 }
@@ -374,23 +352,6 @@ function RecoveryRecommendation({ meals }: { readonly meals: readonly NutritionM
         {recovery.name} · {recovery.preferredTime}: {items}. Es opcional — sáltala si ya has
         alcanzado tu proteína diaria.
       </p>
-    </Card>
-  );
-}
-
-function ShoppingShortcut({ count }: { readonly count: number | undefined }) {
-  return (
-    <Card title="Lista de la compra" headingLevel={2}>
-      <div className={styles.shoppingRow}>
-        <p className={styles.shoppingCount}>
-          {count === undefined
-            ? 'Generada según tu plan nutricional'
-            : `${count} producto${count === 1 ? '' : 's'}`}
-        </p>
-        <Link className={styles.shoppingLink} to="/app/shopping-list">
-          Ver lista de la compra
-        </Link>
-      </div>
     </Card>
   );
 }
