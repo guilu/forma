@@ -127,12 +127,12 @@ export function CatalogTable<T>({
                         size={16}
                         className={open ? styles.chevronOpen : styles.chevron}
                       />
-                      {mediaOf?.(row) ??
-                        (glyphOf && (
-                          <span className={styles.glyph} aria-hidden="true">
-                            {glyphOf(row)}
-                          </span>
-                        ))}
+                      {mediaOf?.(row)}
+                      {glyphOf && (
+                        <span className={styles.glyph} aria-hidden="true">
+                          {glyphOf(row)}
+                        </span>
+                      )}
                       <span className={styles.rowName}>{nameOf(row)}</span>
                     </button>
                   </td>
@@ -223,6 +223,13 @@ export function CatalogTable<T>({
             <td>
               <span className={styles.nameCell}>
                 {mediaOf?.(row)}
+                {/* The category as a glyph here too (FOR-196): a wide row is
+                    scanned by shape before it is read, same as a narrow one. */}
+                {glyphOf && (
+                  <span className={styles.glyph} aria-hidden="true">
+                    {glyphOf(row)}
+                  </span>
+                )}
                 {nameOf(row)}
               </span>
             </td>
@@ -236,7 +243,7 @@ export function CatalogTable<T>({
                 {extraActions?.(row)}
                 <button
                   type="button"
-                  className={styles.rowAction}
+                  className={styles.rowEdit}
                   aria-label={`Editar ${nameOf(row)}`}
                   onClick={() => onEdit(row)}
                 >
@@ -244,7 +251,7 @@ export function CatalogTable<T>({
                 </button>
                 <button
                   type="button"
-                  className={styles.rowAction}
+                  className={styles.rowDelete}
                   aria-label={`Eliminar ${nameOf(row)}`}
                   onClick={() => onDelete(row)}
                 >
