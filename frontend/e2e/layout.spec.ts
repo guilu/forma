@@ -733,6 +733,17 @@ test.describe('page headers on a phone', () => {
     expect(secondStartsAfter, 'The action is not to the right of the title').toBe(true);
   });
 
+  test('nutrition puts its date beside the title', async ({ page }) => {
+    await page.goto('/app/nutrition');
+
+    const title = await page.getByRole('heading', { level: 1 }).boundingBox();
+    const date = await page.getByText(/\bago/i).first().boundingBox();
+    const { overlap, secondStartsAfter } = await sharesARowWith(title!, date!);
+
+    expect(overlap, `The date sits on its own row (overlap ${overlap}px)`).toBeGreaterThan(0);
+    expect(secondStartsAfter, 'The date is not to the right of the title').toBe(true);
+  });
+
   test('training puts its date beside the title', async ({ page }) => {
     await page.goto('/app/training');
 

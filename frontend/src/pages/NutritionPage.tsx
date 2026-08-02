@@ -11,6 +11,7 @@ import { WaterTracker } from '../components/WaterTracker';
 import { getNutritionDay, type NutritionDay, type NutritionMeal } from '../api/nutrition';
 import { getShoppingList } from '../api/shopping';
 import { ProgressBar } from './dashboard/ProgressBar';
+import { formatShortDate } from './dateLabel';
 import styles from './NutritionPage.module.css';
 
 /**
@@ -90,16 +91,7 @@ const PLACEHOLDER = {
 } as const;
 
 /** Static date label for the visual-only navigator (no date-parameterised API). */
-const TODAY_LABEL = new Intl.DateTimeFormat('es-ES', {
-  weekday: 'long',
-  day: 'numeric',
-  month: 'long',
-  year: 'numeric',
-}).format(new Date());
-
-function capitalize(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1);
-}
+const TODAY_LABEL = formatShortDate(new Date());
 
 export function NutritionPage() {
   const [dayType, setDayType] = useState<DayType>('running');
@@ -155,7 +147,7 @@ export function NutritionPage() {
           <span className={styles.dateArrow}>
             <Icon name="chevron" size={16} className={styles.dateArrowPrev} />
           </span>
-          <span className={styles.dateLabel}>{capitalize(TODAY_LABEL)}</span>
+          <span className={styles.dateLabel}>{TODAY_LABEL}</span>
           <span className={styles.dateArrow}>
             <Icon name="chevron" size={16} />
           </span>
