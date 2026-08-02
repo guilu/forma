@@ -33,7 +33,14 @@ public record StoreProductRequest(
     @PositiveOrZero BigDecimal priceEur,
     String url,
     ShoppingCategory category,
-    String notes) {
+    String notes,
+    /*
+     * Carried by the client only when a product was picked off a shop's catalogue (FOR-195); it is
+     * what makes the row refreshable later. Typing a product by hand leaves both absent, which is
+     * the honest state — there is nothing to refresh it against.
+     */
+    @Size(max = 64) String externalId,
+    String imageUrl) {
 
   /** Maps the request onto the application's own type. */
   public CatalogStoreProduct toCatalogStoreProduct() {
@@ -48,6 +55,8 @@ public record StoreProductRequest(
         priceEur,
         url,
         category,
-        notes);
+        notes,
+        externalId == null || externalId.isBlank() ? null : externalId,
+        imageUrl);
   }
 }

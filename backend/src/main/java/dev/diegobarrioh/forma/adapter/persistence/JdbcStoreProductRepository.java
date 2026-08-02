@@ -19,7 +19,8 @@ import org.springframework.stereotype.Repository;
 public class JdbcStoreProductRepository implements StoreProductRepository {
 
   private static final String COLUMNS =
-      "id, store, name, food_id, package_size, price_eur, url, category, notes";
+      "id, store, name, food_id, package_size, price_eur, url, category, notes, external_id,"
+          + " image_url";
 
   private static final RowMapper<CatalogStoreProduct> ROW_MAPPER =
       (rs, rowNum) ->
@@ -32,7 +33,9 @@ public class JdbcStoreProductRepository implements StoreProductRepository {
               rs.getBigDecimal("price_eur"),
               rs.getString("url"),
               ShoppingCategory.valueOf(rs.getString("category")),
-              rs.getString("notes"));
+              rs.getString("notes"),
+              rs.getString("external_id"),
+              rs.getString("image_url"));
 
   private final JdbcTemplate jdbcTemplate;
 
@@ -65,7 +68,7 @@ public class JdbcStoreProductRepository implements StoreProductRepository {
   @Override
   public void insert(CatalogStoreProduct product) {
     jdbcTemplate.update(
-        "INSERT INTO store_product (" + COLUMNS + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO store_product (" + COLUMNS + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         product.id(),
         product.store().name(),
         product.name(),
@@ -74,14 +77,17 @@ public class JdbcStoreProductRepository implements StoreProductRepository {
         product.priceEur(),
         product.url(),
         product.category().name(),
-        product.notes());
+        product.notes(),
+        product.externalId(),
+        product.imageUrl());
   }
 
   @Override
   public void update(CatalogStoreProduct product) {
     jdbcTemplate.update(
         "UPDATE store_product SET store = ?, name = ?, food_id = ?, package_size = ?,"
-            + " price_eur = ?, url = ?, category = ?, notes = ? WHERE id = ?",
+            + " price_eur = ?, url = ?, category = ?, notes = ?, external_id = ?, image_url = ?"
+            + " WHERE id = ?",
         product.store().name(),
         product.name(),
         product.foodId(),
@@ -90,6 +96,8 @@ public class JdbcStoreProductRepository implements StoreProductRepository {
         product.url(),
         product.category().name(),
         product.notes(),
+        product.externalId(),
+        product.imageUrl(),
         product.id());
   }
 

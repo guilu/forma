@@ -70,6 +70,19 @@ public class StoreProductController {
     return StoreProductResponse.from(service.update(id, request.toCatalogStoreProduct()));
   }
 
+  /**
+   * Re-reads the product at {@code id} from the shop it came from and stores what the shop owns
+   * (FOR-195).
+   *
+   * <p>A POST rather than a PUT: the body is empty and the new values come from somewhere else
+   * entirely, so this is "do the thing", not "here is the new state".
+   */
+  @PostMapping("/{id}/refresh")
+  @PreAuthorize("hasRole('ADMIN')")
+  public StoreProductResponse refresh(@PathVariable String id) {
+    return StoreProductResponse.from(service.refresh(id));
+  }
+
   /** Removes the product at {@code id}. */
   @DeleteMapping("/{id}")
   @PreAuthorize("hasRole('ADMIN')")

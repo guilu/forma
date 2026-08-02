@@ -20,7 +20,9 @@ import org.junit.jupiter.api.Test;
 class StoreProductServiceTest {
 
   private final InMemoryRepository repository = new InMemoryRepository();
-  private final StoreProductService service = new StoreProductService(repository);
+  private final FakeSource mercadona = new FakeSource();
+  private final StoreProductService service =
+      new StoreProductService(repository, java.util.List.of(mercadona));
 
   private static CatalogStoreProduct product(String id, Store store, String name) {
     return new CatalogStoreProduct(
@@ -144,6 +146,107 @@ class StoreProductServiceTest {
     @Override
     public boolean delete(String id) {
       return rows.remove(id) != null;
+    }
+  }
+
+  /**
+   * A refresh takes what the shop owns and leaves what we curate (FOR-195). The price and the shelf
+   * name move; the food link, the aisle and our notes do not — a refresh that overwrote those would
+   * undo an admin's work every time a price changed.
+   */
+  @Test
+  void refreshTakesTheShopsFieldsAndKeepsOurs() {
+    CatalogStoreProduct stored =
+        new CatalogStoreProduct(
+            "mercadona-4241",
+            Store.MERCADONA,
+            "Copos de avena Brüggen",
+            "oats",
+            "Caja 500 g",
+            new BigDecimal("1.55"),
+            "https://tienda.mercadona.es/product/4241",
+            ShoppingCategory.CEREALES_Y_LEGUMBRES,
+            "Comprar dos si hay oferta",
+            "4241",
+            "https://cdn/old.jpg");
+    service.create(stored);
+    mercadona.serve(
+        new ImportableProduct(
+            "4241",
+            "Copos de avena Brüggen 500 g",
+            "Caja 500 g",
+            new BigDecimal("1.79"),
+            "https://tienda.mercadona.es/product/4241",
+            "8480000123456",
+            "Cereales",
+            "https://cdn/new.jpg"));
+
+    CatalogStoreProduct refreshed = service.refresh("mercadona-4241");
+
+    assertThat(refreshed.name()).isEqualTo("Copos de avena Brüggen 500 g");
+    assertThat(refreshed.priceEur()).isEqualByComparingTo("1.79");
+    assertThat(refreshed.imageUrl()).isEqualTo("https://cdn/new.jpg");
+    // Ours, untouched.
+    assertThat(refreshed.foodId()).isEqualTo("oats");
+    assertThat(refreshed.category()).isEqualTo(ShoppingCategory.CEREALES_Y_LEGUMBRES);
+    assertThat(refreshed.notes()).isEqualTo("Comprar dos si hay oferta");
+    assertThat(service.getById("mercadona-4241").priceEur()).isEqualByComparingTo("1.79");
+  }
+
+  /** A product typed by hand has no shop behind it, so there is nothing to refresh it against. */
+  @Test
+  void refuseToRefreshAProductThatWasNeverImported() {
+    service.create(product("propio", Store.MERCADONA, "Pan de mi panadería"));
+
+    assertThatThrownBy(() -> service.refresh("propio")).isInstanceOf(ConflictException.class);
+  }
+
+  /** The shop dropping a product is an answer, not a failure — and it must not blank our row. */
+  @Test
+  void reportsAProductTheShopNoLongerLists() {
+    service.create(
+        new CatalogStoreProduct(
+            "mercadona-9",
+            Store.MERCADONA,
+            "Descatalogado",
+            null,
+            null,
+            new BigDecimal("1.00"),
+            null,
+            ShoppingCategory.OTROS,
+            null,
+            "9",
+            null));
+    mercadona.serveNothing();
+
+    assertThatThrownBy(() -> service.refresh("mercadona-9")).isInstanceOf(NotFoundException.class);
+    assertThat(service.getById("mercadona-9").name()).isEqualTo("Descatalogado");
+  }
+
+  private static final class FakeSource implements StoreCatalogSource {
+    private ImportableProduct fresh;
+
+    void serve(ImportableProduct product) {
+      fresh = product;
+    }
+
+    void serveNothing() {
+      fresh = null;
+    }
+
+    @Override
+    public Store store() {
+      return Store.MERCADONA;
+    }
+
+    @Override
+    public java.util.List<ImportableProduct> products() {
+      return fresh == null ? java.util.List.of() : java.util.List.of(fresh);
+    }
+
+    @Override
+    public Optional<ImportableProduct> findByExternalId(String externalId) {
+      return Optional.ofNullable(fresh);
     }
   }
 }

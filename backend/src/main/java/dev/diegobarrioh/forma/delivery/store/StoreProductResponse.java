@@ -20,7 +20,9 @@ public record StoreProductResponse(
     BigDecimal priceEur,
     String url,
     String category,
-    String notes) {
+    String notes,
+    String externalId,
+    String imageUrl) {
 
   /** Maps a persisted catalog product to its API read model. */
   public static StoreProductResponse from(CatalogStoreProduct product) {
@@ -33,6 +35,8 @@ public record StoreProductResponse(
         product.priceEur(),
         product.url(),
         product.category().name(),
-        product.notes());
+        product.notes(),
+        product.externalId(),
+        product.imageUrl());
   }
 }

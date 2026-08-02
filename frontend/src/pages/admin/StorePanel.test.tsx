@@ -8,6 +8,7 @@ import { listFoods } from '../../api/foods';
 import {
   deleteStoreProduct,
   listStoreProducts,
+  refreshStoreProduct,
   updateStoreProduct,
   type StoreProduct,
 } from '../../api/storeProducts';
@@ -23,11 +24,14 @@ vi.mock('../../api/storeProducts', () => ({
   createStoreProduct: vi.fn(),
   updateStoreProduct: vi.fn(),
   deleteStoreProduct: vi.fn(),
+  listStoreSuggestions: vi.fn(),
+  refreshStoreProduct: vi.fn(),
 }));
 
 const listMock = vi.mocked(listStoreProducts);
 const updateMock = vi.mocked(updateStoreProduct);
 const deleteMock = vi.mocked(deleteStoreProduct);
+const refreshMock = vi.mocked(refreshStoreProduct);
 
 const oats: StoreProduct = {
   id: 'mercadona-oats',
@@ -38,6 +42,8 @@ const oats: StoreProduct = {
   priceEur: 1.55,
   url: 'https://tienda.mercadona.es/product/86341',
   category: 'CEREALES_Y_LEGUMBRES',
+  externalId: '4241',
+  imageUrl: 'https://prod-mercadona.imgix.net/images/abc.jpg?fit=crop&h=300&w=300',
 };
 
 const salmon: StoreProduct = {
@@ -205,5 +211,45 @@ describe('AdminPage — the shopping catalog tab', () => {
 
     const row = (await screen.findByText('Copos de avena Brüggen')).closest('tr');
     expect(within(row!).getAllByText('—').length).toBeGreaterThan(0);
+  });
+
+  /**
+   * A price moves every week; a row imported a month ago is a price nobody checked. Refresh takes
+   * the shop's figures again and leaves ours alone — the server decides what changed, so the screen
+   * re-reads the list instead of patching the row with its own guess.
+   */
+  describe('refreshing an imported product', () => {
+    it('re-reads the product from the shop and reloads the list', async () => {
+      refreshMock.mockResolvedValue({ ...oats, priceEur: 1.79 });
+      const user = await openStoreTab();
+      await screen.findByText('Copos de avena Brüggen');
+
+      await user.click(screen.getByRole('button', { name: /Refrescar Copos de avena Brüggen/ }));
+
+      await waitFor(() => expect(refreshMock).toHaveBeenCalledWith('mercadona-oats'));
+      await waitFor(() => expect(listMock).toHaveBeenCalledTimes(2));
+    });
+
+    /** Nothing to refresh against: the row was typed by hand, not imported. */
+    it('offers no refresh for a product that was never imported', async () => {
+      listMock.mockResolvedValue([{ ...oats, externalId: undefined }]);
+      await openStoreTab();
+      await screen.findByText('Copos de avena Brüggen');
+
+      expect(
+        screen.queryByRole('button', { name: /Refrescar Copos de avena Brüggen/ }),
+      ).not.toBeInTheDocument();
+    });
+
+    it('surfaces a refusal without losing the row', async () => {
+      refreshMock.mockRejectedValue(new Error('502'));
+      const user = await openStoreTab();
+      await screen.findByText('Copos de avena Brüggen');
+
+      await user.click(screen.getByRole('button', { name: /Refrescar Copos de avena Brüggen/ }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(/No se pudo actualizar/);
+      expect(screen.getByText('Copos de avena Brüggen')).toBeInTheDocument();
+    });
   });
 });

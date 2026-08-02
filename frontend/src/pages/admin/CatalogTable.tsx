@@ -46,6 +46,13 @@ interface CatalogTableProps<T> {
   readonly nameOf: (row: T) => string;
   /** Decorative glyph before the name on the phone layout. */
   readonly glyphOf?: (row: T) => string;
+  /**
+   * Rendered before the name in both layouts, e.g. a product photo. Takes
+   * precedence over `glyphOf`: a real picture beats a stand-in for its category.
+   */
+  readonly mediaOf?: (row: T) => ReactNode;
+  /** Actions shown before edit and delete, e.g. refreshing an imported row. */
+  readonly extraActions?: (row: T) => ReactNode;
   /** Accessible name of the table — no visible caption is rendered. */
   readonly label: string;
   /** Header of the first column, the one the row is named by. */
@@ -72,6 +79,8 @@ export function CatalogTable<T>({
   idOf,
   nameOf,
   glyphOf,
+  mediaOf,
+  extraActions,
   label,
   nameHeader,
   columns,
@@ -118,6 +127,7 @@ export function CatalogTable<T>({
                         size={16}
                         className={open ? styles.chevronOpen : styles.chevron}
                       />
+                      {mediaOf?.(row)}
                       {glyphOf && (
                         <span className={styles.glyph} aria-hidden="true">
                           {glyphOf(row)}
@@ -156,6 +166,7 @@ export function CatalogTable<T>({
                           </p>
                         )}
                         <div className={styles.detailActions}>
+                          {extraActions?.(row)}
                           <button
                             type="button"
                             className={styles.detailEdit}
@@ -209,7 +220,19 @@ export function CatalogTable<T>({
       <tbody>
         {rows.map((row) => (
           <tr key={idOf(row)}>
-            <td>{nameOf(row)}</td>
+            <td>
+              <span className={styles.nameCell}>
+                {mediaOf?.(row)}
+                {/* The category as a glyph here too (FOR-196): a wide row is
+                    scanned by shape before it is read, same as a narrow one. */}
+                {glyphOf && (
+                  <span className={styles.glyph} aria-hidden="true">
+                    {glyphOf(row)}
+                  </span>
+                )}
+                {nameOf(row)}
+              </span>
+            </td>
             {columns.map((column) => (
               <td key={column.header} className={column.numeric ? styles.numeric : undefined}>
                 {column.value(row)}
@@ -217,9 +240,10 @@ export function CatalogTable<T>({
             ))}
             <td>
               <div className={styles.rowActions}>
+                {extraActions?.(row)}
                 <button
                   type="button"
-                  className={styles.rowAction}
+                  className={styles.rowEdit}
                   aria-label={`Editar ${nameOf(row)}`}
                   onClick={() => onEdit(row)}
                 >
@@ -227,7 +251,7 @@ export function CatalogTable<T>({
                 </button>
                 <button
                   type="button"
-                  className={styles.rowAction}
+                  className={styles.rowDelete}
                   aria-label={`Eliminar ${nameOf(row)}`}
                   onClick={() => onDelete(row)}
                 >

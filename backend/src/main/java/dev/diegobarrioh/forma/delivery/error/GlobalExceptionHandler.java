@@ -5,6 +5,7 @@ import dev.diegobarrioh.forma.application.ForbiddenException;
 import dev.diegobarrioh.forma.application.NotFoundException;
 import dev.diegobarrioh.forma.application.OAuthStateException;
 import dev.diegobarrioh.forma.application.ProviderOAuthException;
+import dev.diegobarrioh.forma.application.StoreCatalogUnavailableException;
 import dev.diegobarrioh.forma.application.UnauthorizedException;
 import dev.diegobarrioh.forma.application.ValidationException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -212,6 +213,19 @@ public class GlobalExceptionHandler {
    * deliberately without the raw provider response body, an authorization code, or a token (see its
    * javadoc), so it is safe to return as-is.
    */
+  /**
+   * A store's own catalogue could not be read (FOR-194) — maps to 502, the same shape as a provider
+   * OAuth failure and for the same reason: the request was fine, an upstream nobody here controls
+   * was not. Distinct from a 404 so the import screen can offer "reintentar" rather than claiming
+   * the food does not exist.
+   */
+  @ExceptionHandler(StoreCatalogUnavailableException.class)
+  @ResponseStatus(HttpStatus.BAD_GATEWAY)
+  public ApiError handleStoreCatalogUnavailable(
+      StoreCatalogUnavailableException ex, HttpServletRequest request) {
+    return ApiError.of(ApiErrorCode.PROVIDER_ERROR, ex.getMessage(), correlationId(request), null);
+  }
+
   @ExceptionHandler(ProviderOAuthException.class)
   @ResponseStatus(HttpStatus.BAD_GATEWAY)
   public ApiError handleProviderOAuth(ProviderOAuthException ex, HttpServletRequest request) {

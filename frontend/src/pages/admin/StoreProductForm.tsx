@@ -38,26 +38,41 @@ import styles from './FoodForm.module.css';
 interface StoreProductFormProps {
   /** Absent when creating. */
   readonly product?: StoreProduct;
+  /**
+   * Initial values for a NEW product, e.g. one picked off a store's catalogue.
+   * Distinct from `product`: this still creates, so the id stays editable and
+   * the save is a POST — a draft is not a row yet.
+   */
+  readonly draft?: StoreProduct;
   /** The food catalog, for the link select. */
   readonly foods: readonly CatalogFood[];
   readonly onCancel: () => void;
   readonly onSaved: () => void;
 }
 
-export function StoreProductForm({ product, foods, onCancel, onSaved }: StoreProductFormProps) {
+export function StoreProductForm({
+  product,
+  draft,
+  foods,
+  onCancel,
+  onSaved,
+}: StoreProductFormProps) {
   const notify = useNotify();
   const creating = product === undefined;
-  const [id, setId] = useState(product?.id ?? '');
-  const [store, setStore] = useState<Store>(product?.store ?? 'MERCADONA');
-  const [name, setName] = useState(product?.name ?? '');
-  const [foodId, setFoodId] = useState(product?.foodId ?? '');
-  const [packageSize, setPackageSize] = useState(product?.packageSize ?? '');
+  // The row being edited when there is one, the draft when creating from an
+  // import, and empty when creating from scratch.
+  const initial = product ?? draft;
+  const [id, setId] = useState(initial?.id ?? '');
+  const [store, setStore] = useState<Store>(initial?.store ?? 'MERCADONA');
+  const [name, setName] = useState(initial?.name ?? '');
+  const [foodId, setFoodId] = useState(initial?.foodId ?? '');
+  const [packageSize, setPackageSize] = useState(initial?.packageSize ?? '');
   const [priceEur, setPriceEur] = useState(
-    product?.priceEur === undefined ? '' : String(product.priceEur),
+    initial?.priceEur === undefined ? '' : String(initial.priceEur),
   );
-  const [url, setUrl] = useState(product?.url ?? '');
-  const [category, setCategory] = useState<ShoppingCategory>(product?.category ?? 'OTROS');
-  const [notes, setNotes] = useState(product?.notes ?? '');
+  const [url, setUrl] = useState(initial?.url ?? '');
+  const [category, setCategory] = useState<ShoppingCategory>(initial?.category ?? 'OTROS');
+  const [notes, setNotes] = useState(initial?.notes ?? '');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
 

@@ -41,6 +41,9 @@ export interface StoreProduct {
   readonly url?: string;
   readonly category: ShoppingCategory;
   readonly notes?: string;
+  /** The shop's own id, present only on imported rows — what makes a refresh possible. */
+  readonly externalId?: string;
+  readonly imageUrl?: string;
 }
 
 /** Lists the catalog, narrowed to one chain when `store` is given. */
@@ -80,9 +83,58 @@ export function updateStoreProduct(
   });
 }
 
+/**
+ * Re-reads an imported product from its shop and stores what the shop owns:
+ * name, package, price, link and photo. The food link, the aisle and the notes
+ * stay as they are — those are ours. Admin only.
+ *
+ * <p>Rejects with 409 for a product that was never imported, 404 when the shop
+ * no longer lists it, and 502 when the shop cannot be reached.
+ */
+export function refreshStoreProduct(
+  id: string,
+  client: ApiClient = apiClient,
+): Promise<StoreProduct> {
+  return client.request<StoreProduct>(`${STORE_PRODUCTS_PATH}/${encodeURIComponent(id)}/refresh`, {
+    method: 'POST',
+  });
+}
+
 /** Removes a product. Admin only. */
 export function deleteStoreProduct(id: string, client: ApiClient = apiClient): Promise<void> {
   return client.request<void>(`${STORE_PRODUCTS_PATH}/${encodeURIComponent(id)}`, {
     method: 'DELETE',
   });
+}
+
+/**
+ * A product as the store's own catalogue describes it, before it is ours.
+ *
+ * <p>Not a {@link StoreProduct}: it carries no `foodId` and no aisle of ours,
+ * because those are the two things the shop cannot tell us and an admin decides
+ * on import. `storeCategory` is the shop's own shelf name, offered as a hint.
+ */
+export interface StoreSuggestion {
+  readonly externalId: string;
+  readonly name: string;
+  readonly packaging?: string;
+  readonly priceEur?: number;
+  readonly url?: string;
+  readonly ean?: string;
+  readonly storeCategory?: string;
+  readonly imageUrl?: string;
+}
+
+/**
+ * Products from `store` that look like the food at `foodId`, best first. Admin
+ * only. Rejects with 404 for an unknown food or a chain with no source, and with
+ * 502 when the shop itself cannot be reached — the screen tells those apart.
+ */
+export function listStoreSuggestions(
+  foodId: string,
+  store: Store,
+  client: ApiClient = apiClient,
+): Promise<StoreSuggestion[]> {
+  const query = `?foodId=${encodeURIComponent(foodId)}&store=${encodeURIComponent(store)}`;
+  return client.request<StoreSuggestion[]>(`${STORE_PRODUCTS_PATH}/suggestions${query}`);
 }
