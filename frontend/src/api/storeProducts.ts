@@ -55,6 +55,22 @@ export function listStoreProducts(
   return client.request<StoreProduct[]>(`${STORE_PRODUCTS_PATH}${query}`);
 }
 
+/**
+ * Products from `store` whose name contains everything in `query`, best first.
+ * Admin only.
+ *
+ * <p>The other entry point starts from a food in our catalog; this one starts
+ * from what somebody types, for the products our own catalog cannot name.
+ */
+export function searchStoreProducts(
+  query: string,
+  store: Store,
+  client: ApiClient = apiClient,
+): Promise<StoreSuggestion[]> {
+  const params = `?q=${encodeURIComponent(query)}&store=${encodeURIComponent(store)}`;
+  return client.request<StoreSuggestion[]>(`${STORE_PRODUCTS_PATH}/suggestions${params}`);
+}
+
 /** Adds a product. Admin only; rejects with 409 when the id is taken. */
 export function createStoreProduct(
   product: StoreProduct,

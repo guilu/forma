@@ -94,6 +94,11 @@ export function StoreProductForm({
       url: optionalText(url),
       category,
       notes: optionalText(notes),
+      // Provenance, carried through rather than edited: the form shows neither,
+      // and dropping them left every imported product unable to refresh itself
+      // and without a photo.
+      externalId: initial?.externalId,
+      imageUrl: initial?.imageUrl,
     };
     try {
       if (creating) {

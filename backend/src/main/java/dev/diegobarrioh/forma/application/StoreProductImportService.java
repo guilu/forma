@@ -58,12 +58,7 @@ public class StoreProductImportService {
         foods
             .findById(foodId)
             .orElseThrow(() -> new NotFoundException("No existe el alimento: " + foodId));
-    StoreCatalogSource source =
-        sources.stream()
-            .filter(candidate -> candidate.store() == store)
-            .findFirst()
-            .orElseThrow(
-                () -> new NotFoundException("No hay catálogo disponible para: " + store.name()));
+    StoreCatalogSource source = sourceFor(store);
 
     Set<String> wanted = meaningfulTokens(food.name());
     if (wanted.isEmpty()) {
@@ -81,6 +76,42 @@ public class StoreProductImportService {
         .limit(MAX_SUGGESTIONS)
         .map(Scored::product)
         .toList();
+  }
+
+  /**
+   * The store's products matching free text, best first (FOR-199).
+   *
+   * <p>The other entry point starts from a food in our catalog; this one starts from what somebody
+   * types, for the products our catalog cannot name. The seeded rows that matched nothing when V40
+   * ran — whey protein, boniato — are exactly that case.
+   *
+   * <p>Every word typed has to appear. Two words mean both: "aceite oliva" asking for every oil in
+   * the shop would make the second word decoration.
+   *
+   * @throws NotFoundException when no source speaks for that chain
+   * @throws StoreCatalogUnavailableException when the store cannot be reached
+   */
+  public List<ImportableProduct> searchFor(String query, Store store) {
+    StoreCatalogSource source = sourceFor(store);
+    Set<String> wanted = meaningfulTokens(query);
+    if (wanted.isEmpty()) {
+      return List.of();
+    }
+    return source.products().stream()
+        .filter(product -> meaningfulTokens(product.name()).containsAll(wanted))
+        // Shortest first: the plain product rather than the one with three
+        // qualifiers after it, which is nearly always what was meant.
+        .sorted(Comparator.comparingInt(product -> product.name().length()))
+        .limit(MAX_SUGGESTIONS)
+        .toList();
+  }
+
+  private StoreCatalogSource sourceFor(Store store) {
+    return sources.stream()
+        .filter(candidate -> candidate.store() == store)
+        .findFirst()
+        .orElseThrow(
+            () -> new NotFoundException("No hay catálogo disponible para: " + store.name()));
   }
 
   private record Scored(ImportableProduct product, int score) {}

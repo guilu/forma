@@ -1,6 +1,8 @@
 package dev.diegobarrioh.forma.delivery.store;
 
+import dev.diegobarrioh.forma.application.ImportableProduct;
 import dev.diegobarrioh.forma.application.StoreProductImportService;
+import dev.diegobarrioh.forma.application.ValidationException;
 import dev.diegobarrioh.forma.delivery.ApiPaths;
 import dev.diegobarrioh.forma.domain.Store;
 import java.util.List;
@@ -17,6 +19,10 @@ import org.springframework.web.bind.annotation.RestController;
  * {@code POST /store-products} stores it, with the food link and the aisle they chose. Keeping the
  * write on the endpoint that already exists means an imported row is indistinguishable from a
  * hand-typed one — because it should be.
+ *
+ * <p>Two ways in: by a food in our catalog, or by free text. The first fills the link between a
+ * product and a food by construction; the second exists for what our catalog cannot name — the
+ * seeded rows V40 could not match, and anything an admin wants that no food describes.
  *
  * <p>Reaching a third-party shop is admin-gated even though it only reads: an unauthenticated
  * endpoint here would let anyone make this server crawl somebody else's site.
@@ -41,9 +47,17 @@ public class StoreImportController {
   @GetMapping
   @PreAuthorize("hasRole('ADMIN')")
   public List<StoreSuggestionResponse> suggestions(
-      @RequestParam String foodId, @RequestParam Store store) {
-    return service.suggestionsFor(foodId, store).stream()
-        .map(StoreSuggestionResponse::from)
-        .toList();
+      @RequestParam(required = false) String foodId,
+      @RequestParam(required = false) String q,
+      @RequestParam Store store) {
+    // One or the other, never both: starting from a food fills the link between
+    // product and food by construction, and starting from text is for the
+    // products our own catalog cannot name.
+    if (foodId == null && q == null) {
+      throw new ValidationException("Indica un alimento (foodId) o un texto de búsqueda (q)");
+    }
+    List<ImportableProduct> found =
+        foodId != null ? service.suggestionsFor(foodId, store) : service.searchFor(q, store);
+    return found.stream().map(StoreSuggestionResponse::from).toList();
   }
 }

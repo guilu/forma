@@ -115,4 +115,28 @@ class StoreImportControllerTest {
                 .with(asAdmin(UUID.randomUUID(), "admin@forma.test")))
         .andExpect(status().isNotFound());
   }
+
+  @Test
+  void anAdminSearchesTheShelfByText() throws Exception {
+    mockMvc
+        .perform(
+            get(PATH)
+                .param("q", "detergente")
+                .param("store", "MERCADONA")
+                .with(asAdmin(UUID.randomUUID(), "admin@forma.test")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.length()").value(1))
+        .andExpect(jsonPath("$[0].name").value("Detergente líquido"));
+  }
+
+  /** Neither a food nor a text is not a search, and answering the whole shop would be worse. */
+  @Test
+  void refusesARequestWithNeitherAFoodNorAQuery() throws Exception {
+    mockMvc
+        .perform(
+            get(PATH)
+                .param("store", "MERCADONA")
+                .with(asAdmin(UUID.randomUUID(), "admin@forma.test")))
+        .andExpect(status().isBadRequest());
+  }
 }

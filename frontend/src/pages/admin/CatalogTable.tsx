@@ -31,6 +31,18 @@ export interface CatalogColumn<T> {
   readonly value: (row: T) => ReactNode;
   /** Right-aligned with tabular figures. */
   readonly numeric?: boolean;
+  /**
+   * What this column sorts by. Absent means the column does not sort — which is
+   * the right answer for free text like "Caja 0.8 kg", whose alphabetical order
+   * carries no meaning.
+   */
+  readonly sortBy?: (row: T) => string | number | undefined;
+}
+
+/** Which column is sorted and which way. */
+export interface CatalogSort {
+  readonly header: string;
+  readonly direction: 'asc' | 'desc';
 }
 
 export interface CatalogDetail<T> {
@@ -44,6 +56,12 @@ interface CatalogTableProps<T> {
   readonly rows: readonly T[];
   readonly idOf: (row: T) => string;
   readonly nameOf: (row: T) => string;
+  /**
+   * How the name is drawn, when it is more than text — a link out to a shop, for
+   * instance. `nameOf` is still what labels the row's actions, so an action keeps
+   * a plain name whatever this renders.
+   */
+  readonly renderName?: (row: T) => ReactNode;
   /** Decorative glyph before the name on the phone layout. */
   readonly glyphOf?: (row: T) => string;
   /**
@@ -66,6 +84,10 @@ interface CatalogTableProps<T> {
   readonly detailBadge?: string;
   /** Extra content under the figures of an open row; nothing is rendered when it returns undefined. */
   readonly detailFooter?: (row: T) => ReactNode;
+  /** Sorts the name column; the caller decides what a name compares as. */
+  readonly nameSortBy?: (row: T) => string | number | undefined;
+  readonly sort?: CatalogSort;
+  readonly onSort?: (header: string) => void;
   readonly narrow: boolean;
   /** Id of the row unfolded on the phone layout; ignored when wide. */
   readonly expandedId?: string;
@@ -79,10 +101,53 @@ interface CatalogTableProps<T> {
   readonly onDelete?: (row: T) => void;
 }
 
+/**
+ * A header that sorts when it can (FOR-199), on a phone as much as on a laptop: a catalog of
+ * hundreds is read by ordering it, and that is not a desktop-only need.
+ *
+ * <p>A button inside the cell rather than a click handler on the cell itself, so it is reachable by
+ * keyboard and announced as what it is. `aria-sort` goes on the header, which is where assistive
+ * tech looks for it.
+ */
+function SortableHeader({
+  header,
+  sortable,
+  sort,
+  onSort,
+  className,
+}: {
+  readonly header: string;
+  readonly sortable: boolean;
+  readonly sort?: CatalogSort;
+  readonly onSort?: (header: string) => void;
+  readonly className?: string;
+}) {
+  const active = sort?.header === header;
+  return (
+    <th
+      scope="col"
+      className={className}
+      aria-sort={active ? (sort.direction === 'asc' ? 'ascending' : 'descending') : undefined}
+    >
+      {sortable && onSort ? (
+        <button type="button" className={styles.sortButton} onClick={() => onSort(header)}>
+          {header}
+          <span className={styles.sortMark} aria-hidden="true">
+            {active ? (sort.direction === 'asc' ? '▲' : '▼') : '↕'}
+          </span>
+        </button>
+      ) : (
+        header
+      )}
+    </th>
+  );
+}
+
 export function CatalogTable<T>({
   rows,
   idOf,
   nameOf,
+  renderName,
   glyphOf,
   mediaOf,
   extraActions,
@@ -93,6 +158,9 @@ export function CatalogTable<T>({
   details,
   detailBadge,
   detailFooter,
+  nameSortBy,
+  sort,
+  onSort,
   narrow,
   expandedId,
   onToggle,
@@ -104,11 +172,21 @@ export function CatalogTable<T>({
       <table className={`${styles.table} ${styles.compact}`} aria-label={label}>
         <thead>
           <tr>
-            <th scope="col">{nameHeader}</th>
+            <SortableHeader
+              header={nameHeader}
+              sortable={nameSortBy !== undefined}
+              sort={sort}
+              onSort={onSort}
+            />
             {compactColumns.map((column) => (
-              <th key={column.header} scope="col" className={styles.numeric}>
-                {column.header}
-              </th>
+              <SortableHeader
+                key={column.header}
+                header={column.header}
+                sortable={column.sortBy !== undefined}
+                sort={sort}
+                onSort={onSort}
+                className={styles.numeric}
+              />
             ))}
           </tr>
         </thead>
@@ -209,15 +287,21 @@ export function CatalogTable<T>({
     <table className={styles.table} aria-label={label}>
       <thead>
         <tr>
-          <th scope="col">{nameHeader}</th>
+          <SortableHeader
+            header={nameHeader}
+            sortable={nameSortBy !== undefined}
+            sort={sort}
+            onSort={onSort}
+          />
           {columns.map((column) => (
-            <th
+            <SortableHeader
               key={column.header}
-              scope="col"
+              header={column.header}
+              sortable={column.sortBy !== undefined}
+              sort={sort}
+              onSort={onSort}
               className={column.numeric ? styles.numeric : undefined}
-            >
-              {column.header}
-            </th>
+            />
           ))}
           <th scope="col" className={styles.actionsHeader}>
             Acciones
@@ -237,7 +321,7 @@ export function CatalogTable<T>({
                     {glyphOf(row)}
                   </span>
                 )}
-                {nameOf(row)}
+                {renderName?.(row) ?? nameOf(row)}
               </span>
             </td>
             {columns.map((column) => (

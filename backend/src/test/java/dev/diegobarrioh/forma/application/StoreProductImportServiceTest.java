@@ -194,4 +194,55 @@ class StoreProductImportServiceTest {
       return rows.remove(id) != null;
     }
   }
+
+  /**
+   * Searching by text, for the products our food catalog cannot name (FOR-199). The seeded rows
+   * that matched nothing — whey protein, boniato — are exactly the case: there is no food to start
+   * from, so the admin types what they are looking for.
+   */
+  @Test
+  void searchesTheShelfByText() {
+    mercadona.serve(
+        product("1", "Almendra natural Hacendado"),
+        product("2", "Almendra molida Hacendado"),
+        product("3", "Detergente líquido"));
+
+    assertThat(service.searchFor("almendra", Store.MERCADONA))
+        .extracting(ImportableProduct::name)
+        .containsExactly("Almendra molida Hacendado", "Almendra natural Hacendado");
+  }
+
+  /** Same normalisation as the food match: a shelf label is not written like a search box. */
+  @Test
+  void searchIgnoresAccentsAndCase() {
+    mercadona.serve(product("1", "Plátano de Canarias IGP"));
+
+    assertThat(service.searchFor("PLATANO", Store.MERCADONA)).hasSize(1);
+  }
+
+  /** Two words mean both, not either: "aceite oliva" must not return every oil in the shop. */
+  @Test
+  void searchRequiresEveryWordTyped() {
+    mercadona.serve(
+        product("1", "Aceite de oliva virgen extra Hacendado"),
+        product("2", "Aceite de girasol Hacendado"));
+
+    assertThat(service.searchFor("aceite oliva", Store.MERCADONA))
+        .extracting(ImportableProduct::name)
+        .containsExactly("Aceite de oliva virgen extra Hacendado");
+  }
+
+  /** A blank search is not a request for the whole shop. */
+  @Test
+  void refusesAnEmptySearch() {
+    mercadona.serve(product("1", "Cualquier cosa"));
+
+    assertThat(service.searchFor("   ", Store.MERCADONA)).isEmpty();
+  }
+
+  @Test
+  void searchRefusesAStoreWithNoSource() {
+    assertThatThrownBy(() -> service.searchFor("avena", Store.CARREFOUR))
+        .isInstanceOf(NotFoundException.class);
+  }
 }

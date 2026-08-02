@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { CatalogSort } from './CatalogTable';
 import { ApiRequestError } from '../../api/client';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { useMountedRef } from '../../hooks/useMountedRef';
@@ -29,12 +30,55 @@ interface CatalogAdminOptions<T> {
   readonly remove: (id: string) => Promise<void>;
   /** Shown when the delete is refused and the server said nothing useful. */
   readonly deleteErrorMessage: string;
+  /**
+   * What each sortable column compares by, keyed by its header (FOR-199). A
+   * header with no entry here does not sort — the right answer for free text
+   * whose alphabetical order means nothing.
+   */
+  readonly sortKeys?: Record<string, (row: T) => string | number | undefined>;
 }
 
-export function useCatalogAdmin<T>({ list, remove, deleteErrorMessage }: CatalogAdminOptions<T>) {
+/**
+ * Sorts the whole catalog, not the page: paging a sorted list means the second
+ * page continues the first, which is the only thing a sort can mean here.
+ *
+ * <p>Numbers compare as numbers and text with `localeCompare`, so "Ñ" and
+ * accented names land where a Spanish reader expects. An absent value sorts last
+ * whichever way the column is pointing: "unknown" is not smaller than 1,55 €, it
+ * is simply not a position.
+ */
+function sortRows<T>(
+  rows: T[],
+  sort: CatalogSort | undefined,
+  sortKeys: Record<string, (row: T) => string | number | undefined> | undefined,
+): T[] {
+  const key = sort && sortKeys?.[sort.header];
+  if (!sort || !key) {
+    return rows;
+  }
+  const direction = sort.direction === 'asc' ? 1 : -1;
+  return [...rows].sort((left, right) => {
+    const a = key(left);
+    const b = key(right);
+    if (a === undefined || a === '') return b === undefined || b === '' ? 0 : 1;
+    if (b === undefined || b === '') return -1;
+    if (typeof a === 'number' && typeof b === 'number') {
+      return (a - b) * direction;
+    }
+    return String(a).localeCompare(String(b), 'es') * direction;
+  });
+}
+
+export function useCatalogAdmin<T>({
+  list,
+  remove,
+  deleteErrorMessage,
+  sortKeys,
+}: CatalogAdminOptions<T>) {
   const mountedRef = useMountedRef();
   const [state, setState] = useState<CatalogState<T>>({ status: 'loading' });
   const [page, setPage] = useState(0);
+  const [sort, setSort] = useState<CatalogSort | undefined>(undefined);
   const [expandedId, setExpandedId] = useState<string | undefined>(undefined);
   const [pending, setPending] = useState(false);
   const [actionError, setActionError] = useState<string | undefined>(undefined);
@@ -55,7 +99,8 @@ export function useCatalogAdmin<T>({ list, remove, deleteErrorMessage }: Catalog
     load();
   }, [load]);
 
-  const rows = state.status === 'ready' ? state.rows : [];
+  const unsorted = state.status === 'ready' ? state.rows : [];
+  const rows = sortRows(unsorted, sort, sortKeys);
   const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   // Clamped on read rather than corrected in an effect: deleting the last row of
   // the last page shrinks the catalog under the current page, and a render that
@@ -80,6 +125,17 @@ export function useCatalogAdmin<T>({ list, remove, deleteErrorMessage }: Catalog
     [remove, load, deleteErrorMessage],
   );
 
+  /** A third click does not clear the sort: a table with no order is not a state anybody asks for. */
+  const toggleSort = useCallback((header: string) => {
+    setSort((current) =>
+      current?.header === header
+        ? { header, direction: current.direction === 'asc' ? 'desc' : 'asc' }
+        : { header, direction: 'asc' },
+    );
+    // A new order makes page 4 meaningless.
+    setPage(0);
+  }, []);
+
   const goToPage = useCallback((next: number) => {
     setPage(next);
     // The open row belongs to the page that just left.
@@ -100,6 +156,8 @@ export function useCatalogAdmin<T>({ list, remove, deleteErrorMessage }: Catalog
     narrow,
     expandedId,
     toggle,
+    sort,
+    toggleSort,
     pending,
     actionError,
     setActionError,

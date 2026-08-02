@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
+import { TextField } from '../../components/FormField';
+import { Icon } from '../../components/Icon';
 import { LoadingState } from '../../components/LoadingState';
 import { ApiRequestError } from '../../api/client';
 import type { CatalogFood } from '../../api/foods';
 import {
   listStoreSuggestions,
+  searchStoreProducts,
   type Store,
   type StoreProduct,
   type StoreSuggestion,
@@ -31,8 +34,12 @@ import styles from './ImportFromStore.module.css';
  */
 interface ImportFromStoreProps {
   readonly store: Store;
-  /** The food being shopped for. */
-  readonly food: CatalogFood;
+  /**
+   * The food being shopped for, when the import started from a row of the Macros
+   * tab. Absent means the admin is searching by name instead — the way in for
+   * everything our own catalog cannot name.
+   */
+  readonly food?: CatalogFood;
   readonly onCancel: () => void;
   /** Hands over the draft for the create form to open on. */
   readonly onPicked: (draft: StoreProduct) => void;
@@ -45,9 +52,38 @@ type State =
   | { readonly status: 'ready'; readonly suggestions: StoreSuggestion[] };
 
 export function ImportFromStore({ store, food, onCancel, onPicked }: ImportFromStoreProps) {
-  const [state, setState] = useState<State>({ status: 'loading' });
+  const [state, setState] = useState<State>(
+    // Nothing to show until something is typed: a search box that answers before
+    // being asked would be listing the whole shop.
+    food ? { status: 'loading' } : { status: 'idle' },
+  );
+  const [query, setQuery] = useState('');
+
+  const failed = (caught: unknown): State => ({
+    status: 'error',
+    // The shop being unreachable is a 502 and reads as its own sentence:
+    // "no existe" would be a different, wrong answer.
+    message:
+      caught instanceof ApiRequestError
+        ? caught.message
+        : `No se pudo consultar el catálogo de ${STORE_LABELS[store]}. Inténtalo de nuevo.`,
+  });
+
+  function search(event: FormEvent) {
+    event.preventDefault();
+    if (query.trim() === '') {
+      return;
+    }
+    setState({ status: 'loading' });
+    searchStoreProducts(query.trim(), store)
+      .then((suggestions) => setState({ status: 'ready', suggestions }))
+      .catch((caught: unknown) => setState(failed(caught)));
+  }
 
   useEffect(() => {
+    if (!food) {
+      return undefined;
+    }
     let active = true;
     setState({ status: 'loading' });
     listStoreSuggestions(food.id, store)
@@ -55,21 +91,14 @@ export function ImportFromStore({ store, food, onCancel, onPicked }: ImportFromS
         if (active) setState({ status: 'ready', suggestions });
       })
       .catch((caught: unknown) => {
-        if (!active) return;
-        setState({
-          status: 'error',
-          // The shop being unreachable is a 502 and reads as its own sentence:
-          // "no existe" would be a different, wrong answer.
-          message:
-            caught instanceof ApiRequestError
-              ? caught.message
-              : `No se pudo consultar el catálogo de ${STORE_LABELS[store]}. Inténtalo de nuevo.`,
-        });
+        if (active) setState(failed(caught));
       });
     return () => {
       active = false;
     };
-  }, [food.id, store]);
+    // `failed` closes over nothing that changes between renders that matters here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [food, store]);
 
   /**
    * The draft handed to the create form. The id is derived from the shop's own,
@@ -80,7 +109,7 @@ export function ImportFromStore({ store, food, onCancel, onPicked }: ImportFromS
     id: `${store.toLowerCase()}-${suggestion.externalId}`,
     store,
     name: suggestion.name,
-    foodId: food.id,
+    foodId: food?.id,
     externalId: suggestion.externalId,
     imageUrl: suggestion.imageUrl,
     packageSize: suggestion.packaging,
@@ -93,7 +122,24 @@ export function ImportFromStore({ store, food, onCancel, onPicked }: ImportFromS
 
   return (
     <div className={styles.wrapper}>
-      <p className={styles.lead}>{`Productos de ${STORE_LABELS[store]} para ${food.name}.`}</p>
+      {food ? (
+        <p className={styles.lead}>{`Productos de ${STORE_LABELS[store]} para ${food.name}.`}</p>
+      ) : (
+        <form className={styles.search} onSubmit={search}>
+          <TextField
+            id="import-search"
+            label={`Buscar en ${STORE_LABELS[store]}`}
+            value={query}
+            autoFocus
+            placeholder="almendra natural"
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          <button type="submit" className={styles.searchButton} disabled={query.trim() === ''}>
+            <Icon name="search" size={16} />
+            Buscar
+          </button>
+        </form>
+      )}
 
       {state.status === 'loading' && (
         <LoadingState message={`Buscando en ${STORE_LABELS[store]}…`} />
@@ -103,6 +149,10 @@ export function ImportFromStore({ store, food, onCancel, onPicked }: ImportFromS
         <p className={styles.error} role="alert">
           {state.message}
         </p>
+      )}
+
+      {state.status === 'idle' && (
+        <p className={styles.empty}>Escribe parte del nombre del producto y pulsa Buscar.</p>
       )}
 
       {state.status === 'ready' && state.suggestions.length === 0 && (
