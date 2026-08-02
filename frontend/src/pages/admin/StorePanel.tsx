@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ErrorState } from '../../components/ErrorState';
@@ -14,6 +15,7 @@ import {
   type StoreProduct,
 } from '../../api/storeProducts';
 import { CatalogTable, type CatalogColumn, type CatalogDetail } from './CatalogTable';
+import { ImportFromStore } from './ImportFromStore';
 import { Pagination } from './Pagination';
 import { StoreProductForm } from './StoreProductForm';
 import {
@@ -101,11 +103,14 @@ export function StorePanel({ creating, onCreateClose }: StorePanelProps) {
   const [editing, setEditing] = useState<StoreProduct | undefined>(undefined);
   const [deleting, setDeleting] = useState<StoreProduct | undefined>(undefined);
   const [foods, setFoods] = useState<CatalogFood[]>([]);
+  const [importing, setImporting] = useState(false);
+  const [draft, setDraft] = useState<StoreProduct | undefined>(undefined);
 
   // Closes whichever way the form was opened: an edit from a row, or a create
   // from the header — the panel does not own the second one.
   const closeForm = () => {
     setEditing(undefined);
+    setDraft(undefined);
     onCreateClose();
   };
   const details = useMemo(
@@ -151,6 +156,18 @@ export function StorePanel({ creating, onCreateClose }: StorePanelProps) {
             ))}
           </SelectField>
         </div>
+        {/* Secondary next to the header's "+ Producto": importing is the
+            shortcut, typing it in is always available. */}
+        <Button
+          variant="secondary"
+          type="button"
+          onClick={() => {
+            catalog.setActionError(undefined);
+            setImporting(true);
+          }}
+        >
+          Importar de Mercadona
+        </Button>
       </div>
 
       {catalog.state.status === 'loading' && <LoadingState message="Cargando el catálogo…" />}
@@ -190,10 +207,25 @@ export function StorePanel({ creating, onCreateClose }: StorePanelProps) {
         </Card>
       )}
 
-      {(editing || creating) && (
+      {importing && (
+        <Modal title="Importar de Mercadona" onClose={() => setImporting(false)}>
+          <ImportFromStore
+            store="MERCADONA"
+            foods={foods}
+            onCancel={() => setImporting(false)}
+            onPicked={(picked) => {
+              setImporting(false);
+              setDraft(picked);
+            }}
+          />
+        </Modal>
+      )}
+
+      {(editing || creating || draft) && (
         <Modal title={editing ? `Editar ${editing.name}` : 'Nuevo producto'} onClose={closeForm}>
           <StoreProductForm
             product={editing}
+            draft={draft}
             foods={foods}
             onCancel={closeForm}
             onSaved={() => {

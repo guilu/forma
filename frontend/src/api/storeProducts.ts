@@ -86,3 +86,34 @@ export function deleteStoreProduct(id: string, client: ApiClient = apiClient): P
     method: 'DELETE',
   });
 }
+
+/**
+ * A product as the store's own catalogue describes it, before it is ours.
+ *
+ * <p>Not a {@link StoreProduct}: it carries no `foodId` and no aisle of ours,
+ * because those are the two things the shop cannot tell us and an admin decides
+ * on import. `storeCategory` is the shop's own shelf name, offered as a hint.
+ */
+export interface StoreSuggestion {
+  readonly externalId: string;
+  readonly name: string;
+  readonly packaging?: string;
+  readonly priceEur?: number;
+  readonly url?: string;
+  readonly ean?: string;
+  readonly storeCategory?: string;
+}
+
+/**
+ * Products from `store` that look like the food at `foodId`, best first. Admin
+ * only. Rejects with 404 for an unknown food or a chain with no source, and with
+ * 502 when the shop itself cannot be reached — the screen tells those apart.
+ */
+export function listStoreSuggestions(
+  foodId: string,
+  store: Store,
+  client: ApiClient = apiClient,
+): Promise<StoreSuggestion[]> {
+  const query = `?foodId=${encodeURIComponent(foodId)}&store=${encodeURIComponent(store)}`;
+  return client.request<StoreSuggestion[]>(`${STORE_PRODUCTS_PATH}/suggestions${query}`);
+}
