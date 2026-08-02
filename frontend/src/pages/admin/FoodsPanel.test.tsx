@@ -118,6 +118,32 @@ describe('AdminPage — importing a store product for a food', () => {
    * picker knew how to do. It updates the row that exists instead — and keeps the aisle and notes
    * an admin filed it under, which the shop knows nothing about.
    */
+  /**
+   * The shop's id and photo are provenance, not fields: the form never shows them, so it used to
+   * drop them on save. Every imported product was then born unable to refresh itself and without a
+   * picture — which is exactly what the catalog looked like.
+   */
+  it('keeps the shop id and photo when saving an imported product', async () => {
+    createMock.mockResolvedValue({
+      id: 'mercadona-4241',
+      store: 'MERCADONA',
+      name: 'Copos de avena Brüggen',
+      category: 'OTROS',
+    });
+    const user = await openImportFor('Copos de avena');
+    const picker = await screen.findByRole('dialog', { name: /Importar de Mercadona/ });
+    await user.click(within(picker).getByRole('button', { name: /Usar Copos de avena Brüggen/ }));
+
+    const form = await screen.findByRole('dialog', { name: /Nuevo producto/ });
+    await user.click(within(form).getByRole('button', { name: 'Guardar' }));
+
+    await waitFor(() =>
+      expect(createMock).toHaveBeenCalledWith(
+        expect.objectContaining({ externalId: '4241', imageUrl: suggestion.imageUrl }),
+      ),
+    );
+  });
+
   it('updates the product when it is already in the catalog', async () => {
     const stored: StoreProduct = {
       id: 'mercadona-4241',

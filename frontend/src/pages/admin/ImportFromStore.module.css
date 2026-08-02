@@ -9,6 +9,41 @@
   color: var(--color-text-muted);
 }
 
+/* The field grows, the button keeps its size: a search box narrower than its own
+   verb is the wrong way round. */
+.search {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+.search > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ui-guidelines: 44px minimum touch target. */
+.searchButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  font: inherit;
+  font-weight: 600;
+  color: var(--color-accent-contrast);
+  background-color: var(--color-accent);
+  border: 0;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.searchButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .results {
   display: flex;
   flex-direction: column;

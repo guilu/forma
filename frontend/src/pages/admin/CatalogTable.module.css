@@ -287,3 +287,36 @@
   gap: var(--space-2);
   min-width: 0;
 }
+
+/* The header stays a header: the button borrows its type and colour and only
+   adds the affordance. */
+.sortButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.sortButton:hover {
+  color: var(--color-text);
+}
+
+/* Dim until the column is the sorted one, so the active arrow is the one that
+   catches the eye rather than a row of identical marks. */
+.sortMark {
+  font-size: 0.7em;
+  opacity: 0.5;
+}
+
+.numeric .sortButton {
+  /* Right-aligned columns sort from their own edge. */
+  justify-content: flex-end;
+  width: 100%;
+}

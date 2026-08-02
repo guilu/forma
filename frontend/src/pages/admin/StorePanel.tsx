@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ErrorState } from '../../components/ErrorState';
@@ -17,6 +18,7 @@ import {
   type StoreProduct,
 } from '../../api/storeProducts';
 import { CatalogTable, type CatalogColumn, type CatalogDetail } from './CatalogTable';
+import { ImportFromStore } from './ImportFromStore';
 import { Pagination } from './Pagination';
 import { ProductThumbnail } from './ProductThumbnail';
 import { StoreProductForm } from './StoreProductForm';
@@ -55,7 +57,11 @@ const columnsWith = (
   categoryLabel: (product: StoreProduct) => string,
   categoryGlyphOf: (product: StoreProduct) => string,
 ): CatalogColumn<StoreProduct>[] => [
-  { header: 'Tienda', value: (product) => STORE_LABELS[product.store] },
+  {
+    header: 'Tienda',
+    value: (product) => STORE_LABELS[product.store],
+    sortBy: (product) => STORE_LABELS[product.store],
+  },
   {
     header: 'Categoría',
     value: (product) => (
@@ -64,13 +70,26 @@ const columnsWith = (
         {categoryLabel(product)}
       </span>
     ),
+    sortBy: categoryLabel,
   },
+  // No sortBy: the format is free text ("Caja 0.8 kg", "kg", "Paquete 12 ud")
+  // and its alphabetical order carries no meaning.
   { header: 'Formato', value: packageLabel },
-  { header: 'Precio', value: (product) => priceLabel(product.priceEur), numeric: true },
+  {
+    header: 'Precio',
+    value: (product) => priceLabel(product.priceEur),
+    numeric: true,
+    sortBy: (product) => product.priceEur,
+  },
 ];
 
 const COMPACT_COLUMNS: CatalogColumn<StoreProduct>[] = [
-  { header: 'Precio', value: (product) => priceLabel(product.priceEur), numeric: true },
+  {
+    header: 'Precio',
+    value: (product) => priceLabel(product.priceEur),
+    numeric: true,
+    sortBy: (product) => product.priceEur,
+  },
 ];
 
 /**
@@ -112,6 +131,18 @@ interface StorePanelProps {
   readonly onCreateClose: () => void;
 }
 
+/**
+ * What each column sorts by (FOR-199), keyed by its header. Formato is absent on purpose — see the
+ * column definition. The category sorts by its label rather than its code, because the label is
+ * what is on screen and an alphabet nobody can see is not an order.
+ */
+const SORT_KEYS: Record<string, (product: StoreProduct) => string | number | undefined> = {
+  Producto: (product) => product.name,
+  Tienda: (product) => STORE_LABELS[product.store],
+  Categoría: (product) => SHOPPING_CATEGORY_LABELS[product.category],
+  Precio: (product) => product.priceEur,
+};
+
 export function StorePanel({ creating, onCreateClose }: StorePanelProps) {
   const notify = useNotify();
   const [store, setStore] = useState<Store | ''>('');
@@ -122,6 +153,7 @@ export function StorePanel({ creating, onCreateClose }: StorePanelProps) {
     list,
     remove: deleteStoreProduct,
     deleteErrorMessage: 'No se pudo eliminar el producto. Inténtalo de nuevo.',
+    sortKeys: SORT_KEYS,
   });
   const [editing, setEditing] = useState<StoreProduct | undefined>(undefined);
   const [deleting, setDeleting] = useState<StoreProduct | undefined>(undefined);
@@ -130,6 +162,8 @@ export function StorePanel({ creating, onCreateClose }: StorePanelProps) {
   // Closes whichever way the form was opened: an edit from a row, or a create
   // from the header — the panel does not own the second one.
   const [refreshing, setRefreshing] = useState<string | undefined>(undefined);
+  const [searching, setSearching] = useState(false);
+  const [draft, setDraft] = useState<StoreProduct | undefined>(undefined);
 
   /**
    * Re-reads one product from its shop. Reloads the list afterwards rather than
@@ -215,7 +249,48 @@ export function StorePanel({ creating, onCreateClose }: StorePanelProps) {
             ))}
           </SelectField>
         </div>
+        {/* Disabled until a chain is chosen: "Todas" is not a shop anybody can
+            search, and a button that asks which one after being pressed is a
+            question the filter beside it already answers. */}
+        <Button
+          variant="secondary"
+          type="button"
+          disabled={store === ''}
+          onClick={() => {
+            catalog.setActionError(undefined);
+            setSearching(true);
+          }}
+        >
+          Importar desde tienda
+        </Button>
       </div>
+
+      {searching && store !== '' && (
+        <Modal title={`Importar de ${STORE_LABELS[store]}`} onClose={() => setSearching(false)}>
+          <ImportFromStore
+            store={store}
+            onCancel={() => setSearching(false)}
+            onPicked={(picked) => {
+              setSearching(false);
+              setDraft(picked);
+            }}
+          />
+        </Modal>
+      )}
+
+      {draft && (
+        <Modal title="Nuevo producto" onClose={() => setDraft(undefined)}>
+          <StoreProductForm
+            draft={draft}
+            foods={foods}
+            onCancel={() => setDraft(undefined)}
+            onSaved={() => {
+              setDraft(undefined);
+              catalog.reload();
+            }}
+          />
+        </Modal>
+      )}
 
       {catalog.state.status === 'loading' && <LoadingState message="Cargando el catálogo…" />}
       {catalog.state.status === 'error' && (
@@ -227,6 +302,23 @@ export function StorePanel({ creating, onCreateClose }: StorePanelProps) {
             rows={catalog.visible}
             idOf={(product) => product.id}
             nameOf={(product) => product.name}
+            // The wide table had no way through to the shop: the link out lived
+            // only in the phone layout's disclosure, and the name is the door
+            // everybody reaches for anyway.
+            renderName={(product) =>
+              product.url ? (
+                <a
+                  className={styles.nameLink}
+                  href={product.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {product.name}
+                </a>
+              ) : (
+                product.name
+              )
+            }
             mediaOf={(product) => <ProductThumbnail url={product.imageUrl} />}
             extraActions={(product) =>
               // Only what a shop can be asked about: a hand-typed row has no
@@ -249,6 +341,9 @@ export function StorePanel({ creating, onCreateClose }: StorePanelProps) {
             compactColumns={COMPACT_COLUMNS}
             details={details}
             detailFooter={storeLink}
+            nameSortBy={(product) => product.name}
+            sort={catalog.sort}
+            onSort={catalog.toggleSort}
             narrow={catalog.narrow}
             expandedId={catalog.expandedId}
             onToggle={catalog.toggle}

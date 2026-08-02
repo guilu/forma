@@ -9,6 +9,7 @@ import {
   deleteStoreProduct,
   listStoreProducts,
   refreshStoreProduct,
+  searchStoreProducts,
   updateStoreProduct,
   type StoreProduct,
 } from '../../api/storeProducts';
@@ -25,6 +26,7 @@ vi.mock('../../api/storeProducts', () => ({
   updateStoreProduct: vi.fn(),
   deleteStoreProduct: vi.fn(),
   listStoreSuggestions: vi.fn(),
+  searchStoreProducts: vi.fn(),
   refreshStoreProduct: vi.fn(),
 }));
 
@@ -32,6 +34,7 @@ const listMock = vi.mocked(listStoreProducts);
 const updateMock = vi.mocked(updateStoreProduct);
 const deleteMock = vi.mocked(deleteStoreProduct);
 const refreshMock = vi.mocked(refreshStoreProduct);
+const searchMock = vi.mocked(searchStoreProducts);
 
 const oats: StoreProduct = {
   id: 'mercadona-oats',
@@ -268,6 +271,140 @@ describe('AdminPage — the shopping catalog tab', () => {
 
       expect(await screen.findByRole('alert')).toHaveTextContent(/No se pudo actualizar/);
       expect(screen.getByText('Copos de avena Brüggen')).toBeInTheDocument();
+    });
+  });
+
+  /**
+   * A catalog of hundreds is read by sorting it. Every column sorts except Formato, whose values
+   * are free text ("Caja 0.8 kg", "kg", "Paquete 12 ud") and would sort alphabetically into an
+   * order that means nothing.
+   */
+  describe('sorting', () => {
+    const names = () =>
+      screen
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => row.querySelector('td')?.textContent);
+
+    it('sorts by a column and reverses on a second click', async () => {
+      const user = await openStoreTab();
+      await screen.findByText('Salmón');
+
+      await user.click(screen.getByRole('button', { name: 'Producto' }));
+      expect(names()).toEqual(['Copos de avena Brüggen', 'Salmón']);
+
+      await user.click(screen.getByRole('button', { name: 'Producto' }));
+      expect(names()).toEqual(['Salmón', 'Copos de avena Brüggen']);
+    });
+
+    it('sorts numbers as numbers, not as text', async () => {
+      listMock.mockResolvedValue([
+        { ...oats, id: 'a', name: 'A', priceEur: 9 },
+        { ...oats, id: 'b', name: 'B', priceEur: 10 },
+        { ...oats, id: 'c', name: 'C', priceEur: 1.5 },
+      ]);
+      const user = await openStoreTab();
+      await screen.findByText('A');
+
+      await user.click(screen.getByRole('button', { name: 'Precio' }));
+
+      expect(names()).toEqual(['C', 'A', 'B']);
+    });
+
+    it('does not offer sorting on the free-text format column', async () => {
+      await openStoreTab();
+      await screen.findByText('Salmón');
+
+      expect(screen.queryByRole('button', { name: 'Formato' })).not.toBeInTheDocument();
+    });
+
+    /** The state of the sort has to be announced, not just drawn. */
+    it('tells assistive tech which way a column is sorted', async () => {
+      const user = await openStoreTab();
+      await screen.findByText('Salmón');
+
+      await user.click(screen.getByRole('button', { name: 'Producto' }));
+
+      expect(screen.getByRole('columnheader', { name: 'Producto' })).toHaveAttribute(
+        'aria-sort',
+        'ascending',
+      );
+    });
+  });
+
+  /**
+   * The wide table had no way through to the shop: the link out lived only in the phone layout's
+   * disclosure. The product's name is the obvious door.
+   */
+  it('links the product name to its page in the shop', async () => {
+    await openStoreTab();
+    await screen.findByText('Copos de avena Brüggen');
+
+    const link = screen.getByRole('link', { name: 'Copos de avena Brüggen' });
+    expect(link).toHaveAttribute('href', 'https://tienda.mercadona.es/product/86341');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
+  });
+
+  /**
+   * Importing from a food only reaches what our own catalog names. Boniato and whey protein are
+   * the proof: V40 could not match them, and there is no food row to start from for anything the
+   * catalog does not describe. So the store itself is searchable by name.
+   */
+  describe('importing by searching the shop', () => {
+    it('waits for a specific chain before offering the search', async () => {
+      const user = await openStoreTab();
+      await screen.findByText('Salmón');
+
+      expect(screen.getByRole('button', { name: 'Importar desde tienda' })).toBeDisabled();
+
+      await user.selectOptions(screen.getByLabelText('Tienda'), 'MERCADONA');
+
+      expect(screen.getByRole('button', { name: 'Importar desde tienda' })).toBeEnabled();
+    });
+
+    it('searches the shop by name and prefills the form with a result', async () => {
+      searchMock.mockResolvedValue([
+        {
+          externalId: '86809',
+          name: 'Almendra natural Hacendado',
+          packaging: 'Paquete 0.2 kg',
+          priceEur: 2.3,
+          storeCategory: 'Frutos secos y fruta desecada',
+          imageUrl: 'https://prod-mercadona.imgix.net/images/x.jpg?fit=crop&h=24&w=24',
+        },
+      ]);
+      const user = await openStoreTab();
+      await screen.findByText('Salmón');
+      await user.selectOptions(screen.getByLabelText('Tienda'), 'MERCADONA');
+      await user.click(screen.getByRole('button', { name: 'Importar desde tienda' }));
+
+      const dialog = await screen.findByRole('dialog', { name: /Importar de Mercadona/ });
+      await user.type(within(dialog).getByLabelText(/Buscar en Mercadona/), 'almendra');
+      await user.click(within(dialog).getByRole('button', { name: /Buscar/ }));
+
+      await waitFor(() => expect(searchMock).toHaveBeenCalledWith('almendra', 'MERCADONA'));
+      await user.click(
+        await within(dialog).findByRole('button', { name: /Usar Almendra natural Hacendado/ }),
+      );
+
+      const form = await screen.findByRole('dialog', { name: /Nuevo producto/ });
+      expect(within(form).getByLabelText('Identificador')).toHaveValue('mercadona-86809');
+      expect(within(form).getByLabelText('Precio (€)')).toHaveValue(2.3);
+      // Nothing to link it to: this search started from the shop, not from a food.
+      expect(within(form).getByLabelText('Alimento enlazado')).toHaveValue('');
+    });
+
+    /** Asking before anything is typed would be a request for the whole shop. */
+    it('asks for something to search for before searching', async () => {
+      const user = await openStoreTab();
+      await screen.findByText('Salmón');
+      await user.selectOptions(screen.getByLabelText('Tienda'), 'MERCADONA');
+      await user.click(screen.getByRole('button', { name: 'Importar desde tienda' }));
+
+      const dialog = await screen.findByRole('dialog', { name: /Importar de Mercadona/ });
+      expect(within(dialog).getByRole('button', { name: /Buscar/ })).toBeDisabled();
+      expect(searchMock).not.toHaveBeenCalled();
     });
   });
 });
