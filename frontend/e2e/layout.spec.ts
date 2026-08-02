@@ -692,3 +692,58 @@ test.describe('the admin catalog on a phone', () => {
     await expect(page.getByRole('button', { name: 'Página siguiente' })).toBeDisabled();
   });
 });
+
+/**
+ * Two headers that put their action on its own row on a phone, pushing everything below them down
+ * for something that fits beside the title. The dashboard already gets this right; these two follow
+ * it.
+ */
+test.describe('page headers on a phone', () => {
+  const sharesARowWith = async (
+    first: { x: number; y: number; width: number; height: number },
+    second: { x: number; y: number; width: number; height: number },
+  ) => {
+    const overlap =
+      Math.min(first.y + first.height, second.y + second.height) - Math.max(first.y, second.y);
+    return { overlap, secondStartsAfter: second.x > first.x };
+  };
+
+  test.beforeEach(async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 800 });
+  });
+
+  test('the admin catalog puts its add action beside the title', async ({ page }) => {
+    await page.route('**/api/v1/auth/me', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ id: 'e2e-user', email: 'e2e@forma.test', role: 'ADMIN' }),
+      }),
+    );
+    await page.route('**/api/v1/foods', (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }),
+    );
+    await page.goto('/app/admin');
+
+    const title = await page.getByRole('heading', { level: 1 }).boundingBox();
+    const action = await page.getByRole('button', { name: '+ Alimento' }).boundingBox();
+    const { overlap, secondStartsAfter } = await sharesARowWith(title!, action!);
+
+    expect(overlap, `The action sits on its own row (overlap ${overlap}px)`).toBeGreaterThan(0);
+    expect(secondStartsAfter, 'The action is not to the right of the title').toBe(true);
+  });
+
+  test('training puts its date beside the title', async ({ page }) => {
+    await page.goto('/app/training');
+
+    const title = await page.getByRole('heading', { level: 1 }).boundingBox();
+    // Matches the month in either format — the long "Domingo, 2 De Agosto" this
+    // header used to render and the compact "2 ago 2026" it renders now — so the
+    // test fails on the layout it is about rather than timing out on a locator.
+    const date = await page.getByText(/\bago/i).first().boundingBox();
+    const { overlap, secondStartsAfter } = await sharesARowWith(title!, date!);
+
+    expect(overlap, `The date sits on its own row (overlap ${overlap}px)`).toBeGreaterThan(0);
+    expect(secondStartsAfter, 'The date is not to the right of the title').toBe(true);
+  });
+});

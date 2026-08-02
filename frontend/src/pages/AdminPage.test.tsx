@@ -136,6 +136,38 @@ describe('AdminPage', () => {
   });
 
   /**
+   * The add action lives in the page header, beside the title, and names what the open tab creates.
+   * It used to sit inside the panel, which on a phone pushed the table a row further down for a
+   * button the header had room for.
+   */
+  it('names the add action after what the open tab creates', async () => {
+    listMock.mockResolvedValue([oats]);
+    const user = userEvent.setup();
+
+    renderPage();
+    expect(await screen.findByRole('button', { name: '+ Alimento' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'Compra' }));
+
+    expect(screen.getByRole('button', { name: '+ Producto' })).toBeInTheDocument();
+    // Exactly one add action on screen: the header's, for the open tab.
+    expect(screen.queryByRole('button', { name: '+ Alimento' })).not.toBeInTheDocument();
+  });
+
+  it('opens an empty form from the header action', async () => {
+    listMock.mockResolvedValue([oats]);
+    const user = userEvent.setup();
+
+    renderPage();
+    await screen.findByText('Copos de avena');
+
+    await user.click(screen.getByRole('button', { name: '+ Alimento' }));
+
+    const dialog = await screen.findByRole('dialog', { name: /Nuevo alimento/ });
+    expect(within(dialog).getByLabelText('Nombre')).toHaveValue('');
+  });
+
+  /**
    * The catalog is already 23 foods and grows with every store sheet loaded into
    * it, so the table pages rather than rendering the lot.
    */

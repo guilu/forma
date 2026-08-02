@@ -1,5 +1,4 @@
 import { useCallback, useState } from 'react';
-import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ErrorState } from '../../components/ErrorState';
@@ -44,7 +43,13 @@ const DETAILS: CatalogDetail<CatalogFood>[] = [
   { glyph: '💧', label: 'Grasa', value: (food) => `${food.fatG} g` },
 ];
 
-export function FoodsPanel() {
+interface FoodsPanelProps {
+  /** The header asked for a new one; the form opens on this. */
+  readonly creating: boolean;
+  readonly onCreateClose: () => void;
+}
+
+export function FoodsPanel({ creating, onCreateClose }: FoodsPanelProps) {
   const list = useCallback(() => listFoods(), []);
   const catalog = useCatalogAdmin<CatalogFood>({
     list,
@@ -54,6 +59,13 @@ export function FoodsPanel() {
   const [editing, setEditing] = useState<CatalogFood | undefined>(undefined);
   const [deleting, setDeleting] = useState<CatalogFood | undefined>(undefined);
 
+  // Closes whichever way the form was opened: an edit from a row, or a create
+  // from the header — the panel does not own the second one.
+  const closeForm = () => {
+    setEditing(undefined);
+    onCreateClose();
+  };
+
   return (
     <>
       {catalog.actionError && (
@@ -61,18 +73,6 @@ export function FoodsPanel() {
           {catalog.actionError}
         </p>
       )}
-      <div className={styles.toolbar}>
-        <Button
-          variant="accent"
-          type="button"
-          onClick={() => {
-            catalog.setActionError(undefined);
-            setEditing(NEW_FOOD);
-          }}
-        >
-          + Alimento
-        </Button>
-      </div>
       {catalog.state.status === 'loading' && <LoadingState message="Cargando el catálogo…" />}
       {catalog.state.status === 'error' && (
         <ErrorState message="No se pudo cargar el catálogo." onRetry={catalog.reload} />
@@ -110,16 +110,13 @@ export function FoodsPanel() {
         </Card>
       )}
 
-      {editing && (
-        <Modal
-          title={editing === NEW_FOOD ? 'Nuevo alimento' : `Editar ${editing.name}`}
-          onClose={() => setEditing(undefined)}
-        >
+      {(editing || creating) && (
+        <Modal title={editing ? `Editar ${editing.name}` : 'Nuevo alimento'} onClose={closeForm}>
           <FoodForm
-            food={editing === NEW_FOOD ? undefined : editing}
-            onCancel={() => setEditing(undefined)}
+            food={editing}
+            onCancel={closeForm}
             onSaved={() => {
-              setEditing(undefined);
+              closeForm();
               catalog.reload();
             }}
           />
@@ -139,13 +136,3 @@ export function FoodsPanel() {
     </>
   );
 }
-
-/** Sentinel for "the form is open on a food that does not exist yet". */
-const NEW_FOOD = {
-  id: '',
-  name: '',
-  kcal: 0,
-  proteinG: 0,
-  carbsG: 0,
-  fatG: 0,
-} as CatalogFood;

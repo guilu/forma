@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Button } from '../components/Button';
 import { FoodsPanel } from './admin/FoodsPanel';
 import { StorePanel } from './admin/StorePanel';
 import styles from './AdminPage.module.css';
@@ -22,14 +23,25 @@ import styles from './AdminPage.module.css';
  * client-side checks only spare ordinary accounts a screen full of 403s.
  */
 const TABS = [
-  { key: 'macros', label: 'Macros' },
-  { key: 'compra', label: 'Compra' },
+  { key: 'macros', label: 'Macros', action: '+ Alimento' },
+  { key: 'compra', label: 'Compra', action: '+ Producto' },
 ] as const;
 
 type TabKey = (typeof TABS)[number]['key'];
 
 export function AdminPage() {
   const [active, setActive] = useState<TabKey>('macros');
+  // The add action lives in the header, beside the title, so it does not push the
+  // table a row down on a phone. Only this component knows which tab is open, so
+  // it owns the intent and the open panel owns the form.
+  const [creating, setCreating] = useState(false);
+  const tab = TABS.find((candidate) => candidate.key === active) ?? TABS[0];
+
+  const openPanel = (key: TabKey) => {
+    setActive(key);
+    // A form opened for one catalog has no meaning in the other.
+    setCreating(false);
+  };
 
   return (
     <div className={styles.wrapper}>
@@ -38,21 +50,24 @@ export function AdminPage() {
           <h1 className={styles.title}>Administrar</h1>
           <p className={styles.subtitle}>Catálogos compartidos por toda la aplicación.</p>
         </div>
+        <Button variant="accent" type="button" onClick={() => setCreating(true)}>
+          {tab.action}
+        </Button>
       </header>
 
       <div className={styles.tabs} role="tablist" aria-label="Catálogos">
-        {TABS.map((tab) => (
+        {TABS.map((candidate) => (
           <button
-            key={tab.key}
+            key={candidate.key}
             type="button"
             role="tab"
-            id={`tab-${tab.key}`}
-            aria-selected={tab.key === active}
-            aria-controls={`panel-${tab.key}`}
-            className={tab.key === active ? styles.tabActive : styles.tab}
-            onClick={() => setActive(tab.key)}
+            id={`tab-${candidate.key}`}
+            aria-selected={candidate.key === active}
+            aria-controls={`panel-${candidate.key}`}
+            className={candidate.key === active ? styles.tabActive : styles.tab}
+            onClick={() => openPanel(candidate.key)}
           >
-            {tab.label}
+            {candidate.label}
           </button>
         ))}
       </div>
@@ -66,7 +81,11 @@ export function AdminPage() {
         aria-labelledby={`tab-${active}`}
         className={styles.panel}
       >
-        {active === 'macros' ? <FoodsPanel /> : <StorePanel />}
+        {active === 'macros' ? (
+          <FoodsPanel creating={creating} onCreateClose={() => setCreating(false)} />
+        ) : (
+          <StorePanel creating={creating} onCreateClose={() => setCreating(false)} />
+        )}
       </section>
     </div>
   );

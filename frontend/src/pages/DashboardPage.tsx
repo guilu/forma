@@ -14,6 +14,7 @@ import { PlanBanner } from './dashboard/PlanBanner';
 import { WidgetSection } from './dashboard/WidgetSection';
 import { getProfile } from '../api/profile';
 import { listBodyMeasurements, type BodyMeasurement } from '../api/bodyMeasurements';
+import { formatShortDate } from './dateLabel';
 import styles from './DashboardPage.module.css';
 
 /**
@@ -34,16 +35,6 @@ import styles from './DashboardPage.module.css';
  * `specs/FOR-51/ui.md`. Hydration and per-meal calories are placeholder
  * template data — see {@link WaterTracker} / {@link NutritionWidget}.
  */
-const MEASURED_ON = new Intl.DateTimeFormat('es-ES', {
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-});
-
-function capitalize(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1);
-}
-
 export function DashboardPage() {
   // Greeting name comes from the profile (FOR-169): on an empty first-run there
   // is no saved profile, so the greeting stays generic ("Hola 👋") rather than
@@ -120,7 +111,7 @@ export function DashboardPage() {
               <Icon name="chevron" size={16} className={styles.dateArrowPrev} />
             </button>
             <span className={styles.date}>
-              {capitalize(MEASURED_ON.format(new Date(body.history[body.selected].measuredAt)))}
+              {formatShortDate(new Date(body.history[body.selected].measuredAt))}
             </span>
             <button
               type="button"

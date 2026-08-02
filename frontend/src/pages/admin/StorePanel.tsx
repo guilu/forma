@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ErrorState } from '../../components/ErrorState';
@@ -83,7 +82,13 @@ const storeLink = (product: StoreProduct) =>
     </a>
   ) : undefined;
 
-export function StorePanel() {
+interface StorePanelProps {
+  /** The header asked for a new one; the form opens on this. */
+  readonly creating: boolean;
+  readonly onCreateClose: () => void;
+}
+
+export function StorePanel({ creating, onCreateClose }: StorePanelProps) {
   const [store, setStore] = useState<Store | ''>('');
   // Memoised on the filter: `useCatalogAdmin` reloads whenever this changes,
   // which is exactly what picking a chain should do.
@@ -96,6 +101,13 @@ export function StorePanel() {
   const [editing, setEditing] = useState<StoreProduct | undefined>(undefined);
   const [deleting, setDeleting] = useState<StoreProduct | undefined>(undefined);
   const [foods, setFoods] = useState<CatalogFood[]>([]);
+
+  // Closes whichever way the form was opened: an edit from a row, or a create
+  // from the header — the panel does not own the second one.
+  const closeForm = () => {
+    setEditing(undefined);
+    onCreateClose();
+  };
   const details = useMemo(
     () => detailsWith((id) => foods.find((food) => food.id === id)?.name ?? id),
     [foods],
@@ -139,16 +151,6 @@ export function StorePanel() {
             ))}
           </SelectField>
         </div>
-        <Button
-          variant="accent"
-          type="button"
-          onClick={() => {
-            catalog.setActionError(undefined);
-            setEditing(NEW_PRODUCT);
-          }}
-        >
-          + Producto
-        </Button>
       </div>
 
       {catalog.state.status === 'loading' && <LoadingState message="Cargando el catálogo…" />}
@@ -188,17 +190,14 @@ export function StorePanel() {
         </Card>
       )}
 
-      {editing && (
-        <Modal
-          title={editing === NEW_PRODUCT ? 'Nuevo producto' : `Editar ${editing.name}`}
-          onClose={() => setEditing(undefined)}
-        >
+      {(editing || creating) && (
+        <Modal title={editing ? `Editar ${editing.name}` : 'Nuevo producto'} onClose={closeForm}>
           <StoreProductForm
-            product={editing === NEW_PRODUCT ? undefined : editing}
+            product={editing}
             foods={foods}
-            onCancel={() => setEditing(undefined)}
+            onCancel={closeForm}
             onSaved={() => {
-              setEditing(undefined);
+              closeForm();
               catalog.reload();
             }}
           />
@@ -218,11 +217,3 @@ export function StorePanel() {
     </>
   );
 }
-
-/** Sentinel for "the form is open on a product that does not exist yet". */
-const NEW_PRODUCT = {
-  id: '',
-  store: 'MERCADONA',
-  name: '',
-  category: 'OTROS',
-} as StoreProduct;
