@@ -1,0 +1,46 @@
+/* Shared chrome of an admin catalog panel: the add action above the table and
+   the in-place error a refused write reports. */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+/* The store filter sits at the start of the row, the add action at the end. */
+.filter {
+  margin-right: auto;
+}
+
+.actionError {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-3);
+  font-size: var(--font-size-sm);
+  color: var(--color-danger);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-md);
+}
+
+/* Link out to the product page, shaped like the accent pill the open row already
+   uses for its footnote so the two read as one row of annotations.
+   ui-guidelines: 44px minimum touch target. */
+.linkPill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-accent-strong);
+  text-decoration: none;
+  background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
+  border-radius: 999px;
+}
+
+.linkPill:hover {
+  background-color: color-mix(in srgb, var(--color-accent) 22%, transparent);
+}

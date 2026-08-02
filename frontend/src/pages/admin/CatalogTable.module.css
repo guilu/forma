@@ -173,9 +173,14 @@
 
 /* The basis of the figures above, as a tag rather than a sentence. It sits on
    the right so it reads as an annotation on the block, not as a sixth value. */
+/* The row of annotations under the figures: the basis of the numbers and, when
+   the row has one, the link out. Wraps rather than squeezing on a narrow phone. */
 .basis {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
+  gap: var(--space-2);
   margin: var(--space-3) 0 0;
 }
 

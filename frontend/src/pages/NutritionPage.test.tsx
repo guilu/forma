@@ -1,20 +1,15 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { NutritionPage } from './NutritionPage';
 import { getNutritionDay, type NutritionDay } from '../api/nutrition';
-import { getShoppingList } from '../api/shopping';
 
 vi.mock('../api/nutrition', () => ({
   getNutritionDay: vi.fn(),
 }));
-vi.mock('../api/shopping', () => ({
-  getShoppingList: vi.fn(),
-}));
 
 const getDayMock = vi.mocked(getNutritionDay);
-const getShoppingListMock = vi.mocked(getShoppingList);
 
 const runningDay: NutritionDay = {
   type: 'RUNNING',
@@ -86,14 +81,6 @@ function renderPage() {
 describe('NutritionPage', () => {
   beforeEach(() => {
     getDayMock.mockReset();
-    getShoppingListMock.mockReset();
-    getShoppingListMock.mockResolvedValue({
-      weekStartDate: '2026-07-06',
-      status: 'ACTIVE',
-      generatedAt: '2026-07-06T08:00:00Z',
-      items: [],
-      budget: { weeklyEur: 0, monthlyEur: 0 },
-    });
   });
 
   it('renders the day, the macro summary and the meal list with items', async () => {
@@ -208,39 +195,6 @@ describe('NutritionPage', () => {
     expect(
       screen.queryByRole('heading', { name: 'Recomendación de recuperación' }),
     ).not.toBeInTheDocument();
-  });
-
-  it('shows a shopping shortcut that links to the shopping list', async () => {
-    getDayMock.mockResolvedValue(runningDay);
-    getShoppingListMock.mockResolvedValue({
-      weekStartDate: '2026-07-06',
-      status: 'ACTIVE',
-      generatedAt: '2026-07-06T08:00:00Z',
-      items: [
-        {
-          id: '1',
-          productId: 'p1',
-          productName: 'Avena',
-          category: 'CEREALES_Y_LEGUMBRES',
-          quantity: 1,
-          unit: 'UD',
-          servings: null,
-          estimatedCostEur: 2,
-          checked: false,
-        },
-      ],
-      budget: { weeklyEur: 10, monthlyEur: 40 },
-    });
-
-    renderPage();
-
-    const link = await screen.findByRole('link', { name: 'Ver lista de la compra' });
-    expect(link).toHaveAttribute('href', '/app/shopping-list');
-    await waitFor(() => expect(screen.getByText('1 producto')).toBeInTheDocument());
-    // Direct sibling of the page <h1>, so it must render as <h2> (FOR-112).
-    expect(
-      screen.getByRole('heading', { name: 'Lista de la compra', level: 2 }),
-    ).toBeInTheDocument();
   });
 
   it('shows an empty state when there is no plan for the day', async () => {

@@ -4,6 +4,7 @@ import dev.diegobarrioh.forma.application.ShoppingProductRepository;
 import dev.diegobarrioh.forma.application.StoredShoppingProduct;
 import dev.diegobarrioh.forma.domain.ShoppingCategory;
 import dev.diegobarrioh.forma.domain.ShoppingProduct;
+import dev.diegobarrioh.forma.domain.StoreProductValues;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -27,11 +28,24 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class JdbcShoppingProductRepository implements ShoppingProductRepository {
 
+  /**
+   * The account's own columns, then the catalog's (FOR-192, V37). The join is a LEFT one because a
+   * standalone product has no catalog row, and the merge is {@link ShoppingProduct#resolveWith} —
+   * the rule of which side wins lives in the domain, not in this SELECT.
+   */
+  private static final String SELECT_COLUMNS =
+      "p.id, p.name, p.url, p.package_size, p.estimated_price_eur, p.price_per_unit_eur,"
+          + " p.linked_food_item_id, p.last_checked_at, p.notes, p.category, p.store_product_id,"
+          + " s.name AS catalog_name, s.url AS catalog_url, s.package_size AS catalog_package_size,"
+          + " s.price_eur AS catalog_price_eur, s.food_id AS catalog_food_id,"
+          + " s.category AS catalog_category, s.notes AS catalog_notes";
+
   private static final RowMapper<StoredShoppingProduct> ROW_MAPPER =
       (rs, rowNum) -> {
         OffsetDateTime lastChecked = rs.getObject("last_checked_at", OffsetDateTime.class);
         String category = rs.getString("category");
-        ShoppingProduct product =
+        String storeProductId = rs.getString("store_product_id");
+        ShoppingProduct stored =
             new ShoppingProduct(
                 rs.getString("name"),
                 rs.getString("url"),
@@ -41,8 +55,21 @@ public class JdbcShoppingProductRepository implements ShoppingProductRepository 
                 rs.getString("linked_food_item_id"),
                 lastChecked == null ? null : lastChecked.toInstant(),
                 rs.getString("notes"),
-                category == null ? null : ShoppingCategory.valueOf(category));
-        return new StoredShoppingProduct(rs.getString("id"), product);
+                category == null ? null : ShoppingCategory.valueOf(category),
+                storeProductId);
+        String catalogCategory = rs.getString("catalog_category");
+        StoreProductValues catalog =
+            storeProductId == null || rs.getString("catalog_name") == null
+                ? null
+                : new StoreProductValues(
+                    rs.getString("catalog_name"),
+                    rs.getString("catalog_url"),
+                    rs.getString("catalog_package_size"),
+                    rs.getBigDecimal("catalog_price_eur"),
+                    rs.getString("catalog_food_id"),
+                    catalogCategory == null ? null : ShoppingCategory.valueOf(catalogCategory),
+                    rs.getString("catalog_notes"));
+        return new StoredShoppingProduct(rs.getString("id"), stored.resolveWith(catalog));
       };
 
   private final JdbcTemplate jdbcTemplate;
@@ -53,10 +80,14 @@ public class JdbcShoppingProductRepository implements ShoppingProductRepository 
 
   @Override
   public List<StoredShoppingProduct> findAllByOwner(UUID userId) {
+    // Ordered by the effective name, so a referencing entry sorts by the catalog's
+    // name rather than by a null it does not have.
     return jdbcTemplate.query(
-        "SELECT id, name, url, package_size, estimated_price_eur, price_per_unit_eur,"
-            + " linked_food_item_id, last_checked_at, notes, category FROM shopping_products"
-            + " WHERE user_id = ? ORDER BY name",
+        "SELECT "
+            + SELECT_COLUMNS
+            + " FROM shopping_products p"
+            + " LEFT JOIN store_product s ON s.id = p.store_product_id"
+            + " WHERE p.user_id = ? ORDER BY COALESCE(p.name, s.name)",
         ROW_MAPPER,
         userId);
   }
@@ -67,8 +98,8 @@ public class JdbcShoppingProductRepository implements ShoppingProductRepository 
     jdbcTemplate.update(
         "INSERT INTO shopping_products (id, user_id, name, url, package_size,"
             + " estimated_price_eur, price_per_unit_eur, linked_food_item_id, last_checked_at,"
-            + " notes, category)"
-            + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            + " notes, category, store_product_id)"
+            + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         UUID.fromString(id),
         userId,
         product.name(),
@@ -79,29 +110,122 @@ public class JdbcShoppingProductRepository implements ShoppingProductRepository 
         product.linkedFoodItemId(),
         toOffsetDateTime(product.lastCheckedAt()),
         product.notes(),
-        product.category().name());
+        product.category().name(),
+        product.storeProductId());
     return new StoredShoppingProduct(id, product);
   }
 
+  /**
+   * Writes only what the account actually overrides.
+   *
+   * <p>The request body carries a whole product, so the row it is written onto has to be reduced to
+   * its differences from the catalog first ({@link ShoppingProduct#asOverridesOf}) — otherwise a
+   * price correction pins the name and package too and the row stops following the catalog.
+   * Standalone rows have no catalog to compare against and are written verbatim.
+   */
   @Override
   public Optional<StoredShoppingProduct> update(UUID userId, String id, ShoppingProduct product) {
+    ShoppingProduct toStore =
+        catalogLinkFor(userId, id)
+            .map(link -> product.referencing(link.storeProductId()).asOverridesOf(link.values()))
+            .orElse(product);
     int updated =
         jdbcTemplate.update(
             "UPDATE shopping_products SET name = ?, url = ?, package_size = ?,"
                 + " estimated_price_eur = ?, price_per_unit_eur = ?, linked_food_item_id = ?,"
                 + " last_checked_at = ?, notes = ?, category = ? WHERE id = ? AND user_id = ?",
-            product.name(),
-            product.url(),
-            product.packageSize(),
-            product.estimatedPriceEur(),
-            product.pricePerUnitEur(),
-            product.linkedFoodItemId(),
-            toOffsetDateTime(product.lastCheckedAt()),
-            product.notes(),
-            product.category().name(),
+            toStore.name(),
+            toStore.url(),
+            toStore.packageSize(),
+            toStore.estimatedPriceEur(),
+            toStore.pricePerUnitEur(),
+            toStore.linkedFoodItemId(),
+            toOffsetDateTime(toStore.lastCheckedAt()),
+            toStore.notes(),
+            toStore.category().name(),
             UUID.fromString(id),
             userId);
-    return updated == 0 ? Optional.empty() : Optional.of(new StoredShoppingProduct(id, product));
+    // Re-read rather than echo the argument back: the caller's product carries no
+    // store_product_id (the request body has no such field), so echoing it would
+    // report a catalog reference as a standalone product for one round trip.
+    return updated == 0 ? Optional.empty() : findByOwnerAndId(userId, id);
+  }
+
+  /**
+   * One INSERT per missing id, each guarded by a NOT EXISTS on this account's rows.
+   *
+   * <p>The guard is what makes a repeated regenerate cheap and safe: an account that already has an
+   * entry for a product keeps it, with whatever price it overrode. The unique constraint added in
+   * V37 backs the same rule at the database level, so a concurrent regenerate cannot slip a second
+   * entry past the check.
+   *
+   * <p>Every column but the id, the owner and the reference is left null on purpose — null is what
+   * "read this from the catalog" looks like. `category` is the exception: it is NOT NULL since V7,
+   * so it takes its DEFAULT of OTROS, which {@link
+   * dev.diegobarrioh.forma.domain.ShoppingProduct#resolveWith} treats as "not set" and fills from
+   * the catalog's aisle.
+   */
+  @Override
+  public int addMissingCatalogReferences(UUID userId, List<String> storeProductIds) {
+    int created = 0;
+    for (String storeProductId : storeProductIds) {
+      created +=
+          jdbcTemplate.update(
+              "INSERT INTO shopping_products (id, user_id, store_product_id, category)"
+                  + " SELECT ?, ?, ?, 'OTROS' FROM store_product s WHERE s.id = ?"
+                  + " AND NOT EXISTS (SELECT 1 FROM shopping_products p"
+                  + " WHERE p.user_id = ? AND p.store_product_id = ?)",
+              UUID.randomUUID(),
+              userId,
+              storeProductId,
+              storeProductId,
+              userId,
+              storeProductId);
+    }
+    return created;
+  }
+
+  /** The catalog row one of the account's entries points at, and its values. */
+  private record CatalogLink(String storeProductId, StoreProductValues values) {}
+
+  /** Empty when the entry references nothing — a product of the account's own. */
+  private Optional<CatalogLink> catalogLinkFor(UUID userId, String id) {
+    return jdbcTemplate
+        .query(
+            "SELECT s.id, s.name, s.url, s.package_size, s.price_eur, s.food_id, s.category,"
+                + " s.notes FROM shopping_products p"
+                + " JOIN store_product s ON s.id = p.store_product_id"
+                + " WHERE p.id = ? AND p.user_id = ?",
+            (rs, rowNum) ->
+                new CatalogLink(
+                    rs.getString("id"),
+                    new StoreProductValues(
+                        rs.getString("name"),
+                        rs.getString("url"),
+                        rs.getString("package_size"),
+                        rs.getBigDecimal("price_eur"),
+                        rs.getString("food_id"),
+                        ShoppingCategory.valueOf(rs.getString("category")),
+                        rs.getString("notes"))),
+            UUID.fromString(id),
+            userId)
+        .stream()
+        .findFirst();
+  }
+
+  private Optional<StoredShoppingProduct> findByOwnerAndId(UUID userId, String id) {
+    return jdbcTemplate
+        .query(
+            "SELECT "
+                + SELECT_COLUMNS
+                + " FROM shopping_products p"
+                + " LEFT JOIN store_product s ON s.id = p.store_product_id"
+                + " WHERE p.id = ? AND p.user_id = ?",
+            ROW_MAPPER,
+            UUID.fromString(id),
+            userId)
+        .stream()
+        .findFirst();
   }
 
   private static OffsetDateTime toOffsetDateTime(Instant instant) {

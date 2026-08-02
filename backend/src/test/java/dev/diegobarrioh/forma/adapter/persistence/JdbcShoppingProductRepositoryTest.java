@@ -31,9 +31,26 @@ class JdbcShoppingProductRepositoryTest {
   @Autowired private ShoppingProductRepository repository;
   @Autowired private JdbcTemplate jdbcTemplate;
 
+  /**
+   * The catalog is Flyway seed data shared by every test in this class, and one test here renames a
+   * row to prove a rename reaches the accounts referencing it. Restoring the seeded name up front
+   * keeps that test from deciding what the others see — including after it fails halfway.
+   */
   @BeforeEach
-  void clearTable() {
+  void resetFixtures() {
     jdbcTemplate.update("DELETE FROM shopping_products");
+    jdbcTemplate.update(
+        "UPDATE store_product SET name = ? WHERE id = ?",
+        "Copos de avena Brüggen",
+        "mercadona-oats");
+  }
+
+  /** One column of a stored row, as text, so a null reads as a null and not as an empty string. */
+  private String storedColumn(String id, String column) {
+    return jdbcTemplate.queryForObject(
+        "SELECT CAST(" + column + " AS VARCHAR) FROM shopping_products WHERE id = ?",
+        String.class,
+        UUID.fromString(id));
   }
 
   private static ShoppingProduct product(String name, String price) {
@@ -130,5 +147,147 @@ class JdbcShoppingProductRepositoryTest {
         .singleElement()
         .satisfies(
             stored -> assertThat(stored.product().category()).isEqualTo(ShoppingCategory.OTROS));
+  }
+
+  /**
+   * A catalog reference stores nothing of its own, so everything it shows comes from the catalog
+   * row (FOR-192, V37) — including the aisle, which the NOT NULL column forces to its OTROS default
+   * on insert.
+   */
+  @Test
+  void aCatalogReferenceReadsItsValuesFromTheCatalog() {
+    int created =
+        repository.addMissingCatalogReferences(OWNER, java.util.List.of("mercadona-oats"));
+
+    assertThat(created).isEqualTo(1);
+    assertThat(repository.findAllByOwner(OWNER))
+        .singleElement()
+        .satisfies(
+            stored -> {
+              assertThat(stored.product().name()).isEqualTo("Copos de avena Brüggen");
+              assertThat(stored.product().estimatedPriceEur()).isEqualByComparingTo("1.55");
+              assertThat(stored.product().packageSize()).isEqualTo("500 g");
+              assertThat(stored.product().linkedFoodItemId()).isEqualTo("oats");
+              assertThat(stored.product().category())
+                  .isEqualTo(ShoppingCategory.CEREALES_Y_LEGUMBRES);
+              assertThat(stored.product().storeProductId()).isEqualTo("mercadona-oats");
+            });
+  }
+
+  /** Regenerating twice must not give an account the same product twice. */
+  @Test
+  void addingTheSameReferenceTwiceCreatesOneEntry() {
+    repository.addMissingCatalogReferences(OWNER, java.util.List.of("mercadona-oats"));
+    int created =
+        repository.addMissingCatalogReferences(OWNER, java.util.List.of("mercadona-oats"));
+
+    assertThat(created).isZero();
+    assertThat(repository.findAllByOwner(OWNER)).hasSize(1);
+  }
+
+  /**
+   * The account's own price wins over the catalog's and survives a regenerate — that is the whole
+   * point of an override. The rest of the row keeps reading through to the catalog.
+   */
+  @Test
+  void anOverriddenPriceWinsAndSurvivesAnotherRegenerate() {
+    repository.addMissingCatalogReferences(OWNER, java.util.List.of("mercadona-oats"));
+    jdbcTemplate.update(
+        "UPDATE shopping_products SET estimated_price_eur = 9.99 WHERE store_product_id = ?",
+        "mercadona-oats");
+
+    repository.addMissingCatalogReferences(OWNER, java.util.List.of("mercadona-oats"));
+
+    assertThat(repository.findAllByOwner(OWNER))
+        .singleElement()
+        .satisfies(
+            stored -> {
+              assertThat(stored.product().estimatedPriceEur()).isEqualByComparingTo("9.99");
+              assertThat(stored.product().name()).isEqualTo("Copos de avena Brüggen");
+            });
+  }
+
+  /** An account's own product, with no catalog behind it, keeps working exactly as before. */
+  @Test
+  void aStandaloneProductIsUnaffectedByTheCatalog() {
+    repository.create(OWNER, product("Pan de mi panadería", "2.30"));
+
+    assertThat(repository.findAllByOwner(OWNER))
+        .singleElement()
+        .satisfies(
+            stored -> {
+              assertThat(stored.product().name()).isEqualTo("Pan de mi panadería");
+              assertThat(stored.product().estimatedPriceEur()).isEqualByComparingTo("2.30");
+              assertThat(stored.product().storeProductId()).isNull();
+            });
+  }
+
+  /**
+   * Editing one field must override only that field (FOR-192). The request body carries the whole
+   * resolved product — the client sends back the name and package it was shown — so a naive update
+   * would pin every one of them and quietly cut the row off from the catalog it references.
+   */
+  @Test
+  void editingOnlyThePriceLeavesTheOtherFieldsReadingFromTheCatalog() {
+    repository.addMissingCatalogReferences(OWNER, java.util.List.of("mercadona-oats"));
+    String id = repository.findAllByOwner(OWNER).get(0).id();
+
+    repository.update(
+        OWNER,
+        id,
+        new ShoppingProduct(
+            // Everything as the catalog has it, except the price.
+            "Copos de avena Brüggen",
+            "https://tienda.mercadona.es/product/86341/copos-avena-bruggen-caja",
+            "500 g",
+            new BigDecimal("9.99"),
+            null,
+            "oats",
+            Instant.now(),
+            "Precio no extraíble de HTML público",
+            ShoppingCategory.CEREALES_Y_LEGUMBRES));
+
+    assertThat(
+            jdbcTemplate.queryForMap(
+                "SELECT name, package_size, estimated_price_eur FROM shopping_products WHERE id = ?",
+                UUID.fromString(id)))
+        .containsEntry("name", null)
+        .containsEntry("package_size", null)
+        .hasEntrySatisfying("estimated_price_eur", price -> assertThat(price).hasToString("9.99"));
+  }
+
+  /**
+   * The consequence of the above, and the reason it matters: the catalog keeps moving the fields
+   * nobody overrode. A pinned name would freeze at whatever the shelf said the day someone edited a
+   * price.
+   */
+  @Test
+  void aCatalogRenameStillReachesARowWhoseOnlyOverrideIsThePrice() {
+    repository.addMissingCatalogReferences(OWNER, java.util.List.of("mercadona-oats"));
+    String id = repository.findAllByOwner(OWNER).get(0).id();
+    repository.update(
+        OWNER,
+        id,
+        new ShoppingProduct(
+            "Copos de avena Brüggen",
+            null,
+            "500 g",
+            new BigDecimal("9.99"),
+            null,
+            "oats",
+            Instant.now(),
+            null,
+            ShoppingCategory.CEREALES_Y_LEGUMBRES));
+
+    jdbcTemplate.update(
+        "UPDATE store_product SET name = ? WHERE id = ?", "Avena Brüggen 500 g", "mercadona-oats");
+
+    assertThat(repository.findAllByOwner(OWNER))
+        .singleElement()
+        .satisfies(
+            stored -> {
+              assertThat(stored.product().name()).isEqualTo("Avena Brüggen 500 g");
+              assertThat(stored.product().estimatedPriceEur()).isEqualByComparingTo("9.99");
+            });
   }
 }

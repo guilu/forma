@@ -4,18 +4,23 @@
   gap: var(--space-5);
 }
 
+/* Title and date share a row at every width (FOR-193), like the dashboard's.
+   It used to wrap on a phone, putting the date on its own line and pushing the
+   week below it further down. */
 .header {
   display: flex;
-  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--space-4);
+  gap: var(--space-3);
 }
 
 .titles {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+  /* A flex item's automatic minimum size is its content, so without this the
+     subtitle refuses to wrap and pushes the date off the row. */
+  min-width: 0;
 }
 
 .title {
@@ -29,6 +34,7 @@
 
 .dateNav {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-3);
@@ -47,12 +53,14 @@
   transform: rotate(180deg);
 }
 
+/* No `text-transform: capitalize` here: it capitalises every word, which is what
+   turned "domingo, 2 de agosto" into "Domingo, 2 De Agosto". The label arrives
+   capitalised from `formatShortDate`. */
 .dateLabel {
   margin: 0;
   font-size: var(--font-size-sm);
   font-weight: 600;
   color: var(--color-text);
-  text-transform: capitalize;
   white-space: nowrap;
 }
 

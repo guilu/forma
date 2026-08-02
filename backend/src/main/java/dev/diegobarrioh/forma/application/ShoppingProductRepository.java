@@ -26,4 +26,16 @@ public interface ShoppingProductRepository {
    * that owner.
    */
   Optional<StoredShoppingProduct> update(UUID userId, String id, ShoppingProduct product);
+
+  /**
+   * Gives {@code userId} an entry for each of {@code storeProductIds} it does not already have
+   * (FOR-192, V37). Entries created here are pure references: every field is null, so the product
+   * reads through to the catalog until the account overrides something.
+   *
+   * <p>Existing entries are left exactly as they are — this never overwrites an account's own price
+   * or notes with the catalog's.
+   *
+   * @return how many entries were created
+   */
+  int addMissingCatalogReferences(UUID userId, List<String> storeProductIds);
 }

@@ -53,6 +53,11 @@ class ShoppingBudgetServiceTest {
     }
 
     @Override
+    public int addMissingCatalogReferences(UUID userId, List<String> storeProductIds) {
+      return 0;
+    }
+
+    @Override
     public StoredShoppingProduct create(UUID userId, ShoppingProduct product) {
       throw new UnsupportedOperationException("not used");
     }

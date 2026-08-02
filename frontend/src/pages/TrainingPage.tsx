@@ -26,6 +26,7 @@ import {
   type TrainingWeek,
 } from '../api/training';
 import { groupMusclesForDisplay, type MuscleGroupDisplay } from './trainingMuscleLabels';
+import { formatShortDate } from './dateLabel';
 import styles from './TrainingPage.module.css';
 
 /**
@@ -143,11 +144,7 @@ function todayDayOfWeek(): string {
 }
 
 function formatToday(): string {
-  return new Date().toLocaleDateString('es-ES', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  });
+  return formatShortDate(new Date());
 }
 
 function tally(sessions: readonly TrainingSession[]): { completed: number; planned: number } {
