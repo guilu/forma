@@ -71,7 +71,12 @@ interface CatalogTableProps<T> {
   readonly expandedId?: string;
   readonly onToggle: (id: string) => void;
   readonly onEdit: (row: T) => void;
-  readonly onDelete: (row: T) => void;
+  /**
+   * Absent for a catalog whose rows cannot be removed — the categories, whose
+   * set is fixed by the database's own constraints. No button beats a button
+   * that always fails.
+   */
+  readonly onDelete?: (row: T) => void;
 }
 
 export function CatalogTable<T>({
@@ -176,15 +181,17 @@ export function CatalogTable<T>({
                             <Icon name="edit" size={16} />
                             Editar
                           </button>
-                          <button
-                            type="button"
-                            className={styles.detailDelete}
-                            aria-label={`Eliminar ${nameOf(row)}`}
-                            onClick={() => onDelete(row)}
-                          >
-                            <Icon name="trash" size={16} />
-                            Eliminar
-                          </button>
+                          {onDelete && (
+                            <button
+                              type="button"
+                              className={styles.detailDelete}
+                              aria-label={`Eliminar ${nameOf(row)}`}
+                              onClick={() => onDelete(row)}
+                            >
+                              <Icon name="trash" size={16} />
+                              Eliminar
+                            </button>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -249,14 +256,16 @@ export function CatalogTable<T>({
                 >
                   <Icon name="edit" size={18} />
                 </button>
-                <button
-                  type="button"
-                  className={styles.rowDelete}
-                  aria-label={`Eliminar ${nameOf(row)}`}
-                  onClick={() => onDelete(row)}
-                >
-                  <Icon name="trash" size={18} />
-                </button>
+                {onDelete && (
+                  <button
+                    type="button"
+                    className={styles.rowDelete}
+                    aria-label={`Eliminar ${nameOf(row)}`}
+                    onClick={() => onDelete(row)}
+                  >
+                    <Icon name="trash" size={18} />
+                  </button>
+                )}
               </div>
             </td>
           </tr>
