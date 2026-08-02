@@ -34,7 +34,8 @@ class StoreProductImportServiceTest {
         new BigDecimal("1.55"),
         "https://tienda.mercadona.es/product/" + id,
         "8480000000000",
-        "Cereales");
+        "Cereales",
+        "https://cdn/" + id + ".jpg");
   }
 
   @Test
@@ -139,6 +140,11 @@ class StoreProductImportServiceTest {
     @Override
     public List<ImportableProduct> products() {
       return products;
+    }
+
+    @Override
+    public Optional<ImportableProduct> findByExternalId(String externalId) {
+      return products.stream().filter(p -> p.externalId().equals(externalId)).findFirst();
     }
   }
 

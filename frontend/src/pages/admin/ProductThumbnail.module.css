@@ -1,0 +1,7 @@
+/* Square, softly rounded, and never squeezed by a long name beside it. */
+.thumbnail {
+  flex-shrink: 0;
+  border-radius: 5px;
+  object-fit: cover;
+  background-color: var(--color-surface-variant);
+}

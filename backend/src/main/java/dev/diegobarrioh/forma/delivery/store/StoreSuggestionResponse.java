@@ -18,7 +18,8 @@ public record StoreSuggestionResponse(
     BigDecimal priceEur,
     String url,
     String ean,
-    String storeCategory) {
+    String storeCategory,
+    String imageUrl) {
 
   public static StoreSuggestionResponse from(ImportableProduct product) {
     return new StoreSuggestionResponse(
@@ -28,6 +29,7 @@ public record StoreSuggestionResponse(
         product.priceEur(),
         product.url(),
         product.ean(),
-        product.storeCategory());
+        product.storeCategory(),
+        product.imageUrl());
   }
 }

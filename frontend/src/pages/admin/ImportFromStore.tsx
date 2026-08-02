@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { SelectField } from '../../components/FormField';
+import { useEffect, useState } from 'react';
 import { LoadingState } from '../../components/LoadingState';
 import { ApiRequestError } from '../../api/client';
 import type { CatalogFood } from '../../api/foods';
@@ -9,6 +8,7 @@ import {
   type StoreProduct,
   type StoreSuggestion,
 } from '../../api/storeProducts';
+import { ProductThumbnail } from './ProductThumbnail';
 import { STORE_LABELS, priceLabel } from './storeDisplay';
 import styles from './ImportFromStore.module.css';
 
@@ -23,14 +23,16 @@ import styles from './ImportFromStore.module.css';
  * gets out of the way — an imported product is stored by the same endpoint, and
  * ends up indistinguishable from a hand-typed one, because it should be.
  *
- * <p>Starting from the food rather than from a search box is what keeps the link
- * honest: you are always importing a product *for* something in our catalog, so
- * `foodId` is filled by construction instead of being left for later.
+ * <p>Opened from a row of the Macros tab, so the food is settled before the
+ * dialog exists. That is what keeps the link honest: you are always importing a
+ * product *for* something in our catalog, so `foodId` is filled by construction
+ * instead of being left for later — and it is why the action lives beside the
+ * food and not beside the products.
  */
 interface ImportFromStoreProps {
   readonly store: Store;
-  /** Our catalog, to choose what is being shopped for. */
-  readonly foods: readonly CatalogFood[];
+  /** The food being shopped for. */
+  readonly food: CatalogFood;
   readonly onCancel: () => void;
   /** Hands over the draft for the create form to open on. */
   readonly onPicked: (draft: StoreProduct) => void;
@@ -42,20 +44,18 @@ type State =
   | { readonly status: 'error'; readonly message: string }
   | { readonly status: 'ready'; readonly suggestions: StoreSuggestion[] };
 
-export function ImportFromStore({ store, foods, onCancel, onPicked }: ImportFromStoreProps) {
-  const [foodId, setFoodId] = useState('');
-  const [state, setState] = useState<State>({ status: 'idle' });
+export function ImportFromStore({ store, food, onCancel, onPicked }: ImportFromStoreProps) {
+  const [state, setState] = useState<State>({ status: 'loading' });
 
-  function search(nextFoodId: string) {
-    setFoodId(nextFoodId);
-    if (nextFoodId === '') {
-      setState({ status: 'idle' });
-      return;
-    }
+  useEffect(() => {
+    let active = true;
     setState({ status: 'loading' });
-    listStoreSuggestions(nextFoodId, store)
-      .then((suggestions) => setState({ status: 'ready', suggestions }))
-      .catch((caught) =>
+    listStoreSuggestions(food.id, store)
+      .then((suggestions) => {
+        if (active) setState({ status: 'ready', suggestions });
+      })
+      .catch((caught: unknown) => {
+        if (!active) return;
         setState({
           status: 'error',
           // The shop being unreachable is a 502 and reads as its own sentence:
@@ -64,9 +64,12 @@ export function ImportFromStore({ store, foods, onCancel, onPicked }: ImportFrom
             caught instanceof ApiRequestError
               ? caught.message
               : `No se pudo consultar el catálogo de ${STORE_LABELS[store]}. Inténtalo de nuevo.`,
-        }),
-      );
-  }
+        });
+      });
+    return () => {
+      active = false;
+    };
+  }, [food.id, store]);
 
   /**
    * The draft handed to the create form. The id is derived from the shop's own,
@@ -77,7 +80,9 @@ export function ImportFromStore({ store, foods, onCancel, onPicked }: ImportFrom
     id: `${store.toLowerCase()}-${suggestion.externalId}`,
     store,
     name: suggestion.name,
-    foodId,
+    foodId: food.id,
+    externalId: suggestion.externalId,
+    imageUrl: suggestion.imageUrl,
     packageSize: suggestion.packaging,
     priceEur: suggestion.priceEur,
     url: suggestion.url,
@@ -88,19 +93,7 @@ export function ImportFromStore({ store, foods, onCancel, onPicked }: ImportFrom
 
   return (
     <div className={styles.wrapper}>
-      <SelectField
-        id="import-food"
-        label="Alimento"
-        value={foodId}
-        onChange={(event) => search(event.target.value)}
-      >
-        <option value="">Elige un alimento…</option>
-        {foods.map((food) => (
-          <option key={food.id} value={food.id}>
-            {food.name}
-          </option>
-        ))}
-      </SelectField>
+      <p className={styles.lead}>{`Productos de ${STORE_LABELS[store]} para ${food.name}.`}</p>
 
       {state.status === 'loading' && (
         <LoadingState message={`Buscando en ${STORE_LABELS[store]}…`} />
@@ -122,6 +115,7 @@ export function ImportFromStore({ store, foods, onCancel, onPicked }: ImportFrom
         <ul className={styles.results}>
           {state.suggestions.map((suggestion) => (
             <li key={suggestion.externalId} className={styles.result}>
+              <ProductThumbnail url={suggestion.imageUrl} size={40} />
               <div className={styles.details}>
                 <p className={styles.name}>{suggestion.name}</p>
                 <p className={styles.meta}>

@@ -41,6 +41,9 @@ export interface StoreProduct {
   readonly url?: string;
   readonly category: ShoppingCategory;
   readonly notes?: string;
+  /** The shop's own id, present only on imported rows — what makes a refresh possible. */
+  readonly externalId?: string;
+  readonly imageUrl?: string;
 }
 
 /** Lists the catalog, narrowed to one chain when `store` is given. */
@@ -80,6 +83,23 @@ export function updateStoreProduct(
   });
 }
 
+/**
+ * Re-reads an imported product from its shop and stores what the shop owns:
+ * name, package, price, link and photo. The food link, the aisle and the notes
+ * stay as they are — those are ours. Admin only.
+ *
+ * <p>Rejects with 409 for a product that was never imported, 404 when the shop
+ * no longer lists it, and 502 when the shop cannot be reached.
+ */
+export function refreshStoreProduct(
+  id: string,
+  client: ApiClient = apiClient,
+): Promise<StoreProduct> {
+  return client.request<StoreProduct>(`${STORE_PRODUCTS_PATH}/${encodeURIComponent(id)}/refresh`, {
+    method: 'POST',
+  });
+}
+
 /** Removes a product. Admin only. */
 export function deleteStoreProduct(id: string, client: ApiClient = apiClient): Promise<void> {
   return client.request<void>(`${STORE_PRODUCTS_PATH}/${encodeURIComponent(id)}`, {
@@ -102,6 +122,7 @@ export interface StoreSuggestion {
   readonly url?: string;
   readonly ean?: string;
   readonly storeCategory?: string;
+  readonly imageUrl?: string;
 }
 
 /**

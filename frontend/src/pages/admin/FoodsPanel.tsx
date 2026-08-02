@@ -1,12 +1,16 @@
 import { useCallback, useState } from 'react';
 import { Card } from '../../components/Card';
+import { Icon } from '../../components/Icon';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import { Modal } from '../../components/Modal';
 import { deleteFood, listFoods, type CatalogFood } from '../../api/foods';
+import { listStoreProducts, type StoreProduct } from '../../api/storeProducts';
 import { CatalogTable, type CatalogColumn, type CatalogDetail } from './CatalogTable';
 import { FoodForm } from './FoodForm';
+import { ImportFromStore } from './ImportFromStore';
+import { StoreProductForm } from './StoreProductForm';
 import { Pagination } from './Pagination';
 import { CATEGORY_LABELS, categoryGlyph } from './foodDisplay';
 import { useCatalogAdmin } from './useCatalogAdmin';
@@ -58,6 +62,11 @@ export function FoodsPanel({ creating, onCreateClose }: FoodsPanelProps) {
   });
   const [editing, setEditing] = useState<CatalogFood | undefined>(undefined);
   const [deleting, setDeleting] = useState<CatalogFood | undefined>(undefined);
+  // Importing starts here because it is a question about a FOOD — "what does
+  // Mercadona sell for this?" — even though what it produces is a store product.
+  const [importingFor, setImportingFor] = useState<CatalogFood | undefined>(undefined);
+  const [draft, setDraft] = useState<StoreProduct | undefined>(undefined);
+  const [existing, setExisting] = useState<StoreProduct | undefined>(undefined);
 
   // Closes whichever way the form was opened: an edit from a row, or a create
   // from the header — the panel does not own the second one.
@@ -65,6 +74,35 @@ export function FoodsPanel({ creating, onCreateClose }: FoodsPanelProps) {
     setEditing(undefined);
     onCreateClose();
   };
+
+  const closeImport = () => {
+    setDraft(undefined);
+    setExisting(undefined);
+  };
+
+  /**
+   * Importing the same product twice updates the row that exists instead of
+   * failing on its id. The check runs here, against the catalog as it is now,
+   * because the picker only knows what the shop sells — not what we already
+   * took from it.
+   */
+  async function pick(picked: StoreProduct) {
+    setImportingFor(undefined);
+    try {
+      const products = await listStoreProducts(picked.store);
+      const match = products.find((product) => product.externalId === picked.externalId);
+      if (match) {
+        // Keep our curation (aisle, notes, food link if it differs) and take the
+        // shop's current figures over the stored ones.
+        setExisting({ ...match, ...picked, category: match.category, notes: match.notes });
+        return;
+      }
+    } catch {
+      // Not being able to check is not a reason to refuse the import: the create
+      // call will refuse a duplicate id on its own, with a message that says so.
+    }
+    setDraft(picked);
+  }
 
   return (
     <>
@@ -101,6 +139,19 @@ export function FoodsPanel({ creating, onCreateClose }: FoodsPanelProps) {
               catalog.setActionError(undefined);
               setDeleting(food);
             }}
+            extraActions={(food) => (
+              <button
+                type="button"
+                className={styles.rowAction}
+                aria-label={`Importar ${food.name} de Mercadona`}
+                onClick={() => {
+                  catalog.setActionError(undefined);
+                  setImportingFor(food);
+                }}
+              >
+                <Icon name="shopping" size={18} />
+              </button>
+            )}
           />
           <Pagination
             page={catalog.page}
@@ -119,6 +170,32 @@ export function FoodsPanel({ creating, onCreateClose }: FoodsPanelProps) {
               closeForm();
               catalog.reload();
             }}
+          />
+        </Modal>
+      )}
+
+      {importingFor && (
+        <Modal title="Importar de Mercadona" onClose={() => setImportingFor(undefined)}>
+          <ImportFromStore
+            store="MERCADONA"
+            food={importingFor}
+            onCancel={() => setImportingFor(undefined)}
+            onPicked={pick}
+          />
+        </Modal>
+      )}
+
+      {(draft || existing) && (
+        <Modal
+          title={existing ? `Actualizar ${existing.name}` : 'Nuevo producto'}
+          onClose={closeImport}
+        >
+          <StoreProductForm
+            product={existing}
+            draft={draft}
+            foods={catalog.state.status === 'ready' ? catalog.state.rows : []}
+            onCancel={closeImport}
+            onSaved={closeImport}
           />
         </Modal>
       )}

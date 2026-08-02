@@ -44,3 +44,30 @@
 .linkPill:hover {
   background-color: color-mix(in srgb, var(--color-accent) 22%, transparent);
 }
+
+/* Row-level action a panel adds to the table's own edit/delete pair, e.g.
+   importing a food or refreshing an imported product.
+   ui-guidelines: 44px minimum touch target. */
+.rowAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.rowAction:hover:not(:disabled) {
+  color: var(--color-text);
+  background-color: var(--color-surface-variant);
+}
+
+.rowAction:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}

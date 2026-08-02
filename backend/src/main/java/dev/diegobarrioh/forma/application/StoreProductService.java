@@ -15,9 +15,11 @@ import org.springframework.stereotype.Service;
 public class StoreProductService {
 
   private final StoreProductRepository repository;
+  private final List<StoreCatalogSource> sources;
 
-  public StoreProductService(StoreProductRepository repository) {
+  public StoreProductService(StoreProductRepository repository, List<StoreCatalogSource> sources) {
     this.repository = repository;
+    this.sources = sources;
   }
 
   /** Catalog products, narrowed to one chain when {@code store} is given; all of them when null. */
@@ -69,6 +71,45 @@ public class StoreProductService {
             product.notes());
     repository.update(stored);
     return stored;
+  }
+
+  /**
+   * Re-reads a product from the shop it was imported from and stores what the shop owns (FOR-195).
+   *
+   * <p>Name, package, price, link and photo are taken; the food link, the aisle and the notes stay
+   * as the admin left them — see {@link CatalogStoreProduct#refreshedWith}. Prices move weekly and
+   * curation does not.
+   *
+   * @throws NotFoundException when no product has that id, when no source speaks for its chain, or
+   *     when the shop no longer lists it — in that last case the stored row is left untouched, so a
+   *     discontinued product keeps the figures it had instead of being blanked
+   * @throws ConflictException when the product was never imported: a row typed by hand has no shop
+   *     behind it, and refreshing it against nothing is not a thing to do quietly
+   * @throws StoreCatalogUnavailableException when the shop cannot be reached
+   */
+  public CatalogStoreProduct refresh(String id) {
+    CatalogStoreProduct stored = getById(id);
+    if (stored.externalId() == null) {
+      throw new ConflictException("Este producto no se importó de ninguna tienda: " + id);
+    }
+    StoreCatalogSource source =
+        sources.stream()
+            .filter(candidate -> candidate.store() == stored.store())
+            .findFirst()
+            .orElseThrow(
+                () ->
+                    new NotFoundException(
+                        "No hay catálogo disponible para: " + stored.store().name()));
+    ImportableProduct fresh =
+        source
+            .findByExternalId(stored.externalId())
+            .orElseThrow(
+                () ->
+                    new NotFoundException(
+                        "La tienda ya no lista este producto: " + stored.externalId()));
+    CatalogStoreProduct refreshed = stored.refreshedWith(fresh);
+    repository.update(refreshed);
+    return refreshed;
   }
 
   /**

@@ -25,6 +25,9 @@ import java.math.BigDecimal;
  * @param url link to the product page; optional
  * @param category grocery aisle, for grouping a list
  * @param notes free-text caveat ("precio verificar", "sustituible por pavo"); optional
+ * @param externalId the shop's own id when this row was imported (FOR-195); absent for anything
+ *     transcribed or typed by hand, which is what makes a row refreshable or not
+ * @param imageUrl the shop's product photo; absent for the same reason
  */
 public record CatalogStoreProduct(
     String id,
@@ -35,11 +38,53 @@ public record CatalogStoreProduct(
     BigDecimal priceEur,
     String url,
     ShoppingCategory category,
-    String notes) {
+    String notes,
+    String externalId,
+    String imageUrl) {
 
   public CatalogStoreProduct {
     if (category == null) {
       category = ShoppingCategory.OTROS;
     }
+  }
+
+  /**
+   * The same product without its import provenance — the shape every caller used before FOR-195,
+   * kept so a hand-typed product does not have to say "and it came from nowhere" twice.
+   */
+  public CatalogStoreProduct(
+      String id,
+      Store store,
+      String name,
+      String foodId,
+      String packageSize,
+      BigDecimal priceEur,
+      String url,
+      ShoppingCategory category,
+      String notes) {
+    this(id, store, name, foodId, packageSize, priceEur, url, category, notes, null, null);
+  }
+
+  /**
+   * This product with the fields the shop owns taken from {@code fresh} (FOR-195).
+   *
+   * <p>Name, package, price, link and photo move; the food link, the aisle and the notes do not.
+   * That split is the whole point of a refresh: the shop knows what it sells and for how much, and
+   * an admin knows what it is for us. A refresh that overwrote the aisle would undo curation every
+   * time a price changed.
+   */
+  public CatalogStoreProduct refreshedWith(ImportableProduct fresh) {
+    return new CatalogStoreProduct(
+        id,
+        store,
+        fresh.name(),
+        foodId,
+        fresh.packaging(),
+        fresh.priceEur(),
+        fresh.url(),
+        category,
+        notes,
+        fresh.externalId(),
+        fresh.imageUrl());
   }
 }

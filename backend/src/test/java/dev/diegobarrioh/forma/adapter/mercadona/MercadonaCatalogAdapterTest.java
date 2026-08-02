@@ -88,6 +88,8 @@ class MercadonaCatalogAdapterTest {
               assertThat(product.url())
                   .endsWith("/product/4241/aceite-oliva-04o-hacendado-garrafa");
               assertThat(product.storeCategory()).isEqualTo("Aceite, vinagre y sal");
+              assertThat(product.imageUrl())
+                  .isEqualTo("https://prod-mercadona.imgix.net/images/x.jpg");
             });
   }
 

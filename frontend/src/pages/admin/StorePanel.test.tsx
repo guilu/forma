@@ -6,10 +6,9 @@ import { AdminPage } from '../AdminPage';
 import { NotificationProvider } from '../../components/NotificationProvider';
 import { listFoods } from '../../api/foods';
 import {
-  createStoreProduct,
   deleteStoreProduct,
   listStoreProducts,
-  listStoreSuggestions,
+  refreshStoreProduct,
   updateStoreProduct,
   type StoreProduct,
 } from '../../api/storeProducts';
@@ -26,13 +25,13 @@ vi.mock('../../api/storeProducts', () => ({
   updateStoreProduct: vi.fn(),
   deleteStoreProduct: vi.fn(),
   listStoreSuggestions: vi.fn(),
+  refreshStoreProduct: vi.fn(),
 }));
 
 const listMock = vi.mocked(listStoreProducts);
 const updateMock = vi.mocked(updateStoreProduct);
 const deleteMock = vi.mocked(deleteStoreProduct);
-const createMock = vi.mocked(createStoreProduct);
-const suggestMock = vi.mocked(listStoreSuggestions);
+const refreshMock = vi.mocked(refreshStoreProduct);
 
 const oats: StoreProduct = {
   id: 'mercadona-oats',
@@ -43,6 +42,8 @@ const oats: StoreProduct = {
   priceEur: 1.55,
   url: 'https://tienda.mercadona.es/product/86341',
   category: 'CEREALES_Y_LEGUMBRES',
+  externalId: '4241',
+  imageUrl: 'https://prod-mercadona.imgix.net/images/abc.jpg?fit=crop&h=300&w=300',
 };
 
 const salmon: StoreProduct = {
@@ -213,84 +214,42 @@ describe('AdminPage — the shopping catalog tab', () => {
   });
 
   /**
-   * Importing is a confirmation step, never an automatic write: Mercadona can say what a product
-   * is called and what it costs, but not which food it is or which of our six aisles it belongs to.
-   * Those two the admin supplies, on the same form a hand-typed product uses.
+   * A price moves every week; a row imported a month ago is a price nobody checked. Refresh takes
+   * the shop's figures again and leaves ours alone — the server decides what changed, so the screen
+   * re-reads the list instead of patching the row with its own guess.
    */
-  describe('importing from a store', () => {
-    beforeEach(() => {
-      vi.mocked(listFoods).mockResolvedValue([
-        {
-          id: 'oats',
-          name: 'Copos de avena',
-          kcal: 370,
-          proteinG: 13,
-          carbsG: 60,
-          fatG: 7,
-          servingSizeG: 60,
-          category: 'CARBOHIDRATO',
-        },
-      ]);
-      suggestMock.mockReset();
-      createMock.mockReset();
+  describe('refreshing an imported product', () => {
+    it('re-reads the product from the shop and reloads the list', async () => {
+      refreshMock.mockResolvedValue({ ...oats, priceEur: 1.79 });
+      const user = await openStoreTab();
+      await screen.findByText('Copos de avena Brüggen');
+
+      await user.click(screen.getByRole('button', { name: /Refrescar Copos de avena Brüggen/ }));
+
+      await waitFor(() => expect(refreshMock).toHaveBeenCalledWith('mercadona-oats'));
+      await waitFor(() => expect(listMock).toHaveBeenCalledTimes(2));
     });
 
-    it("offers the shop's products for a chosen food and prefills the form with one", async () => {
-      suggestMock.mockResolvedValue([
-        {
-          externalId: '4241',
-          name: 'Copos de avena Brüggen',
-          packaging: 'Caja 500 g',
-          priceEur: 1.55,
-          url: 'https://tienda.mercadona.es/product/4241',
-          storeCategory: 'Cereales',
-        },
-      ]);
-      createMock.mockResolvedValue(oats);
-      const user = await openStoreTab();
+    /** Nothing to refresh against: the row was typed by hand, not imported. */
+    it('offers no refresh for a product that was never imported', async () => {
+      listMock.mockResolvedValue([{ ...oats, externalId: undefined }]);
+      await openStoreTab();
+      await screen.findByText('Copos de avena Brüggen');
 
-      await user.click(screen.getByRole('button', { name: 'Importar de Mercadona' }));
-      await user.selectOptions(await screen.findByLabelText('Alimento'), 'oats');
-
-      await waitFor(() => expect(suggestMock).toHaveBeenCalledWith('oats', 'MERCADONA'));
-      // Scoped to the dialog: the catalog behind it lists a product with the
-      // same name, which is exactly the situation an import is for.
-      const picker = await screen.findByRole('dialog', { name: /Importar de Mercadona/ });
-      expect(within(picker).getByText('Copos de avena Brüggen')).toBeInTheDocument();
-      expect(within(picker).getByText(/1,55/)).toBeInTheDocument();
-
-      await user.click(within(picker).getByRole('button', { name: /Usar Copos de avena Brüggen/ }));
-
-      const form = await screen.findByRole('dialog', { name: /Nuevo producto/ });
-      expect(within(form).getByLabelText('Nombre')).toHaveValue('Copos de avena Brüggen');
-      expect(within(form).getByLabelText('Precio (€)')).toHaveValue(1.55);
-      // The link to the food is the whole point of importing this way.
-      expect(within(form).getByLabelText('Alimento enlazado')).toHaveValue('oats');
-      // Derived from the store's own id, which is stable; ours never is.
-      expect(within(form).getByLabelText('Identificador')).toHaveValue('mercadona-4241');
+      expect(
+        screen.queryByRole('button', { name: /Refrescar Copos de avena Brüggen/ }),
+      ).not.toBeInTheDocument();
     });
 
-    it('says so when the shop has nothing that matches', async () => {
-      suggestMock.mockResolvedValue([]);
+    it('surfaces a refusal without losing the row', async () => {
+      refreshMock.mockRejectedValue(new Error('502'));
       const user = await openStoreTab();
+      await screen.findByText('Copos de avena Brüggen');
 
-      await user.click(screen.getByRole('button', { name: 'Importar de Mercadona' }));
-      await user.selectOptions(await screen.findByLabelText('Alimento'), 'oats');
+      await user.click(screen.getByRole('button', { name: /Refrescar Copos de avena Brüggen/ }));
 
-      expect(await screen.findByText(/no ha encontrado/i)).toBeInTheDocument();
-    });
-
-    /** The shop being down must read as "vuelve a intentarlo", not as "ese alimento no existe". */
-    it('reports a shop that cannot be reached without losing the screen', async () => {
-      suggestMock.mockRejectedValue(new Error('502'));
-      const user = await openStoreTab();
-
-      await user.click(screen.getByRole('button', { name: 'Importar de Mercadona' }));
-      await user.selectOptions(await screen.findByLabelText('Alimento'), 'oats');
-
-      expect(await screen.findByRole('alert')).toHaveTextContent(/Mercadona/);
-      // The catalog underneath is untouched.
-      expect(screen.getByText('Salmón')).toBeInTheDocument();
+      expect(await screen.findByRole('alert')).toHaveTextContent(/No se pudo actualizar/);
+      expect(screen.getByText('Copos de avena Brüggen')).toBeInTheDocument();
     });
   });
 });

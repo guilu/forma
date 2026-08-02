@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ErrorState } from '../../components/ErrorState';
@@ -7,16 +6,19 @@ import { LoadingState } from '../../components/LoadingState';
 import { Icon } from '../../components/Icon';
 import { Modal } from '../../components/Modal';
 import { SelectField } from '../../components/FormField';
+import { useNotify } from '../../components/NotificationProvider';
+import { ApiRequestError } from '../../api/client';
 import { listFoods, type CatalogFood } from '../../api/foods';
 import {
   deleteStoreProduct,
   listStoreProducts,
+  refreshStoreProduct,
   type Store,
   type StoreProduct,
 } from '../../api/storeProducts';
 import { CatalogTable, type CatalogColumn, type CatalogDetail } from './CatalogTable';
-import { ImportFromStore } from './ImportFromStore';
 import { Pagination } from './Pagination';
+import { ProductThumbnail } from './ProductThumbnail';
 import { StoreProductForm } from './StoreProductForm';
 import {
   SHOPPING_CATEGORY_LABELS,
@@ -91,6 +93,7 @@ interface StorePanelProps {
 }
 
 export function StorePanel({ creating, onCreateClose }: StorePanelProps) {
+  const notify = useNotify();
   const [store, setStore] = useState<Store | ''>('');
   // Memoised on the filter: `useCatalogAdmin` reloads whenever this changes,
   // which is exactly what picking a chain should do.
@@ -103,14 +106,36 @@ export function StorePanel({ creating, onCreateClose }: StorePanelProps) {
   const [editing, setEditing] = useState<StoreProduct | undefined>(undefined);
   const [deleting, setDeleting] = useState<StoreProduct | undefined>(undefined);
   const [foods, setFoods] = useState<CatalogFood[]>([]);
-  const [importing, setImporting] = useState(false);
-  const [draft, setDraft] = useState<StoreProduct | undefined>(undefined);
 
   // Closes whichever way the form was opened: an edit from a row, or a create
   // from the header — the panel does not own the second one.
+  const [refreshing, setRefreshing] = useState<string | undefined>(undefined);
+
+  /**
+   * Re-reads one product from its shop. Reloads the list afterwards rather than
+   * patching the row in place: the server decides what a refresh changed, and a
+   * locally merged row would be this screen's guess at it.
+   */
+  async function refresh(product: StoreProduct) {
+    setRefreshing(product.id);
+    catalog.setActionError(undefined);
+    try {
+      await refreshStoreProduct(product.id);
+      notify.success(`${product.name} actualizado desde ${STORE_LABELS[product.store]}.`);
+      catalog.reload();
+    } catch (caught) {
+      catalog.setActionError(
+        caught instanceof ApiRequestError
+          ? caught.message
+          : `No se pudo actualizar ${product.name}. Inténtalo de nuevo.`,
+      );
+    } finally {
+      setRefreshing(undefined);
+    }
+  }
+
   const closeForm = () => {
     setEditing(undefined);
-    setDraft(undefined);
     onCreateClose();
   };
   const details = useMemo(
@@ -156,18 +181,6 @@ export function StorePanel({ creating, onCreateClose }: StorePanelProps) {
             ))}
           </SelectField>
         </div>
-        {/* Secondary next to the header's "+ Producto": importing is the
-            shortcut, typing it in is always available. */}
-        <Button
-          variant="secondary"
-          type="button"
-          onClick={() => {
-            catalog.setActionError(undefined);
-            setImporting(true);
-          }}
-        >
-          Importar de Mercadona
-        </Button>
       </div>
 
       {catalog.state.status === 'loading' && <LoadingState message="Cargando el catálogo…" />}
@@ -181,6 +194,22 @@ export function StorePanel({ creating, onCreateClose }: StorePanelProps) {
             idOf={(product) => product.id}
             nameOf={(product) => product.name}
             glyphOf={(product) => shoppingCategoryGlyph(product.category)}
+            mediaOf={(product) => <ProductThumbnail url={product.imageUrl} />}
+            extraActions={(product) =>
+              // Only what a shop can be asked about: a hand-typed row has no
+              // source behind it, so the action is absent rather than disabled.
+              product.externalId ? (
+                <button
+                  type="button"
+                  className={styles.rowAction}
+                  aria-label={`Refrescar ${product.name}`}
+                  disabled={refreshing === product.id}
+                  onClick={() => refresh(product)}
+                >
+                  <Icon name="refresh" size={18} />
+                </button>
+              ) : null
+            }
             label="Productos"
             nameHeader="Producto"
             columns={COLUMNS}
@@ -207,25 +236,10 @@ export function StorePanel({ creating, onCreateClose }: StorePanelProps) {
         </Card>
       )}
 
-      {importing && (
-        <Modal title="Importar de Mercadona" onClose={() => setImporting(false)}>
-          <ImportFromStore
-            store="MERCADONA"
-            foods={foods}
-            onCancel={() => setImporting(false)}
-            onPicked={(picked) => {
-              setImporting(false);
-              setDraft(picked);
-            }}
-          />
-        </Modal>
-      )}
-
-      {(editing || creating || draft) && (
+      {(editing || creating) && (
         <Modal title={editing ? `Editar ${editing.name}` : 'Nuevo producto'} onClose={closeForm}>
           <StoreProductForm
             product={editing}
-            draft={draft}
             foods={foods}
             onCancel={closeForm}
             onSaved={() => {

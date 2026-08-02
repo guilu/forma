@@ -12,6 +12,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -43,6 +44,7 @@ public class MercadonaCatalogAdapter implements StoreCatalogSource {
   private static final Logger log = LoggerFactory.getLogger(MercadonaCatalogAdapter.class);
 
   private static final String CATEGORIES_URL = "https://tienda.mercadona.es/api/categories/";
+  private static final String PRODUCT_URL = "https://tienda.mercadona.es/api/products/";
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   /**
@@ -73,6 +75,30 @@ public class MercadonaCatalogAdapter implements StoreCatalogSource {
       snapshotTakenAt = Instant.now();
     }
     return snapshot;
+  }
+
+  /**
+   * One product, straight from the shop.
+   *
+   * <p>Deliberately not answered from the snapshot: a refresh is asked for precisely when the held
+   * copy might be stale, and this is one request rather than 151.
+   *
+   * <p>A product the shop has stopped listing answers 404, which the transport turns into an
+   * unavailable-catalogue failure. Here that is not a failure but the answer — the product is gone
+   * — so it becomes an empty Optional and the screen can say so.
+   */
+  @Override
+  public Optional<ImportableProduct> findByExternalId(String externalId) {
+    JsonNode product;
+    try {
+      product = parse(transport.get(PRODUCT_URL + externalId + "/"));
+    } catch (StoreCatalogUnavailableException ex) {
+      log.info("Mercadona: el producto {} ya no está disponible ({})", externalId, ex.getMessage());
+      return Optional.empty();
+    }
+    JsonNode shelf = product.path("categories");
+    String shelfName = shelf.isEmpty() ? null : shelf.get(shelf.size() - 1).path("name").asText();
+    return Optional.of(toImportable(product, shelfName));
   }
 
   /** When the held snapshot was taken; empty until the first successful crawl. */
@@ -123,7 +149,8 @@ public class MercadonaCatalogAdapter implements StoreCatalogSource {
             : new BigDecimal(prices.path("unit_price").asText()),
         product.path("share_url").asText(null),
         product.path("ean").asText(null),
-        shelfName);
+        shelfName,
+        product.path("thumbnail").asText(null));
   }
 
   /**

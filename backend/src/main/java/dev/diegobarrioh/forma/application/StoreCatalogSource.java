@@ -2,6 +2,7 @@ package dev.diegobarrioh.forma.application;
 
 import dev.diegobarrioh.forma.domain.Store;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Port over one supermarket's own catalogue (FOR-194). Owned by the application side; adapters
@@ -27,4 +28,14 @@ public interface StoreCatalogSource {
    *     something unusable — never an empty list, which would read as "the shop sells nothing"
    */
   List<ImportableProduct> products();
+
+  /**
+   * One product by the store's own id (FOR-195), read straight from the shop rather than from the
+   * held snapshot — a refresh exists precisely to get past a snapshot that may be a day old.
+   *
+   * @return empty when the shop no longer lists it, which is a real answer: a product can be
+   *     discontinued, and saying so beats reporting a failure
+   * @throws StoreCatalogUnavailableException when the store cannot be reached
+   */
+  Optional<ImportableProduct> findByExternalId(String externalId);
 }

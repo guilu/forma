@@ -19,6 +19,7 @@ import java.math.BigDecimal;
  * @param ean barcode, when the store publishes one; the only truly global key here
  * @param storeCategory the store's own aisle name, for the admin to judge by — never mapped
  *     automatically onto our own closed set
+ * @param imageUrl the shop's product photo, at whatever size their CDN handed us; callers resize it
  */
 public record ImportableProduct(
     String externalId,
@@ -27,4 +28,5 @@ public record ImportableProduct(
     BigDecimal priceEur,
     String url,
     String ean,
-    String storeCategory) {}
+    String storeCategory,
+    String imageUrl) {}
