@@ -27,11 +27,27 @@ const COMPACT_COLUMNS: CatalogColumn<CatalogFood>[] = [
   { header: 'Ración', value: serving, numeric: true },
 ];
 
-/** Built per render: the category label comes from a request now (FOR-197). */
+/**
+ * Built per render: the category label comes from a request now (FOR-197).
+ *
+ * <p>The glyph rides in the Categoría column rather than in front of the food's
+ * name (FOR-198). In front of the name it read as that food's own icon, which it
+ * is not — every carbohydrate wore the same wheat ear. Beside the word it is what
+ * it always was: a second reading of the category.
+ */
 const columnsWith = (
   categoryLabel: (food: CatalogFood) => string,
+  categoryGlyphOf: (food: CatalogFood) => string,
 ): CatalogColumn<CatalogFood>[] => [
-  { header: 'Categoría', value: categoryLabel },
+  {
+    header: 'Categoría',
+    value: (food) => (
+      <span className={styles.withGlyph}>
+        <span aria-hidden="true">{categoryGlyphOf(food)}</span>
+        {categoryLabel(food)}
+      </span>
+    ),
+  },
   { header: 'kcal', value: (food) => food.kcal, numeric: true },
   { header: 'Prot.', value: (food) => food.proteinG, numeric: true },
   { header: 'HC', value: (food) => food.carbsG, numeric: true },
@@ -78,7 +94,14 @@ export function FoodsPanel({ creating, onCreateClose }: FoodsPanelProps) {
       categories.label(food.category, food.category ? CATEGORY_LABELS[food.category] : '—'),
     [categories],
   );
-  const columns = useMemo(() => columnsWith(categoryLabel), [categoryLabel]);
+  const categoryGlyphOf = useCallback(
+    (food: CatalogFood) => categories.glyph(food.category, categoryGlyph(food.category)),
+    [categories],
+  );
+  const columns = useMemo(
+    () => columnsWith(categoryLabel, categoryGlyphOf),
+    [categoryLabel, categoryGlyphOf],
+  );
   const details = useMemo(() => detailsWith(categoryLabel), [categoryLabel]);
 
   // Closes whichever way the form was opened: an edit from a row, or a create
@@ -134,7 +157,6 @@ export function FoodsPanel({ creating, onCreateClose }: FoodsPanelProps) {
             rows={catalog.visible}
             idOf={(food) => food.id}
             nameOf={(food) => food.name}
-            glyphOf={(food) => categories.glyph(food.category, categoryGlyph(food.category))}
             label="Alimentos"
             nameHeader="Alimento"
             columns={columns}

@@ -81,8 +81,7 @@ class StoreProductAdminTest {
         .perform(get(PATH).with(asUser(SOMEONE, "someone@forma.test")))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$[?(@.id=='mercadona-oats')].name").value("Copos de avena Brüggen"))
-        // V36 seeds the product's own price, not the prorated weekly cost V22 stored.
-        .andExpect(jsonPath("$[?(@.id=='mercadona-oats')].priceEur").value(1.55))
+        // The link to our own food catalog, which is ours and no migration overwrites it.
         .andExpect(jsonPath("$[?(@.id=='mercadona-oats')].foodId").value("oats"));
 
     mockMvc
@@ -128,5 +127,43 @@ class StoreProductAdminTest {
     mockMvc
         .perform(get(PATH + "?store=ALCAMPO").with(asUser(SOMEONE, "someone@forma.test")))
         .andExpect(status().isBadRequest());
+  }
+
+  /**
+   * V40 matched the transcribed seed against Mercadona's own catalogue, which is what makes those
+   * rows refreshable at all: without a shop id there is nothing to re-read them from.
+   */
+  @Test
+  void theSeededProductsCarryTheShopsIdAndPhoto() throws Exception {
+    mockMvc
+        .perform(get(PATH).with(asUser(SOMEONE, "someone@forma.test")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[?(@.id=='mercadona-oats')].externalId").value("86341"))
+        // Stored at the size the list draws it, not at the 300px the shop hands out.
+        .andExpect(
+            jsonPath("$[?(@.id=='mercadona-oats')].imageUrl")
+                .value(
+                    org.hamcrest.Matchers.hasItem(
+                        org.hamcrest.Matchers.containsString("h=24&w=24"))))
+        // And the figures are the shop's own now, not the spreadsheet's.
+        .andExpect(jsonPath("$[?(@.id=='mercadona-oats')].priceEur").value(1.30));
+  }
+
+  /**
+   * Mercadona sells neither whey protein nor boniato, so those two keep no shop id — and the screen
+   * offers no refresh where there is no source. A link invented to fill the column would point at a
+   * product nobody chose.
+   */
+  @Test
+  void leavesUnmatchableProductsWithoutAShopId() throws Exception {
+    mockMvc
+        .perform(get(PATH).with(asUser(SOMEONE, "someone@forma.test")))
+        .andExpect(status().isOk())
+        .andExpect(
+            jsonPath("$[?(@.id=='mercadona-whey-protein')].externalId")
+                .value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.nullValue())))
+        .andExpect(
+            jsonPath("$[?(@.id=='mercadona-sweet-potato')].externalId")
+                .value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.nullValue())));
   }
 }

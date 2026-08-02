@@ -165,8 +165,8 @@ class JdbcShoppingProductRepositoryTest {
         .satisfies(
             stored -> {
               assertThat(stored.product().name()).isEqualTo("Copos de avena Brüggen");
-              assertThat(stored.product().estimatedPriceEur()).isEqualByComparingTo("1.55");
-              assertThat(stored.product().packageSize()).isEqualTo("500 g");
+              assertThat(stored.product().estimatedPriceEur()).isEqualByComparingTo("1.30");
+              assertThat(stored.product().packageSize()).isEqualTo("Caja 0.8 kg");
               assertThat(stored.product().linkedFoodItemId()).isEqualTo("oats");
               assertThat(stored.product().category())
                   .isEqualTo(ShoppingCategory.CEREALES_Y_LEGUMBRES);
@@ -238,8 +238,8 @@ class JdbcShoppingProductRepositoryTest {
         new ShoppingProduct(
             // Everything as the catalog has it, except the price.
             "Copos de avena Brüggen",
-            "https://tienda.mercadona.es/product/86341/copos-avena-bruggen-caja",
-            "500 g",
+            "https://tienda.mercadona.es/product/86341",
+            "Caja 0.8 kg",
             new BigDecimal("9.99"),
             null,
             "oats",
@@ -247,13 +247,12 @@ class JdbcShoppingProductRepositoryTest {
             "Precio no extraíble de HTML público",
             ShoppingCategory.CEREALES_Y_LEGUMBRES));
 
-    assertThat(
-            jdbcTemplate.queryForMap(
-                "SELECT name, package_size, estimated_price_eur FROM shopping_products WHERE id = ?",
-                UUID.fromString(id)))
-        .containsEntry("name", null)
-        .containsEntry("package_size", null)
-        .hasEntrySatisfying("estimated_price_eur", price -> assertThat(price).hasToString("9.99"));
+    // Read column by column: H2 hands back a map keyed by UPPERCASE column names,
+    // so asserting on a map would fail for a reason that has nothing to do with
+    // the rule under test.
+    assertThat(storedColumn(id, "name")).isNull();
+    assertThat(storedColumn(id, "package_size")).isNull();
+    assertThat(storedColumn(id, "estimated_price_eur")).isEqualTo("9.99");
   }
 
   /**
@@ -271,7 +270,7 @@ class JdbcShoppingProductRepositoryTest {
         new ShoppingProduct(
             "Copos de avena Brüggen",
             null,
-            "500 g",
+            "Caja 0.8 kg",
             new BigDecimal("9.99"),
             null,
             "oats",

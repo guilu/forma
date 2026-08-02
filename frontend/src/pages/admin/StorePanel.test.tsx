@@ -95,6 +95,24 @@ describe('AdminPage — the shopping catalog tab', () => {
   });
 
   /**
+   * The shop's own photo goes in front of the product; the category glyph goes in the category's
+   * column. Both in the same place meant two icons saying different things about one row — one of
+   * this product, one of its aisle.
+   */
+  it('shows the store photo beside the name and the category glyph in its own column', async () => {
+    await openStoreTab();
+    await screen.findByText('Copos de avena Brüggen');
+
+    const nameCell = screen.getByText('Copos de avena Brüggen').closest('td');
+    expect(within(nameCell!).getByRole('presentation', { hidden: true })).toHaveAttribute(
+      'src',
+      expect.stringContaining('h=24&w=24'),
+    );
+    expect(nameCell?.textContent).toBe('Copos de avena Brüggen');
+    expect(screen.getByText('Cereales y legumbres').closest('td')?.textContent).toContain('🌾');
+  });
+
+  /**
    * One table holds every chain (V36), so the filter is a query rather than a
    * tab per supermarket — adding Carrefour must not add a tab.
    */

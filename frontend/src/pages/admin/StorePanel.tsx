@@ -46,11 +46,25 @@ import styles from './panel.module.css';
 const fallbackLabel = (product: StoreProduct) => SHOPPING_CATEGORY_LABELS[product.category];
 const packageLabel = (product: StoreProduct) => product.packageSize ?? '—';
 
+/**
+ * The category glyph sits in the Categoría column (FOR-198). In front of the product's name it
+ * competed with the shop's own photo, which is the picture of THIS product rather than of its
+ * aisle — two icons saying different things in the same spot.
+ */
 const columnsWith = (
   categoryLabel: (product: StoreProduct) => string,
+  categoryGlyphOf: (product: StoreProduct) => string,
 ): CatalogColumn<StoreProduct>[] => [
   { header: 'Tienda', value: (product) => STORE_LABELS[product.store] },
-  { header: 'Categoría', value: categoryLabel },
+  {
+    header: 'Categoría',
+    value: (product) => (
+      <span className={styles.withGlyph}>
+        <span aria-hidden="true">{categoryGlyphOf(product)}</span>
+        {categoryLabel(product)}
+      </span>
+    ),
+  },
   { header: 'Formato', value: packageLabel },
   { header: 'Precio', value: (product) => priceLabel(product.priceEur), numeric: true },
 ];
@@ -149,7 +163,15 @@ export function StorePanel({ creating, onCreateClose }: StorePanelProps) {
     (product: StoreProduct) => categories.label(product.category, fallbackLabel(product)),
     [categories],
   );
-  const columns = useMemo(() => columnsWith(categoryLabel), [categoryLabel]);
+  const categoryGlyphOf = useCallback(
+    (product: StoreProduct) =>
+      categories.glyph(product.category, shoppingCategoryGlyph(product.category)),
+    [categories],
+  );
+  const columns = useMemo(
+    () => columnsWith(categoryLabel, categoryGlyphOf),
+    [categoryLabel, categoryGlyphOf],
+  );
   const details = useMemo(
     () => detailsWith((id) => foods.find((food) => food.id === id)?.name ?? id, categoryLabel),
     [foods, categoryLabel],
@@ -205,9 +227,6 @@ export function StorePanel({ creating, onCreateClose }: StorePanelProps) {
             rows={catalog.visible}
             idOf={(product) => product.id}
             nameOf={(product) => product.name}
-            glyphOf={(product) =>
-              categories.glyph(product.category, shoppingCategoryGlyph(product.category))
-            }
             mediaOf={(product) => <ProductThumbnail url={product.imageUrl} />}
             extraActions={(product) =>
               // Only what a shop can be asked about: a hand-typed row has no
