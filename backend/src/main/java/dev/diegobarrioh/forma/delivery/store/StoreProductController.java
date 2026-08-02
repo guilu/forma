@@ -1,5 +1,6 @@
 package dev.diegobarrioh.forma.delivery.store;
 
+import dev.diegobarrioh.forma.application.LinkPreview;
 import dev.diegobarrioh.forma.application.StoreProductService;
 import dev.diegobarrioh.forma.delivery.ApiPaths;
 import dev.diegobarrioh.forma.domain.Store;
@@ -32,9 +33,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class StoreProductController {
 
   private final StoreProductService service;
+  private final LinkPreview linkPreview;
 
-  public StoreProductController(StoreProductService service) {
+  public StoreProductController(StoreProductService service, LinkPreview linkPreview) {
     this.service = service;
+    this.linkPreview = linkPreview;
   }
 
   /**
@@ -52,6 +55,20 @@ public class StoreProductController {
   @GetMapping("/{id}")
   public StoreProductResponse byId(@PathVariable String id) {
     return StoreProductResponse.from(service.getById(id));
+  }
+
+  /**
+   * The product photo the page at {@code url} advertises (FOR-200), for an admin typing a product
+   * by hand.
+   *
+   * <p>Admin-only, like the import: this makes the server fetch a URL somebody chose, and that is
+   * not something to leave open. A page that publishes no image answers 200 with a null field — it
+   * was read, it just says nothing — while a URL that is not a public http(s) address is a 400.
+   */
+  @GetMapping("/link-image")
+  @PreAuthorize("hasRole('ADMIN')")
+  public LinkImageResponse linkImage(@RequestParam String url) {
+    return new LinkImageResponse(linkPreview.imageFor(url).orElse(null));
   }
 
   /** Adds a product to the shared catalog. */

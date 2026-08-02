@@ -23,6 +23,10 @@ export function thumbnailUrl(url: string | undefined, size: number): string | un
       (_match, separator: string, parameter: string) => `${separator}${parameter}=${size}`,
     );
   }
-  const separator = url.includes('?') ? '&' : '?';
-  return `${url}${separator}fit=crop&h=${size}&w=${size}`;
+  // Left alone (FOR-200). Appending a crop to an arbitrary CDN — Amazon's, a
+  // shop's own server — asks for a resize nobody promised to do, and the URL
+  // ends up carrying parameters that mean nothing. The <img> is sized in CSS
+  // either way; the rewrite above is an optimisation for the CDNs that honour
+  // it, not a requirement.
+  return url;
 }

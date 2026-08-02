@@ -12,10 +12,14 @@ describe('thumbnailUrl', () => {
     ).toBe('https://prod-mercadona.imgix.net/images/abc.jpg?fit=crop&h=24&w=24');
   });
 
-  /** A url with no sizing of its own still has to come back usable, not mangled. */
-  it('adds the crop when the url carries none', () => {
-    expect(thumbnailUrl('https://cdn.example/img.jpg', 24)).toBe(
-      'https://cdn.example/img.jpg?fit=crop&h=24&w=24',
+  /**
+   * A CDN that advertises no sizing is left alone: asking Amazon for `fit=crop` would be asking for
+   * a resize nobody promised, and the URL would carry parameters that mean nothing. The image is
+   * sized in CSS either way.
+   */
+  it('leaves a url with no sizing of its own untouched', () => {
+    expect(thumbnailUrl('https://m.media-amazon.com/images/I/31kt192oAzL._AC_.jpg', 24)).toBe(
+      'https://m.media-amazon.com/images/I/31kt192oAzL._AC_.jpg',
     );
   });
 

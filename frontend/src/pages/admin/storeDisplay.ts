@@ -9,6 +9,9 @@ import type { ShoppingCategory, Store } from '../../api/storeProducts';
 export const STORE_LABELS: Record<Store, string> = {
   MERCADONA: 'Mercadona',
   CARREFOUR: 'Carrefour',
+  // Anything no supermarket we track sells: bought online, at a local shop, at a
+  // market stall. It has no catalogue, so nothing here is ever imported.
+  OTRAS: 'Otras',
 };
 
 export const STORE_OPTIONS = Object.keys(STORE_LABELS) as Store[];

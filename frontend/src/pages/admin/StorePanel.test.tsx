@@ -9,6 +9,7 @@ import {
   deleteStoreProduct,
   listStoreProducts,
   refreshStoreProduct,
+  fetchLinkImage,
   searchStoreProducts,
   updateStoreProduct,
   type StoreProduct,
@@ -28,6 +29,7 @@ vi.mock('../../api/storeProducts', () => ({
   listStoreSuggestions: vi.fn(),
   searchStoreProducts: vi.fn(),
   refreshStoreProduct: vi.fn(),
+  fetchLinkImage: vi.fn(),
 }));
 
 const listMock = vi.mocked(listStoreProducts);
@@ -35,6 +37,7 @@ const updateMock = vi.mocked(updateStoreProduct);
 const deleteMock = vi.mocked(deleteStoreProduct);
 const refreshMock = vi.mocked(refreshStoreProduct);
 const searchMock = vi.mocked(searchStoreProducts);
+const imageMock = vi.mocked(fetchLinkImage);
 
 const oats: StoreProduct = {
   id: 'mercadona-oats',
@@ -405,6 +408,64 @@ describe('AdminPage — the shopping catalog tab', () => {
       const dialog = await screen.findByRole('dialog', { name: /Importar de Mercadona/ });
       expect(within(dialog).getByRole('button', { name: /Buscar/ })).toBeDisabled();
       expect(searchMock).not.toHaveBeenCalled();
+    });
+  });
+
+  /**
+   * Plenty of what a plan is built from comes from nowhere we track — whey protein bought online,
+   * bread from a local baker. Those rows still belong in the catalog, and they still deserve a
+   * picture: the form takes an image URL, and offers to read one off the product page.
+   */
+  describe('a product from no shop we track', () => {
+    it('offers a store for what no supermarket sells', async () => {
+      const user = await openStoreTab();
+      await screen.findByText('Salmón');
+
+      await user.click(screen.getByRole('button', { name: '+ Producto' }));
+      const form = await screen.findByRole('dialog', { name: /Nuevo producto/ });
+
+      expect(within(form).getByRole('option', { name: 'Otras' })).toBeInTheDocument();
+    });
+
+    it('reads the photo off the product page', async () => {
+      imageMock.mockResolvedValue('https://m.media-amazon.com/images/I/31kt192oAzL._AC_.jpg');
+      const user = await openStoreTab();
+      await screen.findByText('Salmón');
+      await user.click(screen.getByRole('button', { name: '+ Producto' }));
+      const form = await screen.findByRole('dialog', { name: /Nuevo producto/ });
+
+      await user.type(within(form).getByLabelText('Enlace'), 'https://www.amazon.es/dp/B07Q31N9D4');
+      await user.click(within(form).getByRole('button', { name: /Obtener imagen/ }));
+
+      await waitFor(() =>
+        expect(imageMock).toHaveBeenCalledWith('https://www.amazon.es/dp/B07Q31N9D4'),
+      );
+      expect(await within(form).findByLabelText('Imagen (URL)')).toHaveValue(
+        'https://m.media-amazon.com/images/I/31kt192oAzL._AC_.jpg',
+      );
+    });
+
+    /** A page that publishes nothing is not a failure; the field is there to be filled by hand. */
+    it('says so when the page advertises no photo', async () => {
+      imageMock.mockResolvedValue(undefined);
+      const user = await openStoreTab();
+      await screen.findByText('Salmón');
+      await user.click(screen.getByRole('button', { name: '+ Producto' }));
+      const form = await screen.findByRole('dialog', { name: /Nuevo producto/ });
+
+      await user.type(within(form).getByLabelText('Enlace'), 'https://tienda.example/p');
+      await user.click(within(form).getByRole('button', { name: /Obtener imagen/ }));
+
+      expect(await within(form).findByText(/no publica ninguna imagen/i)).toBeInTheDocument();
+    });
+
+    it('has nothing to read without a link', async () => {
+      const user = await openStoreTab();
+      await screen.findByText('Salmón');
+      await user.click(screen.getByRole('button', { name: '+ Producto' }));
+      const form = await screen.findByRole('dialog', { name: /Nuevo producto/ });
+
+      expect(within(form).getByRole('button', { name: /Obtener imagen/ })).toBeDisabled();
     });
   });
 });
