@@ -72,6 +72,22 @@ describe('AdminPage', () => {
     expect(within(table).getByText('Carbohidrato')).toBeInTheDocument();
   });
 
+  /**
+   * The glyph belongs to the category, so it is drawn in the category's column. In front of the
+   * food's name it read as that food's own icon — and every carbohydrate wore the same wheat ear.
+   */
+  it('draws the category glyph in the category column, not beside the name', async () => {
+    listMock.mockResolvedValue([oats]);
+
+    renderPage();
+    await screen.findByText('Copos de avena');
+
+    const nameCell = screen.getByText('Copos de avena').closest('td');
+    expect(nameCell?.textContent).toBe('Copos de avena');
+    const categoryCell = screen.getByText('Carbohidrato').closest('td');
+    expect(categoryCell?.textContent).toContain('🌾');
+  });
+
   it('edits a food through a form and re-reads the list', async () => {
     listMock.mockResolvedValue([oats]);
     updateMock.mockResolvedValue({ ...oats, name: 'Avena integral' });
