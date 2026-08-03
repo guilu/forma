@@ -21,6 +21,7 @@ import { CatalogTable, type CatalogColumn, type CatalogDetail } from './CatalogT
 import { ImportFromStore } from './ImportFromStore';
 import { Pagination } from './Pagination';
 import { ProductThumbnail } from './ProductThumbnail';
+import { StoreAislesManager } from './StoreAislesManager';
 import { StoreProductForm } from './StoreProductForm';
 import { SHOPPING_CATEGORY_LABELS, priceLabel, shoppingCategoryGlyph } from './storeDisplay';
 import { useCatalogAdmin } from './useCatalogAdmin';
@@ -163,6 +164,7 @@ export function StorePanel({ creating, onCreateClose }: StorePanelProps) {
   // from the header — the panel does not own the second one.
   const [refreshing, setRefreshing] = useState<string | undefined>(undefined);
   const [searching, setSearching] = useState(false);
+  const [viewingAisles, setViewingAisles] = useState(false);
   const [draft, setDraft] = useState<StoreProduct | undefined>(undefined);
 
   /**
@@ -257,6 +259,19 @@ export function StorePanel({ creating, onCreateClose }: StorePanelProps) {
         {/* Disabled until a chain is chosen: "Todas" is not a shop anybody can
             search, and a button that asks which one after being pressed is a
             question the filter beside it already answers. */}
+        {/* Same reason as the search beside it: aisles belong to one shop, and
+            "Todas" is not a shop that has any. */}
+        <Button
+          variant="secondary"
+          type="button"
+          disabled={store === ''}
+          onClick={() => {
+            catalog.setActionError(undefined);
+            setViewingAisles(true);
+          }}
+        >
+          Pasillos
+        </Button>
         <Button
           variant="secondary"
           type="button"
@@ -269,6 +284,16 @@ export function StorePanel({ creating, onCreateClose }: StorePanelProps) {
           Importar desde tienda
         </Button>
       </div>
+
+      {viewingAisles && store !== '' && (
+        <Modal title={`Pasillos de ${stores.label(store)}`} onClose={() => setViewingAisles(false)}>
+          <StoreAislesManager
+            storeId={store}
+            storeName={stores.label(store)}
+            onClose={() => setViewingAisles(false)}
+          />
+        </Modal>
+      )}
 
       {searching && store !== '' && (
         <Modal title={`Importar de ${stores.label(store)}`} onClose={() => setSearching(false)}>
