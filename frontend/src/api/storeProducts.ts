@@ -44,6 +44,18 @@ export interface StoreProduct {
   /** The shop's own id, present only on imported rows — what makes a refresh possible. */
   readonly externalId?: string;
   readonly imageUrl?: string;
+  /**
+   * Which shelf of its OWN shop the product sits on, as one of our
+   * `store_category` rows. Read-only here: the server resolves it from the id
+   * the shop reported, so nothing on a form writes it.
+   */
+  readonly storeCategoryId?: string;
+  /**
+   * The SHOP's own id for that shelf, echoed back from the suggestion the same
+   * way `externalId` is. Sent on create so the server can resolve it; absent for
+   * a product typed by hand, which never came off a shelf.
+   */
+  readonly storeCategoryExternalId?: string;
 }
 
 /** Lists the catalog, narrowed to one chain when `store` is given. */
@@ -157,6 +169,8 @@ export interface StoreSuggestion {
   readonly url?: string;
   readonly ean?: string;
   readonly storeCategory?: string;
+  /** The shop's own id for that shelf — the name is to read, this is to link by. */
+  readonly storeCategoryExternalId?: string;
   readonly imageUrl?: string;
 }
 

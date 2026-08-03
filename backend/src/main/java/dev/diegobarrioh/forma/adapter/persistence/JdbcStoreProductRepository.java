@@ -19,7 +19,7 @@ public class JdbcStoreProductRepository implements StoreProductRepository {
 
   private static final String COLUMNS =
       "id, store, name, food_id, package_size, price_eur, url, category, notes, external_id,"
-          + " image_url";
+          + " image_url, store_category_id";
 
   private static final RowMapper<CatalogStoreProduct> ROW_MAPPER =
       (rs, rowNum) ->
@@ -34,7 +34,8 @@ public class JdbcStoreProductRepository implements StoreProductRepository {
               ShoppingCategory.valueOf(rs.getString("category")),
               rs.getString("notes"),
               rs.getString("external_id"),
-              rs.getString("image_url"));
+              rs.getString("image_url"),
+              rs.getString("store_category_id"));
 
   private final JdbcTemplate jdbcTemplate;
 
@@ -67,7 +68,7 @@ public class JdbcStoreProductRepository implements StoreProductRepository {
   @Override
   public void insert(CatalogStoreProduct product) {
     jdbcTemplate.update(
-        "INSERT INTO store_product (" + COLUMNS + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO store_product (" + COLUMNS + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         product.id(),
         product.store(),
         product.name(),
@@ -78,14 +79,16 @@ public class JdbcStoreProductRepository implements StoreProductRepository {
         product.category().name(),
         product.notes(),
         product.externalId(),
-        product.imageUrl());
+        product.imageUrl(),
+        product.storeCategoryId());
   }
 
   @Override
   public void update(CatalogStoreProduct product) {
     jdbcTemplate.update(
         "UPDATE store_product SET store = ?, name = ?, food_id = ?, package_size = ?,"
-            + " price_eur = ?, url = ?, category = ?, notes = ?, external_id = ?, image_url = ?"
+            + " price_eur = ?, url = ?, category = ?, notes = ?, external_id = ?, image_url = ?,"
+            + " store_category_id = ?"
             + " WHERE id = ?",
         product.store(),
         product.name(),
@@ -97,6 +100,7 @@ public class JdbcStoreProductRepository implements StoreProductRepository {
         product.notes(),
         product.externalId(),
         product.imageUrl(),
+        product.storeCategoryId(),
         product.id());
   }
 

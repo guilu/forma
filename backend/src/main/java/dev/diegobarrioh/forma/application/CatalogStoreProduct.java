@@ -27,6 +27,11 @@ import java.math.BigDecimal;
  * @param externalId the shop's own id when this row was imported (FOR-195); absent for anything
  *     transcribed or typed by hand, which is what makes a row refreshable or not
  * @param imageUrl the shop's product photo; absent for the same reason
+ * @param storeCategoryId which shelf of ITS OWN shop the product sits on (V46), or {@code null}.
+ *     Null is the common case and not a gap: a product typed by hand never came off a shelf, a
+ *     product filed under OTRAS has no shop with shelves, and an imported one stays null until
+ *     somebody syncs that shop's aisles. Distinct from {@code category}, which is one of OUR six
+ *     and is a person's decision
  */
 public record CatalogStoreProduct(
     String id,
@@ -39,7 +44,8 @@ public record CatalogStoreProduct(
     ShoppingCategory category,
     String notes,
     String externalId,
-    String imageUrl) {
+    String imageUrl,
+    String storeCategoryId) {
 
   /*
    * Eleven components and no shorter constructor, deliberately: the convenience overload that
@@ -73,6 +79,31 @@ public record CatalogStoreProduct(
         category,
         notes,
         fresh.externalId(),
-        fresh.imageUrl());
+        fresh.imageUrl(),
+        storeCategoryId);
+  }
+
+  /**
+   * This product moved onto the shelf the shop says it is on (V46).
+   *
+   * <p>Separate from {@link #refreshedWith} because the caller has to do work the domain cannot:
+   * the shop hands over its own id for the aisle, and turning that into one of our rows means
+   * knowing whether that row exists. It usually does not — nobody has to sync a shop's aisles to
+   * import from it — and {@code null} is the answer then.
+   */
+  public CatalogStoreProduct onShelf(String resolvedStoreCategoryId) {
+    return new CatalogStoreProduct(
+        id,
+        store,
+        name,
+        foodId,
+        packageSize,
+        priceEur,
+        url,
+        category,
+        notes,
+        externalId,
+        imageUrl,
+        resolvedStoreCategoryId);
   }
 }

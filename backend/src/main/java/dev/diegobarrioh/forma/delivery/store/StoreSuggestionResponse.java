@@ -19,6 +19,7 @@ public record StoreSuggestionResponse(
     String url,
     String ean,
     String storeCategory,
+    String storeCategoryExternalId,
     String imageUrl) {
 
   public static StoreSuggestionResponse from(ImportableProduct product) {
@@ -30,6 +31,7 @@ public record StoreSuggestionResponse(
         product.url(),
         product.ean(),
         product.storeCategory(),
+        product.storeCategoryExternalId(),
         product.imageUrl());
   }
 }

@@ -111,6 +111,10 @@ export function ImportFromStore({ store, food, onCancel, onPicked }: ImportFromS
     name: suggestion.name,
     foodId: food?.id,
     externalId: suggestion.externalId,
+    // Echoed back untouched so the server can file the product on the shop's own
+    // shelf. It resolves it against the aisles actually synced, and drops it
+    // otherwise — this is a hint, not a foreign key the form is trusted with.
+    storeCategoryExternalId: suggestion.storeCategoryExternalId,
     imageUrl: suggestion.imageUrl,
     packageSize: suggestion.packaging,
     priceEur: suggestion.priceEur,

@@ -72,6 +72,7 @@ class ShoppingListServiceTest {
         ShoppingCategory.CEREALES_Y_LEGUMBRES,
         null,
         null,
+        null,
         null);
   }
 
