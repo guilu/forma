@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.diegobarrioh.forma.application.ImportableProduct;
 import dev.diegobarrioh.forma.application.StoreCatalogSource;
 import dev.diegobarrioh.forma.application.StoreCatalogUnavailableException;
+import dev.diegobarrioh.forma.application.StoreCategoryNode;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
@@ -65,6 +66,47 @@ public class MercadonaCatalogAdapter implements StoreCatalogSource {
   @Override
   public String store() {
     return "MERCADONA";
+  }
+
+  /**
+   * Mercadona's own aisles, two levels deep, from a single request (V46).
+   *
+   * <p>The index at {@code /api/categories/} already carries both levels — 26 headings, each with
+   * its subcategories — so reading the tree costs one call. It deliberately does NOT go a third
+   * level deep: the shelves below a subcategory only appear in the per-subcategory responses, and
+   * fetching 151 of them to record a level nobody has asked to browse by would make asking for the
+   * aisles as expensive as importing the entire catalogue.
+   *
+   * <p>Not cached, unlike {@link #products()}: this is one small request, and a sync is something
+   * somebody asks for precisely when they think the shop has changed.
+   *
+   * @throws StoreCatalogUnavailableException when the shop cannot be reached. Answering with an
+   *     empty list instead would tell the caller "this shop publishes no aisles", which is a
+   *     different fact and one that would put every stored aisle at risk of being retired at once.
+   */
+  @Override
+  public List<StoreCategoryNode> categories() {
+    JsonNode index = parse(transport.get(CATEGORIES_URL));
+    List<StoreCategoryNode> roots = new ArrayList<>();
+    for (JsonNode root : index.path("results")) {
+      List<StoreCategoryNode> children = new ArrayList<>();
+      for (JsonNode subcategory : root.path("categories")) {
+        // `published` is the shop saying it is not selling from that shelf today. Offering it would
+        // send somebody to an aisle that is not there.
+        if (subcategory.path("published").asBoolean(true)) {
+          children.add(
+              new StoreCategoryNode(
+                  subcategory.path("id").asText(), subcategory.path("name").asText(), List.of()));
+        }
+      }
+      // A heading with nothing left under it is a heading for an empty shelf.
+      if (!children.isEmpty()) {
+        roots.add(
+            new StoreCategoryNode(
+                root.path("id").asText(), root.path("name").asText(), List.copyOf(children)));
+      }
+    }
+    return List.copyOf(roots);
   }
 
   @Override
