@@ -29,7 +29,7 @@ class MealLogTest {
 
   @Test
   void addingCatalogAndFreeEntriesAccumulatesConsumedMacros() {
-    FoodItem oats = FoodCatalog.findById("oats").orElseThrow(); // 370/13.0/60.0/7.0 per 100g
+    FoodItem oats = SeededFoods.byId("oats"); // 370/13.0/60.0/7.0 per 100g
     MealLogEntry catalogEntry =
         MealLogEntry.fromCatalog(DAY, MealType.BREAKFAST, oats, 1.0); // 60g -> 222/7.8/36.0/4.2
     MealLogEntry freeEntry =
@@ -124,8 +124,7 @@ class MealLogTest {
 
   @Test
   void aCatalogEntryWithNoKeyNutrientDataNullsTheAffectedTotals() {
-    FoodItem vegetables =
-        FoodCatalog.findById("vegetables").orElseThrow(); // all key nutrients null
+    FoodItem vegetables = SeededFoods.byId("vegetables"); // all key nutrients null
     MealLogEntry entry = MealLogEntry.fromCatalog(DAY, MealType.LUNCH, vegetables, 1.0);
 
     MealLog log = MealLog.empty(DAY).withEntry(entry);

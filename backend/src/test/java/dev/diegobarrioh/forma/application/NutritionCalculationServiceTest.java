@@ -17,7 +17,8 @@ import org.junit.jupiter.api.Test;
  */
 class NutritionCalculationServiceTest {
 
-  private final NutritionCalculationService service = new NutritionCalculationService();
+  private final NutritionCalculationService service =
+      new NutritionCalculationService(SeededFoodCatalog.service());
 
   private static MealTemplate meal(List<MealItem> items) {
     return new MealTemplate(

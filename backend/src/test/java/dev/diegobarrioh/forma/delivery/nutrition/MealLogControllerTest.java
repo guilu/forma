@@ -23,6 +23,7 @@ import dev.diegobarrioh.forma.domain.NutritionDayCatalog;
 import dev.diegobarrioh.forma.domain.NutritionDayTemplate;
 import dev.diegobarrioh.forma.domain.NutritionDayType;
 import dev.diegobarrioh.forma.domain.NutritionTotals;
+import dev.diegobarrioh.forma.domain.SeededFoods;
 import dev.diegobarrioh.forma.domain.TargetComparison;
 import dev.diegobarrioh.forma.support.WebMvcAuthTestConfig;
 import java.time.LocalDate;
@@ -193,7 +194,9 @@ class MealLogControllerTest {
   void consumptionBeforeAnyLogReturns200WithZeroedConsumedNeverA404() throws Exception {
     // 2026-07-15 is a Wednesday -> STRENGTH day (FOR-128), but this test only asserts consumed.
     NutritionDayTemplate strengthTemplate =
-        NutritionDayCatalog.findByType(NutritionDayType.STRENGTH).orElseThrow().template();
+        NutritionDayCatalog.findByType(NutritionDayType.STRENGTH, SeededFoods.LOOKUP)
+            .orElseThrow()
+            .template();
     NutritionTotals zeroed = new NutritionTotals(0, 0.0, 0.0, 0.0);
     when(mealLogService.consumption(eq(LocalDate.of(2026, 7, 15))))
         .thenReturn(
@@ -226,7 +229,9 @@ class MealLogControllerTest {
             "chicken",
             new NutritionTotals(600, 40.0, 60.0, 20.0));
     NutritionDayTemplate strengthTemplate =
-        NutritionDayCatalog.findByType(NutritionDayType.STRENGTH).orElseThrow().template();
+        NutritionDayCatalog.findByType(NutritionDayType.STRENGTH, SeededFoods.LOOKUP)
+            .orElseThrow()
+            .template();
     NutritionTotals consumed = new NutritionTotals(600, 40.0, 60.0, 20.0);
     KeyNutrientTotals keyNutrients = new KeyNutrientTotals(22.0, 40.0, 1800, 12.0);
     when(mealLogService.consumption(eq(LocalDate.of(2026, 7, 15))))
@@ -260,7 +265,9 @@ class MealLogControllerTest {
   @Test
   void consumptionOnARunningDayReturnsTheRunningTemplateTarget() throws Exception {
     NutritionDayTemplate runningTemplate =
-        NutritionDayCatalog.findByType(NutritionDayType.RUNNING).orElseThrow().template();
+        NutritionDayCatalog.findByType(NutritionDayType.RUNNING, SeededFoods.LOOKUP)
+            .orElseThrow()
+            .template();
     NutritionTotals zeroed = new NutritionTotals(0, 0.0, 0.0, 0.0);
     when(mealLogService.consumption(eq(LocalDate.of(2026, 7, 18)))) // Saturday
         .thenReturn(
@@ -283,7 +290,9 @@ class MealLogControllerTest {
   @Test
   void consumptionOnARestDayReturnsTheRestTemplateTarget() throws Exception {
     NutritionDayTemplate restTemplate =
-        NutritionDayCatalog.findByType(NutritionDayType.REST).orElseThrow().template();
+        NutritionDayCatalog.findByType(NutritionDayType.REST, SeededFoods.LOOKUP)
+            .orElseThrow()
+            .template();
     NutritionTotals zeroed = new NutritionTotals(0, 0.0, 0.0, 0.0);
     when(mealLogService.consumption(eq(LocalDate.of(2026, 7, 19)))) // Sunday
         .thenReturn(

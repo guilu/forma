@@ -14,13 +14,13 @@ import org.junit.jupiter.api.Test;
 class NutritionDayCatalogTest {
 
   private NutritionDay day(NutritionDayType type) {
-    return NutritionDayCatalog.findByType(type).orElseThrow();
+    return NutritionDayCatalog.findByType(type, SeededFoods.LOOKUP).orElseThrow();
   }
 
   @Test
   void hasRunningStrengthAndRestDays() {
     Set<NutritionDayType> types =
-        NutritionDayCatalog.days().stream()
+        NutritionDayCatalog.days(SeededFoods.LOOKUP).stream()
             .map(nutritionDay -> nutritionDay.template().type())
             .collect(Collectors.toSet());
 
@@ -31,7 +31,7 @@ class NutritionDayCatalogTest {
 
   @Test
   void everyDayHasMealsAndEveryMealItemResolvesToACatalogFood() {
-    assertThat(NutritionDayCatalog.days())
+    assertThat(NutritionDayCatalog.days(SeededFoods.LOOKUP))
         .allSatisfy(
             nutritionDay -> {
               assertThat(nutritionDay.meals()).isNotEmpty();
@@ -41,7 +41,7 @@ class NutritionDayCatalogTest {
                           meal.items()
                               .forEach(
                                   item ->
-                                      assertThat(FoodCatalog.findById(item.foodItemId()))
+                                      assertThat(SeededFoods.LOOKUP.findById(item.foodItemId()))
                                           .isPresent()));
             });
   }
@@ -52,8 +52,9 @@ class NutritionDayCatalogTest {
     // generic 31 g/100g), which shifted daily protein down from the pre-reseed 150-170 g band to
     // ~144-151 g across the three day templates. Recomputed honestly from the new catalog values,
     // not fabricated.
-    for (NutritionDay nutritionDay : NutritionDayCatalog.days()) {
-      double protein = NutritionCalculator.dayTotals(nutritionDay.meals()).proteinG();
+    for (NutritionDay nutritionDay : NutritionDayCatalog.days(SeededFoods.LOOKUP)) {
+      double protein =
+          NutritionCalculator.dayTotals(nutritionDay.meals(), SeededFoods.LOOKUP).proteinG();
       assertThat(protein).isBetween(140.0, 155.0);
     }
   }
@@ -61,16 +62,20 @@ class NutritionDayCatalogTest {
   @Test
   void runningDayHasMoreCarbsThanRestDay() {
     double runningCarbs =
-        NutritionCalculator.dayTotals(day(NutritionDayType.RUNNING).meals()).carbsG();
-    double restCarbs = NutritionCalculator.dayTotals(day(NutritionDayType.REST).meals()).carbsG();
+        NutritionCalculator.dayTotals(day(NutritionDayType.RUNNING).meals(), SeededFoods.LOOKUP)
+            .carbsG();
+    double restCarbs =
+        NutritionCalculator.dayTotals(day(NutritionDayType.REST).meals(), SeededFoods.LOOKUP)
+            .carbsG();
 
     assertThat(runningCarbs).isGreaterThan(restCarbs);
   }
 
   @Test
   void eachDayTargetsMatchItsComputedMacros() {
-    for (NutritionDay nutritionDay : NutritionDayCatalog.days()) {
-      NutritionTotals totals = NutritionCalculator.dayTotals(nutritionDay.meals());
+    for (NutritionDay nutritionDay : NutritionDayCatalog.days(SeededFoods.LOOKUP)) {
+      NutritionTotals totals =
+          NutritionCalculator.dayTotals(nutritionDay.meals(), SeededFoods.LOOKUP);
       NutritionDayTemplate template = nutritionDay.template();
 
       assertThat(template.targetCalories()).isEqualTo(totals.calories());

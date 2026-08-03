@@ -1,7 +1,6 @@
 package dev.diegobarrioh.forma.delivery.nutrition;
 
 import dev.diegobarrioh.forma.application.NutritionCalculationService;
-import dev.diegobarrioh.forma.domain.FoodCatalog;
 import dev.diegobarrioh.forma.domain.MealType;
 import dev.diegobarrioh.forma.domain.NutritionDay;
 import dev.diegobarrioh.forma.domain.NutritionDayType;
@@ -98,11 +97,7 @@ public record NutritionDayResponse(
                         meal.items().stream()
                             .map(
                                 item ->
-                                    new Item(
-                                        FoodCatalog.findById(item.foodItemId())
-                                            .map(food -> food.name())
-                                            .orElse(item.foodItemId()),
-                                        item.quantityG()))
+                                    new Item(calc.foodName(item.foodItemId()), item.quantityG()))
                             .toList()))
             .toList();
     Totals dayTotals = Totals.from(calc.dayTotals(day.meals()));

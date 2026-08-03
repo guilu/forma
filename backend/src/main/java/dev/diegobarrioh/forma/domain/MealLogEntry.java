@@ -2,6 +2,7 @@ package dev.diegobarrioh.forma.domain;
 
 import java.time.LocalDate;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * A single logged (consumed) meal entry (FOR-127, first implementable slice of FOR-102): either a
@@ -76,13 +77,24 @@ public record MealLogEntry(
     if (portions <= 0) {
       throw new IllegalArgumentException("portions must be strictly positive, was: " + portions);
     }
+    if (food.defaultServingG() == null) {
+      // Portions are defined as multiples of the food's serving; without one there is nothing to
+      // multiply. Inventing a serving would silently invent the macros too — the caller logs this
+      // food by grams instead.
+      throw new IllegalArgumentException(
+          "cannot log by portions: food has no defaultServingG: " + food.id());
+    }
     int quantityG = (int) Math.round(portions * food.defaultServingG());
     if (quantityG <= 0) {
       quantityG = 1;
     }
     MealItem item = new MealItem(food.id(), quantityG);
-    NutritionTotals totals = NutritionCalculator.itemTotals(item);
-    KeyNutrientTotals keyNutrients = NutritionCalculator.itemKeyNutrients(item);
+    // The calculator resolves items through a lookup, but this entry is built FROM an already
+    // resolved food: the only food it can possibly need is the one in hand, so that is the whole
+    // lookup. No repository reaches this far into the domain.
+    FoodLookup self = id -> Optional.of(food).filter(f -> f.id().equals(id));
+    NutritionTotals totals = NutritionCalculator.itemTotals(item, self);
+    KeyNutrientTotals keyNutrients = NutritionCalculator.itemKeyNutrients(item, self);
     return new MealLogEntry(date, mealType, food.name(), food.id(), totals, keyNutrients);
   }
 

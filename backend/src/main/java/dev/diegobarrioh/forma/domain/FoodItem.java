@@ -19,11 +19,15 @@ package dev.diegobarrioh.forma.domain;
  *
  * @param id stable identifier used by meal items to reference this food; required, non-blank
  * @param name human-readable food name; required, non-blank
- * @param kcalPer100g energy per 100 g in kilocalories; must be strictly positive
+ * @param kcalPer100g energy per 100 g in kilocalories; must be >= 0 (water, black coffee and
+ *     sweeteners are genuinely 0 kcal)
  * @param proteinPer100g protein grams per 100 g; must be >= 0
  * @param carbsPer100g carbohydrate grams per 100 g; must be >= 0
  * @param fatPer100g fat grams per 100 g; must be >= 0
- * @param defaultServingG a sensible default serving in grams; must be strictly positive
+ * @param defaultServingG a sensible default serving in grams, or {@code null} when none has been
+ *     decided; must be strictly positive when present. Nullable because {@code
+ *     food_catalog.serving_size_g} is, and the admin form leaves it optional — a food nobody has
+ *     given a portion to cannot be logged by portions, but it is still a valid food
  * @param fiberPer100g fibre grams per 100 g, or {@code null} if unknown; must be >= 0 when present
  * @param sugarsPer100g sugars grams per 100 g, or {@code null} if unknown; must be >= 0 when
  *     present
@@ -39,7 +43,7 @@ public record FoodItem(
     double proteinPer100g,
     double carbsPer100g,
     double fatPer100g,
-    int defaultServingG,
+    Integer defaultServingG,
     Double fiberPer100g,
     Double sugarsPer100g,
     Double sodiumMgPer100g,
@@ -48,14 +52,13 @@ public record FoodItem(
   public FoodItem {
     requireText(id, "id");
     requireText(name, "name");
-    if (kcalPer100g <= 0) {
-      throw new IllegalArgumentException(
-          "kcalPer100g must be strictly positive, was: " + kcalPer100g);
+    if (kcalPer100g < 0) {
+      throw new IllegalArgumentException("kcalPer100g must be >= 0, was: " + kcalPer100g);
     }
     requireNonNegative(proteinPer100g, "proteinPer100g");
     requireNonNegative(carbsPer100g, "carbsPer100g");
     requireNonNegative(fatPer100g, "fatPer100g");
-    if (defaultServingG <= 0) {
+    if (defaultServingG != null && defaultServingG <= 0) {
       throw new IllegalArgumentException(
           "defaultServingG must be strictly positive, was: " + defaultServingG);
     }
@@ -76,7 +79,7 @@ public record FoodItem(
       double proteinPer100g,
       double carbsPer100g,
       double fatPer100g,
-      int defaultServingG) {
+      Integer defaultServingG) {
     this(
         id,
         name,
