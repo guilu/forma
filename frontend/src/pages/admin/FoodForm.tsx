@@ -4,7 +4,7 @@ import { SelectField, TextField } from '../../components/FormField';
 import { useNotify } from '../../components/NotificationProvider';
 import { ApiRequestError } from '../../api/client';
 import { createFood, updateFood, type CatalogFood } from '../../api/foods';
-import { CATEGORY_LABELS, CATEGORY_OPTIONS } from './foodDisplay';
+import type { CategoryDisplay } from '../../api/categories';
 import styles from './FoodForm.module.css';
 
 /**
@@ -22,14 +22,40 @@ import styles from './FoodForm.module.css';
 interface FoodFormProps {
   /** Absent when creating. */
   readonly food?: CatalogFood;
+  /**
+   * The food groups to offer, as the backend serves them. Passed in rather than
+   * fetched here: the panel already asked, and a modal that asks again would
+   * open with an empty select every time.
+   */
+  readonly groups: readonly CategoryDisplay[];
   readonly onCancel: () => void;
   readonly onSaved: () => void;
+}
+
+/**
+ * The groups to offer, with the food's own always among them.
+ *
+ * <p>The list is a request: empty while in flight, empty if it failed, and one
+ * short if the food's group has since been retired. A select that cannot show
+ * its own value would display something else and save that instead — silently
+ * reclassifying a food nobody asked to reclassify. So the current value is added
+ * back, labelled with its code, which is at least true.
+ */
+function optionsFor(
+  groups: readonly CategoryDisplay[],
+  current: string,
+): readonly { readonly code: string; readonly label: string }[] {
+  const offered = groups.map((group) => ({ code: group.code, label: group.label }));
+  if (current === '' || offered.some((option) => option.code === current)) {
+    return offered;
+  }
+  return [...offered, { code: current, label: current }];
 }
 
 /** Empty string for an absent optional, so the input renders blank rather than "undefined". */
 const text = (value: number | undefined) => (value === undefined ? '' : String(value));
 
-export function FoodForm({ food, onCancel, onSaved }: FoodFormProps) {
+export function FoodForm({ food, groups, onCancel, onSaved }: FoodFormProps) {
   const notify = useNotify();
   const creating = food === undefined;
   const [id, setId] = useState(food?.id ?? '');
@@ -115,9 +141,9 @@ export function FoodForm({ food, onCancel, onSaved }: FoodFormProps) {
         onChange={(event) => setCategory(event.target.value)}
       >
         <option value="">Sin clasificar</option>
-        {CATEGORY_OPTIONS.map((option) => (
-          <option key={option} value={option}>
-            {CATEGORY_LABELS[option]}
+        {optionsFor(groups, category).map((option) => (
+          <option key={option.code} value={option.code}>
+            {option.label}
           </option>
         ))}
       </SelectField>

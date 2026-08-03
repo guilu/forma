@@ -9,14 +9,19 @@ import { listCategories, type CategoryDisplay, type CategoryScope } from '../../
  * now, so the screens that render them have to ask — otherwise renaming a
  * category would change the tab that edits it and nothing else.
  *
- * <p>The old constants stay as the fallback, and that is not laziness: this is a
- * request, and a table must not render blanks while it is in flight or if it
- * fails. Falling back to what shipped means the worst case is a stale name, not
- * an empty column.
+ * <p>Callers pass a fallback, and that is not laziness: this is a request, and a
+ * table must not render blanks while it is in flight or if it fails. The worst
+ * case is a stale name, not an empty column.
+ *
+ * <p>`options` is the same answer as a list, for the screens that offer a choice
+ * rather than render one. It is empty until the request lands — a form has to
+ * cope with that rather than assume the set is known.
  */
 interface CategoryLookup {
   readonly label: (code: string | undefined, fallback: string) => string;
   readonly glyph: (code: string | undefined, fallback: string) => string;
+  /** Every category of this vocabulary, in the order the backend serves them. */
+  readonly options: readonly CategoryDisplay[];
 }
 
 export function useCategoryDisplays(scope: CategoryScope): CategoryLookup {
@@ -39,6 +44,7 @@ export function useCategoryDisplays(scope: CategoryScope): CategoryLookup {
     return {
       label: (code, fallback) => (code ? (byCode.get(code)?.label ?? fallback) : fallback),
       glyph: (code, fallback) => (code ? (byCode.get(code)?.icon ?? fallback) : fallback),
+      options: displays,
     };
   }, [displays]);
 }
