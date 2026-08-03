@@ -73,6 +73,12 @@ class ShoppingListServiceTest {
         null,
         null,
         null,
+        null,
+        null,
+        null,
+        null,
+        true,
+        null,
         null);
   }
 

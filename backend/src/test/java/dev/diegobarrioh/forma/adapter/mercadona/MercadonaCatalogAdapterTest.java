@@ -2,6 +2,7 @@ package dev.diegobarrioh.forma.adapter.mercadona;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 
 import dev.diegobarrioh.forma.application.ImportableProduct;
 import dev.diegobarrioh.forma.application.StoreCatalogUnavailableException;
@@ -157,6 +158,78 @@ class MercadonaCatalogAdapterTest {
               assertThat(product.name()).isEqualTo("Producto sin precio");
               assertThat(product.priceEur()).isNull();
             });
+  }
+
+  // --- V48: what the shop says beyond the name and the price ---
+
+  /**
+   * The size arrives as a number and a unit and was being flattened into "Garrafa 5 l" and nothing
+   * else. Both forms are kept: one is what a person reads, the other is what arithmetic can use.
+   */
+  @Test
+  void keepsThePackageSizeAsANumberAndAUnitAsWellAsAsText() {
+    transport.serve(
+        CATEGORIES_URL,
+        CATEGORIES,
+        CATEGORIES_URL + "112/",
+        SUBCATEGORY_112,
+        CATEGORIES_URL + "115/",
+        SUBCATEGORY_115);
+
+    assertThat(adapter.products())
+        .filteredOn(product -> product.externalId().equals("4241"))
+        .singleElement()
+        .satisfies(
+            product -> {
+              assertThat(product.packaging()).isEqualTo("Garrafa 5 l");
+              assertThat(product.packageAmount()).isEqualByComparingTo("5.0");
+              assertThat(product.packageUnit()).isEqualTo("l");
+            });
+  }
+
+  /** A listing that states no size states none in both forms; nothing is invented to fill them. */
+  @Test
+  void leavesThePackageSizeUnsetWhenTheShopStatesNone() {
+    transport.serve(
+        CATEGORIES_URL,
+        CATEGORIES,
+        CATEGORIES_URL + "112/",
+        SUBCATEGORY_112,
+        CATEGORIES_URL + "115/",
+        SUBCATEGORY_115);
+
+    assertThat(adapter.products())
+        .filteredOn(product -> product.externalId().equals("5000"))
+        .singleElement()
+        .satisfies(
+            product -> {
+              assertThat(product.packageAmount()).isNull();
+              assertThat(product.packageUnit()).isNull();
+            });
+  }
+
+  /**
+   * `published` is on every crawled product and was being ignored, so something Mercadona had
+   * pulled from sale looked exactly like something it still sold.
+   */
+  @Test
+  void reportsWhetherTheShopStillSellsIt() {
+    transport.serve(
+        CATEGORIES_URL,
+        """
+        {"results":[{"id":12,"name":"Aceites","categories":[
+          {"id":112,"name":"Aceite","published":true}]}]}
+        """,
+        CATEGORIES_URL + "112/",
+        """
+        {"id":112,"name":"Aceite","categories":[{"id":789,"name":"Aceite","products":[
+          {"id":"1","display_name":"En venta","published":true,"price_instructions":{}},
+          {"id":"2","display_name":"Retirado","published":false,"price_instructions":{}}]}]}
+        """);
+
+    assertThat(adapter.products())
+        .extracting(ImportableProduct::externalId, ImportableProduct::available)
+        .containsExactly(tuple("1", true), tuple("2", false));
   }
 
   // --- V46: the shop's own aisles ---

@@ -56,6 +56,24 @@ export interface StoreProduct {
    * a product typed by hand, which never came off a shelf.
    */
   readonly storeCategoryExternalId?: string;
+  /** Barcode, when the shop publishes one. The only key that means the same in every shop. */
+  readonly ean?: string;
+  /**
+   * How much the package holds, with the unit the shop stated — 5 and `'l'`, not 5000 g.
+   * Deliberately unconverted: five litres is not five of anything weighable without a density.
+   */
+  readonly packageAmount?: number;
+  readonly packageUnit?: string;
+  /**
+   * Whether the shop still lists it. Always present on a product read from the
+   * API — the column is NOT NULL — and absent on one being drafted to send,
+   * because the server decides it and no form offers it.
+   */
+  readonly available?: boolean;
+  /** When the shop was last asked. Absent for a product nobody imported. */
+  readonly lastSyncedAt?: string;
+  /** Who makes it. Never filled by an import — no shop publishes it apart from the name. */
+  readonly brand?: string;
 }
 
 /** Lists the catalog, narrowed to one chain when `store` is given. */

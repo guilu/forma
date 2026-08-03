@@ -22,6 +22,13 @@ import java.math.BigDecimal;
  * @param storeCategoryExternalId the store's own id for that aisle (V46), which is what a {@code
  *     store_category} row is keyed on. The name is for a person to read; this is what links the
  *     product to the shelf it came off
+ * @param packageAmount how much the package holds, as a number (V48). The same fact as {@code
+ *     packaging} in a form arithmetic can use; absent when the shop states no size
+ * @param packageUnit the unit that amount is in — "l", "kg", "g", "ud". Deliberately not converted
+ *     to grams: five litres is not five of anything weighable without knowing what is in the bottle
+ * @param available whether the shop still sells it (V48). Every crawled product carries this and it
+ *     used to be dropped, so something pulled from sale looked exactly like something still on the
+ *     shelf
  * @param imageUrl the shop's product photo, at whatever size their CDN handed us; callers resize it
  */
 public record ImportableProduct(
@@ -33,4 +40,7 @@ public record ImportableProduct(
     String ean,
     String storeCategory,
     String storeCategoryExternalId,
+    java.math.BigDecimal packageAmount,
+    String packageUnit,
+    boolean available,
     String imageUrl) {}

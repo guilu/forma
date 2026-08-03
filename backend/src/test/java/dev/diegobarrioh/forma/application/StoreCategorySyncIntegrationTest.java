@@ -113,6 +113,12 @@ class StoreCategorySyncIntegrationTest {
                 null,
                 "4241",
                 null,
+                null,
+                null,
+                null,
+                null,
+                true,
+                null,
                 null),
             "112");
 
@@ -139,6 +145,12 @@ class StoreCategorySyncIntegrationTest {
                 ShoppingCategory.GRASAS_Y_ACEITES,
                 null,
                 "4241",
+                null,
+                null,
+                null,
+                null,
+                null,
+                true,
                 null,
                 null),
             "112");
