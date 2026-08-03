@@ -26,7 +26,8 @@ public record FoodCatalogResponse(
     BigDecimal sodiumMg,
     BigDecimal saturatedFatG,
     String foodGroupId,
-    String primaryMacro) {
+    String primaryMacro,
+    String preparation) {
 
   /** Maps a persisted catalog food to its API read model. */
   public static FoodCatalogResponse from(CatalogFood food) {
@@ -43,6 +44,7 @@ public record FoodCatalogResponse(
         food.sodiumMg(),
         food.saturatedFatG(),
         food.foodGroupId(),
-        food.primaryMacro() == null ? null : food.primaryMacro().name());
+        food.primaryMacro() == null ? null : food.primaryMacro().name(),
+        food.preparation() == null ? null : food.preparation().name());
   }
 }

@@ -44,6 +44,17 @@ public class FoodCatalogService implements FoodLookup {
   }
 
   /**
+   * What state a food's numbers describe (V51), or {@code null} while nobody has said.
+   *
+   * <p>Not on {@link FoodItem}: that type is what the nutrition calculations consume, and they
+   * compute with macros and have no business knowing about kitchens. Only the equivalences care,
+   * and they ask here.
+   */
+  public dev.diegobarrioh.forma.domain.Preparation preparationOf(String foodId) {
+    return repository.findById(foodId).map(CatalogFood::preparation).orElse(null);
+  }
+
+  /**
    * The persisted row as nutrition values.
    *
    * <p>{@link CatalogFood} carries the row as stored, nulls and all; {@link FoodItem} is what the

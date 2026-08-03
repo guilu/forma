@@ -80,7 +80,8 @@ public class CatalogFoodService {
             food.sodiumMg(),
             food.saturatedFatG(),
             food.foodGroupId(),
-            food.primaryMacro());
+            food.primaryMacro(),
+            food.preparation());
     CatalogFood classified = withPrimaryMacro(stored);
     repository.update(classified);
     writeDefaultServing(classified);
@@ -149,7 +150,8 @@ public class CatalogFoodService {
         food.sodiumMg(),
         food.saturatedFatG(),
         food.foodGroupId(),
-        dominant);
+        dominant,
+        food.preparation());
   }
 
   private static Double toDouble(java.math.BigDecimal value) {

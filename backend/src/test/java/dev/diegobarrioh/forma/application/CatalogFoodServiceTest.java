@@ -37,6 +37,7 @@ class CatalogFoodServiceTest {
         null,
         null,
         "PROTEINA",
+        null,
         null);
   }
 
@@ -82,6 +83,7 @@ class CatalogFoodServiceTest {
             null,
             null,
             null,
+            null,
             null);
 
     assertThat(service.create(water).primaryMacro()).isNull();
@@ -109,6 +111,7 @@ class CatalogFoodServiceTest {
             null,
             null,
             "PROTEINA",
+            null,
             null);
 
     assertThat(service.update("tempeh", fattier).primaryMacro()).isEqualTo(PrimaryMacro.FAT);
@@ -140,7 +143,8 @@ class CatalogFoodServiceTest {
         food.sodiumMg(),
         food.saturatedFatG(),
         food.foodGroupId(),
-        macro);
+        macro,
+        null);
   }
 
   @Test
@@ -266,7 +270,8 @@ class CatalogFoodServiceTest {
         food.sodiumMg(),
         food.saturatedFatG(),
         groupId,
-        food.primaryMacro());
+        food.primaryMacro(),
+        null);
   }
 
   private static final class InMemoryGroups implements FoodGroupRepository {
@@ -382,7 +387,8 @@ class CatalogFoodServiceTest {
         food.sodiumMg(),
         food.saturatedFatG(),
         food.foodGroupId(),
-        food.primaryMacro());
+        food.primaryMacro(),
+        null);
   }
 
   private static final class InMemoryServings implements FoodServingRepository {
