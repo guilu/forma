@@ -1,6 +1,5 @@
 package dev.diegobarrioh.forma.application;
 
-import dev.diegobarrioh.forma.domain.Store;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,8 +17,14 @@ import java.util.Optional;
  */
 public interface StoreCatalogSource {
 
-  /** The chain this source speaks for. */
-  Store store();
+  /**
+   * The id of the chain this source speaks for — a {@code store} row id (V45).
+   *
+   * <p>A string rather than a constant because the chains are data and the sources are not: this
+   * says which row a source answers for, and a source whose id matches no row can import nothing.
+   * {@code StoreCatalogSourcesMatchAStoreTest} refuses that mismatch at build time.
+   */
+  String store();
 
   /**
    * Everything the store currently lists.

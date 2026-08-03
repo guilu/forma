@@ -3,7 +3,6 @@ package dev.diegobarrioh.forma.delivery.store;
 import dev.diegobarrioh.forma.application.LinkPreview;
 import dev.diegobarrioh.forma.application.StoreProductService;
 import dev.diegobarrioh.forma.delivery.ApiPaths;
-import dev.diegobarrioh.forma.domain.Store;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -43,11 +42,12 @@ public class StoreProductController {
   /**
    * Lists catalog products, optionally narrowed to one chain.
    *
-   * <p>An unparseable {@code store} is rejected by Spring's converter as a 400 rather than silently
-   * listing everything: a typo that answers with the whole catalog looks like the filter worked.
+   * <p>An unknown {@code store} is rejected with a 400 rather than answering with an empty list: a
+   * typo that reports "this chain sells nothing" looks like the filter worked. The chains are rows
+   * since V45, so the service checks the id — Spring's converter used to, when it was an enum.
    */
   @GetMapping
-  public List<StoreProductResponse> list(@RequestParam(required = false) Store store) {
+  public List<StoreProductResponse> list(@RequestParam(required = false) String store) {
     return service.findAll(store).stream().map(StoreProductResponse::from).toList();
   }
 

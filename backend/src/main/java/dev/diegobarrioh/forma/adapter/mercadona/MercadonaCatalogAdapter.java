@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.diegobarrioh.forma.application.ImportableProduct;
 import dev.diegobarrioh.forma.application.StoreCatalogSource;
 import dev.diegobarrioh.forma.application.StoreCatalogUnavailableException;
-import dev.diegobarrioh.forma.domain.Store;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
@@ -64,8 +63,8 @@ public class MercadonaCatalogAdapter implements StoreCatalogSource {
   }
 
   @Override
-  public Store store() {
-    return Store.MERCADONA;
+  public String store() {
+    return "MERCADONA";
   }
 
   @Override

@@ -1,6 +1,5 @@
 package dev.diegobarrioh.forma.application;
 
-import dev.diegobarrioh.forma.domain.Store;
 import java.text.Normalizer;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -53,7 +52,7 @@ public class StoreProductImportService {
    *     an empty list would claim the shop stocks nothing, which is a different answer
    * @throws StoreCatalogUnavailableException when the store cannot be reached
    */
-  public List<ImportableProduct> suggestionsFor(String foodId, Store store) {
+  public List<ImportableProduct> suggestionsFor(String foodId, String store) {
     CatalogFood food =
         foods
             .findById(foodId)
@@ -91,7 +90,7 @@ public class StoreProductImportService {
    * @throws NotFoundException when no source speaks for that chain
    * @throws StoreCatalogUnavailableException when the store cannot be reached
    */
-  public List<ImportableProduct> searchFor(String query, Store store) {
+  public List<ImportableProduct> searchFor(String query, String store) {
     StoreCatalogSource source = sourceFor(store);
     Set<String> wanted = meaningfulTokens(query);
     if (wanted.isEmpty()) {
@@ -106,12 +105,11 @@ public class StoreProductImportService {
         .toList();
   }
 
-  private StoreCatalogSource sourceFor(Store store) {
+  private StoreCatalogSource sourceFor(String store) {
     return sources.stream()
-        .filter(candidate -> candidate.store() == store)
+        .filter(candidate -> candidate.store().equals(store))
         .findFirst()
-        .orElseThrow(
-            () -> new NotFoundException("No hay catálogo disponible para: " + store.name()));
+        .orElseThrow(() -> new NotFoundException("No hay catálogo disponible para: " + store));
   }
 
   private record Scored(ImportableProduct product, int score) {}

@@ -28,7 +28,7 @@ public record StoreProductResponse(
   public static StoreProductResponse from(CatalogStoreProduct product) {
     return new StoreProductResponse(
         product.id(),
-        product.store().name(),
+        product.store(),
         product.name(),
         product.foodId(),
         product.packageSize(),

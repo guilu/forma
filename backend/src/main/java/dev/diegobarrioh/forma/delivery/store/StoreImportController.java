@@ -4,7 +4,6 @@ import dev.diegobarrioh.forma.application.ImportableProduct;
 import dev.diegobarrioh.forma.application.StoreProductImportService;
 import dev.diegobarrioh.forma.application.ValidationException;
 import dev.diegobarrioh.forma.delivery.ApiPaths;
-import dev.diegobarrioh.forma.domain.Store;
 import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -49,7 +48,7 @@ public class StoreImportController {
   public List<StoreSuggestionResponse> suggestions(
       @RequestParam(required = false) String foodId,
       @RequestParam(required = false) String q,
-      @RequestParam Store store) {
+      @RequestParam String store) {
     // One or the other, never both: starting from a food fills the link between
     // product and food by construction, and starting from text is for the
     // products our own catalog cannot name.

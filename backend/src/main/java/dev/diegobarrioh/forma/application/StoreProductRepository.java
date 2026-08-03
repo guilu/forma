@@ -1,6 +1,5 @@
 package dev.diegobarrioh.forma.application;
 
-import dev.diegobarrioh.forma.domain.Store;
 import java.util.List;
 import java.util.Optional;
 
@@ -11,7 +10,7 @@ import java.util.Optional;
 public interface StoreProductRepository {
 
   /** Catalog products, narrowed to one chain when {@code store} is given; all of them when null. */
-  List<CatalogStoreProduct> findAll(Store store);
+  List<CatalogStoreProduct> findAll(String store);
 
   /** A single product by id; empty when no product has that id. */
   Optional<CatalogStoreProduct> findById(String id);

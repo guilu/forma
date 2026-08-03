@@ -3,7 +3,6 @@ package dev.diegobarrioh.forma.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import dev.diegobarrioh.forma.domain.Store;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -21,7 +20,7 @@ import org.junit.jupiter.api.Test;
 class StoreProductImportServiceTest {
 
   private final InMemoryFoods foods = new InMemoryFoods();
-  private final FakeSource mercadona = new FakeSource(Store.MERCADONA);
+  private final FakeSource mercadona = new FakeSource("MERCADONA");
   private final StoreProductImportService service =
       new StoreProductImportService(foods, List.of(mercadona));
 
@@ -45,7 +44,7 @@ class StoreProductImportServiceTest {
         product("2", "Detergente líquido"),
         product("3", "Avena instantánea"));
 
-    List<ImportableProduct> found = service.suggestionsFor("oats", Store.MERCADONA);
+    List<ImportableProduct> found = service.suggestionsFor("oats", "MERCADONA");
 
     assertThat(found)
         .extracting(ImportableProduct::name)
@@ -61,7 +60,7 @@ class StoreProductImportServiceTest {
     foods.add("banana", "Plátano");
     mercadona.serve(product("1", "PLATANOS DE CANARIAS"));
 
-    assertThat(service.suggestionsFor("banana", Store.MERCADONA))
+    assertThat(service.suggestionsFor("banana", "MERCADONA"))
         .extracting(ImportableProduct::name)
         .containsExactly("PLATANOS DE CANARIAS");
   }
@@ -75,7 +74,7 @@ class StoreProductImportServiceTest {
     foods.add("olive-oil", "Aceite de oliva virgen extra");
     mercadona.serve(product("1", "Leche de avena"), product("2", "Aceite de girasol"));
 
-    assertThat(service.suggestionsFor("olive-oil", Store.MERCADONA))
+    assertThat(service.suggestionsFor("olive-oil", "MERCADONA"))
         .extracting(ImportableProduct::name)
         .containsExactly("Aceite de girasol");
   }
@@ -85,12 +84,12 @@ class StoreProductImportServiceTest {
     foods.add("tempeh", "Tempeh");
     mercadona.serve(product("1", "Detergente líquido"));
 
-    assertThat(service.suggestionsFor("tempeh", Store.MERCADONA)).isEmpty();
+    assertThat(service.suggestionsFor("tempeh", "MERCADONA")).isEmpty();
   }
 
   @Test
   void refusesAFoodThatIsNotInTheCatalog() {
-    assertThatThrownBy(() -> service.suggestionsFor("ghost", Store.MERCADONA))
+    assertThatThrownBy(() -> service.suggestionsFor("ghost", "MERCADONA"))
         .isInstanceOf(NotFoundException.class);
   }
 
@@ -99,7 +98,7 @@ class StoreProductImportServiceTest {
   void refusesAStoreWithNoSource() {
     foods.add("oats", "Copos de avena");
 
-    assertThatThrownBy(() -> service.suggestionsFor("oats", Store.CARREFOUR))
+    assertThatThrownBy(() -> service.suggestionsFor("oats", "CARREFOUR"))
         .isInstanceOf(NotFoundException.class);
   }
 
@@ -116,14 +115,14 @@ class StoreProductImportServiceTest {
     }
     mercadona.serve(many);
 
-    assertThat(service.suggestionsFor("oats", Store.MERCADONA)).hasSize(10);
+    assertThat(service.suggestionsFor("oats", "MERCADONA")).hasSize(10);
   }
 
   private static final class FakeSource implements StoreCatalogSource {
-    private final Store store;
+    private final String store;
     private List<ImportableProduct> products = List.of();
 
-    FakeSource(Store store) {
+    FakeSource(String store) {
       this.store = store;
     }
 
@@ -132,7 +131,7 @@ class StoreProductImportServiceTest {
     }
 
     @Override
-    public Store store() {
+    public String store() {
       return store;
     }
 
@@ -207,7 +206,7 @@ class StoreProductImportServiceTest {
         product("2", "Almendra molida Hacendado"),
         product("3", "Detergente líquido"));
 
-    assertThat(service.searchFor("almendra", Store.MERCADONA))
+    assertThat(service.searchFor("almendra", "MERCADONA"))
         .extracting(ImportableProduct::name)
         .containsExactly("Almendra molida Hacendado", "Almendra natural Hacendado");
   }
@@ -217,7 +216,7 @@ class StoreProductImportServiceTest {
   void searchIgnoresAccentsAndCase() {
     mercadona.serve(product("1", "Plátano de Canarias IGP"));
 
-    assertThat(service.searchFor("PLATANO", Store.MERCADONA)).hasSize(1);
+    assertThat(service.searchFor("PLATANO", "MERCADONA")).hasSize(1);
   }
 
   /** Two words mean both, not either: "aceite oliva" must not return every oil in the shop. */
@@ -227,7 +226,7 @@ class StoreProductImportServiceTest {
         product("1", "Aceite de oliva virgen extra Hacendado"),
         product("2", "Aceite de girasol Hacendado"));
 
-    assertThat(service.searchFor("aceite oliva", Store.MERCADONA))
+    assertThat(service.searchFor("aceite oliva", "MERCADONA"))
         .extracting(ImportableProduct::name)
         .containsExactly("Aceite de oliva virgen extra Hacendado");
   }
@@ -237,12 +236,12 @@ class StoreProductImportServiceTest {
   void refusesAnEmptySearch() {
     mercadona.serve(product("1", "Cualquier cosa"));
 
-    assertThat(service.searchFor("   ", Store.MERCADONA)).isEmpty();
+    assertThat(service.searchFor("   ", "MERCADONA")).isEmpty();
   }
 
   @Test
   void searchRefusesAStoreWithNoSource() {
-    assertThatThrownBy(() -> service.searchFor("avena", Store.CARREFOUR))
+    assertThatThrownBy(() -> service.searchFor("avena", "CARREFOUR"))
         .isInstanceOf(NotFoundException.class);
   }
 }
