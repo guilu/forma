@@ -1,10 +1,12 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Button } from '../../components/Button';
 import { SelectField, TextField } from '../../components/FormField';
 import { useNotify } from '../../components/NotificationProvider';
 import { ApiRequestError } from '../../api/client';
 import { createFood, updateFood, type CatalogFood, type PrimaryMacro } from '../../api/foods';
 import type { CategoryDisplay } from '../../api/categories';
+import { listFoodTags, setFoodTags } from '../../api/tags';
+import { useTags } from './useTags';
 import styles from './FoodForm.module.css';
 
 /**
@@ -82,8 +84,32 @@ export function FoodForm({ food, groups, onCancel, onSaved }: FoodFormProps) {
   const [carbsG, setCarbsG] = useState(text(food?.carbsG));
   const [fatG, setFatG] = useState(text(food?.fatG));
   const [servingSizeG, setServingSizeG] = useState(text(food?.servingSizeG));
+  const tags = useTags();
+  // Which labels are ticked. Loaded separately from the food because they live
+  // behind their own endpoint, and empty for a food that does not exist yet.
+  const [tagIds, setTagIds] = useState<readonly string[]>([]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (food === undefined) return;
+    let active = true;
+    listFoodTags(food.id)
+      .then((carried) => {
+        if (active) setTagIds(carried.map((tag) => tag.id));
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [food]);
+
+  const toggleTag = (tagId: string) =>
+    setTagIds((current) =>
+      current.includes(tagId)
+        ? current.filter((candidate) => candidate !== tagId)
+        : [...current, tagId],
+    );
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -105,12 +131,25 @@ export function FoodForm({ food, groups, onCancel, onSaved }: FoodFormProps) {
       primaryMacro: primaryMacro === '' ? undefined : (primaryMacro as PrimaryMacro),
     };
     try {
+      // The food first, then its labels: a new one has no id to hang them off
+      // until it exists, so the two cannot be one request whatever the edit.
       if (creating) {
         await createFood(payload);
-        notify.success('Alimento creado.');
       } else {
         await updateFood(food.id, payload);
-        notify.success('Alimento actualizado.');
+      }
+      try {
+        await setFoodTags(payload.id, tagIds);
+        notify.success(creating ? 'Alimento creado.' : 'Alimento actualizado.');
+      } catch {
+        // The food is saved and the labels are not, which is a different thing
+        // from "nothing happened" and has to read as one — telling somebody the
+        // save failed would send them to do it again.
+        notify.warning(
+          creating
+            ? 'Alimento creado, pero no se pudieron guardar sus etiquetas.'
+            : 'Alimento actualizado, pero no se pudieron guardar sus etiquetas.',
+        );
       }
       onSaved();
     } catch (caught) {
@@ -178,6 +217,27 @@ export function FoodForm({ food, groups, onCancel, onSaved }: FoodFormProps) {
           </option>
         ))}
       </SelectField>
+
+      {/* Absent rather than empty while the vocabulary is in flight: a legend
+          over nothing reads as "this food can carry no labels". */}
+      {tags.options.length > 0 && (
+        <fieldset className={styles.tags}>
+          <legend className={styles.tagsLegend}>Etiquetas</legend>
+          <div className={styles.tagList}>
+            {tags.options.map((tag) => (
+              <label key={tag.id} className={styles.tagOption}>
+                <input
+                  type="checkbox"
+                  checked={tagIds.includes(tag.id)}
+                  disabled={pending}
+                  onChange={() => toggleTag(tag.id)}
+                />
+                {tag.name}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
 
       <div className={styles.macros}>
         <TextField

@@ -6,6 +6,7 @@ import { AdminPage } from './AdminPage';
 import { NotificationProvider } from '../components/NotificationProvider';
 import { deleteFood, listFoods, updateFood, type CatalogFood } from '../api/foods';
 import { listCategories, type CategoryDisplay } from '../api/categories';
+import { listFoodTags, listTags, setFoodTags } from '../api/tags';
 
 vi.mock('../api/foods', () => ({
   listFoods: vi.fn(),
@@ -17,9 +18,22 @@ vi.mock('../api/categories', () => ({
   listCategories: vi.fn(),
   updateCategory: vi.fn(),
 }));
+vi.mock('../api/tags', () => ({
+  listTags: vi.fn(),
+  listFoodTags: vi.fn(),
+  setFoodTags: vi.fn(),
+}));
 
 const listMock = vi.mocked(listFoods);
 const categoriesMock = vi.mocked(listCategories);
+const tagsMock = vi.mocked(listTags);
+const foodTagsMock = vi.mocked(listFoodTags);
+const setTagsMock = vi.mocked(setFoodTags);
+
+const vocabulary = [
+  { id: 'vegano', name: 'Vegano', sortOrder: 1 },
+  { id: 'fresco', name: 'Fresco', sortOrder: 6 },
+];
 
 /**
  * What the backend serves for the FOOD vocabulary. LEGUMBRE is the point: it
@@ -73,6 +87,12 @@ describe('AdminPage', () => {
     deleteMock.mockReset();
     categoriesMock.mockReset();
     categoriesMock.mockResolvedValue(foodGroups);
+    tagsMock.mockReset();
+    tagsMock.mockResolvedValue(vocabulary);
+    foodTagsMock.mockReset();
+    foodTagsMock.mockResolvedValue([]);
+    setTagsMock.mockReset();
+    setTagsMock.mockResolvedValue([]);
   });
 
   it('lists the catalog with its macros per 100 g', async () => {
@@ -412,6 +432,81 @@ describe('AdminPage', () => {
       expect(
         screen.queryByRole('button', { name: /Editar Copos de avena/ }),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe('labels', () => {
+    /** The vocabulary is a request; a bundle carrying its own copy would go stale. */
+    it('offers the labels the backend serves', async () => {
+      listMock.mockResolvedValue([oats]);
+      const user = userEvent.setup();
+
+      renderPage();
+      await screen.findByText('Copos de avena');
+      await user.click(screen.getByRole('button', { name: '+ Alimento' }));
+
+      const dialog = await screen.findByRole('dialog', { name: /Nuevo alimento/ });
+      expect(await within(dialog).findByLabelText('Vegano')).toBeInTheDocument();
+      expect(within(dialog).getByLabelText('Fresco')).toBeInTheDocument();
+    });
+
+    /** Opening an existing food shows what it already carries, not a blank slate. */
+    it('ticks the labels a food already carries', async () => {
+      listMock.mockResolvedValue([oats]);
+      foodTagsMock.mockResolvedValue([{ id: 'fresco', name: 'Fresco', sortOrder: 6 }]);
+      const user = userEvent.setup();
+
+      renderPage();
+      await user.click(await screen.findByRole('button', { name: 'Editar Copos de avena' }));
+
+      const dialog = await screen.findByRole('dialog', { name: /Editar Copos de avena/ });
+      await waitFor(() => expect(within(dialog).getByLabelText('Fresco')).toBeChecked());
+      expect(within(dialog).getByLabelText('Vegano')).not.toBeChecked();
+    });
+
+    /**
+     * The food first and the labels after: a new food has no id to hang them off
+     * until it exists, so the two cannot be one request.
+     */
+    it('saves the food before its labels', async () => {
+      listMock.mockResolvedValue([oats]);
+      updateMock.mockResolvedValue(oats);
+      const user = userEvent.setup();
+
+      renderPage();
+      await user.click(await screen.findByRole('button', { name: 'Editar Copos de avena' }));
+      const dialog = await screen.findByRole('dialog', { name: /Editar Copos de avena/ });
+      await within(dialog).findByLabelText('Vegano');
+
+      await user.click(within(dialog).getByLabelText('Vegano'));
+      await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+
+      await waitFor(() => expect(setTagsMock).toHaveBeenCalledWith('oats', ['vegano']));
+      expect(updateMock.mock.invocationCallOrder[0]).toBeLessThan(
+        setTagsMock.mock.invocationCallOrder[0],
+      );
+    });
+
+    /**
+     * A food saved whose labels were not is a different thing from "nothing
+     * happened", and has to read as one — telling somebody the save failed would
+     * send them to do it all again.
+     */
+    it('says so when the food saved but its labels did not', async () => {
+      listMock.mockResolvedValue([oats]);
+      updateMock.mockResolvedValue(oats);
+      setTagsMock.mockRejectedValue(new Error('502'));
+      const user = userEvent.setup();
+
+      renderPage();
+      await user.click(await screen.findByRole('button', { name: 'Editar Copos de avena' }));
+      const dialog = await screen.findByRole('dialog', { name: /Editar Copos de avena/ });
+      await within(dialog).findByLabelText('Vegano');
+
+      await user.click(within(dialog).getByLabelText('Vegano'));
+      await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+
+      expect(await screen.findByText(/no se pudieron guardar sus etiquetas/i)).toBeInTheDocument();
     });
   });
 });
