@@ -71,6 +71,8 @@ class ShoppingListServiceTest {
         new BigDecimal("1.95"),
         null,
         ShoppingCategory.CEREALES_Y_LEGUMBRES,
+        null,
+        null,
         null);
   }
 
