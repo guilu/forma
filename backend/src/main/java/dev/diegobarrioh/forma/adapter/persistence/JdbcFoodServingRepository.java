@@ -60,6 +60,26 @@ public class JdbcFoodServingRepository implements FoodServingRepository {
   }
 
   @Override
+  public Optional<FoodServing> find(String id) {
+    return jdbcTemplate
+        .query("SELECT " + COLUMNS + " FROM food_serving WHERE id = ?", ROW_MAPPER, id)
+        .stream()
+        .findFirst();
+  }
+
+  @Override
+  public void clearDefault(String foodId) {
+    jdbcTemplate.update(
+        "UPDATE food_serving SET default_marker = NULL WHERE food_id = ? AND default_marker = 'Y'",
+        foodId);
+  }
+
+  @Override
+  public boolean delete(String id) {
+    return jdbcTemplate.update("DELETE FROM food_serving WHERE id = ?", id) > 0;
+  }
+
+  @Override
   public void save(FoodServing serving) {
     // Update-then-insert rather than a MERGE: H2 and PostgreSQL spell upserts differently.
     int updated =

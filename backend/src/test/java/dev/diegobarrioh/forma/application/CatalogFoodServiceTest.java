@@ -404,6 +404,21 @@ class CatalogFoodServiceTest {
     }
 
     @Override
+    public Optional<FoodServing> find(String id) {
+      return Optional.ofNullable(rows.get(id));
+    }
+
+    @Override
+    public void clearDefault(String foodId) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean delete(String id) {
+      return rows.remove(id) != null;
+    }
+
+    @Override
     public void deleteByFood(String foodId) {
       rows.values().removeIf(row -> row.foodId().equals(foodId));
     }
