@@ -2,6 +2,7 @@ package dev.diegobarrioh.forma.adapter.persistence;
 
 import dev.diegobarrioh.forma.application.CatalogFood;
 import dev.diegobarrioh.forma.application.FoodCatalogRepository;
+import dev.diegobarrioh.forma.domain.PrimaryMacro;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -17,7 +18,7 @@ public class JdbcFoodCatalogRepository implements FoodCatalogRepository {
 
   private static final String COLUMNS =
       "id, name, serving_size_g, kcal, protein_g, carbs_g, fat_g, fiber_g, sugars_g, sodium_mg,"
-          + " saturated_fat_g, food_group_id";
+          + " saturated_fat_g, food_group_id, primary_macro";
 
   private static final RowMapper<CatalogFood> ROW_MAPPER =
       (rs, rowNum) ->
@@ -34,7 +35,10 @@ public class JdbcFoodCatalogRepository implements FoodCatalogRepository {
               rs.getBigDecimal("sodium_mg"),
               rs.getBigDecimal("saturated_fat_g"),
               // Nullable by design: a food nobody has classified yet (V35).
-              rs.getString("food_group_id"));
+              rs.getString("food_group_id"),
+              rs.getString("primary_macro") == null
+                  ? null
+                  : PrimaryMacro.valueOf(rs.getString("primary_macro")));
 
   private final JdbcTemplate jdbcTemplate;
 
@@ -57,7 +61,7 @@ public class JdbcFoodCatalogRepository implements FoodCatalogRepository {
   @Override
   public void insert(CatalogFood food) {
     jdbcTemplate.update(
-        "INSERT INTO food_catalog (" + COLUMNS + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO food_catalog (" + COLUMNS + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         food.id(),
         food.name(),
         food.servingSizeG(),
@@ -69,7 +73,8 @@ public class JdbcFoodCatalogRepository implements FoodCatalogRepository {
         food.sugarsG(),
         food.sodiumMg(),
         food.saturatedFatG(),
-        food.foodGroupId());
+        food.foodGroupId(),
+        name(food.primaryMacro()));
   }
 
   @Override
@@ -77,7 +82,7 @@ public class JdbcFoodCatalogRepository implements FoodCatalogRepository {
     jdbcTemplate.update(
         "UPDATE food_catalog SET name = ?, serving_size_g = ?, kcal = ?, protein_g = ?,"
             + " carbs_g = ?, fat_g = ?, fiber_g = ?, sugars_g = ?, sodium_mg = ?,"
-            + " saturated_fat_g = ?, food_group_id = ? WHERE id = ?",
+            + " saturated_fat_g = ?, food_group_id = ?, primary_macro = ? WHERE id = ?",
         food.name(),
         food.servingSizeG(),
         food.kcal(),
@@ -89,7 +94,13 @@ public class JdbcFoodCatalogRepository implements FoodCatalogRepository {
         food.sodiumMg(),
         food.saturatedFatG(),
         food.foodGroupId(),
+        name(food.primaryMacro()),
         food.id());
+  }
+
+  /** The stored token of an enum that may be absent — a food whose macros decide nothing. */
+  private static String name(PrimaryMacro macro) {
+    return macro == null ? null : macro.name();
   }
 
   @Override

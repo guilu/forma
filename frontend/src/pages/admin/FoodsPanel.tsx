@@ -5,7 +5,14 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import { Modal } from '../../components/Modal';
-import { deleteFood, listFoods, type CatalogFood } from '../../api/foods';
+import { deleteFood, listFoods, type CatalogFood, type PrimaryMacro } from '../../api/foods';
+
+/** How each macronutrient reads. A closed set for good: there are three. */
+const MACRO_LABELS: Record<PrimaryMacro, string> = {
+  PROTEIN: 'Proteínas',
+  CARBS: 'Hidratos',
+  FAT: 'Grasas',
+};
 import { listStoreProducts, type StoreProduct } from '../../api/storeProducts';
 import { CatalogTable, type CatalogColumn, type CatalogDetail } from './CatalogTable';
 import { FoodForm } from './FoodForm';
@@ -55,6 +62,14 @@ const columnsWith = (
 ];
 
 /**
+ * Which macro the food is mostly made of, by calories. Absent for a food whose
+ * numbers decide nothing — water and a two-way tie both land here — and an em
+ * dash says that more honestly than picking one would.
+ */
+const macroLabel = (food: CatalogFood) =>
+  food.primaryMacro ? MACRO_LABELS[food.primaryMacro] : '—';
+
+/**
  * The ration is not among these: it is a column of its own at this width, and a
  * value shown twice is a value that can look like two different things.
  */
@@ -62,6 +77,7 @@ const detailsWith = (
   categoryLabel: (food: CatalogFood) => string,
 ): CatalogDetail<CatalogFood>[] => [
   { glyph: '🏷️', label: 'Categoría', value: categoryLabel },
+  { glyph: '⚖️', label: 'Macro principal', value: macroLabel },
   { glyph: '🍞', label: 'HC (hidratos)', value: (food) => `${food.carbsG} g` },
   { glyph: '🥩', label: 'Proteínas', value: (food) => `${food.proteinG} g` },
   { glyph: '💧', label: 'Grasa', value: (food) => `${food.fatG} g` },

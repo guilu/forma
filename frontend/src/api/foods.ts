@@ -12,6 +12,12 @@ import { apiClient, type ApiClient } from './client';
 const FOODS_PATH = '/api/v1/foods';
 
 /**
+ * The three macronutrients. Unlike a food group, this set is closed for good:
+ * there are three because there are three, not because a curator drew the line.
+ */
+export type PrimaryMacro = 'PROTEIN' | 'CARBS' | 'FAT';
+
+/**
  * A catalog food. Every macro is per 100 g; `servingSizeG` is the suggested
  * portion the ration figures are computed from.
  *
@@ -37,6 +43,13 @@ export interface CatalogFood {
    * widen.
    */
   readonly foodGroupId?: string;
+  /**
+   * Which macronutrient the food is mostly made of, by calories. Defaulted from
+   * the macros when a write omits it, then editable — the arithmetic proposes
+   * and a curator may disagree. Absent when the food's own numbers decide
+   * nothing: water has no dominant macro.
+   */
+  readonly primaryMacro?: PrimaryMacro;
 }
 
 /** Lists the whole catalog, ordered by id. */

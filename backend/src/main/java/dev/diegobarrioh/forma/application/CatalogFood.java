@@ -1,5 +1,6 @@
 package dev.diegobarrioh.forma.application;
 
+import dev.diegobarrioh.forma.domain.PrimaryMacro;
 import java.math.BigDecimal;
 
 /**
@@ -37,4 +38,5 @@ public record CatalogFood(
     BigDecimal sugarsG,
     BigDecimal sodiumMg,
     BigDecimal saturatedFatG,
-    String foodGroupId) {}
+    String foodGroupId,
+    PrimaryMacro primaryMacro) {}

@@ -43,7 +43,8 @@ class FoodCatalogControllerTest {
         new BigDecimal("0.0"),
         new BigDecimal("2.0"),
         new BigDecimal("1.2"),
-        "CARBOHIDRATO");
+        "CARBOHIDRATO",
+        null);
   }
 
   private static CatalogFood rice() {
@@ -59,7 +60,8 @@ class FoodCatalogControllerTest {
         null,
         null,
         null,
-        "CARBOHIDRATO");
+        "CARBOHIDRATO",
+        null);
   }
 
   @Test

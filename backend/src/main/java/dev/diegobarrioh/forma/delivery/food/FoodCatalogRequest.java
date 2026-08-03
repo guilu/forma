@@ -1,6 +1,7 @@
 package dev.diegobarrioh.forma.delivery.food;
 
 import dev.diegobarrioh.forma.application.CatalogFood;
+import dev.diegobarrioh.forma.domain.PrimaryMacro;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -35,7 +36,8 @@ public record FoodCatalogRequest(
     @PositiveOrZero BigDecimal sugarsG,
     @PositiveOrZero BigDecimal sodiumMg,
     @PositiveOrZero BigDecimal saturatedFatG,
-    @Size(max = 32) String foodGroupId) {
+    @Size(max = 32) String foodGroupId,
+    PrimaryMacro primaryMacro) {
 
   /** Maps the request onto the application's own type. */
   public CatalogFood toCatalogFood() {
@@ -51,6 +53,7 @@ public record FoodCatalogRequest(
         sugarsG,
         sodiumMg,
         saturatedFatG,
-        foodGroupId);
+        foodGroupId,
+        primaryMacro);
   }
 }

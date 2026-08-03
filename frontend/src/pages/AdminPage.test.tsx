@@ -230,6 +230,41 @@ describe('AdminPage', () => {
   });
 
   /**
+   * The macro is a default the arithmetic proposes and a curator may override, so the form has to
+   * offer both: a concrete macro, and handing the decision back to the numbers.
+   */
+  it('offers the three macros and an automatic option', async () => {
+    listMock.mockResolvedValue([oats]);
+    const user = userEvent.setup();
+
+    renderPage();
+    await screen.findByText('Copos de avena');
+    await user.click(screen.getByRole('button', { name: '+ Alimento' }));
+
+    const dialog = await screen.findByRole('dialog', { name: /Nuevo alimento/ });
+    const select = within(dialog).getByLabelText('Macro principal');
+
+    expect(
+      within(select)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['Automático (según los macros)', 'Proteínas', 'Hidratos', 'Grasas']);
+    expect(select).toHaveValue('');
+  });
+
+  /** An existing classification is shown as it is stored, never reset to automatic on open. */
+  it('shows the macro a food is already classified under', async () => {
+    listMock.mockResolvedValue([{ ...oats, primaryMacro: 'CARBS' as const }]);
+    const user = userEvent.setup();
+
+    renderPage();
+    await user.click(await screen.findByRole('button', { name: 'Editar Copos de avena' }));
+
+    const dialog = await screen.findByRole('dialog', { name: /Editar Copos de avena/ });
+    expect(within(dialog).getByLabelText('Macro principal')).toHaveValue('CARBS');
+  });
+
+  /**
    * Saving a food must never silently reclassify it. If its group is missing
    * from the list — the request is still in flight, or it failed, or the group
    * was retired — the option is added rather than dropped, because a select
