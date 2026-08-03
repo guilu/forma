@@ -27,6 +27,20 @@ public interface StoreCatalogSource {
   String store();
 
   /**
+   * The shop's own aisles, nested as the shop publishes them (V46).
+   *
+   * <p>Empty by default, and that is a real answer rather than a gap: a source is free not to
+   * publish a tree, and {@code OTRAS} has no catalogue at all, so it can never have one. A shop
+   * that does publish aisles overrides this.
+   *
+   * <p>Never mapped onto our own six aisles — that decision stays with whoever imports the product
+   * (see {@link ImportableProduct}). This only records what the shop calls its shelves.
+   */
+  default List<StoreCategoryNode> categories() {
+    return List.of();
+  }
+
+  /**
    * Everything the store currently lists.
    *
    * @throws StoreCatalogUnavailableException when the store cannot be reached or answers with
