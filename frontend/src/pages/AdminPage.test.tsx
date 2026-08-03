@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { AdminPage } from './AdminPage';
 import { NotificationProvider } from '../components/NotificationProvider';
 import { deleteFood, listFoods, updateFood, type CatalogFood } from '../api/foods';
+import { listCategories, type CategoryDisplay } from '../api/categories';
 
 vi.mock('../api/foods', () => ({
   listFoods: vi.fn(),
@@ -12,8 +13,24 @@ vi.mock('../api/foods', () => ({
   updateFood: vi.fn(),
   deleteFood: vi.fn(),
 }));
+vi.mock('../api/categories', () => ({
+  listCategories: vi.fn(),
+  updateCategory: vi.fn(),
+}));
 
 const listMock = vi.mocked(listFoods);
+const categoriesMock = vi.mocked(listCategories);
+
+/**
+ * What the backend serves for the FOOD vocabulary. LEGUMBRE is the point: it
+ * exists since V43 and no version of this bundle ever hardcoded it, so it can
+ * only reach the form by being asked for.
+ */
+const foodGroups: CategoryDisplay[] = [
+  { scope: 'FOOD', code: 'CARBOHIDRATO', label: 'Carbohidrato', icon: '🌾' },
+  { scope: 'FOOD', code: 'PROTEINA', label: 'Proteína', icon: '🍗' },
+  { scope: 'FOOD', code: 'LEGUMBRE', label: 'Legumbre', icon: '🫘' },
+];
 const updateMock = vi.mocked(updateFood);
 const deleteMock = vi.mocked(deleteFood);
 
@@ -54,6 +71,8 @@ describe('AdminPage', () => {
     listMock.mockReset();
     updateMock.mockReset();
     deleteMock.mockReset();
+    categoriesMock.mockReset();
+    categoriesMock.mockResolvedValue(foodGroups);
   });
 
   it('lists the catalog with its macros per 100 g', async () => {
@@ -181,6 +200,51 @@ describe('AdminPage', () => {
 
     const dialog = await screen.findByRole('dialog', { name: /Nuevo alimento/ });
     expect(within(dialog).getByLabelText('Nombre')).toHaveValue('');
+  });
+
+  /**
+   * The groups the form offers are the ones the backend has, not the ones this
+   * bundle was built with. Before V43 the set was a compiled enum and adding a
+   * group meant a deploy; the whole point of making it data is that it no longer
+   * does.
+   */
+  it('offers the food groups the backend serves, including ones it never shipped with', async () => {
+    listMock.mockResolvedValue([oats]);
+    const user = userEvent.setup();
+
+    renderPage();
+    await screen.findByText('Copos de avena');
+    await user.click(screen.getByRole('button', { name: '+ Alimento' }));
+
+    const dialog = await screen.findByRole('dialog', { name: /Nuevo alimento/ });
+    const select = within(dialog).getByLabelText('Categoría');
+
+    await waitFor(() =>
+      expect(within(select).getByRole('option', { name: 'Legumbre' })).toBeInTheDocument(),
+    );
+    expect(
+      within(select)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['Sin clasificar', 'Carbohidrato', 'Proteína', 'Legumbre']);
+  });
+
+  /**
+   * Saving a food must never silently reclassify it. If its group is missing
+   * from the list — the request is still in flight, or it failed, or the group
+   * was retired — the option is added rather than dropped, because a select
+   * that cannot show its own value would quietly change it on the next save.
+   */
+  it('keeps a food filed under a group the list does not contain', async () => {
+    categoriesMock.mockResolvedValue([]);
+    listMock.mockResolvedValue([oats]);
+    const user = userEvent.setup();
+
+    renderPage();
+    await user.click(await screen.findByRole('button', { name: 'Editar Copos de avena' }));
+
+    const dialog = await screen.findByRole('dialog', { name: /Editar Copos de avena/ });
+    expect(within(dialog).getByLabelText('Categoría')).toHaveValue('CARBOHIDRATO');
   });
 
   /**

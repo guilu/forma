@@ -12,7 +12,6 @@ import { FoodForm } from './FoodForm';
 import { ImportFromStore } from './ImportFromStore';
 import { StoreProductForm } from './StoreProductForm';
 import { Pagination } from './Pagination';
-import { CATEGORY_LABELS, categoryGlyph } from './foodDisplay';
 import { useCatalogAdmin } from './useCatalogAdmin';
 import { useCategoryDisplays } from './useCategoryDisplays';
 import styles from './panel.module.css';
@@ -91,14 +90,16 @@ export function FoodsPanel({ creating, onCreateClose }: FoodsPanelProps) {
   const categories = useCategoryDisplays('FOOD');
   const categoryLabel = useCallback(
     (food: CatalogFood) =>
-      categories.label(
-        food.foodGroupId,
-        food.foodGroupId ? (CATEGORY_LABELS[food.foodGroupId] ?? food.foodGroupId) : '—',
-      ),
+      // Falls back to the stored code, not to a bundled label: since V43 the set
+      // of groups is data, so any table here would be a copy that goes stale and
+      // still misses whatever was added last. A code reads worse than a name and
+      // better than a blank.
+      categories.label(food.foodGroupId, food.foodGroupId ?? '—'),
     [categories],
   );
   const categoryGlyphOf = useCallback(
-    (food: CatalogFood) => categories.glyph(food.foodGroupId, categoryGlyph(food.foodGroupId)),
+    // A neutral plate until the real glyph lands, and for a group that has none.
+    (food: CatalogFood) => categories.glyph(food.foodGroupId, '🍽️'),
     [categories],
   );
   const columns = useMemo(
@@ -202,6 +203,7 @@ export function FoodsPanel({ creating, onCreateClose }: FoodsPanelProps) {
       {(editing || creating) && (
         <Modal title={editing ? `Editar ${editing.name}` : 'Nuevo alimento'} onClose={closeForm}>
           <FoodForm
+            groups={categories.options}
             food={editing}
             onCancel={closeForm}
             onSaved={() => {
