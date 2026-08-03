@@ -3,7 +3,13 @@ import { Button } from '../../components/Button';
 import { SelectField, TextField } from '../../components/FormField';
 import { useNotify } from '../../components/NotificationProvider';
 import { ApiRequestError } from '../../api/client';
-import { createFood, updateFood, type CatalogFood, type PrimaryMacro } from '../../api/foods';
+import {
+  createFood,
+  updateFood,
+  type CatalogFood,
+  type Preparation,
+  type PrimaryMacro,
+} from '../../api/foods';
 import type { CategoryDisplay } from '../../api/categories';
 import { listFoodTags, setFoodTags } from '../../api/tags';
 import { useTags } from './useTags';
@@ -40,6 +46,17 @@ interface FoodFormProps {
  * <p>Hardcoded, and that is not the mistake V43 undid for food groups: this set
  * cannot grow. A fourth macronutrient would be news.
  */
+/**
+ * How each state reads. Hardcoded like the macros and unlike the food groups:
+ * a food goes into the kitchen, comes out of it, or never passes through, and no
+ * amount of curating produces a fourth.
+ */
+const PREPARATION_LABELS: readonly { readonly value: Preparation; readonly label: string }[] = [
+  { value: 'CRUDO', label: 'Crudo (hay que cocinarlo)' },
+  { value: 'COCINADO', label: 'Cocinado' },
+  { value: 'TAL_CUAL', label: 'Tal cual (no se cocina)' },
+];
+
 const MACRO_LABELS: readonly { readonly value: PrimaryMacro; readonly label: string }[] = [
   { value: 'PROTEIN', label: 'Proteínas' },
   { value: 'CARBS', label: 'Hidratos' },
@@ -79,6 +96,9 @@ export function FoodForm({ food, groups, onCancel, onSaved }: FoodFormProps) {
   // is absent. An existing classification is shown as stored, never reset on
   // open — resetting would discard a curator's choice for opening a form.
   const [primaryMacro, setPrimaryMacro] = useState<string>(food?.primaryMacro ?? '');
+  // Empty is "nobody has decided", which is not the same as TAL_CUAL. The
+  // question not applying to oil is an answer; not having been asked is not.
+  const [preparation, setPreparation] = useState<string>(food?.preparation ?? '');
   const [kcal, setKcal] = useState(text(food?.kcal));
   const [proteinG, setProteinG] = useState(text(food?.proteinG));
   const [carbsG, setCarbsG] = useState(text(food?.carbsG));
@@ -124,6 +144,7 @@ export function FoodForm({ food, groups, onCancel, onSaved }: FoodFormProps) {
       fatG: Number(fatG || 0),
       foodGroupId: category === '' ? undefined : category,
       primaryMacro: primaryMacro === '' ? undefined : (primaryMacro as PrimaryMacro),
+      preparation: preparation === '' ? undefined : (preparation as Preparation),
     };
     try {
       // The food first, then its labels: a new one has no id to hang them off
@@ -209,6 +230,20 @@ export function FoodForm({ food, groups, onCancel, onSaved }: FoodFormProps) {
         {MACRO_LABELS.map((macro) => (
           <option key={macro.value} value={macro.value}>
             {macro.label}
+          </option>
+        ))}
+      </SelectField>
+      <SelectField
+        id="food-preparation"
+        label="Estado"
+        value={preparation}
+        disabled={pending}
+        onChange={(event) => setPreparation(event.target.value)}
+      >
+        <option value="">Sin decidir</option>
+        {PREPARATION_LABELS.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
           </option>
         ))}
       </SelectField>

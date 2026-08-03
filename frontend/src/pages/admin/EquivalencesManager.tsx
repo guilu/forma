@@ -181,6 +181,11 @@ export function EquivalencesManager({ food, foods, onClose }: EquivalencesManage
                   <Icon name="trash" size={16} />
                 </button>
               </span>
+              {!equivalence.comparingStates && (
+                <p className={styles.mismatch}>
+                  {`Uno está crudo y el otro cocinado: los gramos salen bien, pero no comparan lo mismo.`}
+                </p>
+              )}
               {driftsOf(equivalence).length > 0 && (
                 <span className={styles.drifts}>
                   {driftsOf(equivalence).map(({ macro, pct }) => (

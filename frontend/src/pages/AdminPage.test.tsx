@@ -509,4 +509,49 @@ describe('AdminPage', () => {
       expect(await screen.findByText(/no se pudieron guardar sus etiquetas/i)).toBeInTheDocument();
     });
   });
+
+  describe('preparation state', () => {
+    /**
+     * Rice is 360 kcal/100 g dry and about 130 cooked, so without this nobody can
+     * tell whether to weigh it dry or cooked — which is exactly what made the
+     * source document's "100 g arroz = 250 g patata" disagree with the catalog by
+     * nearly twofold.
+     */
+    it('offers the three states and leaves undecided as the default', async () => {
+      listMock.mockResolvedValue([oats]);
+      const user = userEvent.setup();
+
+      renderPage();
+      await screen.findByText('Copos de avena');
+      await user.click(screen.getByRole('button', { name: '+ Alimento' }));
+
+      const dialog = await screen.findByRole('dialog', { name: /Nuevo alimento/ });
+      const select = within(dialog).getByLabelText('Estado');
+
+      expect(
+        within(select)
+          .getAllByRole('option')
+          .map((option) => option.textContent),
+      ).toEqual([
+        'Sin decidir',
+        'Crudo (hay que cocinarlo)',
+        'Cocinado',
+        'Tal cual (no se cocina)',
+      ]);
+      // Nobody has decided is where every seeded food starts: only two of the
+      // twenty-three are deducible without guessing, so none were filled in.
+      expect(select).toHaveValue('');
+    });
+
+    it('shows the state a food is already in', async () => {
+      listMock.mockResolvedValue([{ ...oats, preparation: 'CRUDO' as const }]);
+      const user = userEvent.setup();
+
+      renderPage();
+      await user.click(await screen.findByRole('button', { name: 'Editar Copos de avena' }));
+
+      const dialog = await screen.findByRole('dialog', { name: /Editar Copos de avena/ });
+      expect(within(dialog).getByLabelText('Estado')).toHaveValue('CRUDO');
+    });
+  });
 });
