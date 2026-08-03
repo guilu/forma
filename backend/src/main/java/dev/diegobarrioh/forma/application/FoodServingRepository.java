@@ -12,6 +12,24 @@ public interface FoodServingRepository {
   /** Every portion of a food, default first and then in its own order. */
   List<FoodServing> findByFood(String foodId);
 
+  /** One portion by id; empty when nobody wrote it. */
+  Optional<FoodServing> find(String id);
+
+  /**
+   * Takes the default marker off whichever portion of this food holds it, if any.
+   *
+   * <p>Separate from saving the new default because the order matters: the unique index permits one
+   * marked portion per food, so setting before clearing trips it.
+   */
+  void clearDefault(String foodId);
+
+  /**
+   * Removes one portion.
+   *
+   * @return {@code true} when a row was removed
+   */
+  boolean delete(String id);
+
   /** The portion meant by "one serving", or empty when nobody has decided one. */
   Optional<FoodServing> findDefault(String foodId);
 

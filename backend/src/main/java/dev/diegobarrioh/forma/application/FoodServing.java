@@ -30,6 +30,11 @@ public record FoodServing(
     }
   }
 
+  /** This portion under an id, for the service that mints one. */
+  public FoodServing withId(String newId) {
+    return new FoodServing(newId, foodId, name, grams, isDefault, sortOrder);
+  }
+
   /** The portion a food starts with: unnamed, default, first. */
   public static FoodServing plainDefault(String foodId, BigDecimal grams) {
     return new FoodServing(foodId, foodId, null, grams, true, 0);
