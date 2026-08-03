@@ -33,6 +33,7 @@ class StoreProductImportServiceTest {
         "https://tienda.mercadona.es/product/" + id,
         "8480000000000",
         "Cereales",
+        null,
         "https://cdn/" + id + ".jpg");
   }
 

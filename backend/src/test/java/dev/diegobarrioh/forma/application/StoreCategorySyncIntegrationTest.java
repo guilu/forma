@@ -3,6 +3,7 @@ package dev.diegobarrioh.forma.application;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.diegobarrioh.forma.adapter.mercadona.MercadonaHttpTransport;
+import dev.diegobarrioh.forma.domain.ShoppingCategory;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -86,5 +87,62 @@ class StoreCategorySyncIntegrationTest {
     service.sync("MERCADONA");
 
     assertThat(service.findByStore("MERCADONA")).hasSize(5);
+  }
+
+  @Autowired private StoreProductService products;
+
+  /**
+   * The point of the whole slice: a product imported from Mercadona lands on the shelf Mercadona
+   * says it came off, and the foreign key accepts the id the tree invented for that shelf.
+   */
+  @Test
+  void anImportedProductLandsOnTheShelfTheShopSaysItCameFrom() {
+    service.sync("MERCADONA");
+
+    CatalogStoreProduct created =
+        products.create(
+            new CatalogStoreProduct(
+                "mercadona-aceite",
+                "MERCADONA",
+                "Aceite de oliva Hacendado",
+                null,
+                "Garrafa 5 l",
+                null,
+                null,
+                ShoppingCategory.GRASAS_Y_ACEITES,
+                null,
+                "4241",
+                null,
+                null),
+            "112");
+
+    assertThat(created.storeCategoryId()).isEqualTo("MERCADONA:112");
+    assertThat(products.getById("mercadona-aceite").storeCategoryId()).isEqualTo("MERCADONA:112");
+  }
+
+  /**
+   * And importing before anybody has synced the aisles still works. Requiring a sync first would
+   * make the shelf a precondition of importing, which it is not.
+   */
+  @Test
+  void importingWithoutHavingSyncedTheAislesStillWorks() {
+    CatalogStoreProduct created =
+        products.create(
+            new CatalogStoreProduct(
+                "mercadona-sinsync",
+                "MERCADONA",
+                "Aceite",
+                null,
+                null,
+                null,
+                null,
+                ShoppingCategory.GRASAS_Y_ACEITES,
+                null,
+                "4241",
+                null,
+                null),
+            "112");
+
+    assertThat(created.storeCategoryId()).isNull();
   }
 }

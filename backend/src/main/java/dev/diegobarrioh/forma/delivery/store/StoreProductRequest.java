@@ -38,7 +38,20 @@ public record StoreProductRequest(
      * the honest state — there is nothing to refresh it against.
      */
     @Size(max = 64) String externalId,
-    String imageUrl) {
+    String imageUrl,
+    /*
+     * The SHOP's id for the aisle the product came off (V46), echoed back from the suggestion the
+     * same way externalId is. Never our own store_category id: the client is not handed a foreign
+     * key, and the service resolves this against the aisles that have actually been synced.
+     */
+    @Size(max = 64) String storeCategoryExternalId) {
+
+  /** The shop's own id for the aisle, blank read as absent. */
+  public String aisleExternalId() {
+    return storeCategoryExternalId == null || storeCategoryExternalId.isBlank()
+        ? null
+        : storeCategoryExternalId;
+  }
 
   /** Maps the request onto the application's own type. */
   public CatalogStoreProduct toCatalogStoreProduct() {
@@ -55,6 +68,8 @@ public record StoreProductRequest(
         category,
         notes,
         externalId == null || externalId.isBlank() ? null : externalId,
-        imageUrl);
+        imageUrl,
+        // Resolved by the service, which is the only side that knows which aisles exist.
+        null);
   }
 }

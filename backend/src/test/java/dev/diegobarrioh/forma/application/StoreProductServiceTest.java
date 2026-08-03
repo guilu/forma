@@ -21,8 +21,9 @@ class StoreProductServiceTest {
   private final InMemoryRepository repository = new InMemoryRepository();
   private final FakeSource mercadona = new FakeSource();
   private final InMemoryStores stores = new InMemoryStores();
+  private final InMemoryStoreCategories aisles = new InMemoryStoreCategories();
   private final StoreProductService service =
-      new StoreProductService(repository, java.util.List.of(mercadona), stores);
+      new StoreProductService(repository, java.util.List.of(mercadona), stores, aisles);
 
   private static CatalogStoreProduct product(String id, String store, String name) {
     return new CatalogStoreProduct(
@@ -34,6 +35,7 @@ class StoreProductServiceTest {
         new BigDecimal("1.55"),
         "https://example.test/producto",
         ShoppingCategory.CEREALES_Y_LEGUMBRES,
+        null,
         null,
         null,
         null);
@@ -99,7 +101,8 @@ class StoreProductServiceTest {
             ShoppingCategory.CEREALES_Y_LEGUMBRES,
             null,
             "4241",
-            "https://cdn/foto.jpg"));
+            "https://cdn/foto.jpg",
+            null));
 
     service.update(
         "mercadona-oats", product("mercadona-oats", "MERCADONA", "Copos de avena Brüggen"));
@@ -129,7 +132,8 @@ class StoreProductServiceTest {
             ShoppingCategory.OTROS,
             null,
             null,
-            "https://m.media-amazon.com/images/I/31kt192oAzL.jpg"));
+            "https://m.media-amazon.com/images/I/31kt192oAzL.jpg",
+            null));
 
     assertThat(service.getById("propio").imageUrl())
         .isEqualTo("https://m.media-amazon.com/images/I/31kt192oAzL.jpg");
@@ -224,7 +228,8 @@ class StoreProductServiceTest {
             ShoppingCategory.CEREALES_Y_LEGUMBRES,
             "Comprar dos si hay oferta",
             "4241",
-            "https://cdn/old.jpg");
+            "https://cdn/old.jpg",
+            null);
     service.create(stored);
     mercadona.serve(
         new ImportableProduct(
@@ -235,6 +240,7 @@ class StoreProductServiceTest {
             "https://tienda.mercadona.es/product/4241",
             "8480000123456",
             "Cereales",
+            null,
             "https://cdn/new.jpg"));
 
     CatalogStoreProduct refreshed = service.refresh("mercadona-4241");
@@ -272,6 +278,7 @@ class StoreProductServiceTest {
             ShoppingCategory.OTROS,
             null,
             "9",
+            null,
             null));
     mercadona.serveNothing();
 
@@ -346,6 +353,91 @@ class StoreProductServiceTest {
     @Override
     public java.util.Optional<Store> find(String id) {
       return java.util.Optional.ofNullable(rows.get(id));
+    }
+  }
+
+  // --- V46: which shelf of its own shop a product came off ---
+
+  /** The shop's id for the aisle becomes one of our rows, when we have that row. */
+  @Test
+  void filesAnImportedProductOnTheShelfTheShopSaysItCameFrom() {
+    aisles.seed("MERCADONA:112", "MERCADONA");
+
+    CatalogStoreProduct created = service.create(product("p", "MERCADONA", "Aceite"), "112");
+
+    assertThat(created.storeCategoryId()).isEqualTo("MERCADONA:112");
+  }
+
+  /**
+   * Importing from a shop does not require having synced its aisles first, so an id that names no
+   * stored aisle is dropped rather than refused. The alternative is a foreign key violation on a
+   * request that is otherwise perfectly good.
+   */
+  @Test
+  void leavesTheShelfUnsetWhenThatAisleHasNotBeenSynced() {
+    CatalogStoreProduct created = service.create(product("p", "MERCADONA", "Aceite"), "999");
+
+    assertThat(created.storeCategoryId()).isNull();
+  }
+
+  /**
+   * An aisle belonging to another shop is not this product's shelf, however well the id matches.
+   */
+  @Test
+  void refusesToBorrowAnotherShopsAisle() {
+    aisles.seed("CARREFOUR:112", "CARREFOUR");
+
+    CatalogStoreProduct created = service.create(product("p", "MERCADONA", "Aceite"), "112");
+
+    assertThat(created.storeCategoryId()).isNull();
+  }
+
+  /** A product typed by hand never came off a shelf. */
+  @Test
+  void leavesTheShelfUnsetForAProductNobodyImported() {
+    assertThat(service.create(product("p", "MERCADONA", "Aceite"), null).storeCategoryId())
+        .isNull();
+  }
+
+  /**
+   * The shelf is the shop's to say, like the name and the price, so an edit leaves it where it was
+   * — the admin form has no field for it and never did.
+   */
+  @Test
+  void anEditDoesNotMoveAProductToADifferentShelf() {
+    aisles.seed("MERCADONA:112", "MERCADONA");
+    service.create(product("p", "MERCADONA", "Aceite"), "112");
+
+    CatalogStoreProduct edited = service.update("p", product("p", "MERCADONA", "Aceite de oliva"));
+
+    assertThat(edited.storeCategoryId()).isEqualTo("MERCADONA:112");
+  }
+
+  private static final class InMemoryStoreCategories implements StoreCategoryRepository {
+    private final Map<String, StoreCategory> rows = new LinkedHashMap<>();
+
+    void seed(String id, String storeId) {
+      rows.put(id, new StoreCategory(id, storeId, null, id, "X", "x", 0, 0, true));
+    }
+
+    @Override
+    public List<StoreCategory> findByStore(String storeId, boolean includeRetired) {
+      return rows.values().stream().filter(row -> row.storeId().equals(storeId)).toList();
+    }
+
+    @Override
+    public Optional<StoreCategory> find(String id) {
+      return Optional.ofNullable(rows.get(id));
+    }
+
+    @Override
+    public void save(StoreCategory category) {
+      rows.put(category.id(), category);
+    }
+
+    @Override
+    public void retire(String id) {
+      throw new UnsupportedOperationException();
     }
   }
 }

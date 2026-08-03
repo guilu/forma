@@ -22,7 +22,8 @@ public record StoreProductResponse(
     String category,
     String notes,
     String externalId,
-    String imageUrl) {
+    String imageUrl,
+    String storeCategoryId) {
 
   /** Maps a persisted catalog product to its API read model. */
   public static StoreProductResponse from(CatalogStoreProduct product) {
@@ -37,6 +38,7 @@ public record StoreProductResponse(
         product.category().name(),
         product.notes(),
         product.externalId(),
-        product.imageUrl());
+        product.imageUrl(),
+        product.storeCategoryId());
   }
 }

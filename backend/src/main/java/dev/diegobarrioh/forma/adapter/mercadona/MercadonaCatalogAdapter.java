@@ -138,8 +138,12 @@ public class MercadonaCatalogAdapter implements StoreCatalogSource {
       return Optional.empty();
     }
     JsonNode shelf = product.path("categories");
-    String shelfName = shelf.isEmpty() ? null : shelf.get(shelf.size() - 1).path("name").asText();
-    return Optional.of(toImportable(product, shelfName));
+    JsonNode deepest = shelf.isEmpty() ? null : shelf.get(shelf.size() - 1);
+    return Optional.of(
+        toImportable(
+            product,
+            deepest == null ? null : deepest.path("name").asText(),
+            deepest == null ? null : deepest.path("id").asText()));
   }
 
   /** When the held snapshot was taken; empty until the first successful crawl. */
@@ -155,7 +159,11 @@ public class MercadonaCatalogAdapter implements StoreCatalogSource {
         int id = subcategory.path("id").asInt();
         String shelfName = subcategory.path("name").asText();
         try {
-          collectProducts(parse(transport.get(CATEGORIES_URL + id + "/")), shelfName, found);
+          collectProducts(
+              parse(transport.get(CATEGORIES_URL + id + "/")),
+              shelfName,
+              String.valueOf(id),
+              found);
         } catch (StoreCatalogUnavailableException ex) {
           // One shelf out of 151 is not worth failing the import for: a partial
           // catalogue still finds most foods, and the alternative makes every
@@ -169,15 +177,19 @@ public class MercadonaCatalogAdapter implements StoreCatalogSource {
 
   /** Products hang off a third level of nesting, one per shelf within the subcategory. */
   private static void collectProducts(
-      JsonNode subcategory, String shelfName, List<ImportableProduct> into) {
+      JsonNode subcategory,
+      String shelfName,
+      String shelfExternalId,
+      List<ImportableProduct> into) {
     for (JsonNode shelf : subcategory.path("categories")) {
       for (JsonNode product : shelf.path("products")) {
-        into.add(toImportable(product, shelfName));
+        into.add(toImportable(product, shelfName, shelfExternalId));
       }
     }
   }
 
-  private static ImportableProduct toImportable(JsonNode product, String shelfName) {
+  private static ImportableProduct toImportable(
+      JsonNode product, String shelfName, String shelfExternalId) {
     JsonNode prices = product.path("price_instructions");
     return new ImportableProduct(
         product.path("id").asText(),
@@ -191,6 +203,7 @@ public class MercadonaCatalogAdapter implements StoreCatalogSource {
         product.path("share_url").asText(null),
         product.path("ean").asText(null),
         shelfName,
+        shelfExternalId,
         product.path("thumbnail").asText(null));
   }
 

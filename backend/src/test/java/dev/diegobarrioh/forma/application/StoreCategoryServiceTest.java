@@ -175,6 +175,11 @@ class StoreCategoryServiceTest {
     }
 
     @Override
+    public Optional<StoreCategory> find(String id) {
+      return byId(id);
+    }
+
+    @Override
     public void save(StoreCategory category) {
       rows.put(category.id(), category);
     }

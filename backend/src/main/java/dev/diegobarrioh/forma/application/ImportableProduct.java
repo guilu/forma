@@ -19,6 +19,9 @@ import java.math.BigDecimal;
  * @param ean barcode, when the store publishes one; the only truly global key here
  * @param storeCategory the store's own aisle name, for the admin to judge by — never mapped
  *     automatically onto our own closed set
+ * @param storeCategoryExternalId the store's own id for that aisle (V46), which is what a {@code
+ *     store_category} row is keyed on. The name is for a person to read; this is what links the
+ *     product to the shelf it came off
  * @param imageUrl the shop's product photo, at whatever size their CDN handed us; callers resize it
  */
 public record ImportableProduct(
@@ -29,4 +32,5 @@ public record ImportableProduct(
     String url,
     String ean,
     String storeCategory,
+    String storeCategoryExternalId,
     String imageUrl) {}

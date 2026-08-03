@@ -1,6 +1,7 @@
 package dev.diegobarrioh.forma.application;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Port over one shop's persisted aisles (V46). Owned by the application side; adapters implement it
@@ -20,6 +21,9 @@ public interface StoreCategoryRepository {
    *     them
    */
   List<StoreCategory> findByStore(String storeId, boolean includeRetired);
+
+  /** One aisle by our own id; empty when no aisle has it. */
+  Optional<StoreCategory> find(String id);
 
   /** Writes the aisle, inserting it or overwriting the one with the same id. */
   void save(StoreCategory category);

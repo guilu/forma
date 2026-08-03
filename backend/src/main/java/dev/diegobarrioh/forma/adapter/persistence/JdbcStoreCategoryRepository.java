@@ -3,6 +3,7 @@ package dev.diegobarrioh.forma.adapter.persistence;
 import dev.diegobarrioh.forma.application.StoreCategory;
 import dev.diegobarrioh.forma.application.StoreCategoryRepository;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
@@ -47,6 +48,14 @@ public class JdbcStoreCategoryRepository implements StoreCategoryRepository {
             + (includeRetired ? "" : " AND enabled = TRUE")
             + " ORDER BY level, sort_order, name";
     return jdbcTemplate.query(sql, ROW_MAPPER, storeId);
+  }
+
+  @Override
+  public Optional<StoreCategory> find(String id) {
+    return jdbcTemplate
+        .query("SELECT " + COLUMNS + " FROM store_category WHERE id = ?", ROW_MAPPER, id)
+        .stream()
+        .findFirst();
   }
 
   @Override

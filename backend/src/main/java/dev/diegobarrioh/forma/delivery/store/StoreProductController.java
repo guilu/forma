@@ -76,7 +76,8 @@ public class StoreProductController {
   @PreAuthorize("hasRole('ADMIN')")
   @ResponseStatus(HttpStatus.CREATED)
   public StoreProductResponse create(@Valid @RequestBody StoreProductRequest request) {
-    return StoreProductResponse.from(service.create(request.toCatalogStoreProduct()));
+    return StoreProductResponse.from(
+        service.create(request.toCatalogStoreProduct(), request.aisleExternalId()));
   }
 
   /** Overwrites the product at {@code id}; the path id wins over the body's. */

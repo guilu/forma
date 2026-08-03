@@ -16,12 +16,17 @@ public class StoreProductService {
   private final StoreProductRepository repository;
   private final List<StoreCatalogSource> sources;
   private final StoreRepository stores;
+  private final StoreCategoryRepository aisles;
 
   public StoreProductService(
-      StoreProductRepository repository, List<StoreCatalogSource> sources, StoreRepository stores) {
+      StoreProductRepository repository,
+      List<StoreCatalogSource> sources,
+      StoreRepository stores,
+      StoreCategoryRepository aisles) {
     this.repository = repository;
     this.sources = sources;
     this.stores = stores;
+    this.aisles = aisles;
   }
 
   /** Catalog products, narrowed to one chain when {@code store} is given; all of them when null. */
@@ -41,6 +46,30 @@ public class StoreProductService {
    * key and surface as a 500. Both look like a bug in the wrong place. Checking here keeps the 400
    * and says which value was wrong.
    */
+  /**
+   * The shop's id for an aisle, as one of our {@code store_category} rows — or {@code null}.
+   *
+   * <p>Null in every case where the answer is not certain, and none of them is an error. Nobody has
+   * to sync a shop's aisles before importing from it, so the row usually does not exist yet;
+   * refusing the request over that would block a perfectly good import, and building the id anyway
+   * would trip the foreign key and surface as a server error.
+   *
+   * <p>The store is checked too, not just the id. Two shops number their aisles independently, so
+   * Mercadona's shelf 112 and Carrefour's shelf 112 are different shelves, and a product must never
+   * borrow the wrong one because the numbers happened to match.
+   */
+  private String resolveAisle(String storeId, String aisleExternalId) {
+    if (aisleExternalId == null || aisleExternalId.isBlank()) {
+      return null;
+    }
+    String id = StoreCategoryTree.idFor(storeId, aisleExternalId);
+    return aisles
+        .find(id)
+        .filter(aisle -> aisle.storeId().equals(storeId))
+        .map(StoreCategory::id)
+        .orElse(null);
+  }
+
   private void requireKnownStore(String store) {
     if (stores.find(store).isEmpty()) {
       throw new ValidationException("No existe la tienda: " + store);
@@ -61,12 +90,24 @@ public class StoreProductService {
    *     it is never reassigned to a different product
    */
   public CatalogStoreProduct create(CatalogStoreProduct product) {
+    return create(product, null);
+  }
+
+  /**
+   * Adds a product to the shared catalog, filing it on the shop's own shelf when we know that shelf
+   * (V46, admin only).
+   *
+   * @param aisleExternalId the SHOP's id for the aisle, as the suggestion reported it, or {@code
+   *     null} for a product nobody imported
+   */
+  public CatalogStoreProduct create(CatalogStoreProduct product, String aisleExternalId) {
     if (repository.findById(product.id()).isPresent()) {
       throw new ConflictException("Ya existe un producto con el id: " + product.id());
     }
     requireKnownStore(product.store());
-    repository.insert(product);
-    return product;
+    CatalogStoreProduct stored = product.onShelf(resolveAisle(product.store(), aisleExternalId));
+    repository.insert(stored);
+    return stored;
   }
 
   /**
@@ -97,7 +138,10 @@ public class StoreProductService {
             product.category(),
             product.notes(),
             current.externalId(),
-            product.imageUrl());
+            product.imageUrl(),
+            // Owned by the shop, like the name and the price: an edit does not move a product to a
+            // different shelf of Mercadona's, so the stored answer stands until a refresh.
+            current.storeCategoryId());
     repository.update(stored);
     return stored;
   }
@@ -134,7 +178,10 @@ public class StoreProductService {
                 () ->
                     new NotFoundException(
                         "La tienda ya no lista este producto: " + stored.externalId()));
-    CatalogStoreProduct refreshed = stored.refreshedWith(fresh);
+    CatalogStoreProduct refreshed =
+        stored
+            .refreshedWith(fresh)
+            .onShelf(resolveAisle(stored.store(), fresh.storeCategoryExternalId()));
     repository.update(refreshed);
     return refreshed;
   }
