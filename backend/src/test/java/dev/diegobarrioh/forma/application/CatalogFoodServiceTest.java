@@ -20,7 +20,8 @@ class CatalogFoodServiceTest {
 
   private final InMemoryRepository repository = new InMemoryRepository();
   private final InMemoryGroups groups = new InMemoryGroups();
-  private final CatalogFoodService service = new CatalogFoodService(repository, groups);
+  private final InMemoryServings servings = new InMemoryServings();
+  private final CatalogFoodService service = new CatalogFoodService(repository, groups, servings);
 
   private static CatalogFood food(String id, String name) {
     return new CatalogFood(
@@ -286,6 +287,130 @@ class CatalogFoodServiceTest {
     @Override
     public void update(FoodGroup group) {
       rows.put(group.id(), group);
+    }
+  }
+
+  // --- V49: the portion moved out of food_catalog and into its own table ---
+
+  /** A food created with a portion gets a row for it, as its default and under no name. */
+  @Test
+  void writesThePortionAsARowOfItsOwn() {
+    service.create(food("tempeh", "Tempeh"));
+
+    assertThat(servings.findDefault("tempeh"))
+        .get()
+        .satisfies(
+            serving -> {
+              assertThat(serving.grams()).isEqualByComparingTo("100.0");
+              assertThat(serving.name()).isNull();
+              assertThat(serving.isDefault()).isTrue();
+            });
+  }
+
+  /** And reads back the same way it always did, so nothing above this notices the move. */
+  @Test
+  void stillReportsThePortionOnTheFood() {
+    service.create(food("tempeh", "Tempeh"));
+
+    assertThat(service.getById("tempeh").servingSizeG()).isEqualByComparingTo("100.0");
+  }
+
+  @Test
+  void changesThePortionWhenTheFoodIsEdited() {
+    service.create(food("tempeh", "Tempeh"));
+
+    service.update("tempeh", withServing(food("tempeh", "Tempeh"), new BigDecimal("150.0")));
+
+    assertThat(servings.findDefault("tempeh"))
+        .get()
+        .satisfies(serving -> assertThat(serving.grams()).isEqualByComparingTo("150.0"));
+  }
+
+  /**
+   * Clearing the portion removes the default and nothing else. A food's named portions are somebody
+   * else's work and an edit to this form never asked about them.
+   */
+  @Test
+  void clearingThePortionLeavesTheNamedOnesAlone() {
+    service.create(food("banana", "Plátano"));
+    servings.save(new FoodServing("s1", "banana", "Grande", new BigDecimal("150.0"), false, 1));
+
+    service.update("banana", withServing(food("banana", "Plátano"), null));
+
+    assertThat(servings.findDefault("banana")).isEmpty();
+    assertThat(servings.findByFood("banana"))
+        .singleElement()
+        .satisfies(serving -> assertThat(serving.name()).isEqualTo("Grande"));
+  }
+
+  /**
+   * A food nobody has given a portion to is a real state, and it gets no row rather than a zero.
+   */
+  @Test
+  void writesNoPortionForAFoodThatStatesNone() {
+    service.create(withServing(food("tempeh", "Tempeh"), null));
+
+    assertThat(servings.findByFood("tempeh")).isEmpty();
+    assertThat(service.getById("tempeh").servingSizeG()).isNull();
+  }
+
+  /**
+   * Deleting a food takes its portions with it. They are part of the food, not references to it,
+   * and leaving them would have the foreign key refuse an ordinary delete as a server error.
+   */
+  @Test
+  void deletingAFoodTakesItsPortionsWithIt() {
+    service.create(food("banana", "Plátano"));
+    servings.save(new FoodServing("s1", "banana", "Grande", new BigDecimal("150.0"), false, 1));
+
+    service.delete("banana");
+
+    assertThat(servings.findByFood("banana")).isEmpty();
+  }
+
+  private static CatalogFood withServing(CatalogFood food, BigDecimal grams) {
+    return new CatalogFood(
+        food.id(),
+        food.name(),
+        grams,
+        food.kcal(),
+        food.proteinG(),
+        food.carbsG(),
+        food.fatG(),
+        food.fiberG(),
+        food.sugarsG(),
+        food.sodiumMg(),
+        food.saturatedFatG(),
+        food.foodGroupId(),
+        food.primaryMacro());
+  }
+
+  private static final class InMemoryServings implements FoodServingRepository {
+    private final Map<String, FoodServing> rows = new LinkedHashMap<>();
+
+    @Override
+    public List<FoodServing> findByFood(String foodId) {
+      return rows.values().stream().filter(row -> row.foodId().equals(foodId)).toList();
+    }
+
+    @Override
+    public Optional<FoodServing> findDefault(String foodId) {
+      return findByFood(foodId).stream().filter(FoodServing::isDefault).findFirst();
+    }
+
+    @Override
+    public void save(FoodServing serving) {
+      rows.put(serving.id(), serving);
+    }
+
+    @Override
+    public void deleteByFood(String foodId) {
+      rows.values().removeIf(row -> row.foodId().equals(foodId));
+    }
+
+    @Override
+    public boolean deleteDefault(String foodId) {
+      return rows.values().removeIf(row -> row.foodId().equals(foodId) && row.isDefault());
     }
   }
 }

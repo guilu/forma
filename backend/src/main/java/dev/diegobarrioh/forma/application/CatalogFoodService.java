@@ -14,10 +14,15 @@ public class CatalogFoodService {
 
   private final FoodCatalogRepository repository;
   private final FoodGroupRepository groups;
+  private final FoodServingRepository servings;
 
-  public CatalogFoodService(FoodCatalogRepository repository, FoodGroupRepository groups) {
+  public CatalogFoodService(
+      FoodCatalogRepository repository,
+      FoodGroupRepository groups,
+      FoodServingRepository servings) {
     this.repository = repository;
     this.groups = groups;
+    this.servings = servings;
   }
 
   /** All foods in the catalog. */
@@ -46,6 +51,7 @@ public class CatalogFoodService {
     requireKnownFoodGroup(food.foodGroupId());
     CatalogFood stored = withPrimaryMacro(food);
     repository.insert(stored);
+    writeDefaultServing(stored);
     return stored;
   }
 
@@ -77,7 +83,23 @@ public class CatalogFoodService {
             food.primaryMacro());
     CatalogFood classified = withPrimaryMacro(stored);
     repository.update(classified);
+    writeDefaultServing(classified);
     return classified;
+  }
+
+  /**
+   * Puts the food's portion where it lives since V49 — a row of its own, not a column.
+   *
+   * <p>Clearing it removes the default and nothing else. A food's named portions ("Grande",
+   * "Cucharada") are somebody else's work, and this form has never asked about them, so treating a
+   * blank field as "delete every portion" would throw away what it never offered to edit.
+   */
+  private void writeDefaultServing(CatalogFood food) {
+    if (food.servingSizeG() == null) {
+      servings.deleteDefault(food.id());
+      return;
+    }
+    servings.save(FoodServing.plainDefault(food.id(), food.servingSizeG()));
   }
 
   /**
@@ -140,6 +162,9 @@ public class CatalogFoodService {
    * @throws NotFoundException when no food has that id
    */
   public void delete(String id) {
+    // Its portions go first: they are part of the food, and the foreign key would otherwise refuse
+    // the delete and surface as a server error on a perfectly ordinary request.
+    servings.deleteByFood(id);
     if (!repository.delete(id)) {
       throw new NotFoundException("No existe el alimento: " + id);
     }

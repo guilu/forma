@@ -67,8 +67,13 @@ class SeededFoodsMatchSeedTest {
   private static Map<String, FoodItem> readCatalog() throws Exception {
     Map<String, FoodItem> byId = new LinkedHashMap<>();
     String sql =
-        "SELECT id, name, serving_size_g, kcal, protein_g, carbs_g, fat_g, fiber_g, sugars_g,"
-            + " sodium_mg, saturated_fat_g FROM food_catalog";
+        // The serving moved into food_serving in V49; the fixture still describes a whole food, so
+        // it is read back the way the application reads it.
+        "SELECT f.id, f.name, f.kcal, f.protein_g, f.carbs_g, f.fat_g, f.fiber_g, f.sugars_g,"
+            + " f.sodium_mg, f.saturated_fat_g,"
+            + " (SELECT s.grams FROM food_serving s WHERE s.food_id = f.id"
+            + " AND s.default_marker = 'Y') AS serving_size_g"
+            + " FROM food_catalog f";
     try (Statement statement = connection.createStatement();
         ResultSet rs = statement.executeQuery(sql)) {
       while (rs.next()) {
