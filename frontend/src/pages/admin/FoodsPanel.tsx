@@ -17,6 +17,7 @@ import { listStoreProducts, type StoreProduct } from '../../api/storeProducts';
 import { CatalogTable, type CatalogColumn, type CatalogDetail } from './CatalogTable';
 import { FoodForm } from './FoodForm';
 import { ImportFromStore } from './ImportFromStore';
+import { EquivalencesManager } from './EquivalencesManager';
 import { ServingsManager } from './ServingsManager';
 import { StoreProductForm } from './StoreProductForm';
 import { Pagination } from './Pagination';
@@ -103,6 +104,7 @@ export function FoodsPanel({ creating, onCreateClose }: FoodsPanelProps) {
   // Mercadona sell for this?" — even though what it produces is a store product.
   const [importingFor, setImportingFor] = useState<CatalogFood | undefined>(undefined);
   const [portioning, setPortioning] = useState<CatalogFood | undefined>(undefined);
+  const [substituting, setSubstituting] = useState<CatalogFood | undefined>(undefined);
   const [draft, setDraft] = useState<StoreProduct | undefined>(undefined);
   const [existing, setExisting] = useState<StoreProduct | undefined>(undefined);
   const categories = useCategoryDisplays('FOOD');
@@ -248,6 +250,21 @@ export function FoodsPanel({ creating, onCreateClose }: FoodsPanelProps) {
       {portioning && (
         <Modal title={`Raciones de ${portioning.name}`} onClose={() => setPortioning(undefined)}>
           <ServingsManager food={portioning} onClose={() => setPortioning(undefined)} />
+        </Modal>
+      )}
+
+      {substituting && (
+        <Modal
+          title={`Equivalencias de ${substituting.name}`}
+          onClose={() => setSubstituting(undefined)}
+        >
+          <EquivalencesManager
+            food={substituting}
+            // The whole catalog, not the page on screen: the food that replaces
+            // this one may well be on another page.
+            foods={catalog.state.status === 'ready' ? catalog.state.rows : []}
+            onClose={() => setSubstituting(undefined)}
+          />
         </Modal>
       )}
 
