@@ -42,27 +42,16 @@ public record CatalogStoreProduct(
     String externalId,
     String imageUrl) {
 
+  /*
+   * Eleven components and no shorter constructor, deliberately: the convenience overload that
+   * defaulted externalId and imageUrl to null read as "this product came from nowhere" and was used
+   * by the update path, which silently stripped the provenance and the photo off every row an admin
+   * edited. Forgetting them now has to be typed out.
+   */
   public CatalogStoreProduct {
     if (category == null) {
       category = ShoppingCategory.OTROS;
     }
-  }
-
-  /**
-   * The same product without its import provenance — the shape every caller used before FOR-195,
-   * kept so a hand-typed product does not have to say "and it came from nowhere" twice.
-   */
-  public CatalogStoreProduct(
-      String id,
-      Store store,
-      String name,
-      String foodId,
-      String packageSize,
-      BigDecimal priceEur,
-      String url,
-      ShoppingCategory category,
-      String notes) {
-    this(id, store, name, foodId, packageSize, priceEur, url, category, notes, null, null);
   }
 
   /**

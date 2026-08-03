@@ -34,6 +34,8 @@ class StoreProductServiceTest {
         new BigDecimal("1.55"),
         "https://example.test/producto",
         ShoppingCategory.CEREALES_Y_LEGUMBRES,
+        null,
+        null,
         null);
   }
 
@@ -77,6 +79,61 @@ class StoreProductServiceTest {
     assertThat(service.findAll(null))
         .extracting(CatalogStoreProduct::id)
         .containsOnly("mercadona-oats");
+  }
+
+  /**
+   * An edit changes what the admin typed, never where the row came from. {@code externalId} is
+   * provenance rather than a field on the form: it is what the refresh action is offered on, so
+   * losing it on a save would quietly turn an imported product into a hand-typed one.
+   */
+  @Test
+  void keepsTheShopReferenceWhenUpdating() {
+    service.create(
+        new CatalogStoreProduct(
+            "mercadona-oats",
+            Store.MERCADONA,
+            "Copos de avena",
+            "oats",
+            "Caja 500 g",
+            new BigDecimal("1.55"),
+            "https://tienda.mercadona.es/product/4241",
+            ShoppingCategory.CEREALES_Y_LEGUMBRES,
+            null,
+            "4241",
+            "https://cdn/foto.jpg"));
+
+    service.update(
+        "mercadona-oats", product("mercadona-oats", Store.MERCADONA, "Copos de avena Brüggen"));
+
+    CatalogStoreProduct stored = service.getById("mercadona-oats");
+    assertThat(stored.name()).isEqualTo("Copos de avena Brüggen");
+    assertThat(stored.externalId()).isEqualTo("4241");
+  }
+
+  /**
+   * The image is on the form, so an edit that sets one keeps it — and one that clears it clears.
+   */
+  @Test
+  void storesTheImageAnUpdateCarries() {
+    service.create(product("propio", Store.OTRAS, "Whey proteína"));
+
+    service.update(
+        "propio",
+        new CatalogStoreProduct(
+            "propio",
+            Store.OTRAS,
+            "Whey proteína",
+            "oats",
+            "1 kg",
+            new BigDecimal("22.00"),
+            "https://www.amazon.es/gp/aw/d/B07Q31N9D4",
+            ShoppingCategory.OTROS,
+            null,
+            null,
+            "https://m.media-amazon.com/images/I/31kt192oAzL.jpg"));
+
+    assertThat(service.getById("propio").imageUrl())
+        .isEqualTo("https://m.media-amazon.com/images/I/31kt192oAzL.jpg");
   }
 
   @Test

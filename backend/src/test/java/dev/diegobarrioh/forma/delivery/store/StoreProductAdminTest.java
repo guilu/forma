@@ -121,6 +121,56 @@ class StoreProductAdminTest {
         .andExpect(status().isNoContent());
   }
 
+  /**
+   * Editing an imported product keeps it imported, and keeps whatever photo the edit carries. The
+   * form has no field for the shop's id — it is provenance, not data somebody types — so a save
+   * used to hand back a body without it and the row quietly lost both that id and its picture: no
+   * thumbnail in the list, and no refresh action, since the screen only offers one where a source
+   * exists.
+   */
+  @Test
+  void anEditKeepsTheShopsIdAndStoresTheImage() throws Exception {
+    String imported =
+        """
+        {"id":"mercadona-seitan","store":"MERCADONA","name":"Seitán","foodId":null,
+         "packageSize":"250 g","priceEur":2.45,"url":"https://tienda.mercadona.es/product/77",
+         "category":"PROTEINAS","notes":null,"externalId":"77","imageUrl":null}
+        """;
+    mockMvc
+        .perform(
+            post(PATH)
+                .with(asAdmin(UUID.randomUUID(), "admin@forma.test"))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(imported))
+        .andExpect(status().isCreated());
+
+    // What the edit form sends: no externalId, and a photo the admin pasted.
+    mockMvc
+        .perform(
+            put(PATH + "/mercadona-seitan")
+                .with(asAdmin(UUID.randomUUID(), "admin@forma.test"))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    imported
+                        .replace("\"externalId\":\"77\"", "\"externalId\":null")
+                        .replace(
+                            "\"imageUrl\":null", "\"imageUrl\":\"https://cdn.test/seitan.jpg\"")
+                        .replace("Seitán", "Seitán ecológico")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.name").value("Seitán ecológico"))
+        .andExpect(jsonPath("$.externalId").value("77"))
+        .andExpect(jsonPath("$.imageUrl").value("https://cdn.test/seitan.jpg"));
+
+    mockMvc
+        .perform(
+            delete(PATH + "/mercadona-seitan")
+                .with(asAdmin(UUID.randomUUID(), "admin@forma.test"))
+                .with(csrf()))
+        .andExpect(status().isNoContent());
+  }
+
   /** An unknown store is a client mistake, not an empty catalog. */
   @Test
   void rejectsAnUnknownStoreFilter() throws Exception {

@@ -54,10 +54,15 @@ public class StoreProductService {
    * <p>The path id wins over whatever the body carries: a rename through an edit would leave every
    * reference to the old id pointing at nothing.
    *
+   * <p>The shop reference wins from the stored row for the same reason: {@code externalId} is where
+   * the product came from, not something the form offers, and it is what {@link #refresh} is
+   * offered on. A body that omits it is a form that never asked, so an edit leaves provenance
+   * alone. The image is the opposite — it is on the form, so the body owns it, blank included.
+   *
    * @throws NotFoundException when no product has that id
    */
   public CatalogStoreProduct update(String id, CatalogStoreProduct product) {
-    getById(id);
+    CatalogStoreProduct current = getById(id);
     CatalogStoreProduct stored =
         new CatalogStoreProduct(
             id,
@@ -68,7 +73,9 @@ public class StoreProductService {
             product.priceEur(),
             product.url(),
             product.category(),
-            product.notes());
+            product.notes(),
+            current.externalId(),
+            product.imageUrl());
     repository.update(stored);
     return stored;
   }
