@@ -17,8 +17,20 @@ import org.springframework.stereotype.Repository;
 public class JdbcFoodCatalogRepository implements FoodCatalogRepository {
 
   private static final String COLUMNS =
-      "id, name, serving_size_g, kcal, protein_g, carbs_g, fat_g, fiber_g, sugars_g, sodium_mg,"
+      "id, name, kcal, protein_g, carbs_g, fat_g, fiber_g, sugars_g, sodium_mg,"
           + " saturated_fat_g, food_group_id, primary_macro";
+
+  /**
+   * The food's own columns plus its default portion, which stopped being one of them in V49.
+   *
+   * <p>A correlated subquery rather than a join: a food has at most one default portion and may
+   * have none, so a LEFT JOIN would say the same thing while inviting somebody to add a second
+   * serving and silently double every row.
+   */
+  private static final String SELECT_LIST =
+      COLUMNS
+          + ", (SELECT s.grams FROM food_serving s WHERE s.food_id = food_catalog.id"
+          + " AND s.default_marker = 'Y') AS serving_size_g";
 
   private static final RowMapper<CatalogFood> ROW_MAPPER =
       (rs, rowNum) ->
@@ -48,23 +60,24 @@ public class JdbcFoodCatalogRepository implements FoodCatalogRepository {
 
   @Override
   public List<CatalogFood> findAll() {
-    return jdbcTemplate.query("SELECT " + COLUMNS + " FROM food_catalog ORDER BY id", ROW_MAPPER);
+    return jdbcTemplate.query(
+        "SELECT " + SELECT_LIST + " FROM food_catalog ORDER BY id", ROW_MAPPER);
   }
 
   @Override
   public Optional<CatalogFood> findById(String id) {
     List<CatalogFood> rows =
-        jdbcTemplate.query("SELECT " + COLUMNS + " FROM food_catalog WHERE id = ?", ROW_MAPPER, id);
+        jdbcTemplate.query(
+            "SELECT " + SELECT_LIST + " FROM food_catalog WHERE id = ?", ROW_MAPPER, id);
     return rows.stream().findFirst();
   }
 
   @Override
   public void insert(CatalogFood food) {
     jdbcTemplate.update(
-        "INSERT INTO food_catalog (" + COLUMNS + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO food_catalog (" + COLUMNS + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         food.id(),
         food.name(),
-        food.servingSizeG(),
         food.kcal(),
         food.proteinG(),
         food.carbsG(),
@@ -80,14 +93,13 @@ public class JdbcFoodCatalogRepository implements FoodCatalogRepository {
   @Override
   public void update(CatalogFood food) {
     jdbcTemplate.update(
-        "UPDATE food_catalog SET name = ?, serving_size_g = ?, kcal = ?, protein_g = ?,"
+        "UPDATE food_catalog SET name = ?, kcal = ?, protein_g = ?,"
             + " carbs_g = ?, fat_g = ?, fiber_g = ?, sugars_g = ?, sodium_mg = ?,"
             + " saturated_fat_g = ?, food_group_id = ?, primary_macro = ?,"
             // Stamped here rather than by a trigger: H2 and PostgreSQL spell those differently,
             // and this is the only place a food is ever rewritten.
             + " updated_at = CURRENT_TIMESTAMP WHERE id = ?",
         food.name(),
-        food.servingSizeG(),
         food.kcal(),
         food.proteinG(),
         food.carbsG(),
