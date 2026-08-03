@@ -17,6 +17,7 @@ import { listStoreProducts, type StoreProduct } from '../../api/storeProducts';
 import { CatalogTable, type CatalogColumn, type CatalogDetail } from './CatalogTable';
 import { FoodForm } from './FoodForm';
 import { ImportFromStore } from './ImportFromStore';
+import { ServingsManager } from './ServingsManager';
 import { StoreProductForm } from './StoreProductForm';
 import { Pagination } from './Pagination';
 import { useCatalogAdmin } from './useCatalogAdmin';
@@ -101,6 +102,7 @@ export function FoodsPanel({ creating, onCreateClose }: FoodsPanelProps) {
   // Importing starts here because it is a question about a FOOD — "what does
   // Mercadona sell for this?" — even though what it produces is a store product.
   const [importingFor, setImportingFor] = useState<CatalogFood | undefined>(undefined);
+  const [portioning, setPortioning] = useState<CatalogFood | undefined>(undefined);
   const [draft, setDraft] = useState<StoreProduct | undefined>(undefined);
   const [existing, setExisting] = useState<StoreProduct | undefined>(undefined);
   const categories = useCategoryDisplays('FOOD');
@@ -195,17 +197,30 @@ export function FoodsPanel({ creating, onCreateClose }: FoodsPanelProps) {
               setDeleting(food);
             }}
             extraActions={(food) => (
-              <button
-                type="button"
-                className={styles.rowAction}
-                aria-label={`Importar ${food.name} de Mercadona`}
-                onClick={() => {
-                  catalog.setActionError(undefined);
-                  setImportingFor(food);
-                }}
-              >
-                <Icon name="shopping" size={18} />
-              </button>
+              <>
+                <button
+                  type="button"
+                  className={styles.rowAction}
+                  aria-label={`Raciones de ${food.name}`}
+                  onClick={() => {
+                    catalog.setActionError(undefined);
+                    setPortioning(food);
+                  }}
+                >
+                  <Icon name="measurements" size={18} />
+                </button>
+                <button
+                  type="button"
+                  className={styles.rowAction}
+                  aria-label={`Importar ${food.name} de Mercadona`}
+                  onClick={() => {
+                    catalog.setActionError(undefined);
+                    setImportingFor(food);
+                  }}
+                >
+                  <Icon name="shopping" size={18} />
+                </button>
+              </>
             )}
           />
           <Pagination
@@ -227,6 +242,12 @@ export function FoodsPanel({ creating, onCreateClose }: FoodsPanelProps) {
               catalog.reload();
             }}
           />
+        </Modal>
+      )}
+
+      {portioning && (
+        <Modal title={`Raciones de ${portioning.name}`} onClose={() => setPortioning(undefined)}>
+          <ServingsManager food={portioning} onClose={() => setPortioning(undefined)} />
         </Modal>
       )}
 
