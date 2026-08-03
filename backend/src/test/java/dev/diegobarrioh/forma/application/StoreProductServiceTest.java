@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.diegobarrioh.forma.domain.ShoppingCategory;
-import dev.diegobarrioh.forma.domain.Store;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -21,10 +20,11 @@ class StoreProductServiceTest {
 
   private final InMemoryRepository repository = new InMemoryRepository();
   private final FakeSource mercadona = new FakeSource();
+  private final InMemoryStores stores = new InMemoryStores();
   private final StoreProductService service =
-      new StoreProductService(repository, java.util.List.of(mercadona));
+      new StoreProductService(repository, java.util.List.of(mercadona), stores);
 
-  private static CatalogStoreProduct product(String id, Store store, String name) {
+  private static CatalogStoreProduct product(String id, String store, String name) {
     return new CatalogStoreProduct(
         id,
         store,
@@ -42,7 +42,7 @@ class StoreProductServiceTest {
   @Test
   void createsAProductAndReadsItBack() {
     CatalogStoreProduct created =
-        service.create(product("mercadona-oats", Store.MERCADONA, "Copos de avena"));
+        service.create(product("mercadona-oats", "MERCADONA", "Copos de avena"));
 
     assertThat(created.id()).isEqualTo("mercadona-oats");
     assertThat(service.getById("mercadona-oats").name()).isEqualTo("Copos de avena");
@@ -50,20 +50,19 @@ class StoreProductServiceTest {
 
   @Test
   void refusesToCreateAProductWhoseIdIsTaken() {
-    service.create(product("mercadona-oats", Store.MERCADONA, "Copos de avena"));
+    service.create(product("mercadona-oats", "MERCADONA", "Copos de avena"));
 
-    assertThatThrownBy(
-            () -> service.create(product("mercadona-oats", Store.MERCADONA, "Otra avena")))
+    assertThatThrownBy(() -> service.create(product("mercadona-oats", "MERCADONA", "Otra avena")))
         .isInstanceOf(ConflictException.class);
   }
 
   @Test
   void updatesAnExistingProduct() {
-    service.create(product("mercadona-oats", Store.MERCADONA, "Copos de avena"));
+    service.create(product("mercadona-oats", "MERCADONA", "Copos de avena"));
 
     CatalogStoreProduct updated =
         service.update(
-            "mercadona-oats", product("mercadona-oats", Store.MERCADONA, "Copos de avena Brüggen"));
+            "mercadona-oats", product("mercadona-oats", "MERCADONA", "Copos de avena Brüggen"));
 
     assertThat(updated.name()).isEqualTo("Copos de avena Brüggen");
     assertThat(service.getById("mercadona-oats").name()).isEqualTo("Copos de avena Brüggen");
@@ -72,9 +71,9 @@ class StoreProductServiceTest {
   /** The path id wins over the body id, so an edit can never rename a row out from under a link. */
   @Test
   void ignoresTheIdInTheBodyWhenUpdating() {
-    service.create(product("mercadona-oats", Store.MERCADONA, "Copos de avena"));
+    service.create(product("mercadona-oats", "MERCADONA", "Copos de avena"));
 
-    service.update("mercadona-oats", product("otro-id", Store.MERCADONA, "Copos de avena"));
+    service.update("mercadona-oats", product("otro-id", "MERCADONA", "Copos de avena"));
 
     assertThat(service.findAll(null))
         .extracting(CatalogStoreProduct::id)
@@ -91,7 +90,7 @@ class StoreProductServiceTest {
     service.create(
         new CatalogStoreProduct(
             "mercadona-oats",
-            Store.MERCADONA,
+            "MERCADONA",
             "Copos de avena",
             "oats",
             "Caja 500 g",
@@ -103,7 +102,7 @@ class StoreProductServiceTest {
             "https://cdn/foto.jpg"));
 
     service.update(
-        "mercadona-oats", product("mercadona-oats", Store.MERCADONA, "Copos de avena Brüggen"));
+        "mercadona-oats", product("mercadona-oats", "MERCADONA", "Copos de avena Brüggen"));
 
     CatalogStoreProduct stored = service.getById("mercadona-oats");
     assertThat(stored.name()).isEqualTo("Copos de avena Brüggen");
@@ -115,13 +114,13 @@ class StoreProductServiceTest {
    */
   @Test
   void storesTheImageAnUpdateCarries() {
-    service.create(product("propio", Store.OTRAS, "Whey proteína"));
+    service.create(product("propio", "OTRAS", "Whey proteína"));
 
     service.update(
         "propio",
         new CatalogStoreProduct(
             "propio",
-            Store.OTRAS,
+            "OTRAS",
             "Whey proteína",
             "oats",
             "1 kg",
@@ -138,13 +137,13 @@ class StoreProductServiceTest {
 
   @Test
   void refusesToUpdateAProductThatDoesNotExist() {
-    assertThatThrownBy(() -> service.update("ghost", product("ghost", Store.MERCADONA, "Fantasma")))
+    assertThatThrownBy(() -> service.update("ghost", product("ghost", "MERCADONA", "Fantasma")))
         .isInstanceOf(NotFoundException.class);
   }
 
   @Test
   void deletesAProduct() {
-    service.create(product("mercadona-oats", Store.MERCADONA, "Copos de avena"));
+    service.create(product("mercadona-oats", "MERCADONA", "Copos de avena"));
 
     service.delete("mercadona-oats");
 
@@ -162,10 +161,10 @@ class StoreProductServiceTest {
    */
   @Test
   void listsOnlyTheProductsOfTheRequestedStore() {
-    service.create(product("mercadona-oats", Store.MERCADONA, "Copos de avena"));
-    service.create(product("carrefour-oats", Store.CARREFOUR, "Avena"));
+    service.create(product("mercadona-oats", "MERCADONA", "Copos de avena"));
+    service.create(product("carrefour-oats", "CARREFOUR", "Avena"));
 
-    assertThat(service.findAll(Store.MERCADONA))
+    assertThat(service.findAll("MERCADONA"))
         .extracting(CatalogStoreProduct::id)
         .containsExactly("mercadona-oats");
     assertThat(service.findAll(null)).hasSize(2);
@@ -175,7 +174,7 @@ class StoreProductServiceTest {
     private final Map<String, CatalogStoreProduct> rows = new LinkedHashMap<>();
 
     @Override
-    public List<CatalogStoreProduct> findAll(Store store) {
+    public List<CatalogStoreProduct> findAll(String store) {
       List<CatalogStoreProduct> found = new ArrayList<>();
       for (CatalogStoreProduct row : rows.values()) {
         if (store == null || row.store() == store) {
@@ -216,7 +215,7 @@ class StoreProductServiceTest {
     CatalogStoreProduct stored =
         new CatalogStoreProduct(
             "mercadona-4241",
-            Store.MERCADONA,
+            "MERCADONA",
             "Copos de avena Brüggen",
             "oats",
             "Caja 500 g",
@@ -253,7 +252,7 @@ class StoreProductServiceTest {
   /** A product typed by hand has no shop behind it, so there is nothing to refresh it against. */
   @Test
   void refuseToRefreshAProductThatWasNeverImported() {
-    service.create(product("propio", Store.MERCADONA, "Pan de mi panadería"));
+    service.create(product("propio", "MERCADONA", "Pan de mi panadería"));
 
     assertThatThrownBy(() -> service.refresh("propio")).isInstanceOf(ConflictException.class);
   }
@@ -264,7 +263,7 @@ class StoreProductServiceTest {
     service.create(
         new CatalogStoreProduct(
             "mercadona-9",
-            Store.MERCADONA,
+            "MERCADONA",
             "Descatalogado",
             null,
             null,
@@ -292,8 +291,8 @@ class StoreProductServiceTest {
     }
 
     @Override
-    public Store store() {
-      return Store.MERCADONA;
+    public String store() {
+      return "MERCADONA";
     }
 
     @Override
@@ -304,6 +303,49 @@ class StoreProductServiceTest {
     @Override
     public Optional<ImportableProduct> findByExternalId(String externalId) {
       return Optional.ofNullable(fresh);
+    }
+  }
+
+  /**
+   * The chains are rows since V45, so an id that names none has to be refused here. As a filter it
+   * would otherwise answer "this chain sells nothing", and as a write it would reach the foreign
+   * key and surface as a server error — both blame the wrong thing.
+   */
+  @Test
+  void refusesAChainThatIsNotOneOfOurs() {
+    assertThatThrownBy(() -> service.findAll("LIDL"))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("LIDL");
+    assertThatThrownBy(() -> service.create(product("x", "LIDL", "Avena Lidl")))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("LIDL");
+  }
+
+  /** No filter at all is not an unknown chain: it means every chain. */
+  @Test
+  void listsEveryChainWhenNoneIsAskedFor() {
+    repository.insert(product("a", "MERCADONA", "Avena"));
+    repository.insert(product("b", "CARREFOUR", "Arroz"));
+
+    assertThat(service.findAll(null)).hasSize(2);
+  }
+
+  private static final class InMemoryStores implements StoreRepository {
+    private final java.util.Map<String, Store> rows =
+        new java.util.LinkedHashMap<>(
+            java.util.Map.of(
+                "MERCADONA", new Store("MERCADONA", "Mercadona", null, null, 1, true),
+                "CARREFOUR", new Store("CARREFOUR", "Carrefour", null, null, 2, true),
+                "OTRAS", new Store("OTRAS", "Otras", null, null, 99, true)));
+
+    @Override
+    public java.util.List<Store> findAll() {
+      return java.util.List.copyOf(rows.values());
+    }
+
+    @Override
+    public java.util.Optional<Store> find(String id) {
+      return java.util.Optional.ofNullable(rows.get(id));
     }
   }
 }

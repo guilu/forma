@@ -1,7 +1,6 @@
 package dev.diegobarrioh.forma.application;
 
 import dev.diegobarrioh.forma.domain.ShoppingCategory;
-import dev.diegobarrioh.forma.domain.Store;
 import java.math.BigDecimal;
 
 /**
@@ -31,7 +30,7 @@ import java.math.BigDecimal;
  */
 public record CatalogStoreProduct(
     String id,
-    Store store,
+    String store,
     String name,
     String foodId,
     String packageSize,

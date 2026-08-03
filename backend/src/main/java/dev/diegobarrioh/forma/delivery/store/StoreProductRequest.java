@@ -2,9 +2,7 @@ package dev.diegobarrioh.forma.delivery.store;
 
 import dev.diegobarrioh.forma.application.CatalogStoreProduct;
 import dev.diegobarrioh.forma.domain.ShoppingCategory;
-import dev.diegobarrioh.forma.domain.Store;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
@@ -26,7 +24,7 @@ public record StoreProductRequest(
      * display name, and never renamed once something points at it.
      */
     @NotBlank @Pattern(regexp = "[a-z0-9-]{1,64}") String id,
-    @NotNull Store store,
+    @NotBlank @Size(max = 32) String store,
     @NotBlank @Size(max = 200) String name,
     @Size(max = 64) String foodId,
     @Size(max = 100) String packageSize,

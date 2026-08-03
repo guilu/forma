@@ -13,9 +13,11 @@ import org.springframework.stereotype.Service;
 public class CatalogFoodService {
 
   private final FoodCatalogRepository repository;
+  private final FoodGroupRepository groups;
 
-  public CatalogFoodService(FoodCatalogRepository repository) {
+  public CatalogFoodService(FoodCatalogRepository repository, FoodGroupRepository groups) {
     this.repository = repository;
+    this.groups = groups;
   }
 
   /** All foods in the catalog. */
@@ -41,6 +43,7 @@ public class CatalogFoodService {
     if (repository.findById(food.id()).isPresent()) {
       throw new ConflictException("Ya existe un alimento con ese identificador: " + food.id());
     }
+    requireKnownFoodGroup(food.foodGroupId());
     CatalogFood stored = withPrimaryMacro(food);
     repository.insert(stored);
     return stored;
@@ -56,6 +59,7 @@ public class CatalogFoodService {
    */
   public CatalogFood update(String id, CatalogFood food) {
     getById(id);
+    requireKnownFoodGroup(food.foodGroupId());
     CatalogFood stored =
         new CatalogFood(
             id,
@@ -74,6 +78,19 @@ public class CatalogFoodService {
     CatalogFood classified = withPrimaryMacro(stored);
     repository.update(classified);
     return classified;
+  }
+
+  /**
+   * Refuses a food group that is not one of ours.
+   *
+   * <p>Null passes: a food nobody has classified is a real state (V35), and not the same thing as
+   * one filed under a group that does not exist. That second one would otherwise reach the foreign
+   * key V43 added and surface as a server error, which blames the database for a bad request.
+   */
+  private void requireKnownFoodGroup(String foodGroupId) {
+    if (foodGroupId != null && groups.find(foodGroupId).isEmpty()) {
+      throw new ValidationException("No existe el grupo de alimentos: " + foodGroupId);
+    }
   }
 
   /**

@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.diegobarrioh.forma.application.ImportableProduct;
 import dev.diegobarrioh.forma.application.StoreCatalogUnavailableException;
-import dev.diegobarrioh.forma.domain.Store;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -63,7 +62,7 @@ class MercadonaCatalogAdapterTest {
 
   @Test
   void speaksForMercadona() {
-    assertThat(adapter.store()).isEqualTo(Store.MERCADONA);
+    assertThat(adapter.store()).isEqualTo("MERCADONA");
   }
 
   @Test

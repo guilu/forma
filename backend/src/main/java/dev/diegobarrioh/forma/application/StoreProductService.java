@@ -1,6 +1,5 @@
 package dev.diegobarrioh.forma.application;
 
-import dev.diegobarrioh.forma.domain.Store;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
@@ -16,15 +15,36 @@ public class StoreProductService {
 
   private final StoreProductRepository repository;
   private final List<StoreCatalogSource> sources;
+  private final StoreRepository stores;
 
-  public StoreProductService(StoreProductRepository repository, List<StoreCatalogSource> sources) {
+  public StoreProductService(
+      StoreProductRepository repository, List<StoreCatalogSource> sources, StoreRepository stores) {
     this.repository = repository;
     this.sources = sources;
+    this.stores = stores;
   }
 
   /** Catalog products, narrowed to one chain when {@code store} is given; all of them when null. */
-  public List<CatalogStoreProduct> findAll(Store store) {
+  public List<CatalogStoreProduct> findAll(String store) {
+    if (store != null) {
+      requireKnownStore(store);
+    }
     return repository.findAll(store);
+  }
+
+  /**
+   * Refuses a chain that is not one of ours.
+   *
+   * <p>{@code store} used to be an enum, so Spring's converter answered a typo with a 400 before
+   * anything else ran. It is a {@code store} row id since V45, so a typo would otherwise reach the
+   * database: as a filter it would quietly return nothing, and as a write it would trip the foreign
+   * key and surface as a 500. Both look like a bug in the wrong place. Checking here keeps the 400
+   * and says which value was wrong.
+   */
+  private void requireKnownStore(String store) {
+    if (stores.find(store).isEmpty()) {
+      throw new ValidationException("No existe la tienda: " + store);
+    }
   }
 
   /** A single product by id; throws {@link NotFoundException} when no product has that id. */
@@ -44,6 +64,7 @@ public class StoreProductService {
     if (repository.findById(product.id()).isPresent()) {
       throw new ConflictException("Ya existe un producto con el id: " + product.id());
     }
+    requireKnownStore(product.store());
     repository.insert(product);
     return product;
   }
@@ -63,6 +84,7 @@ public class StoreProductService {
    */
   public CatalogStoreProduct update(String id, CatalogStoreProduct product) {
     CatalogStoreProduct current = getById(id);
+    requireKnownStore(product.store());
     CatalogStoreProduct stored =
         new CatalogStoreProduct(
             id,
@@ -101,12 +123,10 @@ public class StoreProductService {
     }
     StoreCatalogSource source =
         sources.stream()
-            .filter(candidate -> candidate.store() == stored.store())
+            .filter(candidate -> candidate.store().equals(stored.store()))
             .findFirst()
             .orElseThrow(
-                () ->
-                    new NotFoundException(
-                        "No hay catálogo disponible para: " + stored.store().name()));
+                () -> new NotFoundException("No hay catálogo disponible para: " + stored.store()));
     ImportableProduct fresh =
         source
             .findByExternalId(stored.externalId())

@@ -8,7 +8,6 @@ import dev.diegobarrioh.forma.domain.ShoppingListItem;
 import dev.diegobarrioh.forma.domain.ShoppingListStatus;
 import dev.diegobarrioh.forma.domain.ShoppingProduct;
 import dev.diegobarrioh.forma.domain.ShoppingUnit;
-import dev.diegobarrioh.forma.domain.Store;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -36,7 +35,7 @@ class ShoppingListServiceTest {
   private static final StoreProductRepository CATALOG =
       new StoreProductRepository() {
         @Override
-        public List<CatalogStoreProduct> findAll(Store store) {
+        public List<CatalogStoreProduct> findAll(String store) {
           return List.of(catalogProduct("mercadona-oats"), catalogProduct("mercadona-rice"));
         }
 
@@ -64,7 +63,7 @@ class ShoppingListServiceTest {
   private static CatalogStoreProduct catalogProduct(String id) {
     return new CatalogStoreProduct(
         id,
-        Store.MERCADONA,
+        "MERCADONA",
         "Producto " + id,
         null,
         "1 kg",
