@@ -1,6 +1,5 @@
 package dev.diegobarrioh.forma.application;
 
-import dev.diegobarrioh.forma.domain.FoodCatalog;
 import dev.diegobarrioh.forma.domain.FoodItem;
 import dev.diegobarrioh.forma.domain.KeyNutrientTotals;
 import dev.diegobarrioh.forma.domain.MealLog;
@@ -46,12 +45,17 @@ public class MealLogService {
   private final MealLogRepository repository;
   private final Clock clock;
   private final CurrentUserProvider currentUserProvider;
+  private final FoodCatalogService foods;
 
   public MealLogService(
-      MealLogRepository repository, Clock clock, CurrentUserProvider currentUserProvider) {
+      MealLogRepository repository,
+      Clock clock,
+      CurrentUserProvider currentUserProvider,
+      FoodCatalogService foods) {
     this.repository = repository;
     this.clock = clock;
     this.currentUserProvider = currentUserProvider;
+    this.foods = foods;
   }
 
   /**
@@ -85,7 +89,8 @@ public class MealLogService {
         throw new ValidationException("portions must be strictly positive");
       }
       FoodItem food =
-          FoodCatalog.findById(command.foodItemId())
+          foods
+              .findById(command.foodItemId())
               .orElseThrow(
                   () -> new ValidationException("unknown foodItemId: " + command.foodItemId()));
       entry =
@@ -148,7 +153,7 @@ public class MealLogService {
 
     NutritionDayType dayType = NutritionDayTypeResolver.resolve(date);
     NutritionDayTemplate target =
-        NutritionDayCatalog.findByType(dayType).map(day -> day.template()).orElse(null);
+        NutritionDayCatalog.findByType(dayType, foods).map(day -> day.template()).orElse(null);
     TargetComparison comparison = target == null ? null : TargetComparison.of(consumed, target);
 
     return new DayConsumption(date, dayType, consumed, keyNutrients, target, comparison, stored);

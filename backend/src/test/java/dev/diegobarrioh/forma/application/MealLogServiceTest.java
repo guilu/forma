@@ -9,6 +9,7 @@ import dev.diegobarrioh.forma.domain.MealType;
 import dev.diegobarrioh.forma.domain.NutritionDayCatalog;
 import dev.diegobarrioh.forma.domain.NutritionDayType;
 import dev.diegobarrioh.forma.domain.NutritionTotals;
+import dev.diegobarrioh.forma.domain.SeededFoods;
 import dev.diegobarrioh.forma.domain.TargetComparison;
 import java.time.Clock;
 import java.time.Instant;
@@ -39,7 +40,8 @@ class MealLogServiceTest {
   private static final UUID USER_ID = UUID.randomUUID();
 
   private final RecordingMealLogRepository repository = new RecordingMealLogRepository();
-  private final MealLogService service = new MealLogService(repository, FIXED_CLOCK, () -> USER_ID);
+  private final MealLogService service =
+      new MealLogService(repository, FIXED_CLOCK, () -> USER_ID, SeededFoodCatalog.service());
 
   @Test
   void logsACatalogEntryResolvingFoodAndPortionsToMacrosViaTheCalculator() {
@@ -152,7 +154,8 @@ class MealLogServiceTest {
 
     DayConsumption consumption = service.consumption(TODAY);
 
-    var expectedTemplate = NutritionDayCatalog.findByType(NutritionDayType.STRENGTH).orElseThrow();
+    var expectedTemplate =
+        NutritionDayCatalog.findByType(NutritionDayType.STRENGTH, SeededFoods.LOOKUP).orElseThrow();
     assertThat(consumption.target()).isEqualTo(expectedTemplate.template());
     assertThat(consumption.comparison())
         .isEqualTo(TargetComparison.of(consumption.consumed(), expectedTemplate.template()));
@@ -162,7 +165,8 @@ class MealLogServiceTest {
   void consumptionOnARestDayPopulatesTargetFromTheRestTemplate() {
     DayConsumption consumption = service.consumption(A_FRIDAY);
 
-    var expectedTemplate = NutritionDayCatalog.findByType(NutritionDayType.REST).orElseThrow();
+    var expectedTemplate =
+        NutritionDayCatalog.findByType(NutritionDayType.REST, SeededFoods.LOOKUP).orElseThrow();
     assertThat(consumption.target()).isEqualTo(expectedTemplate.template());
     assertThat(consumption.comparison()).isNotNull();
   }

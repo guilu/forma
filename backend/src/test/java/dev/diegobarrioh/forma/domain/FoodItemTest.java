@@ -28,8 +28,18 @@ class FoodItemTest {
   }
 
   @Test
-  void rejectsNonPositiveCalories() {
-    assertThatThrownBy(() -> new FoodItem("x", "X", 0, 1.0, 1.0, 1.0, 100))
+  void acceptsAZeroCalorieFood() {
+    // Water, black coffee or a sweetener are 0 kcal/100g and perfectly real. The admin API has
+    // accepted kcal = 0 since FOR-190 (@PositiveOrZero), so rejecting it here would make a stored
+    // food impossible to read back.
+    FoodItem water = new FoodItem("water", "Agua", 0, 0.0, 0.0, 0.0, 250);
+
+    assertThat(water.kcalPer100g()).isZero();
+  }
+
+  @Test
+  void rejectsNegativeCalories() {
+    assertThatThrownBy(() -> new FoodItem("x", "X", -1, 1.0, 1.0, 1.0, 100))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("kcalPer100g");
   }
@@ -39,6 +49,15 @@ class FoodItemTest {
     assertThatThrownBy(() -> new FoodItem("x", "X", 100, -1.0, 1.0, 1.0, 100))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("proteinPer100g");
+  }
+
+  @Test
+  void acceptsAFoodWithNoDefaultServing() {
+    // serving_size_g is nullable in food_catalog and the admin form leaves it optional, so "nobody
+    // has decided a sensible portion yet" is a real state — it must survive the round trip.
+    FoodItem food = new FoodItem("x", "X", 100, 1.0, 1.0, 1.0, null);
+
+    assertThat(food.defaultServingG()).isNull();
   }
 
   @Test

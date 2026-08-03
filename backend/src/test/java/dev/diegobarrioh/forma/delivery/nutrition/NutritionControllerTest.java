@@ -17,6 +17,7 @@ import dev.diegobarrioh.forma.domain.MealType;
 import dev.diegobarrioh.forma.domain.NutritionDay;
 import dev.diegobarrioh.forma.domain.NutritionDayTemplate;
 import dev.diegobarrioh.forma.domain.NutritionDayType;
+import dev.diegobarrioh.forma.support.SeededFoodCatalogTestConfig;
 import dev.diegobarrioh.forma.support.WebMvcAuthTestConfig;
 import java.time.LocalTime;
 import java.util.List;
@@ -33,12 +34,17 @@ import org.springframework.test.web.servlet.MockMvc;
  * shape (targets, ordered meals, optional post-run, resolved food names, macro totals, target
  * comparison) and not-found handling.
  *
- * <p>The real {@link NutritionCalculationService} is loaded (not mocked, FOR-105) since it is a
- * plain, dependency-free {@code @Service} — this exercises the FOR-32 calculation end-to-end
- * through the controller rather than stubbing its output.
+ * <p>The real {@link NutritionCalculationService} is loaded (not mocked, FOR-105) — this exercises
+ * the FOR-32 calculation end-to-end through the controller rather than stubbing its output. It
+ * reads foods from the catalog, which a web slice does not load, so {@link
+ * SeededFoodCatalogTestConfig} supplies the seeded ones.
  */
 @WebMvcTest(NutritionController.class)
-@Import({NutritionCalculationService.class, WebMvcAuthTestConfig.class})
+@Import({
+  NutritionCalculationService.class,
+  SeededFoodCatalogTestConfig.class,
+  WebMvcAuthTestConfig.class
+})
 class NutritionControllerTest {
 
   @Autowired private MockMvc mockMvc;

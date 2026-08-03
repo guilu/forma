@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.diegobarrioh.forma.domain.NutritionDayCatalog;
 import dev.diegobarrioh.forma.domain.NutritionDayType;
+import dev.diegobarrioh.forma.domain.SeededFoods;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -12,11 +13,14 @@ import org.junit.jupiter.api.Test;
  */
 class NutritionDayCatalogServiceTest {
 
-  private final NutritionDayCatalogService service = new NutritionDayCatalogService();
+  private final NutritionDayCatalogService service =
+      new NutritionDayCatalogService(SeededFoodCatalog.service());
 
   @Test
   void exposesTheSeededDays() {
-    assertThat(service.allDays()).isEqualTo(NutritionDayCatalog.days()).hasSize(3);
+    assertThat(service.allDays())
+        .isEqualTo(NutritionDayCatalog.days(SeededFoods.LOOKUP))
+        .hasSize(3);
   }
 
   @Test

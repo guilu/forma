@@ -5,11 +5,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import dev.diegobarrioh.forma.application.MealLogRepository;
 import dev.diegobarrioh.forma.application.StoredMealLogEntry;
 import dev.diegobarrioh.forma.bootstrap.LegacyUserBootstrap;
-import dev.diegobarrioh.forma.domain.FoodCatalog;
 import dev.diegobarrioh.forma.domain.KeyNutrientTotals;
 import dev.diegobarrioh.forma.domain.MealLogEntry;
 import dev.diegobarrioh.forma.domain.MealType;
 import dev.diegobarrioh.forma.domain.NutritionTotals;
+import dev.diegobarrioh.forma.domain.SeededFoods;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -138,13 +138,13 @@ class JdbcMealLogRepositoryTest {
 
   /**
    * FOR-134 (migration V17): a catalog entry's key nutrients, snapshotted at logging time from the
-   * FOR-30 {@link FoodCatalog} food, survive a full JDBC round trip — proving they are genuinely
-   * persisted to and read back from the {@code meal_log_entry} key-nutrient columns, not just held
-   * in memory. Oats carries all four values (fibre/sugars/sodium/saturated fat), so none is lost.
+   * FOR-30 catalog food, survive a full JDBC round trip — proving they are genuinely persisted to
+   * and read back from the {@code meal_log_entry} key-nutrient columns, not just held in memory.
+   * Oats carries all four values (fibre/sugars/sodium/saturated fat), so none is lost.
    */
   @Test
   void aCatalogEntrysKeyNutrientsSurviveAFullPersistenceRoundTrip() {
-    var oats = FoodCatalog.findById("oats").orElseThrow(); // all four key nutrients known
+    var oats = SeededFoods.byId("oats"); // all four key nutrients known
     MealLogEntry original = MealLogEntry.fromCatalog(DAY, MealType.BREAKFAST, oats, 1.0);
     assertThat(original.keyNutrients()).isNotEqualTo(KeyNutrientTotals.empty());
 
@@ -185,7 +185,7 @@ class JdbcMealLogRepositoryTest {
    */
   @Test
   void partialKeyNutrientNullsAreNotFabricatedThroughPersistence() {
-    var chicken = FoodCatalog.findById("chicken").orElseThrow(); // sodium and sat fat null
+    var chicken = SeededFoods.byId("chicken"); // sodium and sat fat null
     MealLogEntry original = MealLogEntry.fromCatalog(DAY, MealType.LUNCH, chicken, 1.0);
 
     repository.save(OWNER, original);

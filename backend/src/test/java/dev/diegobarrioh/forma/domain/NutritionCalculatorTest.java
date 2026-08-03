@@ -6,13 +6,34 @@ import static org.assertj.core.api.Assertions.within;
 
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 /**
  * Domain unit tests for {@link NutritionCalculator} (FOR-32): meal and day totals from catalog
  * foods × grams, the empty case, and unknown-food rejection. Plain JUnit 5 + AssertJ (ADR-007).
+ *
+ * <p>Foods are supplied through an explicit {@link FoodLookup} fixture rather than read from a
+ * static catalog: the calculator no longer knows where foods come from, so the test owns them. The
+ * fixture's values mirror the seeded {@code food_catalog} rows the assertions were originally
+ * written against, so the expected numbers are unchanged.
  */
 class NutritionCalculatorTest {
+
+  private static final FoodLookup FOODS =
+      lookup(
+          new FoodItem("oats", "Copos de avena", 370, 13.0, 60.0, 7.0, 60, 10.6, 0.0, 2.0, 1.2),
+          new FoodItem("banana", "Plátano", 89, 1.1, 23.0, 0.3, 120, 2.6, 12.2, 1.0, 0.1),
+          new FoodItem("chicken", "Pechuga pollo", 110, 23.0, 0.0, 2.0, 200, 0.0, 0.0, null, null),
+          new FoodItem("vegetables", "Verdura variada", 35, 2.0, 6.0, 0.3, 300));
+
+  private static FoodLookup lookup(FoodItem... foods) {
+    Map<String, FoodItem> byId =
+        java.util.Arrays.stream(foods)
+            .collect(java.util.stream.Collectors.toMap(FoodItem::id, food -> food));
+    return id -> Optional.ofNullable(byId.get(id));
+  }
 
   private static MealTemplate meal(List<MealItem> items) {
     return new MealTemplate(
@@ -24,7 +45,7 @@ class NutritionCalculatorTest {
     // oats 60 g (0.6×) + banana 120 g (1.2×), values from the FOR-152 reseeded catalog.
     MealTemplate breakfast = meal(List.of(new MealItem("oats", 60), new MealItem("banana", 120)));
 
-    NutritionTotals totals = NutritionCalculator.mealTotals(breakfast);
+    NutritionTotals totals = NutritionCalculator.mealTotals(breakfast, FOODS);
 
     // kcal 370*0.6 + 89*1.2 = 222 + 106.8 = 328.8 -> 329
     assertThat(totals.calories()).isEqualTo(329);
@@ -39,7 +60,7 @@ class NutritionCalculatorTest {
     MealTemplate m1 = meal(List.of(new MealItem("oats", 60)));
     MealTemplate m2 = meal(List.of(new MealItem("banana", 120)));
 
-    NutritionTotals day = NutritionCalculator.dayTotals(List.of(m1, m2));
+    NutritionTotals day = NutritionCalculator.dayTotals(List.of(m1, m2), FOODS);
 
     // Raw day sum: 7.8 + 1.32 = 9.12 -> 9.1 (the code always sums raw then rounds once, per
     // NutritionCalculator's contract, regardless of whether it happens to match per-meal rounding
@@ -50,7 +71,7 @@ class NutritionCalculatorTest {
 
   @Test
   void emptyDayIsAllZero() {
-    NutritionTotals day = NutritionCalculator.dayTotals(List.of());
+    NutritionTotals day = NutritionCalculator.dayTotals(List.of(), FOODS);
 
     assertThat(day.calories()).isZero();
     assertThat(day.proteinG()).isZero();
@@ -62,9 +83,20 @@ class NutritionCalculatorTest {
   void rejectsAnUnknownFoodId() {
     MealTemplate bad = meal(List.of(new MealItem("ghost-food", 100)));
 
-    assertThatThrownBy(() -> NutritionCalculator.mealTotals(bad))
+    assertThatThrownBy(() -> NutritionCalculator.mealTotals(bad, FOODS))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("ghost-food");
+  }
+
+  @Test
+  void rejectsAMissingLookup() {
+    // A null lookup is a programming error, not "no foods": failing loudly here stops it being
+    // mistaken for an unknown-food rejection further down.
+    MealTemplate breakfast = meal(List.of(new MealItem("oats", 60)));
+
+    assertThatThrownBy(() -> NutritionCalculator.mealTotals(breakfast, null))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessageContaining("foods");
   }
 
   // --- FOR-134: itemKeyNutrients reuses the same per-100g x factor scaling as itemTotals ---
@@ -73,8 +105,9 @@ class NutritionCalculatorTest {
   void itemKeyNutrientsScalesAKnownFoodsNutrientsByGrams() {
     // oats: fiber 10.6/sugars 0/sodium 2mg/satFat 1.2 per 100g (unchanged by FOR-152 — kept the
     // same rolled-oats reference); 60g -> x0.6 factor (same as macros).
-    NutritionTotals macros = NutritionCalculator.itemTotals(new MealItem("oats", 60));
-    KeyNutrientTotals keyNutrients = NutritionCalculator.itemKeyNutrients(new MealItem("oats", 60));
+    NutritionTotals macros = NutritionCalculator.itemTotals(new MealItem("oats", 60), FOODS);
+    KeyNutrientTotals keyNutrients =
+        NutritionCalculator.itemKeyNutrients(new MealItem("oats", 60), FOODS);
 
     assertThat(macros.calories()).isEqualTo(222); // sanity: same factor as macros, 370*0.6
     assertThat(keyNutrients.fiberG()).isCloseTo(6.4, within(0.05)); // 10.6 * 0.6 = 6.36 -> 6.4
@@ -89,7 +122,7 @@ class NutritionCalculatorTest {
     // "vegetables" catalog entry has no known key nutrients -> every field stays null, never
     // fabricated, even though the food and grams are perfectly valid.
     KeyNutrientTotals keyNutrients =
-        NutritionCalculator.itemKeyNutrients(new MealItem("vegetables", 200));
+        NutritionCalculator.itemKeyNutrients(new MealItem("vegetables", 200), FOODS);
 
     assertThat(keyNutrients.fiberG()).isNull();
     assertThat(keyNutrients.sugarsG()).isNull();
@@ -102,7 +135,7 @@ class NutritionCalculatorTest {
     // "chicken" (pollo, 0 g carbs/100g) has fiber/sugars known (0) but sodium and sat-fat unknown
     // (null, not given by the Macros sheet) -> each nutrient is independent, not all-or-nothing.
     KeyNutrientTotals keyNutrients =
-        NutritionCalculator.itemKeyNutrients(new MealItem("chicken", 150));
+        NutritionCalculator.itemKeyNutrients(new MealItem("chicken", 150), FOODS);
 
     assertThat(keyNutrients.fiberG()).isEqualTo(0.0);
     assertThat(keyNutrients.sugarsG()).isEqualTo(0.0);
@@ -112,7 +145,8 @@ class NutritionCalculatorTest {
 
   @Test
   void itemKeyNutrientsRejectsAnUnknownFoodId() {
-    assertThatThrownBy(() -> NutritionCalculator.itemKeyNutrients(new MealItem("ghost-food", 100)))
+    assertThatThrownBy(
+            () -> NutritionCalculator.itemKeyNutrients(new MealItem("ghost-food", 100), FOODS))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("ghost-food");
   }

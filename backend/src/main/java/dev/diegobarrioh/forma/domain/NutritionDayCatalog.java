@@ -6,57 +6,71 @@ import java.util.Optional;
 
 /**
  * The initial nutrition day templates (FOR-33): RUNNING, STRENGTH and REST days, each with meals
- * built from FOR-30 catalog foods.
+ * built from catalog foods.
  *
- * <p>Defined in code (consistent with the FOR-23/FOR-24/FOR-25 seed precedents) — no persistence/
- * migration. Referential integrity is enforced fail-fast at class initialization: {@link
- * NutritionCalculator} rejects any meal item referencing an unknown food id. Each day's macro
- * <em>targets</em> are the computed totals of its meals (FOR-32), so the default plan is
- * self-consistent; values are directional defaults the user edits later, not medical prescriptions.
+ * <p>The meals themselves are defined in code (consistent with the FOR-23/FOR-24/FOR-25 seed
+ * precedents) — they are food ids and gram amounts, which need no nutrition data to write down.
+ * Each day's macro <em>targets</em> are the computed totals of its meals (FOR-32), so the default
+ * plan is self-consistent; values are directional defaults the user edits later, not medical
+ * prescriptions.
+ *
+ * <p>Those totals are computed per call from a caller-supplied {@link FoodLookup}, not once in a
+ * static initializer. Foods live in {@code food_catalog}, and a static initializer runs before any
+ * database is reachable — precomputing here would have forced nutrition values to stay compiled
+ * into the jar. The cost is that referential integrity is no longer proven at class-load: a meal
+ * referencing an unknown food id is now rejected when a day is built rather than when the class is
+ * first touched. {@link NutritionCalculator} still rejects it rather than skipping it, so a bad id
+ * fails loudly either way.
  *
  * <p>Meals are chosen so daily protein lands around 150–170 g and running days front-load
  * carbohydrates (running carbs &gt; rest carbs).
  */
 public final class NutritionDayCatalog {
 
-  private static final List<NutritionDay> DAYS =
+  /** A day's fixed part: everything that can be stated without resolving any food. */
+  private record Seed(NutritionDayType type, List<MealTemplate> meals, String note) {}
+
+  private static final List<Seed> SEEDS =
       List.of(
-          day(
+          new Seed(
               NutritionDayType.RUNNING,
               runningMeals(),
               "Día de carrera: más carbohidratos, antes de correr."),
-          day(
+          new Seed(
               NutritionDayType.STRENGTH,
               strengthMeals(),
               "Día de fuerza: proteína alta, carbohidratos moderados."),
-          day(NutritionDayType.REST, restMeals(), "Día de descanso: menos carbohidratos."));
+          new Seed(NutritionDayType.REST, restMeals(), "Día de descanso: menos carbohidratos."));
 
   private NutritionDayCatalog() {}
 
-  /** All seeded nutrition days (immutable). */
-  public static List<NutritionDay> days() {
-    return DAYS;
+  /** All seeded nutrition days, with targets computed from {@code foods}. */
+  public static List<NutritionDay> days(FoodLookup foods) {
+    return SEEDS.stream().map(seed -> day(seed, foods)).toList();
   }
 
-  /** Finds a seeded day by its type. */
-  public static Optional<NutritionDay> findByType(NutritionDayType type) {
-    return DAYS.stream().filter(day -> day.template().type() == type).findFirst();
+  /** Finds a seeded day by its type, with targets computed from {@code foods}. */
+  public static Optional<NutritionDay> findByType(NutritionDayType type, FoodLookup foods) {
+    return SEEDS.stream()
+        .filter(seed -> seed.type() == type)
+        .findFirst()
+        .map(seed -> day(seed, foods));
   }
 
   /**
    * Builds a day, deriving its targets from the computed totals of its meals (also validates ids).
    */
-  private static NutritionDay day(NutritionDayType type, List<MealTemplate> meals, String note) {
-    NutritionTotals totals = NutritionCalculator.dayTotals(meals);
+  private static NutritionDay day(Seed seed, FoodLookup foods) {
+    NutritionTotals totals = NutritionCalculator.dayTotals(seed.meals(), foods);
     NutritionDayTemplate template =
         new NutritionDayTemplate(
-            type,
+            seed.type(),
             totals.calories(),
             (int) Math.round(totals.proteinG()),
             (int) Math.round(totals.carbsG()),
             (int) Math.round(totals.fatG()),
-            note);
-    return new NutritionDay(template, meals);
+            seed.note());
+    return new NutritionDay(template, seed.meals());
   }
 
   private static MealTemplate meal(
