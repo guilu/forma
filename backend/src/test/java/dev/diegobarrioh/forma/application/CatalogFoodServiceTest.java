@@ -19,7 +19,8 @@ import org.junit.jupiter.api.Test;
 class CatalogFoodServiceTest {
 
   private final InMemoryRepository repository = new InMemoryRepository();
-  private final CatalogFoodService service = new CatalogFoodService(repository);
+  private final InMemoryGroups groups = new InMemoryGroups();
+  private final CatalogFoodService service = new CatalogFoodService(repository, groups);
 
   private static CatalogFood food(String id, String name) {
     return new CatalogFood(
@@ -220,6 +221,71 @@ class CatalogFoodServiceTest {
     @Override
     public boolean delete(String id) {
       return byId.remove(id) != null;
+    }
+  }
+
+  /**
+   * The groups are rows with a foreign key behind them since V43, so a food filed under one that
+   * does not exist has to be refused here. Left to the database it trips the constraint and
+   * surfaces as a server error, which blames the wrong thing.
+   */
+  @Test
+  void refusesAFoodFiledUnderAGroupThatIsNotOneOfOurs() {
+    CatalogFood bogus = withFoodGroup(food("tempeh", "Tempeh"), "INVENTADO");
+
+    assertThatThrownBy(() -> service.create(bogus))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("INVENTADO");
+
+    service.create(food("tempeh", "Tempeh"));
+    assertThatThrownBy(() -> service.update("tempeh", bogus))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("INVENTADO");
+  }
+
+  /** A food nobody has classified is not a food filed under a missing group. */
+  @Test
+  void acceptsAFoodWithNoGroupAtAll() {
+    CatalogFood unclassified = withFoodGroup(food("tempeh", "Tempeh"), null);
+
+    assertThat(service.create(unclassified).foodGroupId()).isNull();
+  }
+
+  private static CatalogFood withFoodGroup(CatalogFood food, String groupId) {
+    return new CatalogFood(
+        food.id(),
+        food.name(),
+        food.servingSizeG(),
+        food.kcal(),
+        food.proteinG(),
+        food.carbsG(),
+        food.fatG(),
+        food.fiberG(),
+        food.sugarsG(),
+        food.sodiumMg(),
+        food.saturatedFatG(),
+        groupId,
+        food.primaryMacro());
+  }
+
+  private static final class InMemoryGroups implements FoodGroupRepository {
+    private final Map<String, FoodGroup> rows =
+        new LinkedHashMap<>(
+            Map.of("PROTEINA", new FoodGroup("PROTEINA", "Proteína", "🍗", null, 2, true)));
+
+    @Override
+    public List<FoodGroup> findAll() {
+      return List.copyOf(rows.values());
+    }
+
+    @Override
+    public Optional<FoodGroup> find(String id) {
+      return Optional.ofNullable(rows.get(id));
+    }
+
+    @Override
+    public void update(FoodGroup group) {
+      rows.put(group.id(), group);
     }
   }
 }
