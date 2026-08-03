@@ -70,6 +70,7 @@ class FoodCatalogServiceTest {
         null,
         null,
         null,
+        null,
         null);
   }
 

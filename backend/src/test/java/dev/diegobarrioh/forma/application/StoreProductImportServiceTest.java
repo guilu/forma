@@ -165,7 +165,8 @@ class StoreProductImportServiceTest {
               null,
               null,
               null,
-              "CARBOHIDRATO"));
+              "CARBOHIDRATO",
+              null));
     }
 
     @Override

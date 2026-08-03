@@ -47,8 +47,11 @@ public final class SeededFoodCatalog {
         nullableDecimal(food.sugarsPer100g()),
         nullableDecimal(food.sodiumMgPer100g()),
         nullableDecimal(food.saturatedFatPer100g()),
-        // The seed predates FOR-190's category column and leaves it null; no test here depends on
+        // The seed predates FOR-190's group column and leaves it null; no test here depends on
         // it, and inventing one would be the fabrication FOR-134 forbids.
+        null,
+        // Likewise the primary macro: V44 backfills it in the database, and nothing that reads
+        // this fixture asks for it.
         null);
   }
 

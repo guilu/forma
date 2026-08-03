@@ -3,7 +3,7 @@ import { Button } from '../../components/Button';
 import { SelectField, TextField } from '../../components/FormField';
 import { useNotify } from '../../components/NotificationProvider';
 import { ApiRequestError } from '../../api/client';
-import { createFood, updateFood, type CatalogFood } from '../../api/foods';
+import { createFood, updateFood, type CatalogFood, type PrimaryMacro } from '../../api/foods';
 import type { CategoryDisplay } from '../../api/categories';
 import styles from './FoodForm.module.css';
 
@@ -31,6 +31,18 @@ interface FoodFormProps {
   readonly onCancel: () => void;
   readonly onSaved: () => void;
 }
+
+/**
+ * How each macronutrient reads, in the order a macro row is usually written.
+ *
+ * <p>Hardcoded, and that is not the mistake V43 undid for food groups: this set
+ * cannot grow. A fourth macronutrient would be news.
+ */
+const MACRO_LABELS: readonly { readonly value: PrimaryMacro; readonly label: string }[] = [
+  { value: 'PROTEIN', label: 'Proteínas' },
+  { value: 'CARBS', label: 'Hidratos' },
+  { value: 'FAT', label: 'Grasas' },
+];
 
 /**
  * The groups to offer, with the food's own always among them.
@@ -61,6 +73,10 @@ export function FoodForm({ food, groups, onCancel, onSaved }: FoodFormProps) {
   const [id, setId] = useState(food?.id ?? '');
   const [name, setName] = useState(food?.name ?? '');
   const [category, setCategory] = useState<string>(food?.foodGroupId ?? '');
+  // Empty means "let the macros decide": the backend derives it when the field
+  // is absent. An existing classification is shown as stored, never reset on
+  // open — resetting would discard a curator's choice for opening a form.
+  const [primaryMacro, setPrimaryMacro] = useState<string>(food?.primaryMacro ?? '');
   const [kcal, setKcal] = useState(text(food?.kcal));
   const [proteinG, setProteinG] = useState(text(food?.proteinG));
   const [carbsG, setCarbsG] = useState(text(food?.carbsG));
@@ -86,6 +102,7 @@ export function FoodForm({ food, groups, onCancel, onSaved }: FoodFormProps) {
       fatG: Number(fatG || 0),
       servingSizeG: optional(servingSizeG),
       foodGroupId: category === '' ? undefined : category,
+      primaryMacro: primaryMacro === '' ? undefined : (primaryMacro as PrimaryMacro),
     };
     try {
       if (creating) {
@@ -144,6 +161,20 @@ export function FoodForm({ food, groups, onCancel, onSaved }: FoodFormProps) {
         {optionsFor(groups, category).map((option) => (
           <option key={option.code} value={option.code}>
             {option.label}
+          </option>
+        ))}
+      </SelectField>
+      <SelectField
+        id="food-primary-macro"
+        label="Macro principal"
+        value={primaryMacro}
+        disabled={pending}
+        onChange={(event) => setPrimaryMacro(event.target.value)}
+      >
+        <option value="">Automático (según los macros)</option>
+        {MACRO_LABELS.map((macro) => (
+          <option key={macro.value} value={macro.value}>
+            {macro.label}
           </option>
         ))}
       </SelectField>

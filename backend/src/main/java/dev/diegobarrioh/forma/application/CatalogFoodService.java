@@ -1,5 +1,6 @@
 package dev.diegobarrioh.forma.application;
 
+import dev.diegobarrioh.forma.domain.PrimaryMacro;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
@@ -40,8 +41,9 @@ public class CatalogFoodService {
     if (repository.findById(food.id()).isPresent()) {
       throw new ConflictException("Ya existe un alimento con ese identificador: " + food.id());
     }
-    repository.insert(food);
-    return food;
+    CatalogFood stored = withPrimaryMacro(food);
+    repository.insert(stored);
+    return stored;
   }
 
   /**
@@ -67,9 +69,52 @@ public class CatalogFoodService {
             food.sugarsG(),
             food.sodiumMg(),
             food.saturatedFatG(),
-            food.foodGroupId());
-    repository.update(stored);
-    return stored;
+            food.foodGroupId(),
+            food.primaryMacro());
+    CatalogFood classified = withPrimaryMacro(stored);
+    repository.update(classified);
+    return classified;
+  }
+
+  /**
+   * This food with its primary macro filled in from its own numbers when it carries none (V44).
+   *
+   * <p>A default, not a verdict: a caller that states one keeps it, however the arithmetic feels
+   * about it — "yogur proteína" is sold and eaten as a protein even when its label's carbohydrates
+   * edge it out. A caller that says nothing gets the macro its macros imply, so the column is never
+   * left empty next to the very data that fills it.
+   *
+   * <p>The same rule on update, which is what re-derives it: a food whose fat was corrected upwards
+   * should stop claiming to be a protein just because it was one before. The admin form posts back
+   * what it was shown, so an untouched classification survives; a client that omits the field is
+   * asking for it to be recomputed.
+   */
+  private static CatalogFood withPrimaryMacro(CatalogFood food) {
+    if (food.primaryMacro() != null) {
+      return food;
+    }
+    PrimaryMacro dominant =
+        PrimaryMacro.dominantOf(
+                toDouble(food.proteinG()), toDouble(food.carbsG()), toDouble(food.fatG()))
+            .orElse(null);
+    return new CatalogFood(
+        food.id(),
+        food.name(),
+        food.servingSizeG(),
+        food.kcal(),
+        food.proteinG(),
+        food.carbsG(),
+        food.fatG(),
+        food.fiberG(),
+        food.sugarsG(),
+        food.sodiumMg(),
+        food.saturatedFatG(),
+        food.foodGroupId(),
+        dominant);
+  }
+
+  private static Double toDouble(java.math.BigDecimal value) {
+    return value == null ? null : value.doubleValue();
   }
 
   /**
