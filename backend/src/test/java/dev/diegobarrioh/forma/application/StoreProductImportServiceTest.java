@@ -3,7 +3,6 @@ package dev.diegobarrioh.forma.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import dev.diegobarrioh.forma.domain.FoodCategory;
 import dev.diegobarrioh.forma.domain.Store;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -166,7 +165,7 @@ class StoreProductImportServiceTest {
               null,
               null,
               null,
-              FoodCategory.CARBOHIDRATO));
+              "CARBOHIDRATO"));
     }
 
     @Override

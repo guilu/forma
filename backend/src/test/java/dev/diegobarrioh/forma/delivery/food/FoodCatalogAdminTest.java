@@ -37,7 +37,7 @@ class FoodCatalogAdminTest {
   private static final String BODY =
       """
       {"id":"tempeh","name":"Tempeh","kcal":190,"proteinG":19.0,"carbsG":9.0,"fatG":11.0,
-       "servingSizeG":100.0,"category":"PROTEINA"}
+       "servingSizeG":100.0,"foodGroupId":"PROTEINA"}
       """;
 
   @Autowired private MockMvc mockMvc;
@@ -89,7 +89,7 @@ class FoodCatalogAdminTest {
                 .content(BODY))
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.id").value("tempeh"))
-        .andExpect(jsonPath("$.category").value("PROTEINA"));
+        .andExpect(jsonPath("$.foodGroupId").value("PROTEINA"));
 
     mockMvc
         .perform(

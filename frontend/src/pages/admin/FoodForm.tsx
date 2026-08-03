@@ -3,7 +3,7 @@ import { Button } from '../../components/Button';
 import { SelectField, TextField } from '../../components/FormField';
 import { useNotify } from '../../components/NotificationProvider';
 import { ApiRequestError } from '../../api/client';
-import { createFood, updateFood, type CatalogFood, type FoodCategory } from '../../api/foods';
+import { createFood, updateFood, type CatalogFood } from '../../api/foods';
 import { CATEGORY_LABELS, CATEGORY_OPTIONS } from './foodDisplay';
 import styles from './FoodForm.module.css';
 
@@ -34,7 +34,7 @@ export function FoodForm({ food, onCancel, onSaved }: FoodFormProps) {
   const creating = food === undefined;
   const [id, setId] = useState(food?.id ?? '');
   const [name, setName] = useState(food?.name ?? '');
-  const [category, setCategory] = useState<string>(food?.category ?? '');
+  const [category, setCategory] = useState<string>(food?.foodGroupId ?? '');
   const [kcal, setKcal] = useState(text(food?.kcal));
   const [proteinG, setProteinG] = useState(text(food?.proteinG));
   const [carbsG, setCarbsG] = useState(text(food?.carbsG));
@@ -59,7 +59,7 @@ export function FoodForm({ food, onCancel, onSaved }: FoodFormProps) {
       carbsG: Number(carbsG || 0),
       fatG: Number(fatG || 0),
       servingSizeG: optional(servingSizeG),
-      category: category === '' ? undefined : (category as FoodCategory),
+      foodGroupId: category === '' ? undefined : category,
     };
     try {
       if (creating) {

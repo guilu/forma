@@ -8,7 +8,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import dev.diegobarrioh.forma.application.CatalogFood;
 import dev.diegobarrioh.forma.application.CatalogFoodService;
 import dev.diegobarrioh.forma.application.NotFoundException;
-import dev.diegobarrioh.forma.domain.FoodCategory;
 import dev.diegobarrioh.forma.support.WebMvcAuthTestConfig;
 import java.math.BigDecimal;
 import java.util.List;
@@ -44,7 +43,7 @@ class FoodCatalogControllerTest {
         new BigDecimal("0.0"),
         new BigDecimal("2.0"),
         new BigDecimal("1.2"),
-        FoodCategory.CARBOHIDRATO);
+        "CARBOHIDRATO");
   }
 
   private static CatalogFood rice() {
@@ -60,7 +59,7 @@ class FoodCatalogControllerTest {
         null,
         null,
         null,
-        FoodCategory.CARBOHIDRATO);
+        "CARBOHIDRATO");
   }
 
   @Test

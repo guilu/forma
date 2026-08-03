@@ -67,7 +67,7 @@ public class CatalogFoodService {
             food.sugarsG(),
             food.sodiumMg(),
             food.saturatedFatG(),
-            food.category());
+            food.foodGroupId());
     repository.update(stored);
     return stored;
   }

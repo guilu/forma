@@ -25,7 +25,7 @@ const oats: CatalogFood = {
   proteinG: 13,
   carbsG: 60,
   fatG: 7,
-  category: 'CARBOHIDRATO',
+  foodGroupId: 'CARBOHIDRATO',
 };
 
 const chicken: CatalogFood = {
@@ -36,7 +36,7 @@ const chicken: CatalogFood = {
   proteinG: 23,
   carbsG: 0,
   fatG: 2,
-  category: 'PROTEINA',
+  foodGroupId: 'PROTEINA',
 };
 
 function renderPage() {

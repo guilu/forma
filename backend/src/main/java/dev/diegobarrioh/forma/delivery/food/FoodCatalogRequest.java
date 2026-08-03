@@ -1,11 +1,11 @@
 package dev.diegobarrioh.forma.delivery.food;
 
 import dev.diegobarrioh.forma.application.CatalogFood;
-import dev.diegobarrioh.forma.domain.FoodCategory;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 
 /**
@@ -35,7 +35,7 @@ public record FoodCatalogRequest(
     @PositiveOrZero BigDecimal sugarsG,
     @PositiveOrZero BigDecimal sodiumMg,
     @PositiveOrZero BigDecimal saturatedFatG,
-    FoodCategory category) {
+    @Size(max = 32) String foodGroupId) {
 
   /** Maps the request onto the application's own type. */
   public CatalogFood toCatalogFood() {
@@ -51,6 +51,6 @@ public record FoodCatalogRequest(
         sugarsG,
         sodiumMg,
         saturatedFatG,
-        category);
+        foodGroupId);
   }
 }

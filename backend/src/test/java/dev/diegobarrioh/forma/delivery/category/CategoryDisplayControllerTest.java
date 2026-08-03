@@ -51,7 +51,8 @@ class CategoryDisplayControllerTest {
     mockMvc
         .perform(get(PATH).with(asUser(SOMEONE, "someone@forma.test")))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.length()").value(12))
+        // 10 food groups (V43) + 6 shopping aisles.
+        .andExpect(jsonPath("$.length()").value(16))
         .andExpect(jsonPath("$[?(@.code=='CARBOHIDRATO')].label").value("Carbohidrato"))
         .andExpect(jsonPath("$[?(@.code=='CARBOHIDRATO')].scope").value("FOOD"))
         .andExpect(jsonPath("$[?(@.code=='OTROS')].scope").value("SHOPPING"));
@@ -59,7 +60,7 @@ class CategoryDisplayControllerTest {
     mockMvc
         .perform(get(PATH + "?scope=FOOD").with(asUser(SOMEONE, "someone@forma.test")))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.length()").value(6));
+        .andExpect(jsonPath("$.length()").value(10));
   }
 
   @Test

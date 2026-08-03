@@ -3,7 +3,6 @@ package dev.diegobarrioh.forma.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import dev.diegobarrioh.forma.domain.FoodCategory;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -34,7 +33,7 @@ class CatalogFoodServiceTest {
         null,
         null,
         null,
-        FoodCategory.PROTEINA);
+        "PROTEINA");
   }
 
   @Test
