@@ -13,7 +13,12 @@ import { apiClient, type ApiClient } from './client';
 const STORE_PRODUCTS_PATH = '/api/v1/store-products';
 
 /** The chains the catalog covers. Adding one is a backend enum value first. */
-export type Store = 'MERCADONA' | 'CARREFOUR' | 'OTRAS';
+/**
+ * A chain's id. A plain string since V45: which chains exist is a table, and a
+ * union here would have to be widened by a deploy every time somebody adds one.
+ * The names come from `listStores`.
+ */
+export type StoreId = string;
 
 /** Grocery aisle, shared with the shopping list's own grouping. */
 export type ShoppingCategory =
@@ -33,7 +38,7 @@ export type ShoppingCategory =
  */
 export interface StoreProduct {
   readonly id: string;
-  readonly store: Store;
+  readonly store: StoreId;
   readonly name: string;
   readonly foodId?: string;
   readonly packageSize?: string;
@@ -78,7 +83,7 @@ export interface StoreProduct {
 
 /** Lists the catalog, narrowed to one chain when `store` is given. */
 export function listStoreProducts(
-  store?: Store,
+  store?: StoreId,
   client: ApiClient = apiClient,
 ): Promise<StoreProduct[]> {
   const query = store ? `?store=${encodeURIComponent(store)}` : '';
@@ -94,7 +99,7 @@ export function listStoreProducts(
  */
 export function searchStoreProducts(
   query: string,
-  store: Store,
+  store: StoreId,
   client: ApiClient = apiClient,
 ): Promise<StoreSuggestion[]> {
   const params = `?q=${encodeURIComponent(query)}&store=${encodeURIComponent(store)}`;
@@ -199,7 +204,7 @@ export interface StoreSuggestion {
  */
 export function listStoreSuggestions(
   foodId: string,
-  store: Store,
+  store: StoreId,
   client: ApiClient = apiClient,
 ): Promise<StoreSuggestion[]> {
   const query = `?foodId=${encodeURIComponent(foodId)}&store=${encodeURIComponent(store)}`;

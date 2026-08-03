@@ -7,12 +7,13 @@ import type { CatalogFood } from '../../api/foods';
 import {
   listStoreSuggestions,
   searchStoreProducts,
-  type Store,
+  type StoreId,
   type StoreProduct,
   type StoreSuggestion,
 } from '../../api/storeProducts';
 import { ProductThumbnail } from './ProductThumbnail';
-import { STORE_LABELS, priceLabel } from './storeDisplay';
+import { priceLabel } from './storeDisplay';
+import { useStores } from './useStores';
 import styles from './ImportFromStore.module.css';
 
 /**
@@ -33,7 +34,7 @@ import styles from './ImportFromStore.module.css';
  * food and not beside the products.
  */
 interface ImportFromStoreProps {
-  readonly store: Store;
+  readonly store: StoreId;
   /**
    * The food being shopped for, when the import started from a row of the Macros
    * tab. Absent means the admin is searching by name instead — the way in for
@@ -48,10 +49,19 @@ interface ImportFromStoreProps {
 type State =
   | { readonly status: 'idle' }
   | { readonly status: 'loading' }
-  | { readonly status: 'error'; readonly message: string }
+  /**
+   * The shop's own words when it gave any, or absent for "could not be reached".
+   *
+   * <p>What is kept is the failure, not the sentence. Naming the chain needs the
+   * store list, which is a request of its own: a message frozen at the moment of
+   * the error would still say MERCADONA after the names arrived, since nothing
+   * re-renders a string sitting in state.
+   */
+  | { readonly status: 'error'; readonly message?: string }
   | { readonly status: 'ready'; readonly suggestions: StoreSuggestion[] };
 
 export function ImportFromStore({ store, food, onCancel, onPicked }: ImportFromStoreProps) {
+  const stores = useStores();
   const [state, setState] = useState<State>(
     // Nothing to show until something is typed: a search box that answers before
     // being asked would be listing the whole shop.
@@ -59,15 +69,16 @@ export function ImportFromStore({ store, food, onCancel, onPicked }: ImportFromS
   );
   const [query, setQuery] = useState('');
 
+  // The shop being unreachable is a 502 and reads as its own sentence: "no
+  // existe" would be a different, wrong answer.
   const failed = (caught: unknown): State => ({
     status: 'error',
-    // The shop being unreachable is a 502 and reads as its own sentence:
-    // "no existe" would be a different, wrong answer.
-    message:
-      caught instanceof ApiRequestError
-        ? caught.message
-        : `No se pudo consultar el catálogo de ${STORE_LABELS[store]}. Inténtalo de nuevo.`,
+    message: caught instanceof ApiRequestError ? caught.message : undefined,
   });
+
+  /** Built at render time so the chain reads by name as soon as the list lands. */
+  const errorMessage = (message: string | undefined) =>
+    message ?? `No se pudo consultar el catálogo de ${stores.label(store)}. Inténtalo de nuevo.`;
 
   function search(event: FormEvent) {
     event.preventDefault();
@@ -96,8 +107,6 @@ export function ImportFromStore({ store, food, onCancel, onPicked }: ImportFromS
     return () => {
       active = false;
     };
-    // `failed` closes over nothing that changes between renders that matters here.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [food, store]);
 
   /**
@@ -127,12 +136,12 @@ export function ImportFromStore({ store, food, onCancel, onPicked }: ImportFromS
   return (
     <div className={styles.wrapper}>
       {food ? (
-        <p className={styles.lead}>{`Productos de ${STORE_LABELS[store]} para ${food.name}.`}</p>
+        <p className={styles.lead}>{`Productos de ${stores.label(store)} para ${food.name}.`}</p>
       ) : (
         <form className={styles.search} onSubmit={search}>
           <TextField
             id="import-search"
-            label={`Buscar en ${STORE_LABELS[store]}`}
+            label={`Buscar en ${stores.label(store)}`}
             value={query}
             autoFocus
             placeholder="almendra natural"
@@ -146,12 +155,12 @@ export function ImportFromStore({ store, food, onCancel, onPicked }: ImportFromS
       )}
 
       {state.status === 'loading' && (
-        <LoadingState message={`Buscando en ${STORE_LABELS[store]}…`} />
+        <LoadingState message={`Buscando en ${stores.label(store)}…`} />
       )}
 
       {state.status === 'error' && (
         <p className={styles.error} role="alert">
-          {state.message}
+          {errorMessage(state.message)}
         </p>
       )}
 
@@ -161,7 +170,7 @@ export function ImportFromStore({ store, food, onCancel, onPicked }: ImportFromS
 
       {state.status === 'ready' && state.suggestions.length === 0 && (
         <p className={styles.empty}>
-          {`${STORE_LABELS[store]} no ha encontrado nada parecido. Puedes crear el producto a mano.`}
+          {`${stores.label(store)} no ha encontrado nada parecido. Puedes crear el producto a mano.`}
         </p>
       )}
 

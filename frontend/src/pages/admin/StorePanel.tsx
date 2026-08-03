@@ -14,7 +14,7 @@ import {
   deleteStoreProduct,
   listStoreProducts,
   refreshStoreProduct,
-  type Store,
+  type StoreId,
   type StoreProduct,
 } from '../../api/storeProducts';
 import { CatalogTable, type CatalogColumn, type CatalogDetail } from './CatalogTable';
@@ -22,14 +22,9 @@ import { ImportFromStore } from './ImportFromStore';
 import { Pagination } from './Pagination';
 import { ProductThumbnail } from './ProductThumbnail';
 import { StoreProductForm } from './StoreProductForm';
-import {
-  SHOPPING_CATEGORY_LABELS,
-  STORE_LABELS,
-  STORE_OPTIONS,
-  priceLabel,
-  shoppingCategoryGlyph,
-} from './storeDisplay';
+import { SHOPPING_CATEGORY_LABELS, priceLabel, shoppingCategoryGlyph } from './storeDisplay';
 import { useCatalogAdmin } from './useCatalogAdmin';
+import { useStores } from './useStores';
 import { useCategoryDisplays } from './useCategoryDisplays';
 import styles from './panel.module.css';
 
@@ -56,11 +51,12 @@ const packageLabel = (product: StoreProduct) => product.packageSize ?? '—';
 const columnsWith = (
   categoryLabel: (product: StoreProduct) => string,
   categoryGlyphOf: (product: StoreProduct) => string,
+  storeLabel: (id: string | undefined) => string,
 ): CatalogColumn<StoreProduct>[] => [
   {
     header: 'Tienda',
-    value: (product) => STORE_LABELS[product.store],
-    sortBy: (product) => STORE_LABELS[product.store],
+    value: (product) => storeLabel(product.store),
+    sortBy: (product) => storeLabel(product.store),
   },
   {
     header: 'Categoría',
@@ -100,8 +96,9 @@ const COMPACT_COLUMNS: CatalogColumn<StoreProduct>[] = [
 const detailsWith = (
   foodName: (id: string) => string,
   categoryLabel: (product: StoreProduct) => string,
+  storeLabel: (id: string | undefined) => string,
 ): CatalogDetail<StoreProduct>[] => [
-  { glyph: '🏪', label: 'Tienda', value: (product) => STORE_LABELS[product.store] },
+  { glyph: '🏪', label: 'Tienda', value: (product) => storeLabel(product.store) },
   { glyph: '🏷️', label: 'Categoría', value: categoryLabel },
   { glyph: '📦', label: 'Formato', value: packageLabel },
   {
@@ -117,11 +114,11 @@ const detailsWith = (
  * <p>Absent rather than disabled when the product has no url: a dead link that looks live is worse
  * than no link. `noopener` because the destination is somebody else's site.
  */
-const storeLink = (product: StoreProduct) =>
+const storeLink = (product: StoreProduct, storeLabel: (id: string | undefined) => string) =>
   product.url ? (
     <a className={styles.linkPill} href={product.url} target="_blank" rel="noopener noreferrer">
       <Icon name="share" size={14} />
-      {`Ver en ${STORE_LABELS[product.store]}`}
+      {`Ver en ${storeLabel(product.store)}`}
     </a>
   ) : undefined;
 
@@ -136,24 +133,27 @@ interface StorePanelProps {
  * column definition. The category sorts by its label rather than its code, because the label is
  * what is on screen and an alphabet nobody can see is not an order.
  */
-const SORT_KEYS: Record<string, (product: StoreProduct) => string | number | undefined> = {
+const sortKeysWith = (
+  storeLabel: (id: string | undefined) => string,
+): Record<string, (product: StoreProduct) => string | number | undefined> => ({
   Producto: (product) => product.name,
-  Tienda: (product) => STORE_LABELS[product.store],
+  Tienda: (product) => storeLabel(product.store),
   Categoría: (product) => SHOPPING_CATEGORY_LABELS[product.category],
   Precio: (product) => product.priceEur,
-};
+});
 
 export function StorePanel({ creating, onCreateClose }: StorePanelProps) {
   const notify = useNotify();
-  const [store, setStore] = useState<Store | ''>('');
+  const [store, setStore] = useState<StoreId | ''>('');
   // Memoised on the filter: `useCatalogAdmin` reloads whenever this changes,
   // which is exactly what picking a chain should do.
+  const stores = useStores();
   const list = useCallback(() => listStoreProducts(store === '' ? undefined : store), [store]);
   const catalog = useCatalogAdmin<StoreProduct>({
     list,
     remove: deleteStoreProduct,
     deleteErrorMessage: 'No se pudo eliminar el producto. Inténtalo de nuevo.',
-    sortKeys: SORT_KEYS,
+    sortKeys: sortKeysWith(stores.label),
   });
   const [editing, setEditing] = useState<StoreProduct | undefined>(undefined);
   const [deleting, setDeleting] = useState<StoreProduct | undefined>(undefined);
@@ -175,7 +175,7 @@ export function StorePanel({ creating, onCreateClose }: StorePanelProps) {
     catalog.setActionError(undefined);
     try {
       await refreshStoreProduct(product.id);
-      notify.success(`${product.name} actualizado desde ${STORE_LABELS[product.store]}.`);
+      notify.success(`${product.name} actualizado desde ${stores.label(product.store)}.`);
       catalog.reload();
     } catch (caught) {
       catalog.setActionError(
@@ -203,12 +203,17 @@ export function StorePanel({ creating, onCreateClose }: StorePanelProps) {
     [categories],
   );
   const columns = useMemo(
-    () => columnsWith(categoryLabel, categoryGlyphOf),
-    [categoryLabel, categoryGlyphOf],
+    () => columnsWith(categoryLabel, categoryGlyphOf, stores.label),
+    [categoryLabel, categoryGlyphOf, stores.label],
   );
   const details = useMemo(
-    () => detailsWith((id) => foods.find((food) => food.id === id)?.name ?? id, categoryLabel),
-    [foods, categoryLabel],
+    () =>
+      detailsWith(
+        (id) => foods.find((food) => food.id === id)?.name ?? id,
+        categoryLabel,
+        stores.label,
+      ),
+    [foods, categoryLabel, stores.label],
   );
 
   // The form links a product to a food by id, so it needs the food catalog. A
@@ -239,12 +244,12 @@ export function StorePanel({ creating, onCreateClose }: StorePanelProps) {
             id="store-filter"
             label="Tienda"
             value={store}
-            onChange={(event) => setStore(event.target.value as Store | '')}
+            onChange={(event) => setStore(event.target.value)}
           >
             <option value="">Todas</option>
-            {STORE_OPTIONS.map((option) => (
-              <option key={option} value={option}>
-                {STORE_LABELS[option]}
+            {stores.options.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.name}
               </option>
             ))}
           </SelectField>
@@ -266,7 +271,7 @@ export function StorePanel({ creating, onCreateClose }: StorePanelProps) {
       </div>
 
       {searching && store !== '' && (
-        <Modal title={`Importar de ${STORE_LABELS[store]}`} onClose={() => setSearching(false)}>
+        <Modal title={`Importar de ${stores.label(store)}`} onClose={() => setSearching(false)}>
           <ImportFromStore
             store={store}
             onCancel={() => setSearching(false)}
@@ -340,7 +345,7 @@ export function StorePanel({ creating, onCreateClose }: StorePanelProps) {
             columns={columns}
             compactColumns={COMPACT_COLUMNS}
             details={details}
-            detailFooter={storeLink}
+            detailFooter={(product) => storeLink(product, stores.label)}
             nameSortBy={(product) => product.name}
             sort={catalog.sort}
             onSort={catalog.toggleSort}
