@@ -141,7 +141,17 @@ public class StoreProductService {
             product.imageUrl(),
             // Owned by the shop, like the name and the price: an edit does not move a product to a
             // different shelf of Mercadona's, so the stored answer stands until a refresh.
-            current.storeCategoryId());
+            current.storeCategoryId(),
+            // Everything the shop owns stays as the last sync left it: the admin form asks for none
+            // of it, so a body that omits it is a form that never offered it, not an erasure.
+            current.ean(),
+            current.packageAmount(),
+            current.packageUnit(),
+            current.available(),
+            current.lastSyncedAt(),
+            // The brand is the one of these a person does type, so the body owns it, blank
+            // included.
+            product.brand());
     repository.update(stored);
     return stored;
   }

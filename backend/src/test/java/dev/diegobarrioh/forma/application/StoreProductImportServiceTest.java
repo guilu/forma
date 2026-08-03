@@ -34,6 +34,9 @@ class StoreProductImportServiceTest {
         "8480000000000",
         "Cereales",
         null,
+        null,
+        null,
+        true,
         "https://cdn/" + id + ".jpg");
   }
 

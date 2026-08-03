@@ -82,7 +82,10 @@ public class JdbcFoodCatalogRepository implements FoodCatalogRepository {
     jdbcTemplate.update(
         "UPDATE food_catalog SET name = ?, serving_size_g = ?, kcal = ?, protein_g = ?,"
             + " carbs_g = ?, fat_g = ?, fiber_g = ?, sugars_g = ?, sodium_mg = ?,"
-            + " saturated_fat_g = ?, food_group_id = ?, primary_macro = ? WHERE id = ?",
+            + " saturated_fat_g = ?, food_group_id = ?, primary_macro = ?,"
+            // Stamped here rather than by a trigger: H2 and PostgreSQL spell those differently,
+            // and this is the only place a food is ever rewritten.
+            + " updated_at = CURRENT_TIMESTAMP WHERE id = ?",
         food.name(),
         food.servingSizeG(),
         food.kcal(),

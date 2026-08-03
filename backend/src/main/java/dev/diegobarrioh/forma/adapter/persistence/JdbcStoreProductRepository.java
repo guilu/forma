@@ -19,7 +19,8 @@ public class JdbcStoreProductRepository implements StoreProductRepository {
 
   private static final String COLUMNS =
       "id, store, name, food_id, package_size, price_eur, url, category, notes, external_id,"
-          + " image_url, store_category_id";
+          + " image_url, store_category_id, ean, package_amount, package_unit, available,"
+          + " last_synced_at, brand";
 
   private static final RowMapper<CatalogStoreProduct> ROW_MAPPER =
       (rs, rowNum) ->
@@ -35,7 +36,15 @@ public class JdbcStoreProductRepository implements StoreProductRepository {
               rs.getString("notes"),
               rs.getString("external_id"),
               rs.getString("image_url"),
-              rs.getString("store_category_id"));
+              rs.getString("store_category_id"),
+              rs.getString("ean"),
+              rs.getBigDecimal("package_amount"),
+              rs.getString("package_unit"),
+              rs.getBoolean("available"),
+              rs.getTimestamp("last_synced_at") == null
+                  ? null
+                  : rs.getTimestamp("last_synced_at").toInstant(),
+              rs.getString("brand"));
 
   private final JdbcTemplate jdbcTemplate;
 
@@ -68,7 +77,9 @@ public class JdbcStoreProductRepository implements StoreProductRepository {
   @Override
   public void insert(CatalogStoreProduct product) {
     jdbcTemplate.update(
-        "INSERT INTO store_product (" + COLUMNS + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO store_product ("
+            + COLUMNS
+            + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         product.id(),
         product.store(),
         product.name(),
@@ -80,7 +91,13 @@ public class JdbcStoreProductRepository implements StoreProductRepository {
         product.notes(),
         product.externalId(),
         product.imageUrl(),
-        product.storeCategoryId());
+        product.storeCategoryId(),
+        product.ean(),
+        product.packageAmount(),
+        product.packageUnit(),
+        product.available(),
+        timestamp(product.lastSyncedAt()),
+        product.brand());
   }
 
   @Override
@@ -88,7 +105,8 @@ public class JdbcStoreProductRepository implements StoreProductRepository {
     jdbcTemplate.update(
         "UPDATE store_product SET store = ?, name = ?, food_id = ?, package_size = ?,"
             + " price_eur = ?, url = ?, category = ?, notes = ?, external_id = ?, image_url = ?,"
-            + " store_category_id = ?"
+            + " store_category_id = ?, ean = ?, package_amount = ?, package_unit = ?,"
+            + " available = ?, last_synced_at = ?, brand = ?"
             + " WHERE id = ?",
         product.store(),
         product.name(),
@@ -101,7 +119,18 @@ public class JdbcStoreProductRepository implements StoreProductRepository {
         product.externalId(),
         product.imageUrl(),
         product.storeCategoryId(),
+        product.ean(),
+        product.packageAmount(),
+        product.packageUnit(),
+        product.available(),
+        timestamp(product.lastSyncedAt()),
+        product.brand(),
         product.id());
+  }
+
+  /** An instant the database can take, or null for a product no shop was ever asked about. */
+  private static java.sql.Timestamp timestamp(java.time.Instant instant) {
+    return instant == null ? null : java.sql.Timestamp.from(instant);
   }
 
   @Override

@@ -27,6 +27,19 @@ import java.math.BigDecimal;
  * @param externalId the shop's own id when this row was imported (FOR-195); absent for anything
  *     transcribed or typed by hand, which is what makes a row refreshable or not
  * @param imageUrl the shop's product photo; absent for the same reason
+ * @param ean the barcode (V48), or {@code null}. The only key here that means the same thing in
+ *     every shop on earth, which is why it is kept years before anything reads it
+ * @param packageAmount how much the package holds, as a number (V48); {@code null} together with
+ *     {@code packageUnit} when no size is stated in a usable form
+ * @param packageUnit the unit that amount is in — "l", "kg", "g", "ud" — as the shop stated it. Not
+ *     converted to grams: five litres is not five of anything weighable without a density
+ * @param available whether the shop still lists it (V48). True for a product typed by hand, which
+ *     no shop ever stopped selling
+ * @param lastSyncedAt when the shop was last asked about it (V48), or {@code null} for a row nobody
+ *     imported. Distinct from creation: a product added in January and refreshed last week has two
+ *     dates and only one says whether the price is worth trusting
+ * @param brand who makes it (V48), or {@code null}. Never filled by an import — no shop we read
+ *     publishes it apart from the name — so it is the curator's to write, like {@code notes}
  * @param storeCategoryId which shelf of ITS OWN shop the product sits on (V46), or {@code null}.
  *     Null is the common case and not a gap: a product typed by hand never came off a shelf, a
  *     product filed under OTRAS has no shop with shelves, and an imported one stays null until
@@ -45,7 +58,13 @@ public record CatalogStoreProduct(
     String notes,
     String externalId,
     String imageUrl,
-    String storeCategoryId) {
+    String storeCategoryId,
+    String ean,
+    java.math.BigDecimal packageAmount,
+    String packageUnit,
+    boolean available,
+    java.time.Instant lastSyncedAt,
+    String brand) {
 
   /*
    * Eleven components and no shorter constructor, deliberately: the convenience overload that
@@ -80,7 +99,17 @@ public record CatalogStoreProduct(
         notes,
         fresh.externalId(),
         fresh.imageUrl(),
-        storeCategoryId);
+        storeCategoryId,
+        fresh.ean(),
+        fresh.packageAmount(),
+        fresh.packageUnit(),
+        fresh.available(),
+        // Stamped by the act of asking, not by what came back: a refresh that finds the product
+        // unchanged still means the price was checked today.
+        java.time.Instant.now(),
+        // The curator's, not the shop's. No shop we read publishes a brand of its own, so a refresh
+        // that overwrote this would replace something somebody typed with nothing.
+        brand);
   }
 
   /**
@@ -104,6 +133,12 @@ public record CatalogStoreProduct(
         notes,
         externalId,
         imageUrl,
-        resolvedStoreCategoryId);
+        resolvedStoreCategoryId,
+        ean,
+        packageAmount,
+        packageUnit,
+        available,
+        lastSyncedAt,
+        brand);
   }
 }

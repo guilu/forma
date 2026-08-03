@@ -204,6 +204,10 @@ public class MercadonaCatalogAdapter implements StoreCatalogSource {
         product.path("ean").asText(null),
         shelfName,
         shelfExternalId,
+        packageAmount(prices),
+        prices.path("size_format").asText(null),
+        // Absent means listed: a product that says nothing about it is one the shop is selling.
+        product.path("published").asBoolean(true),
         product.path("thumbnail").asText(null));
   }
 
@@ -211,6 +215,20 @@ public class MercadonaCatalogAdapter implements StoreCatalogSource {
    * "Garrafa 5 l" rather than "Garrafa": the container alone says nothing about how much is in it,
    * and the size is what a price hangs off.
    */
+  /**
+   * The package size as a number, or null when the shop states none.
+   *
+   * <p>Kept alongside the free-text {@code packaging} rather than instead of it: "Garrafa 5 l" is
+   * what a person reads on a shelf, and 5 is what a price-per-litre needs.
+   */
+  private static BigDecimal packageAmount(JsonNode prices) {
+    JsonNode size = prices.path("unit_size");
+    if (size.isMissingNode() || size.isNull() || prices.path("size_format").asText(null) == null) {
+      return null;
+    }
+    return new BigDecimal(size.asText());
+  }
+
   private static String packaging(JsonNode product, JsonNode prices) {
     String container = product.path("packaging").asText(null);
     JsonNode size = prices.path("unit_size");

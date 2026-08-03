@@ -38,6 +38,12 @@ class StoreProductServiceTest {
         null,
         null,
         null,
+        null,
+        null,
+        null,
+        null,
+        true,
+        null,
         null);
   }
 
@@ -102,6 +108,12 @@ class StoreProductServiceTest {
             null,
             "4241",
             "https://cdn/foto.jpg",
+            null,
+            null,
+            null,
+            null,
+            true,
+            null,
             null));
 
     service.update(
@@ -133,6 +145,12 @@ class StoreProductServiceTest {
             null,
             null,
             "https://m.media-amazon.com/images/I/31kt192oAzL.jpg",
+            null,
+            null,
+            null,
+            null,
+            true,
+            null,
             null));
 
     assertThat(service.getById("propio").imageUrl())
@@ -229,6 +247,12 @@ class StoreProductServiceTest {
             "Comprar dos si hay oferta",
             "4241",
             "https://cdn/old.jpg",
+            null,
+            null,
+            null,
+            null,
+            true,
+            null,
             null);
     service.create(stored);
     mercadona.serve(
@@ -241,6 +265,9 @@ class StoreProductServiceTest {
             "8480000123456",
             "Cereales",
             null,
+            null,
+            null,
+            true,
             "https://cdn/new.jpg"));
 
     CatalogStoreProduct refreshed = service.refresh("mercadona-4241");
@@ -278,6 +305,12 @@ class StoreProductServiceTest {
             ShoppingCategory.OTROS,
             null,
             "9",
+            null,
+            null,
+            null,
+            null,
+            null,
+            true,
             null,
             null));
     mercadona.serveNothing();
@@ -439,5 +472,109 @@ class StoreProductServiceTest {
     public void retire(String id) {
       throw new UnsupportedOperationException();
     }
+  }
+
+  // --- V48: what the shop says beyond the name and the price ---
+
+  /**
+   * A refresh takes everything the shop owns, including the three facts that used to arrive and be
+   * dropped, and stamps when it asked.
+   */
+  @Test
+  void aRefreshTakesTheBarcodeTheSizeAndWhetherItIsStillSold() {
+    service.create(
+        product("mercadona-oil", "MERCADONA", "Aceite")
+            .onShelf(null)
+            .refreshedWith(imported("4241", "Aceite", null)));
+    mercadona.serve(imported("4241", "Aceite de oliva Hacendado", "8480000123456"));
+
+    CatalogStoreProduct refreshed = service.refresh("mercadona-oil");
+
+    assertThat(refreshed.ean()).isEqualTo("8480000123456");
+    assertThat(refreshed.packageAmount()).isEqualByComparingTo("5.0");
+    assertThat(refreshed.packageUnit()).isEqualTo("l");
+    assertThat(refreshed.available()).isTrue();
+    assertThat(refreshed.lastSyncedAt()).isNotNull();
+  }
+
+  /**
+   * The brand is the one detail here no shop publishes separately, so a refresh must not blank what
+   * somebody typed.
+   */
+  @Test
+  void aRefreshLeavesTheBrandSomebodyTyped() {
+    CatalogStoreProduct branded =
+        service.create(
+            new CatalogStoreProduct(
+                "mercadona-oil",
+                "MERCADONA",
+                "Aceite",
+                null,
+                null,
+                null,
+                null,
+                ShoppingCategory.GRASAS_Y_ACEITES,
+                null,
+                "4241",
+                null,
+                null,
+                null,
+                null,
+                null,
+                true,
+                null,
+                "Hacendado"));
+    assertThat(branded.brand()).isEqualTo("Hacendado");
+    mercadona.serve(imported("4241", "Aceite de oliva", "8480000123456"));
+
+    assertThat(service.refresh("mercadona-oil").brand()).isEqualTo("Hacendado");
+  }
+
+  /**
+   * A shop that stopped selling something says so, and the row records it rather than pretending.
+   */
+  @Test
+  void recordsThatTheShopStoppedSellingIt() {
+    service.create(
+        new CatalogStoreProduct(
+            "mercadona-oil",
+            "MERCADONA",
+            "Aceite",
+            null,
+            null,
+            null,
+            null,
+            ShoppingCategory.GRASAS_Y_ACEITES,
+            null,
+            "4241",
+            null,
+            null,
+            null,
+            null,
+            null,
+            true,
+            null,
+            null));
+    mercadona.serve(
+        new ImportableProduct(
+            "4241", "Aceite", null, null, null, null, null, null, null, null, false, null));
+
+    assertThat(service.refresh("mercadona-oil").available()).isFalse();
+  }
+
+  private static ImportableProduct imported(String externalId, String name, String ean) {
+    return new ImportableProduct(
+        externalId,
+        name,
+        "Garrafa 5 l",
+        new BigDecimal("17.75"),
+        "https://tienda.mercadona.es/product/" + externalId,
+        ean,
+        null,
+        null,
+        new BigDecimal("5.0"),
+        "l",
+        true,
+        null);
   }
 }

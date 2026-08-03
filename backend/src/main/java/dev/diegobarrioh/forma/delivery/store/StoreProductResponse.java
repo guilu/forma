@@ -23,7 +23,13 @@ public record StoreProductResponse(
     String notes,
     String externalId,
     String imageUrl,
-    String storeCategoryId) {
+    String storeCategoryId,
+    String ean,
+    java.math.BigDecimal packageAmount,
+    String packageUnit,
+    boolean available,
+    java.time.Instant lastSyncedAt,
+    String brand) {
 
   /** Maps a persisted catalog product to its API read model. */
   public static StoreProductResponse from(CatalogStoreProduct product) {
@@ -39,6 +45,12 @@ public record StoreProductResponse(
         product.notes(),
         product.externalId(),
         product.imageUrl(),
-        product.storeCategoryId());
+        product.storeCategoryId(),
+        product.ean(),
+        product.packageAmount(),
+        product.packageUnit(),
+        product.available(),
+        product.lastSyncedAt(),
+        product.brand());
   }
 }

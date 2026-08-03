@@ -44,7 +44,14 @@ public record StoreProductRequest(
      * same way externalId is. Never our own store_category id: the client is not handed a foreign
      * key, and the service resolves this against the aisles that have actually been synced.
      */
-    @Size(max = 64) String storeCategoryExternalId) {
+    @Size(max = 64) String storeCategoryExternalId,
+    /*
+     * The one detail on this form that no shop publishes separately (V48). Everything else the
+     * catalogue knows about a package -- barcode, amount, unit, whether it is still sold -- arrives
+     * on a sync and is not offered here, because a form that lets somebody retype it is a form that
+     * lets them disagree with the shop.
+     */
+    @Size(max = 100) String brand) {
 
   /** The shop's own id for the aisle, blank read as absent. */
   public String aisleExternalId() {
@@ -70,6 +77,13 @@ public record StoreProductRequest(
         externalId == null || externalId.isBlank() ? null : externalId,
         imageUrl,
         // Resolved by the service, which is the only side that knows which aisles exist.
-        null);
+        null,
+        // Owned by the shop and filled on sync; a hand-typed product simply has none of it.
+        null,
+        null,
+        null,
+        true,
+        null,
+        brand == null || brand.isBlank() ? null : brand);
   }
 }
