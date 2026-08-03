@@ -1,20 +1,4 @@
-import type { ShoppingCategory, Store } from '../../api/storeProducts';
-
-/**
- * Display labels for the store catalog's stored tokens (FOR-191).
- *
- * <p>The backend stores accent-stripped uppercase identifiers so the values are
- * stable across languages and migrations; the screen renders these.
- */
-export const STORE_LABELS: Record<Store, string> = {
-  MERCADONA: 'Mercadona',
-  CARREFOUR: 'Carrefour',
-  // Anything no supermarket we track sells: bought online, at a local shop, at a
-  // market stall. It has no catalogue, so nothing here is ever imported.
-  OTRAS: 'Otras',
-};
-
-export const STORE_OPTIONS = Object.keys(STORE_LABELS) as Store[];
+import type { ShoppingCategory } from '../../api/storeProducts';
 
 /** The grocery aisles, shared with the shopping list's own grouping (V7). */
 export const SHOPPING_CATEGORY_LABELS: Record<ShoppingCategory, string> = {

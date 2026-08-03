@@ -14,12 +14,16 @@ import {
   updateStoreProduct,
   type StoreProduct,
 } from '../../api/storeProducts';
+import { listStores } from '../../api/stores';
 
 vi.mock('../../api/foods', () => ({
   listFoods: vi.fn(),
   createFood: vi.fn(),
   updateFood: vi.fn(),
   deleteFood: vi.fn(),
+}));
+vi.mock('../../api/stores', () => ({
+  listStores: vi.fn(),
 }));
 vi.mock('../../api/storeProducts', () => ({
   listStoreProducts: vi.fn(),
@@ -38,6 +42,13 @@ const deleteMock = vi.mocked(deleteStoreProduct);
 const refreshMock = vi.mocked(refreshStoreProduct);
 const searchMock = vi.mocked(searchStoreProducts);
 const imageMock = vi.mocked(fetchLinkImage);
+const storesMock = vi.mocked(listStores);
+
+const chains = [
+  { id: 'MERCADONA', name: 'Mercadona', sortOrder: 1, enabled: true },
+  { id: 'CARREFOUR', name: 'Carrefour', sortOrder: 2, enabled: true },
+  { id: 'OTRAS', name: 'Otras', sortOrder: 99, enabled: true },
+];
 
 const oats: StoreProduct = {
   id: 'mercadona-oats',
@@ -79,6 +90,8 @@ async function openStoreTab() {
 describe('AdminPage — the shopping catalog tab', () => {
   beforeEach(() => {
     vi.mocked(listFoods).mockResolvedValue([]);
+    storesMock.mockReset();
+    storesMock.mockResolvedValue(chains);
     listMock.mockReset();
     updateMock.mockReset();
     deleteMock.mockReset();

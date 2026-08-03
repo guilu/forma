@@ -12,12 +12,16 @@ import {
   updateStoreProduct,
   type StoreProduct,
 } from '../../api/storeProducts';
+import { listStores } from '../../api/stores';
 
 vi.mock('../../api/foods', () => ({
   listFoods: vi.fn(),
   createFood: vi.fn(),
   updateFood: vi.fn(),
   deleteFood: vi.fn(),
+}));
+vi.mock('../../api/stores', () => ({
+  listStores: vi.fn(),
 }));
 vi.mock('../../api/storeProducts', () => ({
   listStoreProducts: vi.fn(),
@@ -30,6 +34,13 @@ vi.mock('../../api/storeProducts', () => ({
 
 const foodsMock = vi.mocked(listFoods);
 const productsMock = vi.mocked(listStoreProducts);
+const storesMock = vi.mocked(listStores);
+const chains = [
+  { id: 'MERCADONA', name: 'Mercadona', sortOrder: 1, enabled: true },
+  { id: 'CARREFOUR', name: 'Carrefour', sortOrder: 2, enabled: true },
+  { id: 'OTRAS', name: 'Otras', sortOrder: 99, enabled: true },
+];
+
 const suggestMock = vi.mocked(listStoreSuggestions);
 const createMock = vi.mocked(createStoreProduct);
 const updateMock = vi.mocked(updateStoreProduct);
@@ -76,6 +87,8 @@ async function openImportFor(name: string) {
  */
 describe('AdminPage — importing a store product for a food', () => {
   beforeEach(() => {
+    storesMock.mockReset();
+    storesMock.mockResolvedValue(chains);
     foodsMock.mockReset();
     productsMock.mockReset();
     suggestMock.mockReset();
@@ -194,6 +207,8 @@ describe('AdminPage — importing a store product for a food', () => {
 
     await openImportFor('Copos de avena');
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/Mercadona/);
+    // Named, not coded: the message is built at render time, so it picks up the
+    // chain's name as soon as the store list lands.
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/Mercadona/));
   });
 });

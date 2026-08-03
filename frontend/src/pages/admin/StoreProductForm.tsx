@@ -10,16 +10,27 @@ import {
   fetchLinkImage,
   updateStoreProduct,
   type ShoppingCategory,
-  type Store,
   type StoreProduct,
 } from '../../api/storeProducts';
-import {
-  SHOPPING_CATEGORY_LABELS,
-  SHOPPING_CATEGORY_OPTIONS,
-  STORE_LABELS,
-  STORE_OPTIONS,
-} from './storeDisplay';
+import { SHOPPING_CATEGORY_LABELS, SHOPPING_CATEGORY_OPTIONS } from './storeDisplay';
+import { useStores } from './useStores';
+import type { Store } from '../../api/stores';
 import styles from './FoodForm.module.css';
+
+/**
+ * The chains to offer, with the product's own always among them.
+ *
+ * <p>The list is a request: empty while in flight, empty if it failed, and one
+ * short if the chain was retired. A select that cannot show its own value would
+ * display another and save that instead — moving a product to a different shop
+ * nobody asked to move it to.
+ */
+function optionsFor(chains: readonly Store[], current: string): readonly Store[] {
+  if (current === '' || chains.some((chain) => chain.id === current)) {
+    return chains;
+  }
+  return [...chains, { id: current, name: current, sortOrder: 0, enabled: true }];
+}
 
 /**
  * Create/edit form for a store catalog product (FOR-191).
@@ -65,7 +76,11 @@ export function StoreProductForm({
   // import, and empty when creating from scratch.
   const initial = product ?? draft;
   const [id, setId] = useState(initial?.id ?? '');
-  const [store, setStore] = useState<Store>(initial?.store ?? 'MERCADONA');
+  const stores = useStores();
+  // Not defaulted to a chain this bundle happens to know: the first the backend
+  // serves is the one it puts first, and MERCADONA being that one is its
+  // decision rather than ours.
+  const [store, setStore] = useState<string>(initial?.store ?? '');
   const [name, setName] = useState(initial?.name ?? '');
   const [foodId, setFoodId] = useState(initial?.foodId ?? '');
   const [packageSize, setPackageSize] = useState(initial?.packageSize ?? '');
@@ -176,11 +191,11 @@ export function StoreProductForm({
         label="Tienda"
         value={store}
         disabled={pending}
-        onChange={(event) => setStore(event.target.value as Store)}
+        onChange={(event) => setStore(event.target.value)}
       >
-        {STORE_OPTIONS.map((option) => (
-          <option key={option} value={option}>
-            {STORE_LABELS[option]}
+        {optionsFor(stores.options, store).map((option) => (
+          <option key={option.id} value={option.id}>
+            {option.name}
           </option>
         ))}
       </SelectField>
