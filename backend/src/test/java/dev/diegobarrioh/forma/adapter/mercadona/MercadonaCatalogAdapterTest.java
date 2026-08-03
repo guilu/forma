@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.diegobarrioh.forma.application.ImportableProduct;
 import dev.diegobarrioh.forma.application.StoreCatalogUnavailableException;
+import dev.diegobarrioh.forma.application.StoreCategoryNode;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -56,6 +57,8 @@ class MercadonaCatalogAdapterTest {
            "display_name":"Pimienta negra molida Hacendado",
            "price_instructions":{"unit_price":"0.95"}}]}]}
       """;
+
+  private static final String CATEGORIES_URL = "https://tienda.mercadona.es/api/categories/";
 
   private final RecordingTransport transport = new RecordingTransport();
   private final MercadonaCatalogAdapter adapter = new MercadonaCatalogAdapter(transport);
@@ -154,6 +157,79 @@ class MercadonaCatalogAdapterTest {
               assertThat(product.name()).isEqualTo("Producto sin precio");
               assertThat(product.priceEur()).isNull();
             });
+  }
+
+  // --- V46: the shop's own aisles ---
+
+  /**
+   * The tree comes out of the index alone. That matters more than it looks: the product crawl costs
+   * one request per subcategory (151 in production), and asking for the aisles must not pay that
+   * bill to read a list the index already carries.
+   */
+  @Test
+  void readsTheAisleTreeFromASingleRequest() {
+    transport.serve(CATEGORIES_URL, CATEGORIES);
+
+    List<StoreCategoryNode> roots = adapter.categories();
+
+    assertThat(transport.callCount()).isEqualTo(1);
+    assertThat(roots)
+        .singleElement()
+        .satisfies(
+            root -> {
+              assertThat(root.externalId()).isEqualTo("12");
+              assertThat(root.name()).isEqualTo("Aceite, especias y salsas");
+              assertThat(root.children())
+                  .extracting(StoreCategoryNode::externalId)
+                  .containsExactly("112", "115");
+              assertThat(root.children())
+                  .extracting(StoreCategoryNode::name)
+                  .containsExactly("Aceite, vinagre y sal", "Especias");
+            });
+  }
+
+  /**
+   * A shelf the shop marks unpublished is one it is not selling from; offering it would mislead.
+   */
+  @Test
+  void skipsAnUnpublishedAisle() {
+    transport.serve(
+        CATEGORIES_URL,
+        """
+        {"results":[{"id":12,"name":"Aceites","categories":[
+          {"id":112,"name":"Aceite","published":true},
+          {"id":115,"name":"Retirada","published":false}]}]}
+        """);
+
+    assertThat(adapter.categories())
+        .singleElement()
+        .satisfies(
+            root ->
+                assertThat(root.children())
+                    .extracting(StoreCategoryNode::externalId)
+                    .containsExactly("112"));
+  }
+
+  /** A root left with nothing under it is a heading for an empty shelf; it does not go in. */
+  @Test
+  void dropsARootWhoseChildrenAreAllUnpublished() {
+    transport.serve(
+        CATEGORIES_URL,
+        """
+        {"results":[{"id":12,"name":"Vacía","categories":[
+          {"id":115,"name":"Retirada","published":false}]}]}
+        """);
+
+    assertThat(adapter.categories()).isEmpty();
+  }
+
+  /**
+   * An unreachable shop is not a shop with no aisles. Answering empty would tell the sync "nothing
+   * is published", and the sync would then have to decide whether to retire the whole tree.
+   */
+  @Test
+  void failsRatherThanReportingNoAislesWhenTheShopCannotBeReached() {
+    assertThatThrownBy(adapter::categories).isInstanceOf(StoreCatalogUnavailableException.class);
   }
 
   private static final class RecordingTransport implements MercadonaHttpTransport {
