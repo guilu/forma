@@ -83,7 +83,6 @@ export function FoodForm({ food, groups, onCancel, onSaved }: FoodFormProps) {
   const [proteinG, setProteinG] = useState(text(food?.proteinG));
   const [carbsG, setCarbsG] = useState(text(food?.carbsG));
   const [fatG, setFatG] = useState(text(food?.fatG));
-  const [servingSizeG, setServingSizeG] = useState(text(food?.servingSizeG));
   const tags = useTags();
   // Which labels are ticked. Loaded separately from the food because they live
   // behind their own endpoint, and empty for a food that does not exist yet.
@@ -116,9 +115,6 @@ export function FoodForm({ food, groups, onCancel, onSaved }: FoodFormProps) {
     if (pending) return;
     setPending(true);
     setError(undefined);
-    // A blank optional stays absent rather than becoming 0 — the catalog is full
-    // of foods whose values nobody has looked up, and a 0 would be a claim.
-    const optional = (value: string) => (value.trim() === '' ? undefined : Number(value));
     const payload: CatalogFood = {
       id: id.trim(),
       name: name.trim(),
@@ -126,7 +122,6 @@ export function FoodForm({ food, groups, onCancel, onSaved }: FoodFormProps) {
       proteinG: Number(proteinG || 0),
       carbsG: Number(carbsG || 0),
       fatG: Number(fatG || 0),
-      servingSizeG: optional(servingSizeG),
       foodGroupId: category === '' ? undefined : category,
       primaryMacro: primaryMacro === '' ? undefined : (primaryMacro as PrimaryMacro),
     };
@@ -282,16 +277,6 @@ export function FoodForm({ food, groups, onCancel, onSaved }: FoodFormProps) {
           required
           disabled={pending}
           onChange={(event) => setFatG(event.target.value)}
-        />
-        <TextField
-          id="food-serving"
-          label="Ración sugerida (g)"
-          type="number"
-          min="0"
-          step="0.1"
-          value={servingSizeG}
-          disabled={pending}
-          onChange={(event) => setServingSizeG(event.target.value)}
         />
       </div>
 
