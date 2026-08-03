@@ -42,7 +42,7 @@ const oats: CatalogFood = {
   proteinG: 13,
   carbsG: 60,
   fatG: 7,
-  category: 'CARBOHIDRATO',
+  foodGroupId: 'CARBOHIDRATO',
 };
 
 const suggestion = {

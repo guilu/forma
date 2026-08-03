@@ -1,6 +1,5 @@
 package dev.diegobarrioh.forma.application;
 
-import dev.diegobarrioh.forma.domain.FoodCategory;
 import java.math.BigDecimal;
 
 /**
@@ -23,6 +22,8 @@ import java.math.BigDecimal;
  * @param sugarsG sugars grams per 100 g, or {@code null} if unknown
  * @param sodiumMg sodium milligrams per 100 g, or {@code null} if unknown
  * @param saturatedFatG saturated fat grams per 100 g, or {@code null} if unknown
+ * @param foodGroupId the {@code food_group} this food is filed under, or {@code null} when nobody
+ *     has classified it yet (V43 — a real state, not a missing value)
  */
 public record CatalogFood(
     String id,
@@ -36,4 +37,4 @@ public record CatalogFood(
     BigDecimal sugarsG,
     BigDecimal sodiumMg,
     BigDecimal saturatedFatG,
-    FoodCategory category) {}
+    String foodGroupId) {}

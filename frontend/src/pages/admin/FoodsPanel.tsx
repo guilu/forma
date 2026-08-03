@@ -91,11 +91,14 @@ export function FoodsPanel({ creating, onCreateClose }: FoodsPanelProps) {
   const categories = useCategoryDisplays('FOOD');
   const categoryLabel = useCallback(
     (food: CatalogFood) =>
-      categories.label(food.category, food.category ? CATEGORY_LABELS[food.category] : '—'),
+      categories.label(
+        food.foodGroupId,
+        food.foodGroupId ? (CATEGORY_LABELS[food.foodGroupId] ?? food.foodGroupId) : '—',
+      ),
     [categories],
   );
   const categoryGlyphOf = useCallback(
-    (food: CatalogFood) => categories.glyph(food.category, categoryGlyph(food.category)),
+    (food: CatalogFood) => categories.glyph(food.foodGroupId, categoryGlyph(food.foodGroupId)),
     [categories],
   );
   const columns = useMemo(

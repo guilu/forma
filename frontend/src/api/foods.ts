@@ -11,9 +11,6 @@ import { apiClient, type ApiClient } from './client';
 
 const FOODS_PATH = '/api/v1/foods';
 
-/** The closed set the backend stores; the UI renders its own labels. */
-export type FoodCategory = 'CARBOHIDRATO' | 'PROTEINA' | 'FRUTA' | 'VERDURA' | 'GRASA' | 'LACTEO';
-
 /**
  * A catalog food. Every macro is per 100 g; `servingSizeG` is the suggested
  * portion the ration figures are computed from.
@@ -33,7 +30,13 @@ export interface CatalogFood {
   readonly sugarsG?: number;
   readonly sodiumMg?: number;
   readonly saturatedFatG?: number;
-  readonly category?: FoodCategory;
+  /**
+   * The food group this food is filed under, or absent when nobody has
+   * classified it. A `food_group` row id — the set is data since V43, so this is
+   * a plain string and not a union the bundle would have to be redeployed to
+   * widen.
+   */
+  readonly foodGroupId?: string;
 }
 
 /** Lists the whole catalog, ordered by id. */
