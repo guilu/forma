@@ -43,9 +43,34 @@ class NutritionPlanReaderTest {
     SecurityContextHolder.clearContext();
   }
 
+  /**
+   * The plan V54 seeded still exists, and is no longer the one being followed.
+   *
+   * <p>It was the active plan until V56 loaded the real diet from the spreadsheet and stood it
+   * down. That is the model working, so these tests read it by name rather than by asking what is
+   * active — which is a different question with a different answer now.
+   */
   @Test
-  void theSeededPlanIsTheOneTheUserIsFollowing() {
-    assertThat(plans.findActive(USER)).map(NutritionPlan::name).contains("Plan base");
+  void theSeededPlanIsStillThereAfterBeingStoodDown() {
+    assertThat(plans.findAll(USER))
+        .filteredOn(plan -> plan.name().equals("Plan base"))
+        .singleElement()
+        .extracting(NutritionPlan::status)
+        .isEqualTo(dev.diegobarrioh.forma.domain.PlanStatus.COMPLETED);
+  }
+
+  /** The days of the V54 plan, whichever plan happens to be active. */
+  private List<ResolvedDay> basePlanDays() {
+    NutritionPlan base =
+        plans.findAll(USER).stream()
+            .filter(plan -> plan.name().equals("Plan base"))
+            .findFirst()
+            .orElseThrow();
+    return reader.days(USER, base.id());
+  }
+
+  private ResolvedDay baseDayOfType(NutritionDayType type) {
+    return basePlanDays().stream().filter(day -> day.dayType() == type).findFirst().orElseThrow();
   }
 
   /**
@@ -56,7 +81,7 @@ class NutritionPlanReaderTest {
    */
   @Test
   void holdsSevenDaysOfTheRightKinds() {
-    List<ResolvedDay> days = reader.activePlanDays(USER);
+    List<ResolvedDay> days = basePlanDays();
 
     assertThat(days).hasSize(7);
     assertThat(days)
@@ -74,7 +99,7 @@ class NutritionPlanReaderTest {
   /** The running day's meals, transcribed from the class V54 deleted. */
   @Test
   void keepsTheRunningDayExactlyAsTheOldCatalogHadIt() {
-    ResolvedDay day = reader.findDayByType(USER, NutritionDayType.RUNNING).orElseThrow();
+    ResolvedDay day = baseDayOfType(NutritionDayType.RUNNING);
 
     assertThat(day.meals())
         .extracting(ResolvedMeal::name)
@@ -93,7 +118,7 @@ class NutritionPlanReaderTest {
    */
   @Test
   void marksOnlyTheRecoveryMealSkippable() {
-    ResolvedDay day = reader.findDayByType(USER, NutritionDayType.RUNNING).orElseThrow();
+    ResolvedDay day = baseDayOfType(NutritionDayType.RUNNING);
 
     assertThat(day.meals())
         .extracting(ResolvedMeal::optional)
@@ -103,7 +128,7 @@ class NutritionPlanReaderTest {
   /** 120 g of oats at 370 kcal/100 g is 444, and nothing in the plan says so. */
   @Test
   void worksOutMacrosFromTheCatalogRatherThanFromStoredNumbers() {
-    ResolvedDay day = reader.findDayByType(USER, NutritionDayType.RUNNING).orElseThrow();
+    ResolvedDay day = baseDayOfType(NutritionDayType.RUNNING);
 
     ResolvedItem oats = day.meals().getFirst().items().getFirst();
     assertThat(oats.totals().calories()).isEqualTo(444);
@@ -130,7 +155,7 @@ class NutritionPlanReaderTest {
   void takesTheSeededPlansTargetsFromTheProfile() {
     Double profileCalories = profiles.get().personalTargets().baseCaloriesKcal();
 
-    ResolvedDay day = reader.findDayByType(USER, NutritionDayType.REST).orElseThrow();
+    ResolvedDay day = baseDayOfType(NutritionDayType.REST);
 
     assertThat(day.targets().calories())
         .isEqualTo(profileCalories == null ? null : (int) Math.round(profileCalories));
@@ -265,7 +290,7 @@ class NutritionPlanReaderTest {
    */
   @Test
   void saysWhetherAPlannedMealIsTheCallersOwn() {
-    ResolvedDay day = reader.findDayByType(USER, NutritionDayType.RUNNING).orElseThrow();
+    ResolvedDay day = baseDayOfType(NutritionDayType.RUNNING);
     UUID mealId = day.meals().getFirst().id();
 
     assertThat(reader.ownsPlannedMeal(USER, mealId)).isTrue();
