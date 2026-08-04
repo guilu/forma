@@ -19,9 +19,30 @@ function renderWidget() {
 const day: NutritionDay = {
   type: 'RUNNING',
   targets: { calories: 2300, proteinG: 160, carbsG: 250, fatG: 70 },
+  totals: { calories: 1776, proteinG: 62.4, carbsG: 288, fatG: 33.6 },
+  targetComparison: {
+    caloriesReached: false,
+    proteinReached: false,
+    carbsReached: false,
+    fatReached: false,
+  },
   meals: [
-    { mealType: 'BREAKFAST', name: 'Desayuno', preferredTime: '08:00', optional: false, items: [] },
-    { mealType: 'LUNCH', name: 'Comida', preferredTime: '14:00', optional: false, items: [] },
+    {
+      mealType: 'BREAKFAST',
+      name: 'Desayuno',
+      preferredTime: '08:00',
+      optional: false,
+      totals: { calories: 444, proteinG: 15.6, carbsG: 72, fatG: 8.4 },
+      items: [],
+    },
+    {
+      mealType: 'LUNCH',
+      name: 'Comida',
+      preferredTime: '14:00',
+      optional: false,
+      totals: { calories: 444, proteinG: 15.6, carbsG: 72, fatG: 8.4 },
+      items: [],
+    },
   ],
 };
 

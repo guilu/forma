@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Badge } from '../components/Badge';
 import { Card } from '../components/Card';
@@ -8,7 +8,14 @@ import { Icon } from '../components/Icon';
 import { LoadingState } from '../components/LoadingState';
 import { MacroRing } from '../components/MacroRing';
 import { WaterTracker } from '../components/WaterTracker';
-import { getNutritionDay, type NutritionDay, type NutritionMeal } from '../api/nutrition';
+import {
+  getDayConsumption,
+  getNutritionDay,
+  type DayConsumption,
+  type KeyNutrients,
+  type NutritionDay,
+  type NutritionMeal,
+} from '../api/nutrition';
 import { MealLogPanel } from './nutrition/MealLogPanel';
 import { ProgressBar } from './dashboard/ProgressBar';
 import { formatShortDate } from './dateLabel';
@@ -21,24 +28,32 @@ import styles from './NutritionPage.module.css';
  * `GET /api/v1/nutrition/days/{type}` read model (ADR-006 — no calculations
  * here, ADR-001).
  *
- * <p>Mockup elements not backed by the API today (documented gap, not
- * invented — AGENTS.md "repository state has priority"):
+ * <p>This comment used to list four things the mockup showed and the API could
+ * not back. Three of them it could, and two of those it always could:
  * <ul>
- *   <li>Per-meal macro chips (P/C/G) and kcal — {@link NutritionMeal} only
- *       carries {@code items[].food}/{@code quantityG} (a resolved food name
- *       plus grams); no per-item or per-meal macro/kcal figures are returned,
- *       so meal cards show name, time and items only.
- *   <li>"Objetivo vs actual" — the API returns only the day's *targets*; there
- *       is no consumption-logging endpoint, so there is no "actual" to
- *       compare against (same gap as the FOR-51 {@code NutritionWidget}).
- *       The macro ring below therefore shows the target distribution only.
- *   <li>Meal logging ("Registrar comida" + done checkmarks), water/hydration
- *       tracking ("Añadir agua") and "Nutrientes clave" (fibra/azúcares/sodio/
- *       grasas saturadas) — none of these are modeled or persisted anywhere in
- *       the backend, so they are omitted entirely rather than shown inactive.
- *   <li>Meal tap → detail view — every field the API returns for a meal
- *       (name, time, items) is already shown on its card, so a separate detail
- *       screen would repeat the same content; omitted.
+ *   <li><b>Per-meal macros and kcal</b> — said to be unreturned. They have been
+ *       returned since FOR-105; {@code api/nutrition.ts} simply never declared
+ *       the field, so the page drew invented chips beside real food.
+ *   <li><b>"Objetivo vs actual"</b> — said to have no "actual". The day's own
+ *       total has been returned since FOR-105 too, and what was actually EATEN
+ *       arrived with the meal log. Both are shown now, in the two places they
+ *       belong: the plan card compares the plan to its target, and the log
+ *       compares the day to it.
+ *   <li><b>Meal logging and key nutrients</b> — said to be modeled nowhere.
+ *       Logging has existed since FOR-127 and key nutrients since FOR-134; what
+ *       was missing was a screen, which {@link MealLogPanel} now is.
+ * </ul>
+ *
+ * <p>What is still genuinely absent, and stays absent rather than invented:
+ * <ul>
+ *   <li>A TARGET for fibre, sugars, sodium or saturated fat. Nothing sets one,
+ *       so the key-nutrient card shows figures without bars.
+ *   <li>Meal photographs — no image data on any endpoint.
+ *   <li>A date-parameterised plan. The log is per-date; the plan side can only
+ *       be asked by day KIND, so the header's date navigator stays decorative.
+ *   <li>The water tile, which {@code WaterTracker} still fills with invented
+ *       numbers while claiming no hydration endpoint exists. One does, since
+ *       FOR-130 — a separate block and a separate fix.
  * </ul>
  *
  * <p>Day-type selection: the API takes an explicit `type` path segment
@@ -62,33 +77,20 @@ const DAY_TYPES: ReadonlyArray<{ readonly key: DayType; readonly label: string }
 ];
 
 /**
- * FOR-164 hybrid placeholders (`docs/4-nutricion.png`). None is backed: there
- * is no consumption-logging endpoint (so no "consumed" calories, no per-meal
- * macro/kcal figures), and fibre/sugar/sodium/saturated-fat are not modeled at
- * all. Kept isolated and clearly labelled so they're obvious and easy to remove
- * once those endpoints exist. Per the FOR-164 decision these are *numeric*
- * placeholders only — no fabricated user behaviour (no "meal completed" checks,
- * no non-functional "Registrar comida" action). Macro/calorie TARGETS and the
- * meals themselves are real, read straight from the API.
+ * The FOR-164 placeholders are gone, and two of the three never needed to exist.
+ *
+ * <p>They were three invented numbers standing in for endpoints that "did not
+ * exist yet": consumed calories, per-meal macros, and key nutrients. Two of them
+ * were arriving from the API the whole time — the day and each of its meals have
+ * carried computed totals since FOR-105, and `api/nutrition.ts` simply never
+ * declared the fields, so the page drew fabrications beside real food for want of
+ * a type. The third, key nutrients, has been persisted since FOR-134 and became
+ * readable when the meal log got a screen.
+ *
+ * <p>What is genuinely not modeled is a TARGET for fibre, sugars, sodium or
+ * saturated fat. Nothing anywhere sets one, so none is shown: a real figure with
+ * no bar beside it says less than a bar, and says only true things.
  */
-const PLACEHOLDER = {
-  /** Fraction of the calorie target shown as "consumed" (visual only). */
-  consumedRatio: 0.917,
-  /** Per-meal macro/kcal chips, cycled by meal index. */
-  mealMacros: [
-    { p: 32, c: 58, g: 14, kcal: 480 },
-    { p: 18, c: 25, g: 10, kcal: 240 },
-    { p: 48, c: 62, g: 16, kcal: 620 },
-    { p: 30, c: 35, g: 8, kcal: 320 },
-    { p: 34, c: 56, g: 20, kcal: 450 },
-  ],
-  keyNutrients: [
-    { label: 'Fibra', current: 28, target: 30, unit: 'g' },
-    { label: 'Azúcares', current: 38, target: 50, unit: 'g' },
-    { label: 'Sodio', current: 1620, target: 2300, unit: 'mg' },
-    { label: 'Grasas saturadas', current: 18, target: 23, unit: 'g' },
-  ],
-} as const;
 
 /** Static date label for the visual-only navigator (no date-parameterised API). */
 const TODAY_LABEL = formatShortDate(new Date());
@@ -127,6 +129,18 @@ export function NutritionPage() {
     };
   }, [dayType, retryToken]);
 
+  // Fetched here rather than inside MealLogPanel, because two things on this page read it: the log
+  // itself and the key-nutrient card. One request, one answer — two would be free to disagree by a
+  // second.
+  const [consumption, setConsumption] = useState<DayConsumption | undefined>(undefined);
+  const reloadConsumption = useCallback(() => {
+    getDayConsumption(TODAY_ISO)
+      .then(setConsumption)
+      .catch(() => setConsumption(undefined));
+  }, []);
+
+  useEffect(reloadConsumption, [reloadConsumption]);
+
   return (
     <div className={styles.wrapper}>
       <header className={styles.header}>
@@ -148,7 +162,7 @@ export function NutritionPage() {
 
       {/* What was actually eaten, beside what the plan asked for. The endpoints behind it have
           existed since FOR-127 with no screen calling them. */}
-      <MealLogPanel date={TODAY_ISO} />
+      <MealLogPanel date={TODAY_ISO} day={consumption} onLogged={reloadConsumption} />
 
       <DayTypeSelector value={dayType} onChange={setDayType} />
 
@@ -158,7 +172,7 @@ export function NutritionPage() {
         Editar mis planes
       </Link>
 
-      {renderContent(state, dayType, () => setRetryToken((token) => token + 1))}
+      {renderContent(state, dayType, () => setRetryToken((token) => token + 1), consumption)}
     </div>
   );
 }
@@ -192,7 +206,12 @@ function DayTypeSelector({
   );
 }
 
-function renderContent(state: State, dayType: DayType, retry: () => void) {
+function renderContent(
+  state: State,
+  dayType: DayType,
+  retry: () => void,
+  consumption: DayConsumption | undefined,
+) {
   if (state.status === 'loading') {
     return <LoadingState message="Cargando tu día de nutrición…" />;
   }
@@ -212,24 +231,32 @@ function renderContent(state: State, dayType: DayType, retry: () => void) {
 
   const { day } = state;
   const target = day.targets.calories;
-  const consumed = Math.round(target * PLACEHOLDER.consumedRatio);
-  const restantes = Math.max(target - consumed, 0);
+  // What the plan's own meals come to, not what was eaten — that is the meal log's business, and
+  // showing it twice on one page would be one number with two homes.
+  const planned = day.totals.calories;
+  const gap = target - planned;
 
   return (
     <>
       <section className={styles.summary} aria-label="Resumen de macronutrientes">
-        <Card title="Calorías" headingLevel={2}>
-          {/* Consumed is placeholder (no logging endpoint); the target is real.
-              Target stays a standalone node so it reads cleanly. */}
+        <Card title="Calorías del plan" headingLevel={2}>
+          {/* Both figures real: what the day aims for, and what its meals add up to. They can
+              disagree, which is the whole reason the model keeps them apart. */}
           <p className={styles.calories}>
-            <span className={styles.caloriesValue}>{consumed}</span>
+            <span className={styles.caloriesValue}>{planned}</span>
             <span className={styles.caloriesUnit}>
               {' / '}
               <span className={styles.caloriesTarget}>{target}</span> kcal
             </span>
           </p>
-          <ProgressBar value={consumed} max={target} label="Calorías consumidas" />
-          <p className={styles.caloriesNote}>{restantes} kcal restantes</p>
+          <ProgressBar value={planned} max={target} label="Calorías que suma el plan" />
+          <p className={styles.caloriesNote}>
+            {gap > 0
+              ? `${gap} kcal por debajo del objetivo`
+              : gap < 0
+                ? `${-gap} kcal por encima del objetivo`
+                : 'Justo en el objetivo'}
+          </p>
         </Card>
         <Card title="Distribución de macros" headingLevel={2}>
           <MacroRing
@@ -246,15 +273,15 @@ function renderContent(state: State, dayType: DayType, retry: () => void) {
       <div className={styles.mainSide}>
         <Card title="Comidas del día" headingLevel={2}>
           <ol className={styles.meals}>
-            {day.meals.map((meal, index) => (
+            {day.meals.map((meal) => (
               <li key={`${meal.mealType}-${meal.preferredTime}`}>
-                <MealCard meal={meal} index={index} />
+                <MealCard meal={meal} />
               </li>
             ))}
           </ol>
         </Card>
 
-        <KeyNutrientsCard />
+        <KeyNutrientsCard nutrients={consumption?.keyNutrients} />
       </div>
 
       <RecoveryRecommendation meals={day.meals} />
@@ -262,8 +289,7 @@ function renderContent(state: State, dayType: DayType, retry: () => void) {
   );
 }
 
-function MealCard({ meal, index }: { readonly meal: NutritionMeal; readonly index: number }) {
-  const macros = PLACEHOLDER.mealMacros[index % PLACEHOLDER.mealMacros.length];
+function MealCard({ meal }: { readonly meal: NutritionMeal }) {
   return (
     <Card>
       <div className={styles.mealHeader}>
@@ -286,37 +312,57 @@ function MealCard({ meal, index }: { readonly meal: NutritionMeal; readonly inde
           </li>
         ))}
       </ul>
-      {/* Per-meal macros + kcal are placeholder (not returned by the API). */}
+      {/* Real, and always were: the API has returned per-meal totals since FOR-105. */}
       <p className={styles.mealMacros}>
-        <span>P {macros.p} g</span>
-        <span>C {macros.c} g</span>
-        <span>G {macros.g} g</span>
-        <span className={styles.mealKcal}>{macros.kcal} kcal</span>
+        <span>P {meal.totals.proteinG} g</span>
+        <span>C {meal.totals.carbsG} g</span>
+        <span>G {meal.totals.fatG} g</span>
+        <span className={styles.mealKcal}>{meal.totals.calories} kcal</span>
       </p>
     </Card>
   );
 }
 
 /**
- * "Nutrientes clave" card — entirely placeholder (fibre/sugar/sodium/saturated
- * fat are not modeled on the API). See {@link PLACEHOLDER}.
+ * "Nutrientes clave" — fibre, sugars, sodium and saturated fat actually consumed
+ * today (FOR-134).
+ *
+ * <p>No progress bars, and their absence is the honest part. Nothing in the app
+ * sets a target for any of these four: the profile has none, the plan has none,
+ * and the source documents never asked for one. A bar needs a maximum, and the
+ * only maximum available would have been invented — which is what the number
+ * beside it used to be.
+ *
+ * <p><b>A null is not a zero.</b> A day's total for one of these is null when any
+ * single thing eaten has no figure for it, because summing the rest would report a
+ * number lower than the truth and look like a measurement. Saying so is more use
+ * than a dash: it tells you the gap is in the catalog, not in what you ate.
  */
-function KeyNutrientsCard() {
+function KeyNutrientsCard({ nutrients }: { readonly nutrients: KeyNutrients | undefined }) {
+  const rows = [
+    { label: 'Fibra', value: nutrients?.fiberG ?? null, unit: 'g' },
+    { label: 'Azúcares', value: nutrients?.sugarsG ?? null, unit: 'g' },
+    { label: 'Sodio', value: nutrients?.sodiumMg ?? null, unit: 'mg' },
+    { label: 'Grasas saturadas', value: nutrients?.saturatedFatG ?? null, unit: 'g' },
+  ];
   return (
     <Card title="Nutrientes clave" headingLevel={2}>
       <ul className={styles.nutrients}>
-        {PLACEHOLDER.keyNutrients.map((n) => (
-          <li key={n.label} className={styles.nutrient}>
+        {rows.map((row) => (
+          <li key={row.label} className={styles.nutrient}>
             <div className={styles.nutrientHead}>
-              <span>{n.label}</span>
+              <span>{row.label}</span>
               <span className={styles.nutrientValue}>
-                {n.current} / {n.target} {n.unit}
+                {row.value === null ? 'Sin datos' : `${row.value} ${row.unit}`}
               </span>
             </div>
-            <ProgressBar value={n.current} max={n.target} label={n.label} />
           </li>
         ))}
       </ul>
+      <p className={styles.nutrientsNote}>
+        Lo que llevas hoy. Un &laquo;sin datos&raquo; significa que algo de lo registrado no tiene
+        ese valor en el catálogo, no que sea cero.
+      </p>
     </Card>
   );
 }

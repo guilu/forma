@@ -5,16 +5,14 @@ import { MealLogPanel } from './MealLogPanel';
 import { NotificationProvider } from '../../components/NotificationProvider';
 import { listFoods, type CatalogFood } from '../../api/foods';
 import { listServings, type FoodServing } from '../../api/servings';
-import { getDayConsumption, logMeal, type DayConsumption } from '../../api/nutrition';
+import { logMeal, type DayConsumption } from '../../api/nutrition';
 
 vi.mock('../../api/nutrition', () => ({
-  getDayConsumption: vi.fn(),
   logMeal: vi.fn(),
 }));
 vi.mock('../../api/foods', () => ({ listFoods: vi.fn() }));
 vi.mock('../../api/servings', () => ({ listServings: vi.fn() }));
 
-const consumptionMock = vi.mocked(getDayConsumption);
 const logMock = vi.mocked(logMeal);
 const foodsMock = vi.mocked(listFoods);
 const servingsMock = vi.mocked(listServings);
@@ -49,7 +47,7 @@ const mediumBanana: FoodServing = {
 };
 
 /** A day with one thing eaten, one planned meal done and one still pending. */
-const day: DayConsumption = {
+const consumed: DayConsumption = {
   date: DATE,
   dayType: 'RUNNING',
   consumed: { kcal: 551, proteinG: 16.9, carbsG: 99.6, fatG: 8.8 },
@@ -71,11 +69,19 @@ const day: DayConsumption = {
   ],
 };
 
-function renderPanel() {
+const onLogged = vi.fn();
+
+/**
+ * The consumption is a prop, not a request of this panel's.
+ *
+ * <p>The page owns it because the key-nutrient card reads the same answer, so the panel takes what
+ * it is given and says when something has been logged.
+ */
+function renderPanel(day: DayConsumption | undefined = consumed) {
   const user = userEvent.setup();
   render(
     <NotificationProvider>
-      <MealLogPanel date={DATE} />
+      <MealLogPanel date={DATE} day={day} onLogged={onLogged} />
     </NotificationProvider>,
   );
   return user;
@@ -83,8 +89,7 @@ function renderPanel() {
 
 describe('MealLogPanel — what was actually eaten', () => {
   beforeEach(() => {
-    consumptionMock.mockReset();
-    consumptionMock.mockResolvedValue(day);
+    onLogged.mockReset();
     logMock.mockReset();
     logMock.mockResolvedValue({
       id: 'entry-2',
@@ -128,12 +133,11 @@ describe('MealLogPanel — what was actually eaten', () => {
 
   /** Somebody with nothing logged is told what logging is for, not just that the list is empty. */
   it('explains itself when nothing has been logged', async () => {
-    consumptionMock.mockResolvedValue({
-      ...day,
+    renderPanel({
+      ...consumed,
       entries: [],
       consumed: { kcal: 0, proteinG: 0, carbsG: 0, fatG: 0 },
     });
-    renderPanel();
 
     expect(await screen.findByText(/Todavía no has registrado nada/)).toBeInTheDocument();
   });
@@ -251,18 +255,17 @@ describe('MealLogPanel — what was actually eaten', () => {
 
   /** An account with no plan still logs; there is simply nothing to be adherent to. */
   it('hides the plan section when there is no plan', async () => {
-    consumptionMock.mockResolvedValue({ ...day, plannedMeals: [], target: null, comparison: null });
-    renderPanel();
+    renderPanel({ ...consumed, plannedMeals: [], target: null, comparison: null });
 
     await screen.findByText('Copos de avena');
     expect(screen.queryByText('Lo que pedía el plan')).not.toBeInTheDocument();
     expect(screen.queryByText(/de 2300/)).not.toBeInTheDocument();
   });
 
-  it('reloads after something is logged', async () => {
+  /** The panel does not re-read anything; it tells whoever owns the request to ask again. */
+  it('reports upwards after something is logged', async () => {
     const user = renderPanel();
     await screen.findByText('Copos de avena');
-    expect(consumptionMock).toHaveBeenCalledTimes(1);
 
     await user.click(screen.getByRole('button', { name: '+ Registrar' }));
     const dialog = await screen.findByRole('dialog', { name: /Registrar comida/ });
@@ -270,6 +273,18 @@ describe('MealLogPanel — what was actually eaten', () => {
     await user.type(within(dialog).getByLabelText('Gramos'), '60');
     await user.click(within(dialog).getByRole('button', { name: 'Registrar' }));
 
-    await waitFor(() => expect(consumptionMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(onLogged).toHaveBeenCalled());
+  });
+
+  it('waits while the day is still loading', () => {
+    // Rendered directly rather than through the helper: passing `undefined` to a parameter with a
+    // default gets the default, which is the opposite of what this test is about.
+    render(
+      <NotificationProvider>
+        <MealLogPanel date={DATE} day={undefined} onLogged={onLogged} />
+      </NotificationProvider>,
+    );
+
+    expect(screen.getByText(/Cargando lo que has comido/)).toBeInTheDocument();
   });
 });

@@ -1,12 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Badge } from '../../components/Badge';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
-import { ErrorState } from '../../components/ErrorState';
 import { Icon } from '../../components/Icon';
 import { LoadingState } from '../../components/LoadingState';
 import { Modal } from '../../components/Modal';
-import { getDayConsumption, type DayConsumption, type PlannedMealState } from '../../api/nutrition';
+import { type DayConsumption, type PlannedMealState } from '../../api/nutrition';
 import { LogMealForm } from './LogMealForm';
 import styles from './MealLogPanel.module.css';
 
@@ -27,6 +26,15 @@ import styles from './MealLogPanel.module.css';
 interface MealLogPanelProps {
   /** The day being shown, ISO. */
   readonly date: string;
+  /**
+   * What has been consumed, or undefined while it loads.
+   *
+   * <p>Fetched by the page rather than here, because the key-nutrient card reads the same answer.
+   * One request for one question; two would be free to disagree by a second.
+   */
+  readonly day: DayConsumption | undefined;
+  /** Called after something is logged, so whoever owns the request can ask again. */
+  readonly onLogged: () => void;
 }
 
 const STATE_LABELS: Record<PlannedMealState['state'], string> = {
@@ -51,33 +59,14 @@ const MEAL_LABELS: Record<string, string> = {
   DINNER: 'Cena',
 };
 
-type State =
-  | { readonly status: 'loading' }
-  | { readonly status: 'error' }
-  | { readonly status: 'ready'; readonly day: DayConsumption };
-
-export function MealLogPanel({ date }: MealLogPanelProps) {
-  const [state, setState] = useState<State>({ status: 'loading' });
+export function MealLogPanel({ date, day, onLogged }: MealLogPanelProps) {
   const [logging, setLogging] = useState(false);
   const [answering, setAnswering] = useState<string | undefined>(undefined);
 
-  const reload = useCallback(() => {
-    setState({ status: 'loading' });
-    getDayConsumption(date)
-      .then((day) => setState({ status: 'ready', day }))
-      .catch(() => setState({ status: 'error' }));
-  }, [date]);
-
-  useEffect(reload, [reload]);
-
-  if (state.status === 'loading') {
+  if (day === undefined) {
     return <LoadingState message="Cargando lo que has comido…" />;
   }
-  if (state.status === 'error') {
-    return <ErrorState message="No se pudo cargar el registro del día." onRetry={reload} />;
-  }
 
-  const { day } = state;
   const open = logging || answering !== undefined;
 
   return (
@@ -176,7 +165,7 @@ export function MealLogPanel({ date }: MealLogPanelProps) {
             onLogged={() => {
               setLogging(false);
               setAnswering(undefined);
-              reload();
+              onLogged();
             }}
           />
         </Modal>
