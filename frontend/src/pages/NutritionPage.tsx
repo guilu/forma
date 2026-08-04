@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Badge } from '../components/Badge';
 import { Card } from '../components/Card';
 import { EmptyState } from '../components/EmptyState';
@@ -135,6 +136,12 @@ export function NutritionPage() {
       </header>
 
       <DayTypeSelector value={dayType} onChange={setDayType} />
+
+      {/* V53/V54: what this page shows is a day of the plan being followed, and
+          until now there was no way to reach the plan itself from here. */}
+      <Link className={styles.plansLink} to="/app/nutrition/plans">
+        Editar mis planes
+      </Link>
 
       {renderContent(state, dayType, () => setRetryToken((token) => token + 1))}
     </div>
