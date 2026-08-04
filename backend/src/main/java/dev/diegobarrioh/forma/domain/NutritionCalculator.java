@@ -4,13 +4,11 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Computes nutrition totals for meals and days (FOR-32).
+ * Computes nutrition totals for one food and one amount (FOR-32).
  *
  * <p>Pure, deterministic domain calculation (no forecasting), mirroring the FOR-21/FOR-28 summary
- * precedents. For each {@link MealItem} it resolves the {@link FoodItem} through the
- * caller-supplied {@link FoodLookup} and adds {@code per100g * quantityG / 100} for each macro. Raw
- * contributions are summed and rounded once (via {@link NutritionTotals}) so sums do not accumulate
- * rounding error.
+ * precedents. For a {@link MealItem} it resolves the {@link FoodItem} through the caller-supplied
+ * {@link FoodLookup} and adds {@code per100g * quantityG / 100} for each macro.
  *
  * <p>Foods arrive as a parameter rather than being read from a static catalog: the calculator
  * states what it needs and stays indifferent to whether those foods came from a database, a fixture
@@ -23,21 +21,14 @@ public final class NutritionCalculator {
 
   private NutritionCalculator() {}
 
-  /** Totals for a single meal. */
-  public static NutritionTotals mealTotals(MealTemplate meal, FoodLookup foods) {
-    return totals(meal.items(), foods);
-  }
-
-  /** Totals for a full day, summed over all its meals' items. */
-  public static NutritionTotals dayTotals(List<MealTemplate> meals, FoodLookup foods) {
-    return totals(meals.stream().flatMap(meal -> meal.items().stream()).toList(), foods);
-  }
-
   /**
-   * Totals for a single {@link MealItem} (FOR-127): a food resolved through {@code foods} plus a
-   * quantity. Reuses the same per-100g formula as {@link #mealTotals} and {@link #dayTotals} — no
-   * duplicated math — so a consumption-log entry built from a catalog food is computed identically
-   * to a plan-side meal item.
+   * Totals for a single {@link MealItem}: a food resolved through {@code foods} plus a quantity.
+   *
+   * <p>The one entry point, and deliberately so. It used to sit beside {@code mealTotals} and
+   * {@code dayTotals}, which took the {@code MealTemplate} the in-code day catalog was built from;
+   * V54 moved plans into the database and deleted both, leaving the per-item formula that every
+   * caller actually shares. A logged meal, a recipe and a plan line are all a food and an amount,
+   * and they agree to the gram because they run through this.
    */
   public static NutritionTotals itemTotals(MealItem item, FoodLookup foods) {
     return totals(List.of(item), foods);

@@ -1,23 +1,32 @@
 package dev.diegobarrioh.forma.delivery.nutrition;
 
-import dev.diegobarrioh.forma.application.NutritionCalculationService;
-import dev.diegobarrioh.forma.domain.MealType;
-import dev.diegobarrioh.forma.domain.NutritionDay;
+import dev.diegobarrioh.forma.application.ResolvedDay;
+import dev.diegobarrioh.forma.application.ResolvedItem;
+import dev.diegobarrioh.forma.application.ResolvedMeal;
+import dev.diegobarrioh.forma.domain.MacroTargets;
 import dev.diegobarrioh.forma.domain.NutritionDayType;
 import dev.diegobarrioh.forma.domain.NutritionTotals;
 import java.util.List;
 
 /**
- * Response body for {@code GET /api/v1/nutrition/days/{type}} (FOR-34, enriched by FOR-105).
+ * Response body for {@code GET /api/v1/nutrition/days/{type}} (FOR-34, enriched by FOR-105, moved
+ * onto real plans by V53/V54).
  *
- * <p>Delivery read model, distinct from the application/domain {@link NutritionDay} (ADR-005).
- * Meals are ordered by preferred time; the post-workout meal is flagged {@code optional} so the UI
- * can present the late-run recovery item as skippable. Food ids are resolved to names via the
- * FOR-30 catalog.
+ * <p>Delivery read model (ADR-005) over the application's {@link ResolvedDay}. The wire shape is
+ * unchanged from when this served three constants compiled into the jar — the frontend reads the
+ * same fields — but every figure now comes from a plan somebody owns, resolved against today's food
+ * catalog on each request.
  *
- * <p>FOR-105 adds per-meal and per-day macro {@code totals} and a {@code targetComparison}, both
- * delegated to the FOR-32 {@link NutritionCalculationService} — no macro math happens here. These
- * are PLAN macros vs target, not consumed/logged intake (FOR-102).
+ * <p>Two things it can now say that it could not before. {@code optional} is read from the plan
+ * instead of being {@code mealType == POST_WORKOUT} decided here, which was a fact about one seeded
+ * plan applied to every plan there would ever be. And {@code targets} can genuinely differ from
+ * {@code totals}: the old catalog set each day's target to that day's own total, so {@code
+ * targetComparison} could only ever answer yes.
+ *
+ * <p><b>A target nobody set renders as 0.</b> {@link MacroTargets} distinguishes "no target" from
+ * "a target of zero" and this response does not, because the frontend has no third state to render
+ * — its zeroed day IS its empty state. Giving it one is a change to the page rather than to the
+ * model, so it is left as known debt rather than half-done here.
  */
 public record NutritionDayResponse(
     String type,
@@ -26,7 +35,24 @@ public record NutritionDayResponse(
     TargetComparison targetComparison,
     List<Meal> meals) {
 
-  public record Targets(int calories, int proteinG, int carbsG, int fatG) {}
+  public record Targets(int calories, int proteinG, int carbsG, int fatG) {
+
+    static Targets from(MacroTargets targets) {
+      return new Targets(
+          orZero(targets.calories()),
+          (int) Math.round(orZero(targets.proteinG())),
+          (int) Math.round(orZero(targets.carbsG())),
+          (int) Math.round(orZero(targets.fatG())));
+    }
+
+    private static int orZero(Integer value) {
+      return value == null ? 0 : value;
+    }
+
+    private static double orZero(Double value) {
+      return value == null ? 0 : value;
+    }
+  }
 
   /** A meal or day's computed macro totals (FOR-32 {@link NutritionTotals}, carried as-is). */
   public record Totals(int calories, double proteinG, double carbsG, double fatG) {
@@ -60,9 +86,12 @@ public record NutritionDayResponse(
   public record Item(String food, int quantityG) {}
 
   /**
-   * Empty day for the first-run gate (FOR-169): the requested type with zeroed targets/totals and
-   * no meals, so a pre-onboarding user sees no "active" plan. The frontend treats an empty {@code
-   * meals} list as its empty state.
+   * Empty day: the requested type with zeroed targets/totals and no meals.
+   *
+   * <p>Two ways to get here now. The first-run gate (FOR-169) returns it before onboarding, as it
+   * always did. The second is new and is the honest consequence of plans being owned: an account
+   * with no active plan has no day to show, where before every account silently shared the same
+   * three constants. The frontend treats an empty {@code meals} list as its empty state either way.
    */
   public static NutritionDayResponse empty(NutritionDayType type) {
     return new NutritionDayResponse(
@@ -73,37 +102,33 @@ public record NutritionDayResponse(
         List.of());
   }
 
-  /**
-   * Maps a seeded nutrition day to its API read model, delegating macro totals and the target
-   * comparison to the FOR-32 {@link NutritionCalculationService} (ADR-001: no math here).
-   */
-  public static NutritionDayResponse from(NutritionDay day, NutritionCalculationService calc) {
-    Targets targets =
-        new Targets(
-            day.template().targetCalories(),
-            day.template().targetProteinG(),
-            day.template().targetCarbsG(),
-            day.template().targetFatG());
-    List<Meal> meals =
-        day.meals().stream()
-            .map(
-                meal ->
-                    new Meal(
-                        meal.mealType().name(),
-                        meal.name(),
-                        meal.preferredTime().toString(),
-                        meal.mealType() == MealType.POST_WORKOUT,
-                        Totals.from(calc.mealTotals(meal)),
-                        meal.items().stream()
-                            .map(
-                                item ->
-                                    new Item(calc.foodName(item.foodItemId()), item.quantityG()))
-                            .toList()))
-            .toList();
-    Totals dayTotals = Totals.from(calc.dayTotals(day.meals()));
-    TargetComparison targetComparison =
-        TargetComparison.from(calc.compareToTargets(day.meals(), day.template()));
+  /** Maps a worked-out plan day to its API read model. No arithmetic happens here (ADR-001). */
+  public static NutritionDayResponse from(NutritionDayType type, ResolvedDay day) {
+    List<Meal> meals = day.meals().stream().map(NutritionDayResponse::meal).toList();
+    dev.diegobarrioh.forma.domain.TargetComparison comparison = day.comparison();
     return new NutritionDayResponse(
-        day.template().type().name(), targets, dayTotals, targetComparison, meals);
+        type.name(),
+        Targets.from(day.targets()),
+        Totals.from(day.totals()),
+        comparison == null
+            ? new TargetComparison(false, false, false, false)
+            : TargetComparison.from(comparison),
+        meals);
+  }
+
+  private static Meal meal(ResolvedMeal meal) {
+    return new Meal(
+        meal.mealType().name(),
+        meal.name(),
+        meal.scheduledTime() == null ? null : meal.scheduledTime().toString(),
+        meal.optional(),
+        Totals.from(meal.totals()),
+        meal.items().stream().map(NutritionDayResponse::item).toList());
+  }
+
+  private static Item item(ResolvedItem item) {
+    // Grams are rounded for the wire: the plan holds a tenth of a gram of precision so a portion
+    // can be counted exactly, and nobody weighs oats to a decimal.
+    return new Item(item.label(), (int) Math.round(item.grams()));
   }
 }

@@ -1,27 +1,31 @@
 package dev.diegobarrioh.forma.delivery.nutrition;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import dev.diegobarrioh.forma.application.CurrentUserProvider;
 import dev.diegobarrioh.forma.application.HydrationService;
 import dev.diegobarrioh.forma.application.MealLogService;
-import dev.diegobarrioh.forma.application.NutritionCalculationService;
-import dev.diegobarrioh.forma.application.NutritionDayCatalogService;
+import dev.diegobarrioh.forma.application.NutritionPlanReader;
+import dev.diegobarrioh.forma.application.ResolvedDay;
+import dev.diegobarrioh.forma.application.ResolvedItem;
+import dev.diegobarrioh.forma.application.ResolvedMeal;
 import dev.diegobarrioh.forma.application.UserProfileService;
-import dev.diegobarrioh.forma.domain.MealItem;
-import dev.diegobarrioh.forma.domain.MealTemplate;
+import dev.diegobarrioh.forma.domain.MacroTargets;
 import dev.diegobarrioh.forma.domain.MealType;
-import dev.diegobarrioh.forma.domain.NutritionDay;
-import dev.diegobarrioh.forma.domain.NutritionDayTemplate;
 import dev.diegobarrioh.forma.domain.NutritionDayType;
-import dev.diegobarrioh.forma.support.SeededFoodCatalogTestConfig;
+import dev.diegobarrioh.forma.domain.NutritionTotals;
+import dev.diegobarrioh.forma.domain.TargetComparison;
 import dev.diegobarrioh.forma.support.WebMvcAuthTestConfig;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -30,33 +34,32 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * Web-slice tests for {@link NutritionController} (FOR-34, enriched by FOR-105): the day response
- * shape (targets, ordered meals, optional post-run, resolved food names, macro totals, target
- * comparison) and not-found handling.
+ * Web-slice tests for {@link NutritionController} (FOR-34, enriched by FOR-105, moved onto real
+ * plans by V53/V54): the day response shape and how an absent plan is answered.
  *
- * <p>The real {@link NutritionCalculationService} is loaded (not mocked, FOR-105) — this exercises
- * the FOR-32 calculation end-to-end through the controller rather than stubbing its output. It
- * reads foods from the catalog, which a web slice does not load, so {@link
- * SeededFoodCatalogTestConfig} supplies the seeded ones.
+ * <p>A pure mapping test now, with {@link NutritionPlanReader} mocked. The macro arithmetic moved
+ * out of the delivery layer when the plan moved into the database — it is exercised against a real
+ * plan and a real catalog in {@code NutritionPlanReaderTest}, where the numbers can be checked
+ * against rows rather than against a hand-built fixture.
  */
 @WebMvcTest(NutritionController.class)
-@Import({
-  NutritionCalculationService.class,
-  SeededFoodCatalogTestConfig.class,
-  WebMvcAuthTestConfig.class
-})
+@Import(WebMvcAuthTestConfig.class)
 class NutritionControllerTest {
 
+  private static final UUID SOMEBODY = UUID.randomUUID();
+
   @Autowired private MockMvc mockMvc;
-  @MockBean private NutritionDayCatalogService service;
+  @MockBean private NutritionPlanReader planReader;
+  @MockBean private CurrentUserProvider currentUserProvider;
   @MockBean private MealLogService mealLogService;
   @MockBean private HydrationService hydrationService;
   @MockBean private UserProfileService profileService;
 
   /** Default to a completed first run so the plan is served; individual tests override. */
-  @org.junit.jupiter.api.BeforeEach
+  @BeforeEach
   void onboardingCompletedByDefault() {
     when(profileService.firstRunCompleted()).thenReturn(true);
+    when(currentUserProvider.currentUserId()).thenReturn(SOMEBODY);
   }
 
   @Test
@@ -70,31 +73,27 @@ class NutritionControllerTest {
         .andExpect(jsonPath("$.meals").isEmpty());
   }
 
-  private static NutritionDay runningDay() {
-    NutritionDayTemplate template =
-        new NutritionDayTemplate(NutritionDayType.RUNNING, 1940, 162, 271, 25, "note");
-    MealTemplate breakfast =
-        new MealTemplate(
-            NutritionDayType.RUNNING,
-            MealType.BREAKFAST,
-            "Desayuno",
-            LocalTime.of(8, 0),
-            List.of(new MealItem("oats", 120)),
-            null);
-    MealTemplate postRun =
-        new MealTemplate(
-            NutritionDayType.RUNNING,
-            MealType.POST_WORKOUT,
-            "Recuperación (opcional)",
-            LocalTime.of(20, 0),
-            List.of(new MealItem("whey-protein", 20)),
-            null);
-    return new NutritionDay(template, List.of(breakfast, postRun));
+  /**
+   * An account with no plan is not a missing resource. Before plans were owned, every account
+   * shared three constants and the only way to reach this path was an unknown day type; now "nobody
+   * has made a plan yet" is an ordinary state of the app.
+   */
+  @Test
+  void returnsAnEmptyDayWhenTheAccountHasNoActivePlan() throws Exception {
+    when(planReader.findDayByType(any(), eq(NutritionDayType.RUNNING)))
+        .thenReturn(Optional.empty());
+
+    mockMvc
+        .perform(get("/api/v1/nutrition/days/running"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.type").value("RUNNING"))
+        .andExpect(jsonPath("$.meals").isEmpty());
   }
 
   @Test
-  void returnsTheDayWithTargetsMealsAndOptionalPostRun() throws Exception {
-    when(service.findByType(eq(NutritionDayType.RUNNING))).thenReturn(Optional.of(runningDay()));
+  void returnsTheDayWithTargetsMealsAndTheSkippableOne() throws Exception {
+    when(planReader.findDayByType(any(), eq(NutritionDayType.RUNNING)))
+        .thenReturn(Optional.of(runningDay()));
 
     mockMvc
         .perform(get("/api/v1/nutrition/days/running"))
@@ -102,40 +101,55 @@ class NutritionControllerTest {
         .andExpect(jsonPath("$.type").value("RUNNING"))
         .andExpect(jsonPath("$.targets.proteinG").value(162))
         .andExpect(jsonPath("$.meals[0].mealType").value("BREAKFAST"))
-        // Food id resolved to its catalog name.
+        .andExpect(jsonPath("$.meals[0].name").value("Desayuno"))
+        .andExpect(jsonPath("$.meals[0].preferredTime").value("08:00"))
+        // The food's name, resolved by the reader; the plan itself only holds its id.
         .andExpect(jsonPath("$.meals[0].items[0].food").value("Copos de avena"))
+        .andExpect(jsonPath("$.meals[0].items[0].quantityG").value(120))
         .andExpect(jsonPath("$.meals[0].optional").value(false))
-        .andExpect(jsonPath("$.meals[1].mealType").value("POST_WORKOUT"))
+        // Read from the plan, not from `mealType == POST_WORKOUT` decided here.
         .andExpect(jsonPath("$.meals[1].optional").value(true));
   }
 
   @Test
-  void returnsPerMealAndDayMacroTotalsAndTargetComparison() throws Exception {
-    when(service.findByType(eq(NutritionDayType.RUNNING))).thenReturn(Optional.of(runningDay()));
+  void carriesPerMealAndPerDayTotalsAndTheTargetComparison() throws Exception {
+    when(planReader.findDayByType(any(), eq(NutritionDayType.RUNNING)))
+        .thenReturn(Optional.of(runningDay()));
 
     mockMvc
         .perform(get("/api/v1/nutrition/days/running"))
         .andExpect(status().isOk())
-        // Breakfast: 120g oats (370 kcal/13.0P/60.0C/7.0F per 100g, FOR-152) -> FOR-32 mealTotals.
         .andExpect(jsonPath("$.meals[0].totals.calories").value(444))
-        .andExpect(jsonPath("$.meals[0].totals.proteinG").value(15.6))
-        .andExpect(jsonPath("$.meals[0].totals.carbsG").value(72.0))
-        .andExpect(jsonPath("$.meals[0].totals.fatG").value(8.4))
-        // Post-run: 20g whey protein (390 kcal/78P/8C/6F per 100g, FOR-152).
         .andExpect(jsonPath("$.meals[1].totals.calories").value(78))
-        .andExpect(jsonPath("$.meals[1].totals.proteinG").value(15.6))
-        .andExpect(jsonPath("$.meals[1].totals.carbsG").value(1.6))
-        .andExpect(jsonPath("$.meals[1].totals.fatG").value(1.2))
-        // Day totals: sum of raw contributions, rounded once (FOR-32 dayTotals).
         .andExpect(jsonPath("$.totals.calories").value(522))
         .andExpect(jsonPath("$.totals.proteinG").value(31.2))
-        .andExpect(jsonPath("$.totals.carbsG").value(73.6))
-        .andExpect(jsonPath("$.totals.fatG").value(9.6))
-        // Day totals fall short of the 1940/162/271/25 targets on every macro.
         .andExpect(jsonPath("$.targetComparison.caloriesReached").value(false))
-        .andExpect(jsonPath("$.targetComparison.proteinReached").value(false))
-        .andExpect(jsonPath("$.targetComparison.carbsReached").value(false))
-        .andExpect(jsonPath("$.targetComparison.fatReached").value(false));
+        .andExpect(jsonPath("$.targetComparison.proteinReached").value(false));
+  }
+
+  /** A day whose targets nobody completed reports no comparison rather than a made-up one. */
+  @Test
+  void reportsNoComparisonWhenThereIsNoWholeTargetToReach() throws Exception {
+    ResolvedDay day = runningDay();
+    when(planReader.findDayByType(any(), eq(NutritionDayType.RUNNING)))
+        .thenReturn(
+            Optional.of(
+                new ResolvedDay(
+                    day.dayType(),
+                    day.weekNumber(),
+                    day.dayNumber(),
+                    day.date(),
+                    day.notes(),
+                    MacroTargets.none(),
+                    day.totals(),
+                    null,
+                    day.meals())));
+
+    mockMvc
+        .perform(get("/api/v1/nutrition/days/running"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.targets.calories").value(0))
+        .andExpect(jsonPath("$.targetComparison.caloriesReached").value(false));
   }
 
   @Test
@@ -144,5 +158,55 @@ class NutritionControllerTest {
         .perform(get("/api/v1/nutrition/days/does-not-exist"))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+  }
+
+  /** 120 g of oats and 20 g of whey, already worked out — the reader's job, mocked here. */
+  private static ResolvedDay runningDay() {
+    ResolvedMeal breakfast =
+        new ResolvedMeal(
+            MealType.BREAKFAST,
+            "Desayuno",
+            LocalTime.of(8, 0),
+            false,
+            null,
+            MacroTargets.none(),
+            new NutritionTotals(444, 15.6, 72.0, 8.4),
+            List.of(
+                new ResolvedItem(
+                    "Copos de avena",
+                    120,
+                    new NutritionTotals(444, 15.6, 72.0, 8.4),
+                    false,
+                    null,
+                    null)));
+    ResolvedMeal recovery =
+        new ResolvedMeal(
+            MealType.POST_WORKOUT,
+            "Recuperación (opcional)",
+            LocalTime.of(20, 0),
+            true,
+            null,
+            MacroTargets.none(),
+            new NutritionTotals(78, 15.6, 1.6, 1.2),
+            List.of(
+                new ResolvedItem(
+                    "Proteína whey",
+                    20,
+                    new NutritionTotals(78, 15.6, 1.6, 1.2),
+                    false,
+                    null,
+                    null)));
+    NutritionTotals totals = new NutritionTotals(522, 31.2, 73.6, 9.6);
+    MacroTargets targets = new MacroTargets(1940, 162.0, 271.0, 25.0);
+    return new ResolvedDay(
+        NutritionDayType.RUNNING,
+        1,
+        1,
+        null,
+        "note",
+        targets,
+        totals,
+        TargetComparison.of(totals, targets),
+        List.of(breakfast, recovery));
   }
 }

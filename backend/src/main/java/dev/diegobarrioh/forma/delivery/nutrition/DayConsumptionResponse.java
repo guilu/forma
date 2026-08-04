@@ -2,7 +2,7 @@ package dev.diegobarrioh.forma.delivery.nutrition;
 
 import dev.diegobarrioh.forma.application.DayConsumption;
 import dev.diegobarrioh.forma.domain.KeyNutrientTotals;
-import dev.diegobarrioh.forma.domain.NutritionDayTemplate;
+import dev.diegobarrioh.forma.domain.MacroTargets;
 import dev.diegobarrioh.forma.domain.NutritionTotals;
 import java.time.LocalDate;
 import java.util.List;
@@ -15,8 +15,8 @@ import java.util.List;
  * <p>Delivery read model, distinct from the application {@link DayConsumption} view (ADR-005).
  * {@code dayType} is the date's resolved {@code NutritionDayType} (FOR-128, added per api.md's
  * recommendation so the UI can label the day). {@code target}/{@code comparison} are explicit JSON
- * {@code null} (never omitted) only in the fail-safe case where the catalog has no template for the
- * resolved day type — matching the FOR-125 {@code GoalResponse} progress-null precedent.
+ * {@code null} (never omitted) when the user has no active plan, or has one whose targets nobody
+ * completed — matching the FOR-125 {@code GoalResponse} progress-null precedent.
  *
  * <p><b>Key nutrients (FOR-134).</b> {@code keyNutrients} is always present (never omitted); its
  * four fields are independently {@code null} when the day's logged entries don't honestly support a
@@ -47,12 +47,15 @@ public record DayConsumptionResponse(
       return new Macros(totals.calories(), totals.proteinG(), totals.carbsG(), totals.fatG());
     }
 
-    static Macros from(NutritionDayTemplate target) {
-      return new Macros(
-          target.targetCalories(),
-          target.targetProteinG(),
-          target.targetCarbsG(),
-          target.targetFatG());
+    /**
+     * The effective target of the user's active plan.
+     *
+     * <p>Only ever built when every macro is present: the caller passes {@code null} otherwise, and
+     * a partial target rendered with zeros would read as "aim for nothing" rather than "nobody
+     * decided".
+     */
+    static Macros from(MacroTargets target) {
+      return new Macros(target.calories(), target.proteinG(), target.carbsG(), target.fatG());
     }
   }
 

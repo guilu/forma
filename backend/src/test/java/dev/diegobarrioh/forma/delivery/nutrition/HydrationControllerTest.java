@@ -8,11 +8,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import dev.diegobarrioh.forma.application.CurrentUserProvider;
 import dev.diegobarrioh.forma.application.HydrationProgress;
 import dev.diegobarrioh.forma.application.HydrationService;
 import dev.diegobarrioh.forma.application.MealLogService;
-import dev.diegobarrioh.forma.application.NutritionCalculationService;
-import dev.diegobarrioh.forma.application.NutritionDayCatalogService;
+import dev.diegobarrioh.forma.application.NutritionPlanReader;
 import dev.diegobarrioh.forma.application.StoredWaterIntakeEntry;
 import dev.diegobarrioh.forma.application.UserProfileService;
 import dev.diegobarrioh.forma.application.ValidationException;
@@ -41,8 +41,8 @@ class HydrationControllerTest {
   @Autowired private MockMvc mockMvc;
   @MockBean private HydrationService hydrationService;
   @MockBean private MealLogService mealLogService;
-  @MockBean private NutritionDayCatalogService nutritionDayCatalogService;
-  @MockBean private NutritionCalculationService nutritionCalculationService;
+  @MockBean private NutritionPlanReader nutritionPlanReader;
+  @MockBean private CurrentUserProvider currentUserProvider;
   @MockBean private UserProfileService profileService;
 
   @Test
