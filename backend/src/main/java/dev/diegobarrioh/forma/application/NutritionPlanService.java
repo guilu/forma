@@ -1,6 +1,7 @@
 package dev.diegobarrioh.forma.application;
 
 import dev.diegobarrioh.forma.domain.PlanStatus;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -169,6 +170,33 @@ public class NutritionPlanService {
   }
 
   /**
+   * Everything wrong with a plan's lines, each with the path to the line that is wrong.
+   *
+   * <p>Separate from {@link #requireUsableItems} because the two callers want different things from
+   * the same checks. Somebody saving one plan from a form wants to be stopped at the first problem;
+   * somebody importing a file wants to be told all of them at once, so a model that generated it
+   * can fix them in one pass instead of one per round trip. Same rules, read twice.
+   *
+   * @param path what to prefix each problem with, e.g. {@code plans[0]}
+   */
+  public List<PlanProblem> problemsIn(NutritionPlan plan, String path) {
+    List<PlanProblem> problems = new ArrayList<>();
+    List<PlanDay> days = plan.days();
+    for (int d = 0; d < days.size(); d++) {
+      List<PlanMeal> meals = days.get(d).meals();
+      for (int m = 0; m < meals.size(); m++) {
+        List<PlanItem> items = meals.get(m).items();
+        for (int i = 0; i < items.size(); i++) {
+          String where = "%s.days[%d].meals[%d].items[%d]".formatted(path, d, m, i);
+          problemWith(items.get(i))
+              .ifPresent(problem -> problems.add(new PlanProblem(where, problem)));
+        }
+      }
+    }
+    return problems;
+  }
+
+  /**
    * Checks every line of every meal against the catalog before anything is written.
    *
    * <p>Up front rather than as it goes: a plan half-written because its fourteenth day named a food
@@ -178,35 +206,39 @@ public class NutritionPlanService {
     for (PlanDay day : plan.days()) {
       for (PlanMeal meal : day.meals()) {
         for (PlanItem item : meal.items()) {
-          requireUsable(item);
+          problemWith(item)
+              .ifPresent(
+                  problem -> {
+                    throw new ValidationException(problem);
+                  });
         }
       }
     }
   }
 
-  private void requireUsable(PlanItem item) {
+  /** What is wrong with this line, or empty when nothing is. */
+  private Optional<String> problemWith(PlanItem item) {
     if (item.isRecipe()) {
-      if (recipes.find(item.recipeId()).isEmpty()) {
-        throw new ValidationException("No existe la receta: " + item.recipeId());
-      }
-      return;
+      return recipes.find(item.recipeId()).isPresent()
+          ? Optional.empty()
+          : Optional.of("No existe la receta: " + item.recipeId());
     }
     if (foods.findById(item.foodId()).isEmpty()) {
-      throw new ValidationException("No existe el alimento: " + item.foodId());
+      return Optional.of("No existe el alimento: " + item.foodId());
     }
     if (item.servingId() == null) {
-      return;
+      return Optional.empty();
     }
-    FoodServing serving =
-        servings
-            .find(item.servingId())
-            .orElseThrow(() -> new ValidationException("No existe la ración: " + item.servingId()));
+    Optional<FoodServing> serving = servings.find(item.servingId());
+    if (serving.isEmpty()) {
+      return Optional.of("No existe la ración: " + item.servingId());
+    }
     // The rule V53 could not express: a portion counts portions of ITS food. "2 rebanadas de aceite
     // de oliva" is arithmetically fine — 2 x 30 g — and means nothing, and the grams it produces
     // would be silently wrong rather than obviously so.
-    if (!serving.foodId().equals(item.foodId())) {
-      throw new ValidationException(
-          "La ración " + item.servingId() + " no es de " + item.foodId() + ".");
+    if (!serving.get().foodId().equals(item.foodId())) {
+      return Optional.of("La ración " + item.servingId() + " no es de " + item.foodId() + ".");
     }
+    return Optional.empty();
   }
 }
