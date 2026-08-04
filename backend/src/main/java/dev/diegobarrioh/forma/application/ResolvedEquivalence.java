@@ -11,9 +11,16 @@ import dev.diegobarrioh.forma.domain.EquivalentPortion;
  * it.
  *
  * @param targetName what the replacing food is called, so a screen need not look it up again
+ * @param comparingStates whether the two foods agree about the kitchen (V51). False only when both
+ *     states are known and differ — dry rice against boiled pasta is two questions wearing the same
+ *     units. Reported, never enforced: the arithmetic is right either way and it is the meaning
+ *     that is off, which is a thing to tell somebody rather than a thing to forbid
  */
 public record ResolvedEquivalence(
-    FoodEquivalence equivalence, EquivalentPortion portion, String targetName) {
+    FoodEquivalence equivalence,
+    EquivalentPortion portion,
+    String targetName,
+    boolean comparingStates) {
 
   /**
    * Whether the collateral drift is worth mentioning, against the tolerance this substitution

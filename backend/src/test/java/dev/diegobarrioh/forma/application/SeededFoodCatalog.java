@@ -52,6 +52,7 @@ public final class SeededFoodCatalog {
         null,
         // Likewise the primary macro: V44 backfills it in the database, and nothing that reads
         // this fixture asks for it.
+        null,
         null);
   }
 

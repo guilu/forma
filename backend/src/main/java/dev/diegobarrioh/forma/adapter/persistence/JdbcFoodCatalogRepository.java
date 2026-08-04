@@ -2,6 +2,7 @@ package dev.diegobarrioh.forma.adapter.persistence;
 
 import dev.diegobarrioh.forma.application.CatalogFood;
 import dev.diegobarrioh.forma.application.FoodCatalogRepository;
+import dev.diegobarrioh.forma.domain.Preparation;
 import dev.diegobarrioh.forma.domain.PrimaryMacro;
 import java.util.List;
 import java.util.Optional;
@@ -18,7 +19,7 @@ public class JdbcFoodCatalogRepository implements FoodCatalogRepository {
 
   private static final String COLUMNS =
       "id, name, kcal, protein_g, carbs_g, fat_g, fiber_g, sugars_g, sodium_mg,"
-          + " saturated_fat_g, food_group_id, primary_macro";
+          + " saturated_fat_g, food_group_id, primary_macro, preparation";
 
   /**
    * The food's own columns plus its default portion, which stopped being one of them in V49.
@@ -50,7 +51,10 @@ public class JdbcFoodCatalogRepository implements FoodCatalogRepository {
               rs.getString("food_group_id"),
               rs.getString("primary_macro") == null
                   ? null
-                  : PrimaryMacro.valueOf(rs.getString("primary_macro")));
+                  : PrimaryMacro.valueOf(rs.getString("primary_macro")),
+              rs.getString("preparation") == null
+                  ? null
+                  : Preparation.valueOf(rs.getString("preparation")));
 
   private final JdbcTemplate jdbcTemplate;
 
@@ -75,7 +79,7 @@ public class JdbcFoodCatalogRepository implements FoodCatalogRepository {
   @Override
   public void insert(CatalogFood food) {
     jdbcTemplate.update(
-        "INSERT INTO food_catalog (" + COLUMNS + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO food_catalog (" + COLUMNS + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         food.id(),
         food.name(),
         food.kcal(),
@@ -87,7 +91,8 @@ public class JdbcFoodCatalogRepository implements FoodCatalogRepository {
         food.sodiumMg(),
         food.saturatedFatG(),
         food.foodGroupId(),
-        name(food.primaryMacro()));
+        name(food.primaryMacro()),
+        name(food.preparation()));
   }
 
   @Override
@@ -98,7 +103,7 @@ public class JdbcFoodCatalogRepository implements FoodCatalogRepository {
             + " saturated_fat_g = ?, food_group_id = ?, primary_macro = ?,"
             // Stamped here rather than by a trigger: H2 and PostgreSQL spell those differently,
             // and this is the only place a food is ever rewritten.
-            + " updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            + " preparation = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
         food.name(),
         food.kcal(),
         food.proteinG(),
@@ -110,12 +115,17 @@ public class JdbcFoodCatalogRepository implements FoodCatalogRepository {
         food.saturatedFatG(),
         food.foodGroupId(),
         name(food.primaryMacro()),
+        name(food.preparation()),
         food.id());
   }
 
   /** The stored token of an enum that may be absent — a food whose macros decide nothing. */
   private static String name(PrimaryMacro macro) {
     return macro == null ? null : macro.name();
+  }
+
+  private static String name(Preparation preparation) {
+    return preparation == null ? null : preparation.name();
   }
 
   @Override

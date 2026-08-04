@@ -169,6 +169,7 @@ class StoreProductImportServiceTest {
               null,
               null,
               "CARBOHIDRATO",
+              null,
               null));
     }
 

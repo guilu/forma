@@ -57,6 +57,7 @@ const riceToPotato: FoodEquivalence = {
   fatDeviationPct: -53.5,
   maxMacroDeviationPct: 25,
   exceedsTolerance: true,
+  comparingStates: true,
 };
 
 function renderManager() {
@@ -172,5 +173,28 @@ describe('EquivalencesManager', () => {
     );
 
     await waitFor(() => expect(deleteMock).toHaveBeenCalledWith('e1'));
+  });
+
+  /**
+   * The hole the "100 g arroz = 250 g patata" discrepancy pointed into. The grams
+   * are right in either state; what is off is what they mean, so this is a
+   * warning on the row rather than a refusal to show it.
+   */
+  it('warns when the two foods disagree about the kitchen', async () => {
+    listMock.mockResolvedValue([{ ...riceToPotato, comparingStates: false }]);
+
+    renderManager();
+
+    expect(await screen.findByText(/no comparan lo mismo/)).toBeInTheDocument();
+    // Still shown, still with its grams: the arithmetic is not in question.
+    expect(screen.getByText('100 g → 464.7 g')).toBeInTheDocument();
+  });
+
+  /** Silence is not disagreement: an unclassified pair says nothing. */
+  it('says nothing when the states agree or are unknown', async () => {
+    renderManager();
+
+    await screen.findByText('100 g → 464.7 g');
+    expect(screen.queryByText(/no comparan lo mismo/)).not.toBeInTheDocument();
   });
 });

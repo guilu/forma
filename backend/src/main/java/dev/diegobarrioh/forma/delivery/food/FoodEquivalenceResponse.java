@@ -15,6 +15,10 @@ import java.math.BigDecimal;
  * the request. They are not stored, so two calls a month apart may legitimately disagree if
  * somebody corrected a food in between — that is the design working, not a bug.
  *
+ * <p>{@code comparingStates} is false when the two foods are known to disagree about the kitchen
+ * (V51) — dry rice against boiled pasta. The grams are right either way; what is off is what they
+ * mean, so it travels as a warning rather than as a refusal.
+ *
  * <p>A deviation is absent when it is the nutrient being held equal (zero by construction) or when
  * the source portion carries none of it, since a percentage of nothing is not a number.
  */
@@ -32,6 +36,7 @@ public record FoodEquivalenceResponse(
     Double fatDeviationPct,
     BigDecimal maxMacroDeviationPct,
     boolean exceedsTolerance,
+    boolean comparingStates,
     String notes) {
 
   public static FoodEquivalenceResponse from(ResolvedEquivalence resolved) {
@@ -51,6 +56,7 @@ public record FoodEquivalenceResponse(
         portion.fatDeviationPct(),
         equivalence.maxMacroDeviationPct(),
         resolved.exceedsTolerance(),
+        resolved.comparingStates(),
         equivalence.notes());
   }
 }

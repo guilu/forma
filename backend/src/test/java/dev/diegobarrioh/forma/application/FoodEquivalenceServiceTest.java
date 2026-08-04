@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 
 import dev.diegobarrioh.forma.domain.EquivalenceBasis;
+import dev.diegobarrioh.forma.domain.Preparation;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -148,6 +149,27 @@ class FoodEquivalenceServiceTest {
       SeededFoodCatalog.repository().findAll().forEach(food -> rows.put(food.id(), food));
     }
 
+    void setPreparation(String id, Preparation preparation) {
+      CatalogFood food = rows.get(id);
+      rows.put(
+          id,
+          new CatalogFood(
+              food.id(),
+              food.name(),
+              food.servingSizeG(),
+              food.kcal(),
+              food.proteinG(),
+              food.carbsG(),
+              food.fatG(),
+              food.fiberG(),
+              food.sugarsG(),
+              food.sodiumMg(),
+              food.saturatedFatG(),
+              food.foodGroupId(),
+              food.primaryMacro(),
+              preparation));
+    }
+
     void doubleCarbsOf(String id) {
       CatalogFood food = rows.get(id);
       rows.put(
@@ -165,7 +187,8 @@ class FoodEquivalenceServiceTest {
               food.sodiumMg(),
               food.saturatedFatG(),
               food.foodGroupId(),
-              food.primaryMacro()));
+              food.primaryMacro(),
+              null));
     }
 
     @Override
@@ -192,6 +215,60 @@ class FoodEquivalenceServiceTest {
     public boolean delete(String id) {
       return rows.remove(id) != null;
     }
+  }
+
+  // --- V51: whether the two foods agree about the kitchen ---
+
+  /**
+   * The hole the "100 g arroz = 250 g patata" discrepancy pointed into. Dry rice against boiled
+   * pasta is two questions wearing the same units; the grams are right and the meaning is not.
+   */
+  @Test
+  void warnsWhenTheTwoFoodsDisagreeAboutTheKitchen() {
+    catalog.setPreparation("rice", Preparation.CRUDO);
+    catalog.setPreparation("potato", Preparation.COCINADO);
+    service.create(equivalence("rice", "potato", EquivalenceBasis.CARBS));
+
+    assertThat(service.findBySource("rice"))
+        .singleElement()
+        .satisfies(resolved -> assertThat(resolved.comparingStates()).isFalse());
+  }
+
+  @Test
+  void saysNothingWhenBothAreInTheSameState() {
+    catalog.setPreparation("rice", Preparation.CRUDO);
+    catalog.setPreparation("potato", Preparation.CRUDO);
+    service.create(equivalence("rice", "potato", EquivalenceBasis.CARBS));
+
+    assertThat(service.findBySource("rice"))
+        .singleElement()
+        .satisfies(resolved -> assertThat(resolved.comparingStates()).isTrue());
+  }
+
+  /**
+   * Silence is not disagreement. The column starts empty on purpose — only two of the twenty-three
+   * seeded foods are deducible without guessing — so an unfilled state must inform rather than
+   * accuse.
+   */
+  @Test
+  void saysNothingWhileNobodyHasClassifiedThem() {
+    service.create(equivalence("rice", "potato", EquivalenceBasis.CARBS));
+
+    assertThat(service.findBySource("rice"))
+        .singleElement()
+        .satisfies(resolved -> assertThat(resolved.comparingStates()).isTrue());
+  }
+
+  /** Oil is oil whether the thing beside it was cooked or not. */
+  @Test
+  void saysNothingAboutAFoodThatNeverCooks() {
+    catalog.setPreparation("olive-oil", Preparation.TAL_CUAL);
+    catalog.setPreparation("almonds-walnuts", Preparation.CRUDO);
+    service.create(equivalence("olive-oil", "almonds-walnuts", EquivalenceBasis.FAT));
+
+    assertThat(service.findBySource("olive-oil"))
+        .singleElement()
+        .satisfies(resolved -> assertThat(resolved.comparingStates()).isTrue());
   }
 
   private static final class InMemoryEquivalences implements FoodEquivalenceRepository {

@@ -40,6 +40,13 @@ export interface FoodEquivalence {
   readonly maxMacroDeviationPct?: number;
   /** Whether the collateral drift is worth mentioning. Never a reason to refuse the swap. */
   readonly exceedsTolerance: boolean;
+  /**
+   * Whether the two foods agree about the kitchen. False only when both states
+   * are known and differ — dry rice against boiled pasta is two questions wearing
+   * the same units. The grams are right either way; what is off is what they
+   * mean, so it is a warning and not a refusal.
+   */
+  readonly comparingStates: boolean;
   readonly notes?: string;
 }
 

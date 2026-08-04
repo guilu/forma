@@ -18,6 +18,16 @@ const FOODS_PATH = '/api/v1/foods';
 export type PrimaryMacro = 'PROTEIN' | 'CARBS' | 'FAT';
 
 /**
+ * What state a food's numbers describe. Closed for good: a food goes into the
+ * kitchen, comes out of it, or never passes through.
+ *
+ * <p>Absent is not one of them. `undefined` means nobody has decided, which is a
+ * different thing from `TAL_CUAL` — the question not applying to olive oil is an
+ * answer, not having been asked about chicken is not.
+ */
+export type Preparation = 'CRUDO' | 'COCINADO' | 'TAL_CUAL';
+
+/**
  * A catalog food. Every macro is per 100 g; `servingSizeG` is the suggested
  * portion the ration figures are computed from.
  *
@@ -50,6 +60,12 @@ export interface CatalogFood {
    * nothing: water has no dominant macro.
    */
   readonly primaryMacro?: PrimaryMacro;
+  /**
+   * Whether these macros were measured before or after cooking. Rice is 360
+   * kcal/100 g dry and about 130 cooked, so without this nobody can tell whether
+   * to weigh it dry or cooked.
+   */
+  readonly preparation?: Preparation;
 }
 
 /** Lists the whole catalog, ordered by id. */

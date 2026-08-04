@@ -2,6 +2,7 @@ package dev.diegobarrioh.forma.application;
 
 import dev.diegobarrioh.forma.domain.EquivalentPortion;
 import dev.diegobarrioh.forma.domain.FoodItem;
+import dev.diegobarrioh.forma.domain.Preparation;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -93,7 +94,21 @@ public class FoodEquivalenceService {
         equivalence,
         EquivalentPortion.of(
             source, target, equivalence.basis(), equivalence.sourceReferenceG().doubleValue()),
-        target.name());
+        target.name(),
+        // Reported rather than refused: the grams are right whichever states these are in, and what
+        // is off is what they mean. This is the hole the "100 g arroz = 250 g patata" discrepancy
+        // pointed into, so a screen showing that swap can now say the two are not comparable.
+        Preparation.comparable(preparationOf(source), preparationOf(target)));
+  }
+
+  /**
+   * The state a food's numbers describe, or null while nobody has said.
+   *
+   * <p>Read from the catalog rather than carried on {@link FoodItem}: the nutrition domain computes
+   * with macros and has no business knowing about kitchens, and this is the one caller that does.
+   */
+  private Preparation preparationOf(FoodItem food) {
+    return foods.preparationOf(food.id());
   }
 
   private FoodItem requireFood(String foodId) {

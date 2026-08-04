@@ -44,6 +44,7 @@ class FoodCatalogControllerTest {
         new BigDecimal("2.0"),
         new BigDecimal("1.2"),
         "CARBOHIDRATO",
+        null,
         null);
   }
 
@@ -61,6 +62,7 @@ class FoodCatalogControllerTest {
         null,
         null,
         "CARBOHIDRATO",
+        null,
         null);
   }
 
