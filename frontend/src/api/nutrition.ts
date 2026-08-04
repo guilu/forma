@@ -17,7 +17,24 @@ export interface NutritionMeal {
   readonly name: string;
   readonly preferredTime: string;
   readonly optional: boolean;
+  /** What its items add up to, computed by the server against today's catalog. */
+  readonly totals: NutritionTotals;
   readonly items: NutritionItem[];
+}
+
+/**
+ * Computed macro totals.
+ *
+ * <p>Declared late, and that is worth saying: the API has returned these for a day
+ * and for each of its meals since FOR-105, and this file never described them — so
+ * the nutrition page drew invented numbers beside real food for want of a type. The
+ * data was arriving the whole time.
+ */
+export interface NutritionTotals {
+  readonly calories: number;
+  readonly proteinG: number;
+  readonly carbsG: number;
+  readonly fatG: number;
 }
 
 /** Daily macro targets. */
@@ -28,10 +45,19 @@ export interface NutritionTargets {
   readonly fatG: number;
 }
 
-/** A seeded nutrition day: targets plus its ordered meals. */
+/** A day of the plan being followed: what it aims for, what it comes to, and its meals. */
 export interface NutritionDay {
   readonly type: string;
+  /** What the day was ASKED to hit. A decision, and nobody can compute it. */
   readonly targets: NutritionTargets;
+  /** What its meals actually add up to. Not the same thing, and that is the point. */
+  readonly totals: NutritionTotals;
+  readonly targetComparison: {
+    readonly caloriesReached: boolean;
+    readonly proteinReached: boolean;
+    readonly carbsReached: boolean;
+    readonly fatReached: boolean;
+  };
   readonly meals: NutritionMeal[];
 }
 

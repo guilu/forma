@@ -280,3 +280,10 @@
   color: var(--color-text-primary);
   text-decoration: underline;
 }
+
+/* The key-nutrient card carries no bars, so it needs a line saying why a value can be missing. */
+.nutrientsNote {
+  margin: var(--space-3) 0 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
