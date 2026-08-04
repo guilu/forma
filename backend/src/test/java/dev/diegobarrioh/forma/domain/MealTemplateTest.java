@@ -37,6 +37,10 @@ class MealTemplateTest {
             MealType.BREAKFAST,
             MealType.MID_MORNING,
             MealType.LUNCH,
+            // The merienda, added by V53: the plan model needs a name for an afternoon meal, and
+            // MID_MORNING is the wrong half of the day while PRE_WORKOUT claims a training session
+            // a merienda has nothing to do with.
+            MealType.SNACK,
             MealType.PRE_WORKOUT,
             MealType.POST_WORKOUT,
             MealType.DINNER);
