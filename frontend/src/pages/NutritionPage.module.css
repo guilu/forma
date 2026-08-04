@@ -267,3 +267,16 @@
 .quantity {
   color: var(--color-text-muted);
 }
+
+/* V53/V54: the way through to the plan this page is showing a day of. */
+.plansLink {
+  align-self: flex-start;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+}
+
+.plansLink:hover {
+  color: var(--color-text-primary);
+  text-decoration: underline;
+}
