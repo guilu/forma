@@ -2,10 +2,9 @@ package dev.diegobarrioh.forma.application;
 
 import dev.diegobarrioh.forma.domain.FoodItem;
 import dev.diegobarrioh.forma.domain.KeyNutrientTotals;
+import dev.diegobarrioh.forma.domain.MacroTargets;
 import dev.diegobarrioh.forma.domain.MealLog;
 import dev.diegobarrioh.forma.domain.MealLogEntry;
-import dev.diegobarrioh.forma.domain.NutritionDayCatalog;
-import dev.diegobarrioh.forma.domain.NutritionDayTemplate;
 import dev.diegobarrioh.forma.domain.NutritionDayType;
 import dev.diegobarrioh.forma.domain.NutritionDayTypeResolver;
 import dev.diegobarrioh.forma.domain.NutritionTotals;
@@ -25,13 +24,17 @@ import org.springframework.stereotype.Service;
  * constant (removed by this slice). Never logs entry contents (personal health data) — see method
  * javadoc.
  *
- * <p><b>Plan-target resolution (FOR-128).</b> {@link #consumption} resolves {@code date} to a
- * {@link NutritionDayType} via {@link NutritionDayTypeResolver} (which itself reuses the shared
- * training day-classification — no duplicated policy, no circular dependency on any training
- * service), looks up that type's {@link NutritionDayTemplate} in {@link NutritionDayCatalog}, and
- * compares it to the day's consumed totals via {@link TargetComparison#of}. {@code target}/{@code
- * comparison} are {@code null} only if the catalog has no template for the resolved type — a
- * fail-safe for a closed, always-seeded enum, not an expected runtime path.
+ * <p><b>Plan-target resolution (FOR-128, moved onto real plans by V53/V54).</b> {@link
+ * #consumption} resolves {@code date} to a {@link NutritionDayType} via {@link
+ * NutritionDayTypeResolver} (which itself reuses the shared training day-classification — no
+ * duplicated policy, no circular dependency on any training service), asks {@link DayTargetSource}
+ * what the caller's ACTIVE PLAN targets for that kind of day, and compares it to the day's consumed
+ * totals via {@link TargetComparison#of}.
+ *
+ * <p>That target used to come from three constants compiled into the jar, identical for every
+ * account. It now comes from a plan somebody owns and can edit, which makes {@code target}/{@code
+ * comparison} genuinely {@code null} when there is no active plan — an ordinary state for a new
+ * account, not the fail-safe it was.
  *
  * <p><b>Key nutrients (FOR-134).</b> A catalog entry's key nutrients come from the resolved {@link
  * FoodItem}; a free entry's are optional caller input, validated non-negative when present. {@link
@@ -46,16 +49,19 @@ public class MealLogService {
   private final Clock clock;
   private final CurrentUserProvider currentUserProvider;
   private final FoodCatalogService foods;
+  private final DayTargetSource planTargets;
 
   public MealLogService(
       MealLogRepository repository,
       Clock clock,
       CurrentUserProvider currentUserProvider,
-      FoodCatalogService foods) {
+      FoodCatalogService foods,
+      DayTargetSource planTargets) {
     this.repository = repository;
     this.clock = clock;
     this.currentUserProvider = currentUserProvider;
     this.foods = foods;
+    this.planTargets = planTargets;
   }
 
   /**
@@ -152,9 +158,12 @@ public class MealLogService {
     KeyNutrientTotals keyNutrients = log.consumedKeyNutrients();
 
     NutritionDayType dayType = NutritionDayTypeResolver.resolve(date);
-    NutritionDayTemplate target =
-        NutritionDayCatalog.findByType(dayType, foods).map(day -> day.template()).orElse(null);
-    TargetComparison comparison = target == null ? null : TargetComparison.of(consumed, target);
+    // The target comes from the user's ACTIVE PLAN rather than from constants in the jar (V53/V54).
+    // Same shape of answer as before — a target for this kind of day, or null — but it is now a
+    // target somebody can edit, and null is now a real state (no plan yet) rather than a fail-safe.
+    MacroTargets target =
+        planTargets.targetsForDayType(currentUserProvider.currentUserId(), dayType).orElse(null);
+    TargetComparison comparison = TargetComparison.of(consumed, target);
 
     return new DayConsumption(date, dayType, consumed, keyNutrients, target, comparison, stored);
   }

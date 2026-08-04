@@ -10,8 +10,7 @@ import org.junit.jupiter.api.Test;
  */
 class TargetComparisonTest {
 
-  private static final NutritionDayTemplate TARGET =
-      new NutritionDayTemplate(NutritionDayType.RUNNING, 2600, 160, 320, 70, null);
+  private static final MacroTargets TARGET = new MacroTargets(2600, 160.0, 320.0, 70.0);
 
   @Test
   void reportsAllReachedWhenTotalsMeetTargets() {
@@ -33,5 +32,20 @@ class TargetComparisonTest {
     assertThat(comparison.proteinReached()).isFalse(); // 140 < 160
     assertThat(comparison.carbsReached()).isTrue(); // 320 == 320
     assertThat(comparison.fatReached()).isTrue(); // 70 == 70
+  }
+
+  /**
+   * A target nobody completed produces no comparison at all.
+   *
+   * <p>All four or nothing: reporting three macros and staying silent on the fourth would be read
+   * as "the fourth is fine", which is a different claim from "nobody set one".
+   */
+  @Test
+  void reportsNothingWhenAMacroHasNoTarget() {
+    NutritionTotals totals = new NutritionTotals(2600, 165.0, 330.0, 72.0);
+
+    assertThat(TargetComparison.of(totals, MacroTargets.none())).isNull();
+    assertThat(TargetComparison.of(totals, new MacroTargets(2600, 160.0, 320.0, null))).isNull();
+    assertThat(TargetComparison.of(totals, null)).isNull();
   }
 }

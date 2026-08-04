@@ -1,7 +1,7 @@
 package dev.diegobarrioh.forma.application;
 
 import dev.diegobarrioh.forma.domain.KeyNutrientTotals;
-import dev.diegobarrioh.forma.domain.NutritionDayTemplate;
+import dev.diegobarrioh.forma.domain.MacroTargets;
 import dev.diegobarrioh.forma.domain.NutritionDayType;
 import dev.diegobarrioh.forma.domain.NutritionTotals;
 import dev.diegobarrioh.forma.domain.TargetComparison;
@@ -16,11 +16,13 @@ import java.util.List;
  *
  * <p>{@code dayType} is always resolved from {@code date} (FOR-128 {@code
  * NutritionDayTypeResolver}, reusing the shared {@code WeeklyTrainingDayPolicy} — no duplicated
- * policy). {@code target}/{@code comparison} are derived from that day type's {@code
- * NutritionDayTemplate} and are {@code null} only if the (closed, always-seeded) catalog has no
- * template for the resolved type — a fail-safe that should not happen in practice, not a crash
- * (spec FOR-127/FOR-128 edge case: "Day with no plan target → return consumed totals with
- * null/omitted comparison, not an error").
+ * policy). {@code target}/{@code comparison} come from the user's ACTIVE PLAN (V53/V54) since that
+ * plan stopped being three constants in Java: the day of that kind in the plan, with its targets
+ * resolved down the day → plan → profile chain. Both are {@code null} when the user has no active
+ * plan, or has one whose targets nobody has completed — which is a real state now rather than the
+ * fail-safe it used to be, and the documented answer to it stays the same (spec FOR-127/FOR-128
+ * edge case: "Day with no plan target → return consumed totals with null/omitted comparison, not an
+ * error").
  *
  * @param date the day this read model covers
  * @param dayType the date's resolved {@link NutritionDayType} (FOR-128)
@@ -28,7 +30,8 @@ import java.util.List;
  * @param keyNutrients the day's consumed key-nutrient totals (FOR-134), derived fresh from {@code
  *     entries} via {@code MealLog#consumedKeyNutrients} — zeroed (never null) for an empty day, and
  *     otherwise null per-nutrient if any contributing entry lacks that nutrient (documented rule)
- * @param target the day type's plan target, or {@code null} if none can be resolved
+ * @param target the effective target for that kind of day, or {@code null} when the user has no
+ *     active plan or nobody has set all four macros anywhere down the chain
  * @param comparison consumed-vs-target comparison, or {@code null} when {@code target} is {@code
  *     null}
  * @param entries the day's logged entries, in the order they were logged
@@ -38,6 +41,6 @@ public record DayConsumption(
     NutritionDayType dayType,
     NutritionTotals consumed,
     KeyNutrientTotals keyNutrients,
-    NutritionDayTemplate target,
+    MacroTargets target,
     TargetComparison comparison,
     List<StoredMealLogEntry> entries) {}

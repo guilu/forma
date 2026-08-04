@@ -8,22 +8,20 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import dev.diegobarrioh.forma.application.CurrentUserProvider;
 import dev.diegobarrioh.forma.application.DayConsumption;
 import dev.diegobarrioh.forma.application.HydrationService;
 import dev.diegobarrioh.forma.application.MealLogService;
-import dev.diegobarrioh.forma.application.NutritionCalculationService;
-import dev.diegobarrioh.forma.application.NutritionDayCatalogService;
+import dev.diegobarrioh.forma.application.NutritionPlanReader;
 import dev.diegobarrioh.forma.application.StoredMealLogEntry;
 import dev.diegobarrioh.forma.application.UserProfileService;
 import dev.diegobarrioh.forma.application.ValidationException;
 import dev.diegobarrioh.forma.domain.KeyNutrientTotals;
+import dev.diegobarrioh.forma.domain.MacroTargets;
 import dev.diegobarrioh.forma.domain.MealLogEntry;
 import dev.diegobarrioh.forma.domain.MealType;
-import dev.diegobarrioh.forma.domain.NutritionDayCatalog;
-import dev.diegobarrioh.forma.domain.NutritionDayTemplate;
 import dev.diegobarrioh.forma.domain.NutritionDayType;
 import dev.diegobarrioh.forma.domain.NutritionTotals;
-import dev.diegobarrioh.forma.domain.SeededFoods;
 import dev.diegobarrioh.forma.domain.TargetComparison;
 import dev.diegobarrioh.forma.support.WebMvcAuthTestConfig;
 import java.time.LocalDate;
@@ -46,10 +44,24 @@ import org.springframework.test.web.servlet.MockMvc;
 @Import(WebMvcAuthTestConfig.class)
 class MealLogControllerTest {
 
+  /**
+   * What the plan asks of each kind of day.
+   *
+   * <p>Plain figures now. They used to be pulled out of NutritionDayCatalog, which V54 deleted when
+   * plans moved into the database — and pulling them from there was always slightly circular, since
+   * that catalog computed each day's target from that day's own meals. What matters to this test is
+   * only that a target arrives and is rendered, not where it came from.
+   */
+  private static final MacroTargets STRENGTH_TARGET = new MacroTargets(2400, 170.0, 250.0, 70.0);
+
+  private static final MacroTargets RUNNING_TARGET = new MacroTargets(2600, 160.0, 320.0, 65.0);
+
+  private static final MacroTargets REST_TARGET = new MacroTargets(2100, 165.0, 190.0, 75.0);
+
   @Autowired private MockMvc mockMvc;
   @MockBean private MealLogService mealLogService;
-  @MockBean private NutritionDayCatalogService nutritionDayCatalogService;
-  @MockBean private NutritionCalculationService nutritionCalculationService;
+  @MockBean private NutritionPlanReader nutritionPlanReader;
+  @MockBean private CurrentUserProvider currentUserProvider;
   @MockBean private HydrationService hydrationService;
   @MockBean private UserProfileService profileService;
 
@@ -193,10 +205,7 @@ class MealLogControllerTest {
   @Test
   void consumptionBeforeAnyLogReturns200WithZeroedConsumedNeverA404() throws Exception {
     // 2026-07-15 is a Wednesday -> STRENGTH day (FOR-128), but this test only asserts consumed.
-    NutritionDayTemplate strengthTemplate =
-        NutritionDayCatalog.findByType(NutritionDayType.STRENGTH, SeededFoods.LOOKUP)
-            .orElseThrow()
-            .template();
+    MacroTargets strengthTemplate = STRENGTH_TARGET;
     NutritionTotals zeroed = new NutritionTotals(0, 0.0, 0.0, 0.0);
     when(mealLogService.consumption(eq(LocalDate.of(2026, 7, 15))))
         .thenReturn(
@@ -228,10 +237,7 @@ class MealLogControllerTest {
             "Pollo (pechuga)",
             "chicken",
             new NutritionTotals(600, 40.0, 60.0, 20.0));
-    NutritionDayTemplate strengthTemplate =
-        NutritionDayCatalog.findByType(NutritionDayType.STRENGTH, SeededFoods.LOOKUP)
-            .orElseThrow()
-            .template();
+    MacroTargets strengthTemplate = STRENGTH_TARGET;
     NutritionTotals consumed = new NutritionTotals(600, 40.0, 60.0, 20.0);
     KeyNutrientTotals keyNutrients = new KeyNutrientTotals(22.0, 40.0, 1800, 12.0);
     when(mealLogService.consumption(eq(LocalDate.of(2026, 7, 15))))
@@ -254,7 +260,7 @@ class MealLogControllerTest {
         .andExpect(jsonPath("$.keyNutrients.sugarsG").value(40.0))
         .andExpect(jsonPath("$.keyNutrients.sodiumMg").value(1800))
         .andExpect(jsonPath("$.keyNutrients.saturatedFatG").value(12.0))
-        .andExpect(jsonPath("$.target.kcal").value(strengthTemplate.targetCalories()))
+        .andExpect(jsonPath("$.target.kcal").value(STRENGTH_TARGET.calories()))
         .andExpect(jsonPath("$.comparison.caloriesReached").value(false))
         .andExpect(jsonPath("$.entries[0].id").value("entry-1"))
         .andExpect(jsonPath("$.entries[0].mealType").value("LUNCH"))
@@ -264,10 +270,7 @@ class MealLogControllerTest {
 
   @Test
   void consumptionOnARunningDayReturnsTheRunningTemplateTarget() throws Exception {
-    NutritionDayTemplate runningTemplate =
-        NutritionDayCatalog.findByType(NutritionDayType.RUNNING, SeededFoods.LOOKUP)
-            .orElseThrow()
-            .template();
+    MacroTargets runningTemplate = RUNNING_TARGET;
     NutritionTotals zeroed = new NutritionTotals(0, 0.0, 0.0, 0.0);
     when(mealLogService.consumption(eq(LocalDate.of(2026, 7, 18)))) // Saturday
         .thenReturn(
@@ -284,15 +287,12 @@ class MealLogControllerTest {
         .perform(get("/api/v1/nutrition/consumption").param("date", "2026-07-18"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.dayType").value("RUNNING"))
-        .andExpect(jsonPath("$.target.kcal").value(runningTemplate.targetCalories()));
+        .andExpect(jsonPath("$.target.kcal").value(RUNNING_TARGET.calories()));
   }
 
   @Test
   void consumptionOnARestDayReturnsTheRestTemplateTarget() throws Exception {
-    NutritionDayTemplate restTemplate =
-        NutritionDayCatalog.findByType(NutritionDayType.REST, SeededFoods.LOOKUP)
-            .orElseThrow()
-            .template();
+    MacroTargets restTemplate = REST_TARGET;
     NutritionTotals zeroed = new NutritionTotals(0, 0.0, 0.0, 0.0);
     when(mealLogService.consumption(eq(LocalDate.of(2026, 7, 19)))) // Sunday
         .thenReturn(
@@ -309,7 +309,7 @@ class MealLogControllerTest {
         .perform(get("/api/v1/nutrition/consumption").param("date", "2026-07-19"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.dayType").value("REST"))
-        .andExpect(jsonPath("$.target.kcal").value(restTemplate.targetCalories()));
+        .andExpect(jsonPath("$.target.kcal").value(REST_TARGET.calories()));
   }
 
   @Test

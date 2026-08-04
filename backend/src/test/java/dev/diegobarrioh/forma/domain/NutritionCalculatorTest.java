@@ -4,8 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 
-import java.time.LocalTime;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -35,55 +33,34 @@ class NutritionCalculatorTest {
     return id -> Optional.ofNullable(byId.get(id));
   }
 
-  private static MealTemplate meal(List<MealItem> items) {
-    return new MealTemplate(
-        NutritionDayType.RUNNING, MealType.BREAKFAST, "Desayuno", LocalTime.of(8, 0), items, null);
+  @Test
+  void scalesAFoodByItsGrams() {
+    // oats 60 g (0.6x), values from the FOR-152 reseeded catalog.
+    NutritionTotals totals = NutritionCalculator.itemTotals(new MealItem("oats", 60), FOODS);
+
+    assertThat(totals.calories()).isEqualTo(222); // 370 * 0.6
+    assertThat(totals.proteinG()).isCloseTo(7.8, within(1e-9));
+    assertThat(totals.carbsG()).isCloseTo(36.0, within(1e-9));
+    assertThat(totals.fatG()).isCloseTo(4.2, within(1e-9));
   }
 
+  /**
+   * Callers sum these themselves, and the rounding is why it is worth saying so: each item rounds
+   * to a tenth, so a caller adding twenty of them accumulates at most a tenth of a gram of drift.
+   * The meal- and day-level helpers that used to round once at the end went with the {@code
+   * MealTemplate} the in-code day catalog was built from (V54).
+   */
   @Test
-  void computesMealTotalsFromFoodsAndGrams() {
-    // oats 60 g (0.6×) + banana 120 g (1.2×), values from the FOR-152 reseeded catalog.
-    MealTemplate breakfast = meal(List.of(new MealItem("oats", 60), new MealItem("banana", 120)));
+  void roundsEachItemToATenth() {
+    NutritionTotals banana = NutritionCalculator.itemTotals(new MealItem("banana", 120), FOODS);
 
-    NutritionTotals totals = NutritionCalculator.mealTotals(breakfast, FOODS);
-
-    // kcal 370*0.6 + 89*1.2 = 222 + 106.8 = 328.8 -> 329
-    assertThat(totals.calories()).isEqualTo(329);
-    assertThat(totals.proteinG()).isCloseTo(9.1, within(1e-9)); // 7.8 + 1.32 = 9.12 -> 9.1
-    assertThat(totals.carbsG()).isCloseTo(63.6, within(1e-9)); // 36.0 + 27.6 = 63.6
-    assertThat(totals.fatG()).isCloseTo(4.6, within(1e-9)); // 4.2 + 0.36 = 4.56 -> 4.6
-  }
-
-  @Test
-  void dayTotalsSumRawWithoutAccumulatedRoundingError() {
-    // Same two foods split across two meals: the day sums raw contributions, not rounded meals.
-    MealTemplate m1 = meal(List.of(new MealItem("oats", 60)));
-    MealTemplate m2 = meal(List.of(new MealItem("banana", 120)));
-
-    NutritionTotals day = NutritionCalculator.dayTotals(List.of(m1, m2), FOODS);
-
-    // Raw day sum: 7.8 + 1.32 = 9.12 -> 9.1 (the code always sums raw then rounds once, per
-    // NutritionCalculator's contract, regardless of whether it happens to match per-meal rounding
-    // for these particular values).
-    assertThat(day.proteinG()).isCloseTo(9.1, within(1e-9));
-    assertThat(day.calories()).isEqualTo(329);
-  }
-
-  @Test
-  void emptyDayIsAllZero() {
-    NutritionTotals day = NutritionCalculator.dayTotals(List.of(), FOODS);
-
-    assertThat(day.calories()).isZero();
-    assertThat(day.proteinG()).isZero();
-    assertThat(day.carbsG()).isZero();
-    assertThat(day.fatG()).isZero();
+    assertThat(banana.proteinG()).isCloseTo(1.3, within(1e-9)); // 1.1 * 1.2 = 1.32 -> 1.3
+    assertThat(banana.calories()).isEqualTo(107); // 89 * 1.2 = 106.8 -> 107
   }
 
   @Test
   void rejectsAnUnknownFoodId() {
-    MealTemplate bad = meal(List.of(new MealItem("ghost-food", 100)));
-
-    assertThatThrownBy(() -> NutritionCalculator.mealTotals(bad, FOODS))
+    assertThatThrownBy(() -> NutritionCalculator.itemTotals(new MealItem("ghost-food", 100), FOODS))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("ghost-food");
   }
@@ -92,9 +69,7 @@ class NutritionCalculatorTest {
   void rejectsAMissingLookup() {
     // A null lookup is a programming error, not "no foods": failing loudly here stops it being
     // mistaken for an unknown-food rejection further down.
-    MealTemplate breakfast = meal(List.of(new MealItem("oats", 60)));
-
-    assertThatThrownBy(() -> NutritionCalculator.mealTotals(breakfast, null))
+    assertThatThrownBy(() -> NutritionCalculator.itemTotals(new MealItem("oats", 60), null))
         .isInstanceOf(NullPointerException.class)
         .hasMessageContaining("foods");
   }

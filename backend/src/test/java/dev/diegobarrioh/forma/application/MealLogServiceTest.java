@@ -4,12 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.diegobarrioh.forma.domain.KeyNutrientTotals;
+import dev.diegobarrioh.forma.domain.MacroTargets;
 import dev.diegobarrioh.forma.domain.MealLogEntry;
 import dev.diegobarrioh.forma.domain.MealType;
-import dev.diegobarrioh.forma.domain.NutritionDayCatalog;
 import dev.diegobarrioh.forma.domain.NutritionDayType;
 import dev.diegobarrioh.forma.domain.NutritionTotals;
-import dev.diegobarrioh.forma.domain.SeededFoods;
 import dev.diegobarrioh.forma.domain.TargetComparison;
 import java.time.Clock;
 import java.time.Instant;
@@ -22,10 +21,10 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Application use case tests for {@link MealLogService} (FOR-127/FOR-128): logging catalog/free
- * entries (owner-scoped, ADR-002), input validation, and the day consumption read model reusing
- * {@link NutritionCalculationService}-style calculators plus the FOR-128 date -&gt; {@link
- * NutritionDayType} resolver so {@code target}/{@code comparison} populate. Hand-rolled in-memory
- * fake (no Spring, no Mockito), matching {@code GoalServiceTest} (FOR-125).
+ * entries (owner-scoped, ADR-002), input validation, and the day consumption read model reusing the
+ * shared per-item calculator plus the FOR-128 date -&gt; {@link NutritionDayType} resolver, with
+ * the day's target coming from the caller's plan through {@link DayTargetSource} (V53/V54).
+ * Hand-rolled in-memory fake (no Spring, no Mockito), matching {@code GoalServiceTest} (FOR-125).
  */
 class MealLogServiceTest {
 
@@ -39,9 +38,32 @@ class MealLogServiceTest {
 
   private static final UUID USER_ID = UUID.randomUUID();
 
+  /**
+   * A stand-in plan, one target per kind of day.
+   *
+   * <p>A lambda because {@link DayTargetSource} asks for one thing. Before V54 this came from
+   * NutritionDayCatalog, three constants in the jar — which also meant this test could not describe
+   * an account with no plan at all, because no such account could exist.
+   */
+  private static final MacroTargets STRENGTH_TARGET = new MacroTargets(2400, 170.0, 250.0, 70.0);
+
+  private static final MacroTargets RUNNING_TARGET = new MacroTargets(2600, 160.0, 320.0, 65.0);
+
+  private static final MacroTargets REST_TARGET = new MacroTargets(2100, 165.0, 190.0, 75.0);
+
+  private static final DayTargetSource PLAN_TARGETS =
+      (userId, type) ->
+          java.util.Optional.of(
+              switch (type) {
+                case STRENGTH -> STRENGTH_TARGET;
+                case RUNNING -> RUNNING_TARGET;
+                case REST -> REST_TARGET;
+              });
+
   private final RecordingMealLogRepository repository = new RecordingMealLogRepository();
   private final MealLogService service =
-      new MealLogService(repository, FIXED_CLOCK, () -> USER_ID, SeededFoodCatalog.service());
+      new MealLogService(
+          repository, FIXED_CLOCK, () -> USER_ID, SeededFoodCatalog.service(), PLAN_TARGETS);
 
   @Test
   void logsACatalogEntryResolvingFoodAndPortionsToMacrosViaTheCalculator() {
@@ -149,25 +171,21 @@ class MealLogServiceTest {
   }
 
   @Test
-  void consumptionOnAStrengthDayPopulatesTargetAndComparisonFromTheStrengthTemplate() {
+  void consumptionOnAStrengthDayTakesItsTargetFromThePlansStrengthDay() {
     service.log(LogMealCommand.free(TODAY, MealType.BREAKFAST, "A", 100, 10.0, 10.0, 10.0));
 
     DayConsumption consumption = service.consumption(TODAY);
 
-    var expectedTemplate =
-        NutritionDayCatalog.findByType(NutritionDayType.STRENGTH, SeededFoods.LOOKUP).orElseThrow();
-    assertThat(consumption.target()).isEqualTo(expectedTemplate.template());
+    assertThat(consumption.target()).isEqualTo(STRENGTH_TARGET);
     assertThat(consumption.comparison())
-        .isEqualTo(TargetComparison.of(consumption.consumed(), expectedTemplate.template()));
+        .isEqualTo(TargetComparison.of(consumption.consumed(), STRENGTH_TARGET));
   }
 
   @Test
-  void consumptionOnARestDayPopulatesTargetFromTheRestTemplate() {
+  void consumptionOnARestDayTakesItsTargetFromThePlansRestDay() {
     DayConsumption consumption = service.consumption(A_FRIDAY);
 
-    var expectedTemplate =
-        NutritionDayCatalog.findByType(NutritionDayType.REST, SeededFoods.LOOKUP).orElseThrow();
-    assertThat(consumption.target()).isEqualTo(expectedTemplate.template());
+    assertThat(consumption.target()).isEqualTo(REST_TARGET);
     assertThat(consumption.comparison()).isNotNull();
   }
 
@@ -179,6 +197,32 @@ class MealLogServiceTest {
     assertThat(consumption.entries()).isEmpty();
     assertThat(consumption.target()).isNotNull();
     assertThat(consumption.comparison()).isNotNull();
+  }
+
+  /**
+   * An account with no plan reports what it ate and no target, rather than a target it never set.
+   *
+   * <p>Not reachable before V54: every account shared three constants compiled into the jar, so a
+   * null target was documented as a fail-safe that should never happen. Now it is monday morning
+   * for anybody who has just registered.
+   */
+  @Test
+  void consumptionWithoutAnActivePlanReportsNoTargetAndNoComparison() {
+    MealLogService planless =
+        new MealLogService(
+            repository,
+            FIXED_CLOCK,
+            () -> USER_ID,
+            SeededFoodCatalog.service(),
+            (userId, type) -> java.util.Optional.empty());
+    planless.log(LogMealCommand.free(TODAY, MealType.BREAKFAST, "A", 100, 10.0, 10.0, 10.0));
+
+    DayConsumption consumption = planless.consumption(TODAY);
+
+    assertThat(consumption.consumed().calories()).isEqualTo(100);
+    assertThat(consumption.dayType()).isEqualTo(NutritionDayType.STRENGTH);
+    assertThat(consumption.target()).isNull();
+    assertThat(consumption.comparison()).isNull();
   }
 
   @Test

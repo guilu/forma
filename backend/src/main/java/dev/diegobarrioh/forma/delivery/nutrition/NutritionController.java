@@ -1,10 +1,10 @@
 package dev.diegobarrioh.forma.delivery.nutrition;
 
+import dev.diegobarrioh.forma.application.CurrentUserProvider;
 import dev.diegobarrioh.forma.application.HydrationService;
 import dev.diegobarrioh.forma.application.MealLogService;
 import dev.diegobarrioh.forma.application.NotFoundException;
-import dev.diegobarrioh.forma.application.NutritionCalculationService;
-import dev.diegobarrioh.forma.application.NutritionDayCatalogService;
+import dev.diegobarrioh.forma.application.NutritionPlanReader;
 import dev.diegobarrioh.forma.application.UserProfileService;
 import dev.diegobarrioh.forma.delivery.ApiPaths;
 import dev.diegobarrioh.forma.domain.NutritionDayType;
@@ -23,14 +23,15 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Nutrition REST endpoint: {@code GET /api/v1/nutrition/days/{type}} (FOR-34, enriched FOR-105)
- * returns a seeded nutrition day (targets + ordered meals) for the given day type, with per-meal
- * and per-day macro totals and the target comparison. {@code POST /api/v1/nutrition/log} and {@code
- * GET /api/v1/nutrition/consumption} (FOR-127) log a consumed meal entry and read the day's
- * consumption vs plan target, reusing the same FOR-32 calculators — macros only.
+ * Nutrition REST endpoint: {@code GET /api/v1/nutrition/days/{type}} (FOR-34, enriched FOR-105,
+ * moved onto real plans by V53/V54) returns the day of that kind from the caller's active plan
+ * (targets + ordered meals), with per-meal and per-day macro totals and the target comparison.
+ * {@code POST /api/v1/nutrition/log} and {@code GET /api/v1/nutrition/consumption} (FOR-127) log a
+ * consumed meal entry and read the day's consumption vs plan target, reusing the same FOR-32
+ * calculators — macros only.
  *
  * <p>Thin controller (ADR-001, ADR-005): maps service results to delivery read models, delegating
- * macro totals to {@link NutritionCalculationService}, meal-log use cases to {@link
+ * the plan and its arithmetic to {@link NutritionPlanReader}, meal-log use cases to {@link
  * MealLogService}, and hydration use cases to {@link HydrationService} (no business logic here).
  * {@code POST /nutrition/hydration} and {@code GET /nutrition/hydration} (FOR-130) log water intake
  * and read the hydration progress read model (total vs daily goal). An unknown day type yields
@@ -42,29 +43,35 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping(ApiPaths.V1 + "/nutrition")
 public class NutritionController {
 
-  private final NutritionDayCatalogService service;
-  private final NutritionCalculationService calculationService;
+  private final NutritionPlanReader planReader;
+  private final CurrentUserProvider currentUserProvider;
   private final MealLogService mealLogService;
   private final HydrationService hydrationService;
   private final UserProfileService profileService;
 
   public NutritionController(
-      NutritionDayCatalogService service,
-      NutritionCalculationService calculationService,
+      NutritionPlanReader planReader,
+      CurrentUserProvider currentUserProvider,
       MealLogService mealLogService,
       HydrationService hydrationService,
       UserProfileService profileService) {
-    this.service = service;
-    this.calculationService = calculationService;
+    this.planReader = planReader;
+    this.currentUserProvider = currentUserProvider;
     this.mealLogService = mealLogService;
     this.hydrationService = hydrationService;
     this.profileService = profileService;
   }
 
   /**
-   * Returns the seeded nutrition day for the given type (e.g. {@code running}). First-run gate
-   * (FOR-169): before onboarding, the in-code day catalog is not exposed as the user's active plan
-   * — the endpoint returns an empty day so the UI shows its "configure your plan" empty state.
+   * Returns the day of this kind from the caller's active plan (V53/V54).
+   *
+   * <p>First-run gate (FOR-169): before onboarding, the endpoint returns an empty day so the UI
+   * shows its "configure your plan" empty state.
+   *
+   * <p>An account with no active plan gets that same empty day rather than a 404. Before V54 this
+   * could only be an unknown day TYPE, which is a client error; now it is far more often "this
+   * account has not made a plan yet", which is an ordinary state of the app and not something to
+   * report as missing. An unknown type is still a 404, from {@link #parseType}.
    */
   @GetMapping("/days/{type}")
   public NutritionDayResponse day(@PathVariable String type) {
@@ -72,10 +79,10 @@ public class NutritionController {
     if (!profileService.firstRunCompleted()) {
       return NutritionDayResponse.empty(dayType);
     }
-    return service
-        .findByType(dayType)
-        .map(day -> NutritionDayResponse.from(day, calculationService))
-        .orElseThrow(() -> new NotFoundException("No existe el día de nutrición: " + type));
+    return planReader
+        .findDayByType(currentUserProvider.currentUserId(), dayType)
+        .map(day -> NutritionDayResponse.from(dayType, day))
+        .orElseGet(() -> NutritionDayResponse.empty(dayType));
   }
 
   /** Logs a consumed meal entry (catalog food + portions, or free/ad-hoc macros) (FOR-127). */
