@@ -14,7 +14,10 @@ import java.time.LocalDate;
  * @param date the day the meal was consumed
  * @param mealType the meal type
  * @param foodItemId FOR-30 catalog food id, or {@code null} for a free entry
- * @param portions number of the food's default servings, or {@code null} for a free entry
+ * @param portions number of the food's DEFAULT servings, or {@code null}
+ * @param grams the amount in grams, or {@code null}
+ * @param servingId a named portion of that food (V49) that {@code portions} counts, or {@code null}
+ *     to count the default one
  * @param name free entry's name, or {@code null} for a catalog entry (the catalog food's name is
  *     used instead)
  * @param kcal free entry's calories, or {@code null} for a catalog entry
@@ -37,6 +40,8 @@ public record LogMealCommand(
     MealType mealType,
     String foodItemId,
     Double portions,
+    Double grams,
+    String servingId,
     String name,
     Integer kcal,
     Double proteinG,
@@ -48,14 +53,38 @@ public record LogMealCommand(
     Double saturatedFatG,
     java.util.UUID plannedMealId) {
 
-  /** Builds a catalog-entry command. */
+  /** Builds a catalog-entry command counting the food's DEFAULT portion. */
   public static LogMealCommand catalog(
       LocalDate date, MealType mealType, String foodItemId, double portions) {
+    return catalogEntry(date, mealType, foodItemId, portions, null, null);
+  }
+
+  /** Builds a catalog-entry command measured in grams, which every food can be. */
+  public static LogMealCommand catalogGrams(
+      LocalDate date, MealType mealType, String foodItemId, double grams) {
+    return catalogEntry(date, mealType, foodItemId, null, grams, null);
+  }
+
+  /** Builds a catalog-entry command counting a named portion of that food (V49). */
+  public static LogMealCommand catalogServings(
+      LocalDate date, MealType mealType, String foodItemId, String servingId, double count) {
+    return catalogEntry(date, mealType, foodItemId, count, null, servingId);
+  }
+
+  private static LogMealCommand catalogEntry(
+      LocalDate date,
+      MealType mealType,
+      String foodItemId,
+      Double portions,
+      Double grams,
+      String servingId) {
     return new LogMealCommand(
         date,
         mealType,
         foodItemId,
         portions,
+        grams,
+        servingId,
         null,
         null,
         null,
@@ -78,7 +107,7 @@ public record LogMealCommand(
       double carbsG,
       double fatG) {
     return new LogMealCommand(
-        date, mealType, null, null, name, kcal, proteinG, carbsG, fatG, null, null, null, null,
-        null);
+        date, mealType, null, null, null, null, name, kcal, proteinG, carbsG, fatG, null, null,
+        null, null, null);
   }
 }

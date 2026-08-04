@@ -115,7 +115,24 @@ public record MealLogEntry(
       throw new IllegalArgumentException(
           "cannot log by portions: food has no defaultServingG: " + food.id());
     }
-    int quantityG = (int) Math.round(portions * food.defaultServingG());
+    return fromCatalogGrams(
+        date, mealType, food, (int) Math.round(portions * food.defaultServingG()));
+  }
+
+  /**
+   * Builds an entry from a resolved food and an amount in grams.
+   *
+   * <p>The general form, and the one {@link #fromCatalog} now works through. Portions were the only
+   * way to log a catalog food until the plan model gave every food named portions of its own (V49):
+   * a banana can be small, medium or large, and "1.5 default servings" is not a number anybody
+   * thinks in. Grams are what the arithmetic runs on either way, so the caller resolves whatever it
+   * was told — grams, a named portion, or a count of default ones — and hands the result here.
+   *
+   * @param quantityG must be strictly positive
+   */
+  public static MealLogEntry fromCatalogGrams(
+      LocalDate date, MealType mealType, FoodItem food, int quantityG) {
+    Objects.requireNonNull(food, "food must not be null");
     if (quantityG <= 0) {
       quantityG = 1;
     }

@@ -7,6 +7,20 @@ import { getNutritionDay, type NutritionDay } from '../api/nutrition';
 
 vi.mock('../api/nutrition', () => ({
   getNutritionDay: vi.fn(),
+  // The page now also carries the meal log (FOR-127's endpoints, reachable at last). These tests
+  // are about the PLAN half of the page, so the log answers with an empty day and stays out of the
+  // way; MealLogPanel.test.tsx covers it on its own.
+  getDayConsumption: vi.fn().mockResolvedValue({
+    date: '2026-08-04',
+    dayType: null,
+    consumed: { kcal: 0, proteinG: 0, carbsG: 0, fatG: 0 },
+    keyNutrients: { fiberG: null, sugarsG: null, sodiumMg: null, saturatedFatG: null },
+    target: null,
+    comparison: null,
+    entries: [],
+    plannedMeals: [],
+  }),
+  logMeal: vi.fn(),
 }));
 
 const getDayMock = vi.mocked(getNutritionDay);

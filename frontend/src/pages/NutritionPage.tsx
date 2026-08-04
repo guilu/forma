@@ -9,6 +9,7 @@ import { LoadingState } from '../components/LoadingState';
 import { MacroRing } from '../components/MacroRing';
 import { WaterTracker } from '../components/WaterTracker';
 import { getNutritionDay, type NutritionDay, type NutritionMeal } from '../api/nutrition';
+import { MealLogPanel } from './nutrition/MealLogPanel';
 import { ProgressBar } from './dashboard/ProgressBar';
 import { formatShortDate } from './dateLabel';
 import styles from './NutritionPage.module.css';
@@ -92,6 +93,16 @@ const PLACEHOLDER = {
 /** Static date label for the visual-only navigator (no date-parameterised API). */
 const TODAY_LABEL = formatShortDate(new Date());
 
+/**
+ * Today, for the meal log.
+ *
+ * <p>The consumption endpoint IS date-parameterised, unlike the plan-day one above whose navigator
+ * is still decorative. Wiring the navigator to move both is a bigger change than this screen: the
+ * plan side would need a way to ask "which kind of day was the fourth of August", which it has no
+ * endpoint for.
+ */
+const TODAY_ISO = new Date().toISOString().slice(0, 10);
+
 export function NutritionPage() {
   const [dayType, setDayType] = useState<DayType>('running');
   const [retryToken, setRetryToken] = useState(0);
@@ -134,6 +145,10 @@ export function NutritionPage() {
           </span>
         </div>
       </header>
+
+      {/* What was actually eaten, beside what the plan asked for. The endpoints behind it have
+          existed since FOR-127 with no screen calling them. */}
+      <MealLogPanel date={TODAY_ISO} />
 
       <DayTypeSelector value={dayType} onChange={setDayType} />
 

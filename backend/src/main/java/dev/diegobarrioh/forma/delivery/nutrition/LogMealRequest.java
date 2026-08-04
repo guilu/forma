@@ -34,7 +34,11 @@ import java.time.LocalDate;
  * @param plannedMealId which planned meal this answers (V55); optional, and null for the ordinary
  *     unplanned entry
  * @param foodItemId FOR-30 catalog food id; provide with {@code portions} for a catalog entry
- * @param portions number of the food's default servings; must be positive when present
+ * @param portions how many portions; of {@code servingId} when given, of the food's default one
+ *     otherwise. Must be positive when present
+ * @param grams the amount in grams; must be positive when present. The way to log a food that has
+ *     no portion recorded at all, which used to be impossible
+ * @param servingId a named portion of that food (V49) that {@code portions} counts
  * @param name free entry's name; provide with the macro fields for a free/ad-hoc entry
  * @param kcal free entry's calories; must be non-negative when present
  * @param proteinG free entry's protein grams; must be non-negative when present
@@ -52,6 +56,8 @@ public record LogMealRequest(
     @NotBlank String mealType,
     String foodItemId,
     @Positive Double portions,
+    @Positive Double grams,
+    String servingId,
     String name,
     @PositiveOrZero Integer kcal,
     @PositiveOrZero Double proteinG,
@@ -70,6 +76,8 @@ public record LogMealRequest(
         mealTypeOrFail(),
         foodItemId,
         portions,
+        grams,
+        servingId,
         name,
         kcal,
         proteinG,

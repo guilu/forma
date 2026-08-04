@@ -57,6 +57,7 @@ public class MealLogService {
   private final FoodCatalogService foods;
   private final PlannedDaySource planDays;
   private final PlannedMealOwnership plannedMeals;
+  private final ServingLookup servings;
 
   public MealLogService(
       MealLogRepository repository,
@@ -64,13 +65,15 @@ public class MealLogService {
       CurrentUserProvider currentUserProvider,
       FoodCatalogService foods,
       PlannedDaySource planDays,
-      PlannedMealOwnership plannedMeals) {
+      PlannedMealOwnership plannedMeals,
+      ServingLookup servings) {
     this.repository = repository;
     this.clock = clock;
     this.currentUserProvider = currentUserProvider;
     this.foods = foods;
     this.planDays = planDays;
     this.plannedMeals = plannedMeals;
+    this.servings = servings;
   }
 
   /**
@@ -100,16 +103,14 @@ public class MealLogService {
       throw new ValidationException(
           "Provide either foodItemId+portions or free-item macros, not both");
     } else if (hasCatalogRef) {
-      if (command.portions() == null || command.portions() <= 0) {
-        throw new ValidationException("portions must be strictly positive");
-      }
       FoodItem food =
           foods
               .findById(command.foodItemId())
               .orElseThrow(
                   () -> new ValidationException("unknown foodItemId: " + command.foodItemId()));
       entry =
-          MealLogEntry.fromCatalog(command.date(), command.mealType(), food, command.portions());
+          MealLogEntry.fromCatalogGrams(
+              command.date(), command.mealType(), food, (int) Math.round(gramsOf(command, food)));
     } else if (hasFreeMacros) {
       if (command.name() == null || command.name().isBlank()) {
         throw new ValidationException("name is required for a free/ad-hoc entry");
@@ -194,6 +195,56 @@ public class MealLogService {
         comparison,
         stored,
         adherence(planned.orElse(null), stored, date));
+  }
+
+  /**
+   * How many grams a logged catalog entry comes to.
+   *
+   * <p>Three ways to say the same thing, in the order somebody would mean them:
+   *
+   * <ul>
+   *   <li>grams, which every food can be measured in;
+   *   <li>a count of a NAMED portion of that food (V49) — "1 plátano mediano";
+   *   <li>a count of the food's DEFAULT portion, which is all this endpoint understood until now.
+   * </ul>
+   *
+   * <p>The same vocabulary the plan uses for its own lines, and deliberately: a planned meal and
+   * the entry that answers it should be sayable the same way, or logging what the plan asked for
+   * means translating it first.
+   *
+   * <p>A food with no portion at all used to be unloggable — {@code fromCatalog} threw, and nothing
+   * caught it, so it reached the caller as a 500. Now it is loggable in grams, and asking for
+   * portions of a food that has none is a sentence rather than a server error.
+   */
+  private double gramsOf(LogMealCommand command, FoodItem food) {
+    if (command.grams() != null) {
+      if (command.grams() <= 0) {
+        throw new ValidationException("Los gramos deben ser mayores que cero.");
+      }
+      return command.grams();
+    }
+    if (command.portions() == null || command.portions() <= 0) {
+      throw new ValidationException("Indica cuántos gramos o cuántas raciones.");
+    }
+    if (command.servingId() != null) {
+      FoodServing serving =
+          servings
+              .find(command.servingId())
+              .orElseThrow(
+                  () -> new ValidationException("No existe la ración: " + command.servingId()));
+      // A portion counts portions of ITS food. The same rule the plan enforces, for the same
+      // reason: two slices of olive oil is arithmetically fine and means nothing.
+      if (!serving.foodId().equals(food.id())) {
+        throw new ValidationException(
+            "La ración " + command.servingId() + " no es de " + food.id() + ".");
+      }
+      return command.portions() * serving.grams().doubleValue();
+    }
+    if (food.defaultServingG() == null) {
+      throw new ValidationException(
+          "Ese alimento no tiene ninguna ración definida; indica los gramos.");
+    }
+    return command.portions() * food.defaultServingG();
   }
 
   /**

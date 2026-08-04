@@ -72,6 +72,15 @@ class MealLogServiceTest {
   /** Nothing in any plan is the caller's, which is what an account with no plan looks like. */
   private static final PlannedMealOwnership OWNS_NOTHING = (userId, mealId) -> false;
 
+  /** One named portion, to log "un plátano mediano" with. */
+  private static final ServingLookup SERVINGS =
+      id ->
+          "banana-md".equals(id)
+              ? java.util.Optional.of(
+                  new FoodServing(
+                      "banana-md", "banana", "Mediano", new java.math.BigDecimal("120.0"), true, 0))
+              : java.util.Optional.empty();
+
   private final RecordingMealLogRepository repository = new RecordingMealLogRepository();
   private final MealLogService service =
       new MealLogService(
@@ -80,7 +89,8 @@ class MealLogServiceTest {
           () -> USER_ID,
           SeededFoodCatalog.service(),
           PLAN_DAYS,
-          OWNS_NOTHING);
+          OWNS_NOTHING,
+          SERVINGS);
 
   @Test
   void logsACatalogEntryResolvingFoodAndPortionsToMacrosViaTheCalculator() {
@@ -122,6 +132,8 @@ class MealLogServiceTest {
             null,
             null,
             null,
+            null,
+            null,
             null);
 
     assertThatThrownBy(() -> service.log(command)).isInstanceOf(ValidationException.class);
@@ -135,6 +147,8 @@ class MealLogServiceTest {
             MealType.LUNCH,
             "oats",
             1.0,
+            null,
+            null,
             "Avena",
             90,
             5.0,
@@ -246,7 +260,8 @@ class MealLogServiceTest {
             () -> USER_ID,
             SeededFoodCatalog.service(),
             (userId, type) -> java.util.Optional.empty(),
-            OWNS_NOTHING);
+            OWNS_NOTHING,
+            SERVINGS);
     planless.log(LogMealCommand.free(TODAY, MealType.BREAKFAST, "A", 100, 10.0, 10.0, 10.0));
 
     DayConsumption consumption = planless.consumption(TODAY);
@@ -300,6 +315,8 @@ class MealLogServiceTest {
             MealType.MID_MORNING,
             null,
             null,
+            null,
+            null,
             "Barrita",
             180,
             6.0,
@@ -323,6 +340,8 @@ class MealLogServiceTest {
         new LogMealCommand(
             TODAY,
             MealType.BREAKFAST,
+            null,
+            null,
             null,
             null,
             "A",
@@ -353,6 +372,8 @@ class MealLogServiceTest {
             MealType.LUNCH,
             null,
             null,
+            null,
+            null,
             "X",
             90,
             5.0,
@@ -371,7 +392,22 @@ class MealLogServiceTest {
   void rejectsANegativeFreeEntrySodium() {
     LogMealCommand command =
         new LogMealCommand(
-            TODAY, MealType.LUNCH, null, null, "X", 90, 5.0, 8.0, 3.0, null, null, -1, null, null);
+            TODAY,
+            MealType.LUNCH,
+            null,
+            null,
+            null,
+            null,
+            "X",
+            90,
+            5.0,
+            8.0,
+            3.0,
+            null,
+            null,
+            -1,
+            null,
+            null);
 
     assertThatThrownBy(() -> service.log(command)).isInstanceOf(ValidationException.class);
   }
@@ -397,4 +433,74 @@ class MealLogServiceTest {
   }
 
   private record OwnedEntry(UUID userId, StoredMealLogEntry stored) {}
+
+  // --- Ways of saying how much (V49 portions reached the log at last) ---
+
+  /** Grams, which every food can be measured in — including one with no portion recorded at all. */
+  @Test
+  void logsACatalogEntryByGrams() {
+    StoredMealLogEntry stored =
+        service.log(LogMealCommand.catalogGrams(TODAY, MealType.LUNCH, "oats", 120));
+
+    assertThat(stored.entry().totals().calories()).isEqualTo(444); // 370 * 1.2
+  }
+
+  /**
+   * A named portion, which is how anybody actually says it: one medium banana, not 1.5 servings.
+   */
+  @Test
+  void logsACatalogEntryByANamedPortion() {
+    StoredMealLogEntry stored =
+        service.log(
+            LogMealCommand.catalogServings(TODAY, MealType.SNACK, "banana", "banana-md", 1));
+
+    // 120 g of banana at 89 kcal/100 g.
+    assertThat(stored.entry().totals().calories()).isEqualTo(107);
+  }
+
+  /** A portion counts portions of ITS food; two slices of oats is not a thing. */
+  @Test
+  void refusesAPortionThatBelongsToAnotherFood() {
+    assertThatThrownBy(
+            () ->
+                service.log(
+                    LogMealCommand.catalogServings(TODAY, MealType.LUNCH, "oats", "banana-md", 1)))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("no es de oats");
+  }
+
+  @Test
+  void refusesAPortionNobodyWrote() {
+    assertThatThrownBy(
+            () ->
+                service.log(
+                    LogMealCommand.catalogServings(TODAY, MealType.LUNCH, "oats", "fantasma", 1)))
+        .isInstanceOf(ValidationException.class);
+  }
+
+  /** Neither grams nor portions is not an amount. */
+  @Test
+  void refusesACatalogEntryWithNoAmountAtAll() {
+    assertThatThrownBy(
+            () ->
+                service.log(
+                    new LogMealCommand(
+                        TODAY,
+                        MealType.LUNCH,
+                        "oats",
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null)))
+        .isInstanceOf(ValidationException.class);
+  }
 }
