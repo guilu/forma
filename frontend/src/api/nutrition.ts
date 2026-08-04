@@ -185,3 +185,51 @@ export function logMeal(body: LogMealBody, client: ApiClient = apiClient): Promi
     body: JSON.stringify(body),
   });
 }
+
+/**
+ * Hydration (FOR-130).
+ *
+ * <p>These have existed since FOR-130 and nothing had ever called them: the water
+ * tile on the dashboard rendered four invented numbers while its own comment said
+ * no hydration endpoint existed. It did.
+ */
+export interface HydrationProgress {
+  readonly date: string;
+  /** Everything logged that day, in millilitres. */
+  readonly totalMl: number;
+  /**
+   * The daily goal in millilitres, from the profile — or `null` if it cannot be
+   * resolved at all, which the API documents and does not currently produce.
+   */
+  readonly goalMl: number | null;
+  /** `totalMl / goalMl`, uncapped: 1.2 means twenty per cent past the goal. */
+  readonly progress: number | null;
+}
+
+export interface LoggedWaterIntake {
+  readonly id: string;
+  readonly date: string;
+  readonly volumeMl: number;
+}
+
+/** What was drunk on a day, against the goal. Never 404s — an empty day is zero. */
+export function getHydration(
+  date: string,
+  client: ApiClient = apiClient,
+): Promise<HydrationProgress> {
+  return client.request<HydrationProgress>(
+    `/api/v1/nutrition/hydration?date=${encodeURIComponent(date)}`,
+  );
+}
+
+/** Records a volume drunk. Millilitres, because that is what the API counts in. */
+export function logWaterIntake(
+  date: string,
+  volumeMl: number,
+  client: ApiClient = apiClient,
+): Promise<LoggedWaterIntake> {
+  return client.request<LoggedWaterIntake>('/api/v1/nutrition/hydration', {
+    method: 'POST',
+    body: JSON.stringify({ date, volumeMl }),
+  });
+}

@@ -51,9 +51,6 @@ import styles from './NutritionPage.module.css';
  *   <li>Meal photographs — no image data on any endpoint.
  *   <li>A date-parameterised plan. The log is per-date; the plan side can only
  *       be asked by day KIND, so the header's date navigator stays decorative.
- *   <li>The water tile, which {@code WaterTracker} still fills with invented
- *       numbers while claiming no hydration endpoint exists. One does, since
- *       FOR-130 — a separate block and a separate fix.
  * </ul>
  *
  * <p>Day-type selection: the API takes an explicit `type` path segment
