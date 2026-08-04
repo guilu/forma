@@ -31,6 +31,10 @@ import java.util.Optional;
  * @param totals the entry's macro totals, computed once at logging time
  * @param keyNutrients the entry's key-nutrient totals (FOR-134), computed once at logging time;
  *     never {@code null} itself, but each of its four fields may be {@code null} (unknown)
+ * @param plannedMealId which planned meal this was (V55), or {@code null} — which is the ordinary
+ *     case and means "I ate this, and no plan said to". Not a status: whether a planned meal was
+ *     eaten, skipped or still pending is answered by looking for entries pointing at it, and would
+ *     go stale the moment it were stored
  */
 public record MealLogEntry(
     LocalDate date,
@@ -38,7 +42,8 @@ public record MealLogEntry(
     String name,
     String foodItemId,
     NutritionTotals totals,
-    KeyNutrientTotals keyNutrients) {
+    KeyNutrientTotals keyNutrients,
+    java.util.UUID plannedMealId) {
 
   public MealLogEntry {
     Objects.requireNonNull(date, "date must not be null");
@@ -56,7 +61,33 @@ public record MealLogEntry(
    */
   public MealLogEntry(
       LocalDate date, MealType mealType, String name, String foodItemId, NutritionTotals totals) {
-    this(date, mealType, name, foodItemId, totals, KeyNutrientTotals.empty());
+    this(date, mealType, name, foodItemId, totals, KeyNutrientTotals.empty(), null);
+  }
+
+  /**
+   * Convenience constructor for an entry that no plan asked for, which is most of them (V55).
+   *
+   * <p>Kept so every call site written before plans were persisted still reads the same: an entry
+   * without a planned meal is the ordinary case, not a special one.
+   */
+  public MealLogEntry(
+      LocalDate date,
+      MealType mealType,
+      String name,
+      String foodItemId,
+      NutritionTotals totals,
+      KeyNutrientTotals keyNutrients) {
+    this(date, mealType, name, foodItemId, totals, keyNutrients, null);
+  }
+
+  /**
+   * The same entry, recorded as having been the given planned meal (V55).
+   *
+   * <p>Attached after the entry is built rather than threaded through every factory: what was eaten
+   * and which planned meal it answers are separate facts, and the macros do not change either way.
+   */
+  public MealLogEntry withPlannedMeal(java.util.UUID plannedMealId) {
+    return new MealLogEntry(date, mealType, name, foodItemId, totals, keyNutrients, plannedMealId);
   }
 
   /**

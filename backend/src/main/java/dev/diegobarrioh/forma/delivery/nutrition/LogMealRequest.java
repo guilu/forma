@@ -1,10 +1,10 @@
 package dev.diegobarrioh.forma.delivery.nutrition;
 
 import dev.diegobarrioh.forma.application.LogMealCommand;
+import dev.diegobarrioh.forma.application.ValidationException;
 import dev.diegobarrioh.forma.domain.MealType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import java.time.LocalDate;
@@ -29,7 +29,10 @@ import java.time.LocalDate;
  * present, same {@code @PositiveOrZero} pattern as the existing macro fields.
  *
  * @param date required, ISO-8601
- * @param mealType required; one of the {@link MealType} names
+ * @param mealType required; one of the {@link MealType} names, read from the enum rather than
+ *     re-listed here
+ * @param plannedMealId which planned meal this answers (V55); optional, and null for the ordinary
+ *     unplanned entry
  * @param foodItemId FOR-30 catalog food id; provide with {@code portions} for a catalog entry
  * @param portions number of the food's default servings; must be positive when present
  * @param name free entry's name; provide with the macro fields for a free/ad-hoc entry
@@ -46,12 +49,7 @@ import java.time.LocalDate;
  */
 public record LogMealRequest(
     @NotNull LocalDate date,
-    @NotBlank
-        @Pattern(
-            regexp = "BREAKFAST|MID_MORNING|LUNCH|PRE_WORKOUT|POST_WORKOUT|DINNER",
-            message =
-                "must be one of BREAKFAST, MID_MORNING, LUNCH, PRE_WORKOUT, POST_WORKOUT, DINNER")
-        String mealType,
+    @NotBlank String mealType,
     String foodItemId,
     @Positive Double portions,
     String name,
@@ -62,13 +60,14 @@ public record LogMealRequest(
     @PositiveOrZero Double fiberG,
     @PositiveOrZero Double sugarsG,
     @PositiveOrZero Integer sodiumMg,
-    @PositiveOrZero Double saturatedFatG) {
+    @PositiveOrZero Double saturatedFatG,
+    java.util.UUID plannedMealId) {
 
   /** Builds the application-layer command; cross-field validation happens in the service. */
   public LogMealCommand toCommand() {
     return new LogMealCommand(
         date,
-        MealType.valueOf(mealType),
+        mealTypeOrFail(),
         foodItemId,
         portions,
         name,
@@ -79,6 +78,27 @@ public record LogMealRequest(
         fiberG,
         sugarsG,
         sodiumMg,
-        saturatedFatG);
+        saturatedFatG,
+        plannedMealId);
+  }
+
+  /**
+   * The meal type, read from the enum itself.
+   *
+   * <p>This used to be an {@code @Pattern} listing the six names, and that list went stale the day
+   * V53 added SNACK: the merienda existed in the domain, in the database and in the plan editor,
+   * and could not be logged. A regular expression naming a closed enum's values is the same fact in
+   * two places, and the copy has no way of knowing when the original changes. Reading the enum
+   * cannot go stale.
+   *
+   * @throws ValidationException when the name is not one of {@link MealType}'s — a 400, not the 500
+   *     a bare {@code valueOf} would raise
+   */
+  private MealType mealTypeOrFail() {
+    try {
+      return MealType.valueOf(mealType.trim().toUpperCase(java.util.Locale.ROOT));
+    } catch (IllegalArgumentException unknown) {
+      throw new ValidationException("Momento del día desconocido: " + mealType);
+    }
   }
 }

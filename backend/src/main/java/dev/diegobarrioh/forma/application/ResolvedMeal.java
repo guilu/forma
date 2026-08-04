@@ -13,6 +13,7 @@ import java.util.List;
  * POST_WORKOUT} written into the delivery layer — a decision about one specific seeded plan,
  * applied to every plan there would ever be.
  *
+ * @param id the planned meal's own id (V55), so an entry logged against it can be matched back
  * @param mealType which moment of the day this is
  * @param name what to call it
  * @param scheduledTime when it is meant to happen; null when nobody fixed one
@@ -23,6 +24,7 @@ import java.util.List;
  * @param items its lines
  */
 public record ResolvedMeal(
+    java.util.UUID id,
     MealType mealType,
     String name,
     LocalTime scheduledTime,

@@ -61,7 +61,8 @@ class MealLogConsumptionPersistenceTest {
             3.0,
             12.0,
             90,
-            2.0));
+            2.0,
+            null));
 
     DayConsumption consumption = service.consumption(DAY);
 

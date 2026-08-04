@@ -40,7 +40,8 @@ public record DayConsumptionResponse(
     KeyNutrients keyNutrients,
     Macros target,
     Comparison comparison,
-    List<EntrySummary> entries) {
+    List<EntrySummary> entries,
+    List<PlannedMeal> plannedMeals) {
 
   public record Macros(int kcal, double proteinG, double carbsG, double fatG) {
     static Macros from(NutritionTotals totals) {
@@ -50,9 +51,11 @@ public record DayConsumptionResponse(
     /**
      * The effective target of the user's active plan.
      *
-     * <p>Only ever built when every macro is present: the caller passes {@code null} otherwise, and
-     * a partial target rendered with zeros would read as "aim for nothing" rather than "nobody
-     * decided".
+     * <p>Only ever built when every macro is present — see {@link DayConsumptionResponse#from},
+     * which pairs it with the comparison. A partial target has no honest shape here: rendered with
+     * zeros it would read as "aim for nothing", and these four fields are primitives, so unboxing a
+     * null one throws. That is not hypothetical; it shipped, and the plan chain produces exactly
+     * such a target whenever a profile has some figures and not others.
      */
     static Macros from(MacroTargets target) {
       return new Macros(target.calories(), target.proteinG(), target.carbsG(), target.fatG());
@@ -89,6 +92,26 @@ public record DayConsumptionResponse(
 
   public record EntrySummary(String id, String mealType, String name, int kcal) {}
 
+  /**
+   * One of the day's planned meals and what has become of it (V55): EATEN, PENDING or SKIPPED.
+   *
+   * <p>Derived on every read from the entries pointing at it. The source document asks for a stored
+   * status column; each of these is a question the rows already answer, and a stored one would go
+   * stale by itself as the day goes on.
+   */
+  public record PlannedMeal(
+      String id, String mealType, String name, boolean optional, String state) {
+
+    static PlannedMeal from(dev.diegobarrioh.forma.application.PlannedMealStatus status) {
+      return new PlannedMeal(
+          status.plannedMealId(),
+          status.mealType().name(),
+          status.name(),
+          status.optional(),
+          status.state().name());
+    }
+  }
+
   public static DayConsumptionResponse from(DayConsumption view) {
     List<EntrySummary> entries =
         view.entries().stream()
@@ -100,8 +123,11 @@ public record DayConsumptionResponse(
                         stored.entry().name(),
                         stored.entry().totals().calories()))
             .toList();
-    Macros target = view.target() == null ? null : Macros.from(view.target());
+    // Target and comparison stand or fall together, and the comparison is the stricter test: it
+    // exists only when all four macros do. Reporting a target the comparison could not be made
+    // against would leave the client with a number and no way to know it was incomplete.
     Comparison comparison = view.comparison() == null ? null : Comparison.from(view.comparison());
+    Macros target = comparison == null ? null : Macros.from(view.target());
     return new DayConsumptionResponse(
         view.date(),
         view.dayType() == null ? null : view.dayType().name(),
@@ -109,6 +135,7 @@ public record DayConsumptionResponse(
         KeyNutrients.from(view.keyNutrients()),
         target,
         comparison,
-        entries);
+        entries,
+        view.plannedMeals().stream().map(PlannedMeal::from).toList());
   }
 }

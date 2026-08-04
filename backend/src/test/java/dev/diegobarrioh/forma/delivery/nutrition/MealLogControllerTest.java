@@ -163,6 +163,36 @@ class MealLogControllerTest {
 
   @Test
   void rejectsAnUnknownMealTypeWithValidationError() throws Exception {
+    // This used to send SNACK, which was genuinely unknown: the request's @Pattern listed the six
+    // meal types by hand and V53 added a seventh without it. So the merienda existed in the domain,
+    // in the database and in the plan editor, and this test pinned the fact that it could not be
+    // logged. The pattern is gone — the enum is read directly — and the unknown type here is one
+    // that really is unknown.
+    mockMvc
+        .perform(
+            post("/api/v1/nutrition/log")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"date\":\"2026-07-15\",\"mealType\":\"SEGUNDO_ALMUERZO\","
+                        + "\"foodItemId\":\"oats\",\"portions\":1}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+  }
+
+  /** And the merienda, which V53 added and nothing could log until V55 removed the second list. */
+  @Test
+  void acceptsTheMeriendaThePatternUsedToReject() throws Exception {
+    when(mealLogService.log(any()))
+        .thenReturn(
+            new StoredMealLogEntry(
+                "entry-merienda",
+                new MealLogEntry(
+                    LocalDate.of(2026, 7, 15),
+                    MealType.SNACK,
+                    "Copos de avena",
+                    "oats",
+                    new NutritionTotals(222, 7.8, 36.0, 4.2))));
+
     mockMvc
         .perform(
             post("/api/v1/nutrition/log")
@@ -170,9 +200,8 @@ class MealLogControllerTest {
                 .content(
                     "{\"date\":\"2026-07-15\",\"mealType\":\"SNACK\",\"foodItemId\":\"oats\","
                         + "\"portions\":1}"))
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
-        .andExpect(jsonPath("$.details[0].field").value("mealType"));
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.mealType").value("SNACK"));
   }
 
   @Test
@@ -216,6 +245,7 @@ class MealLogControllerTest {
                 KeyNutrientTotals.zero(),
                 strengthTemplate,
                 TargetComparison.of(zeroed, strengthTemplate),
+                List.of(),
                 List.of()));
 
     mockMvc
@@ -249,7 +279,8 @@ class MealLogControllerTest {
                 keyNutrients,
                 strengthTemplate,
                 TargetComparison.of(consumed, strengthTemplate),
-                List.of(new StoredMealLogEntry("entry-1", entry))));
+                List.of(new StoredMealLogEntry("entry-1", entry)),
+                List.of()));
 
     mockMvc
         .perform(get("/api/v1/nutrition/consumption").param("date", "2026-07-15"))
@@ -281,6 +312,7 @@ class MealLogControllerTest {
                 KeyNutrientTotals.zero(),
                 runningTemplate,
                 TargetComparison.of(zeroed, runningTemplate),
+                List.of(),
                 List.of()));
 
     mockMvc
@@ -303,6 +335,7 @@ class MealLogControllerTest {
                 KeyNutrientTotals.zero(),
                 restTemplate,
                 TargetComparison.of(zeroed, restTemplate),
+                List.of(),
                 List.of()));
 
     mockMvc
@@ -332,7 +365,8 @@ class MealLogControllerTest {
                 KeyNutrientTotals.zero(),
                 null,
                 null,
-                List.of(new StoredMealLogEntry("entry-1", entry))));
+                List.of(new StoredMealLogEntry("entry-1", entry)),
+                List.of()));
 
     mockMvc
         .perform(get("/api/v1/nutrition/consumption").param("date", "2026-07-15"))

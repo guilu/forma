@@ -36,4 +36,12 @@ public interface NutritionPlanRepository {
 
   /** Removes a plan and everything under it. */
   void delete(UUID userId, UUID planId);
+
+  /**
+   * Whether a planned meal sits under one of this user's plans (V55).
+   *
+   * <p>A count rather than a load: the caller wants a yes or a no, and hydrating four twelve-week
+   * plans to answer it would read some three hundred rows to compare one id.
+   */
+  boolean ownsPlannedMeal(UUID userId, UUID plannedMealId);
 }

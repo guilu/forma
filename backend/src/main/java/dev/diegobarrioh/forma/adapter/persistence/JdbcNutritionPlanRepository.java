@@ -190,6 +190,20 @@ public class JdbcNutritionPlanRepository implements NutritionPlanRepository {
     jdbcTemplate.update("DELETE FROM nutrition_plan WHERE id = ? AND user_id = ?", planId, userId);
   }
 
+  @Override
+  public boolean ownsPlannedMeal(UUID userId, UUID plannedMealId) {
+    Integer found =
+        jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM nutrition_plan_meal m"
+                + " JOIN nutrition_plan_day d ON m.nutrition_plan_day_id = d.id"
+                + " JOIN nutrition_plan p ON d.nutrition_plan_id = p.id"
+                + " WHERE m.id = ? AND p.user_id = ?",
+            Integer.class,
+            plannedMealId,
+            userId);
+    return found != null && found > 0;
+  }
+
   private void deleteStructure(UUID planId) {
     jdbcTemplate.update(
         "DELETE FROM nutrition_plan_meal_item WHERE nutrition_plan_meal_id IN"

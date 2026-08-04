@@ -27,6 +27,10 @@ import java.time.LocalDate;
  *     provided
  * @param saturatedFatG free entry's optional saturated fat grams (FOR-134), or {@code null} if not
  *     provided
+ * @param plannedMealId which planned meal this answers (V55), or {@code null} — the ordinary case,
+ *     meaning nothing in any plan asked for it. Independent of the two shapes above: a planned meal
+ *     can be logged from the catalog or as a free entry, and eating something else instead is still
+ *     an answer to it
  */
 public record LogMealCommand(
     LocalDate date,
@@ -41,13 +45,27 @@ public record LogMealCommand(
     Double fiberG,
     Double sugarsG,
     Integer sodiumMg,
-    Double saturatedFatG) {
+    Double saturatedFatG,
+    java.util.UUID plannedMealId) {
 
   /** Builds a catalog-entry command. */
   public static LogMealCommand catalog(
       LocalDate date, MealType mealType, String foodItemId, double portions) {
     return new LogMealCommand(
-        date, mealType, foodItemId, portions, null, null, null, null, null, null, null, null, null);
+        date,
+        mealType,
+        foodItemId,
+        portions,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null);
   }
 
   /** Builds a free/ad-hoc entry command with no key nutrients. */
@@ -60,6 +78,7 @@ public record LogMealCommand(
       double carbsG,
       double fatG) {
     return new LogMealCommand(
-        date, mealType, null, null, name, kcal, proteinG, carbsG, fatG, null, null, null, null);
+        date, mealType, null, null, name, kcal, proteinG, carbsG, fatG, null, null, null, null,
+        null);
   }
 }
