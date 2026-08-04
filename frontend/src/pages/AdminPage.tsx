@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from '../components/Button';
 import { CategoriesPanel } from './admin/CategoriesPanel';
 import { FoodsPanel } from './admin/FoodsPanel';
+import { RecipesPanel } from './admin/RecipesPanel';
 import { StorePanel } from './admin/StorePanel';
 import styles from './AdminPage.module.css';
 
@@ -18,6 +19,10 @@ import styles from './AdminPage.module.css';
  * <p>The shopping tab covers every chain rather than one tab per supermarket:
  * the store is a column, so Carrefour will be rows in this same table.
  *
+ * <p>**Recetas** is a dish made of catalog foods. Every figure on it is computed:
+ * a recipe stores no nutrition, so its macros are the sum over its ingredients of
+ * what the food catalog holds, and they move when somebody corrects a food.
+ *
  * <p>**Categorías** is the odd one out: it edits and never creates. Which
  * categories exist is fixed by the domain enums and the database's CHECK
  * constraints; only how each one is written and drawn is data.
@@ -30,6 +35,9 @@ import styles from './AdminPage.module.css';
 const TABS = [
   { key: 'macros', label: 'Macros', action: '+ Alimento' },
   { key: 'compra', label: 'Compra', action: '+ Producto' },
+  // Recetas are built FROM the food catalog, so they sit after it: a dish cannot
+  // exist before the foods it is made of.
+  { key: 'recetas', label: 'Recetas', action: '+ Receta' },
   // No add action: the set of categories is closed by the database's own
   // constraints, so this tab renames and re-draws them and nothing else.
   { key: 'categorias', label: 'Categorías', action: undefined },
@@ -91,6 +99,9 @@ export function AdminPage() {
         aria-labelledby={`tab-${active}`}
         className={styles.panel}
       >
+        {active === 'recetas' && (
+          <RecipesPanel creating={creating} onCreateClose={() => setCreating(false)} />
+        )}
         {active === 'macros' && (
           <FoodsPanel creating={creating} onCreateClose={() => setCreating(false)} />
         )}

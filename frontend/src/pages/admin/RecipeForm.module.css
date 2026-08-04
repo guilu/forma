@@ -1,0 +1,87 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.head {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.head > :first-child {
+  flex: 2;
+}
+
+.head > :last-child {
+  flex: 1;
+}
+
+.ingredients {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+.legend {
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0;
+  margin-bottom: 0.25rem;
+}
+
+.line {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.line > :first-child {
+  flex: 2;
+}
+
+.line > :nth-child(2) {
+  flex: 1;
+}
+
+/*
+ * What the dish adds up to, right under the ingredients that produce it. Shown
+ * only while editing something that exists: a draft has no totals until the
+ * server has summed it, and inventing them here would be a second copy of the
+ * arithmetic.
+ */
+.totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.totalsLabel {
+  color: var(--color-text-muted);
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.error {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: 0.875rem;
+}
+
+.hint {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+}
