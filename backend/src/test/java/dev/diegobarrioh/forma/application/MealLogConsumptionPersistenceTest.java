@@ -53,6 +53,8 @@ class MealLogConsumptionPersistenceTest {
             MealType.MID_MORNING,
             null,
             null,
+            null,
+            null,
             "Barrita",
             180,
             6.0,

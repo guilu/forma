@@ -7,12 +7,13 @@ import java.util.Optional;
  * Port over a food's portions (V49). Owned by the application side; adapters implement it
  * (ADR-001).
  */
-public interface FoodServingRepository {
+public interface FoodServingRepository extends ServingLookup {
 
   /** Every portion of a food, default first and then in its own order. */
   List<FoodServing> findByFood(String foodId);
 
   /** One portion by id; empty when nobody wrote it. */
+  @Override
   Optional<FoodServing> find(String id);
 
   /**

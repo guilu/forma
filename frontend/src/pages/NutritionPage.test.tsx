@@ -7,6 +7,20 @@ import { getNutritionDay, type NutritionDay } from '../api/nutrition';
 
 vi.mock('../api/nutrition', () => ({
   getNutritionDay: vi.fn(),
+  // The page now also carries the meal log (FOR-127's endpoints, reachable at last). These tests
+  // are about the PLAN half of the page, so the log answers with an empty day and stays out of the
+  // way; MealLogPanel.test.tsx covers it on its own.
+  getDayConsumption: vi.fn().mockResolvedValue({
+    date: '2026-08-04',
+    dayType: null,
+    consumed: { kcal: 0, proteinG: 0, carbsG: 0, fatG: 0 },
+    keyNutrients: { fiberG: null, sugarsG: null, sodiumMg: null, saturatedFatG: null },
+    target: null,
+    comparison: null,
+    entries: [],
+    plannedMeals: [],
+  }),
+  logMeal: vi.fn(),
 }));
 
 const getDayMock = vi.mocked(getNutritionDay);
@@ -14,12 +28,20 @@ const getDayMock = vi.mocked(getNutritionDay);
 const runningDay: NutritionDay = {
   type: 'RUNNING',
   targets: { calories: 1940, proteinG: 162, carbsG: 271, fatG: 25 },
+  totals: { calories: 1776, proteinG: 62.4, carbsG: 288, fatG: 33.6 },
+  targetComparison: {
+    caloriesReached: false,
+    proteinReached: false,
+    carbsReached: false,
+    fatReached: false,
+  },
   meals: [
     {
       mealType: 'BREAKFAST',
       name: 'Desayuno',
       preferredTime: '08:00',
       optional: false,
+      totals: { calories: 444, proteinG: 15.6, carbsG: 72, fatG: 8.4 },
       items: [
         { food: 'Avena', quantityG: 120 },
         { food: 'Plátano', quantityG: 120 },
@@ -30,6 +52,7 @@ const runningDay: NutritionDay = {
       name: 'Snack pre-carrera',
       preferredTime: '18:00',
       optional: false,
+      totals: { calories: 444, proteinG: 15.6, carbsG: 72, fatG: 8.4 },
       items: [{ food: 'Plátano', quantityG: 120 }],
     },
     {
@@ -37,6 +60,7 @@ const runningDay: NutritionDay = {
       name: 'Recuperación (opcional)',
       preferredTime: '20:00',
       optional: true,
+      totals: { calories: 444, proteinG: 15.6, carbsG: 72, fatG: 8.4 },
       items: [{ food: 'Proteína whey', quantityG: 20 }],
     },
     {
@@ -44,6 +68,7 @@ const runningDay: NutritionDay = {
       name: 'Cena ligera',
       preferredTime: '21:30',
       optional: false,
+      totals: { calories: 444, proteinG: 15.6, carbsG: 72, fatG: 8.4 },
       items: [{ food: 'Pescado blanco', quantityG: 150 }],
     },
   ],
@@ -52,12 +77,20 @@ const runningDay: NutritionDay = {
 const strengthDay: NutritionDay = {
   type: 'STRENGTH',
   targets: { calories: 2200, proteinG: 180, carbsG: 220, fatG: 60 },
+  totals: { calories: 1776, proteinG: 62.4, carbsG: 288, fatG: 33.6 },
+  targetComparison: {
+    caloriesReached: false,
+    proteinReached: false,
+    carbsReached: false,
+    fatReached: false,
+  },
   meals: [
     {
       mealType: 'BREAKFAST',
       name: 'Desayuno de fuerza',
       preferredTime: '08:00',
       optional: false,
+      totals: { calories: 444, proteinG: 15.6, carbsG: 72, fatG: 8.4 },
       items: [{ food: 'Huevos', quantityG: 150 }],
     },
     {
@@ -65,6 +98,7 @@ const strengthDay: NutritionDay = {
       name: 'Cena de fuerza',
       preferredTime: '21:00',
       optional: false,
+      totals: { calories: 444, proteinG: 15.6, carbsG: 72, fatG: 8.4 },
       items: [{ food: 'Pollo', quantityG: 200 }],
     },
   ],
@@ -89,11 +123,12 @@ describe('NutritionPage', () => {
     renderPage();
 
     expect(await screen.findByRole('heading', { name: 'Nutrición', level: 1 })).toBeInTheDocument();
-    // Macro summary: calories target + macro ring grams (no per-meal macros/kcal — not
-    // returned by the API, see NutritionPage.tsx doc comment).
+    // Macro summary: what the day aims for and what its meals come to, both real.
     // Every card here is a direct sibling of the page <h1> (no intervening
     // <h2>), so per FOR-112 each must render as <h2>.
-    expect(screen.getByRole('heading', { name: 'Calorías', level: 2 })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Calorías del plan', level: 2 }),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole('heading', { name: 'Distribución de macros', level: 2 }),
     ).toBeInTheDocument();
@@ -110,21 +145,41 @@ describe('NutritionPage', () => {
     expect(screen.getByText('150 g')).toBeInTheDocument();
   });
 
-  it('renders the FOR-164 tiles: real calorie target + placeholder consumed, water, and key nutrients', async () => {
+  /**
+   * The FOR-164 placeholders are gone, and this test is what they looked like: it used to assert a
+   * fabricated "480 kcal" chip and a "kcal restantes" figure derived from an invented ratio. Both
+   * numbers now come from the API, which had been sending them since FOR-105.
+   */
+  it('shows real figures where the FOR-164 placeholders used to be', async () => {
     getDayMock.mockResolvedValue(runningDay);
 
     renderPage();
 
-    // Real target still present (1940); placeholder consumed shown alongside it.
+    // The day's target, and what its meals actually add up to. Both real, and free to disagree.
     expect(await screen.findByText('1940')).toBeInTheDocument();
-    expect(screen.getByText(/kcal restantes/)).toBeInTheDocument();
-    // Placeholder hydration tile.
+    expect(screen.getByText('1776')).toBeInTheDocument();
+    // 1940 asked for, 1776 on the plate: 164 short, and the page says which way.
+    expect(screen.getByText('164 kcal por debajo del objetivo')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Agua', level: 2 })).toBeInTheDocument();
-    // Placeholder key-nutrients card.
     expect(screen.getByRole('heading', { name: 'Nutrientes clave', level: 2 })).toBeInTheDocument();
     expect(screen.getByText('Fibra')).toBeInTheDocument();
-    // Placeholder per-meal kcal chip on the first meal.
-    expect(screen.getByText('480 kcal')).toBeInTheDocument();
+    // The first meal's own total, from the API rather than from a cycled fixture.
+    expect(screen.getAllByText('444 kcal').length).toBeGreaterThan(0);
+  });
+
+  /**
+   * A key nutrient nobody can compute reads as unknown, never as zero.
+   *
+   * <p>A day's total is null when any single thing eaten has no figure for it (FOR-134): summing
+   * the rest would report a number lower than the truth and look like a measurement.
+   */
+  it('says «sin datos» for a key nutrient rather than showing a zero', async () => {
+    getDayMock.mockResolvedValue(runningDay);
+
+    renderPage();
+
+    expect(await screen.findByText('Fibra')).toBeInTheDocument();
+    expect(screen.getAllByText('Sin datos').length).toBeGreaterThan(0);
   });
 
   it('switches between day types via the selector and refetches the plan', async () => {

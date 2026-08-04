@@ -32,6 +32,17 @@ vi.mock('./api/training', () => ({
 }));
 vi.mock('./api/nutrition', () => ({
   getNutritionDay: vi.fn().mockResolvedValue({ type: 'RUNNING', targets: {}, meals: [] }),
+  getDayConsumption: vi.fn().mockResolvedValue({
+    date: '2026-08-04',
+    dayType: null,
+    consumed: { kcal: 0, proteinG: 0, carbsG: 0, fatG: 0 },
+    keyNutrients: { fiberG: null, sugarsG: null, sodiumMg: null, saturatedFatG: null },
+    target: null,
+    comparison: null,
+    entries: [],
+    plannedMeals: [],
+  }),
+  logMeal: vi.fn(),
 }));
 vi.mock('./api/shopping', () => ({
   getShoppingList: vi
