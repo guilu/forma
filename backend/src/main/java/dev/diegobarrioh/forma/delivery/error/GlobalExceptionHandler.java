@@ -4,6 +4,7 @@ import dev.diegobarrioh.forma.application.ConflictException;
 import dev.diegobarrioh.forma.application.ForbiddenException;
 import dev.diegobarrioh.forma.application.NotFoundException;
 import dev.diegobarrioh.forma.application.OAuthStateException;
+import dev.diegobarrioh.forma.application.PlanImportService;
 import dev.diegobarrioh.forma.application.ProviderOAuthException;
 import dev.diegobarrioh.forma.application.StoreCatalogUnavailableException;
 import dev.diegobarrioh.forma.application.UnauthorizedException;
@@ -52,6 +53,26 @@ public class GlobalExceptionHandler {
         "Request validation failed",
         correlationId(request),
         details);
+  }
+
+  /**
+   * A rejected plan import maps to 400, carrying EVERY problem the file has.
+   *
+   * <p>Its own handler rather than being folded into {@code ValidationException} because that one
+   * carries one sentence and this carries a list — and the list is the point. The thing writing
+   * these files is a language model, and answering it with the first fault turns a five-mistake
+   * file into five round trips. The {@code details} array already exists for exactly this shape.
+   */
+  @ExceptionHandler(PlanImportService.ImportRejected.class)
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  public ApiError handleImportRejected(
+      PlanImportService.ImportRejected ex, HttpServletRequest request) {
+    List<ApiError.FieldValidationError> details =
+        ex.problems().stream()
+            .map(problem -> new ApiError.FieldValidationError(problem.path(), problem.message()))
+            .toList();
+    return ApiError.of(
+        ApiErrorCode.VALIDATION_ERROR, ex.getMessage(), correlationId(request), details);
   }
 
   /**
