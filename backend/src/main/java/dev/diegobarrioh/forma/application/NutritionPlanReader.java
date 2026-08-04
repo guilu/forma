@@ -29,7 +29,7 @@ import org.springframework.stereotype.Service;
  * agree.
  */
 @Service
-public class NutritionPlanReader implements DayTargetSource {
+public class NutritionPlanReader implements PlannedDaySource, PlannedMealOwnership {
 
   private final NutritionPlanService plans;
   private final FoodCatalogService foods;
@@ -83,10 +83,18 @@ public class NutritionPlanReader implements DayTargetSource {
     return plan.days().stream().map(day -> resolve(plan, day)).toList();
   }
 
-  /** What the user's active plan asks of the given kind of day, or empty when there is no plan. */
+  /** What the plan says about that kind of day: its targets, its meals, what it comes to. */
   @Override
-  public Optional<MacroTargets> targetsForDayType(UUID userId, NutritionDayType type) {
-    return findDayByType(userId, type).map(ResolvedDay::targets);
+  public Optional<ResolvedDay> dayOfType(UUID userId, NutritionDayType type) {
+    return findDayByType(userId, type);
+  }
+
+  /**
+   * Whether a planned meal is one of this user's, for the meal log to check before pointing at it.
+   */
+  @Override
+  public boolean ownsPlannedMeal(UUID userId, UUID plannedMealId) {
+    return plans.ownsPlannedMeal(userId, plannedMealId);
   }
 
   private ResolvedDay resolve(NutritionPlan plan, PlanDay day) {
@@ -108,6 +116,7 @@ public class NutritionPlanReader implements DayTargetSource {
   private ResolvedMeal resolve(PlanMeal meal) {
     List<ResolvedItem> items = meal.items().stream().map(this::resolve).toList();
     return new ResolvedMeal(
+        meal.id(),
         meal.mealType(),
         meal.name(),
         meal.scheduledTime(),

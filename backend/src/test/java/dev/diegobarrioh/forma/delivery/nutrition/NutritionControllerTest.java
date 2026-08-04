@@ -164,6 +164,7 @@ class NutritionControllerTest {
   private static ResolvedDay runningDay() {
     ResolvedMeal breakfast =
         new ResolvedMeal(
+            UUID.randomUUID(),
             MealType.BREAKFAST,
             "Desayuno",
             LocalTime.of(8, 0),
@@ -181,6 +182,7 @@ class NutritionControllerTest {
                     null)));
     ResolvedMeal recovery =
         new ResolvedMeal(
+            UUID.randomUUID(),
             MealType.POST_WORKOUT,
             "Recuperación (opcional)",
             LocalTime.of(20, 0),

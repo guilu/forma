@@ -11,6 +11,12 @@ import dev.diegobarrioh.forma.domain.NutritionTotals;
 import dev.diegobarrioh.forma.domain.TargetComparison;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
 /**
@@ -49,19 +55,22 @@ public class MealLogService {
   private final Clock clock;
   private final CurrentUserProvider currentUserProvider;
   private final FoodCatalogService foods;
-  private final DayTargetSource planTargets;
+  private final PlannedDaySource planDays;
+  private final PlannedMealOwnership plannedMeals;
 
   public MealLogService(
       MealLogRepository repository,
       Clock clock,
       CurrentUserProvider currentUserProvider,
       FoodCatalogService foods,
-      DayTargetSource planTargets) {
+      PlannedDaySource planDays,
+      PlannedMealOwnership plannedMeals) {
     this.repository = repository;
     this.clock = clock;
     this.currentUserProvider = currentUserProvider;
     this.foods = foods;
-    this.planTargets = planTargets;
+    this.planDays = planDays;
+    this.plannedMeals = plannedMeals;
   }
 
   /**
@@ -136,7 +145,17 @@ public class MealLogService {
           "Provide either foodItemId+portions or free-item macros (name + kcal/proteinG/carbsG/fatG)");
     }
 
-    return repository.save(currentUserProvider.currentUserId(), entry);
+    UUID userId = currentUserProvider.currentUserId();
+    if (command.plannedMealId() != null) {
+      // Checked here and not left to the foreign key: the database knows the row exists, not whose
+      // it is. Without this, an entry could be attached to somebody else's planned meal and show up
+      // in their adherence.
+      if (!plannedMeals.ownsPlannedMeal(userId, command.plannedMealId())) {
+        throw new ValidationException("No existe esa comida en tu plan.");
+      }
+      entry = entry.withPlannedMeal(command.plannedMealId());
+    }
+    return repository.save(userId, entry);
   }
 
   /**
@@ -161,11 +180,56 @@ public class MealLogService {
     // The target comes from the user's ACTIVE PLAN rather than from constants in the jar (V53/V54).
     // Same shape of answer as before — a target for this kind of day, or null — but it is now a
     // target somebody can edit, and null is now a real state (no plan yet) rather than a fail-safe.
-    MacroTargets target =
-        planTargets.targetsForDayType(currentUserProvider.currentUserId(), dayType).orElse(null);
+    Optional<ResolvedDay> planned =
+        planDays.dayOfType(currentUserProvider.currentUserId(), dayType);
+    MacroTargets target = planned.map(ResolvedDay::targets).orElse(null);
     TargetComparison comparison = TargetComparison.of(consumed, target);
 
-    return new DayConsumption(date, dayType, consumed, keyNutrients, target, comparison, stored);
+    return new DayConsumption(
+        date,
+        dayType,
+        consumed,
+        keyNutrients,
+        target,
+        comparison,
+        stored,
+        adherence(planned.orElse(null), stored, date));
+  }
+
+  /**
+   * Which of the day's planned meals have been eaten (V55).
+   *
+   * <p>Derived from the entries pointing at each one, never stored. PENDING and SKIPPED are the
+   * same absence read against the clock: nothing logged for today is still to come, and nothing
+   * logged for last tuesday was not eaten. A stored status would have needed somebody to turn the
+   * first into the second at midnight.
+   */
+  private List<PlannedMealStatus> adherence(
+      ResolvedDay planned, List<StoredMealLogEntry> entries, LocalDate date) {
+    if (planned == null) {
+      return List.of();
+    }
+    Set<String> eaten =
+        entries.stream()
+            .map(stored -> stored.entry().plannedMealId())
+            .filter(Objects::nonNull)
+            .map(UUID::toString)
+            .collect(Collectors.toSet());
+    boolean dayIsOver = date.isBefore(LocalDate.now(clock));
+    return planned.meals().stream()
+        .filter(meal -> meal.id() != null)
+        .map(
+            meal -> {
+              PlannedMealStatus.State state =
+                  eaten.contains(meal.id().toString())
+                      ? PlannedMealStatus.State.EATEN
+                      : dayIsOver
+                          ? PlannedMealStatus.State.SKIPPED
+                          : PlannedMealStatus.State.PENDING;
+              return new PlannedMealStatus(
+                  meal.id().toString(), meal.name(), meal.mealType(), meal.optional(), state);
+            })
+        .toList();
   }
 
   private void validateDate(LocalDate date) {

@@ -51,19 +51,36 @@ class MealLogServiceTest {
 
   private static final MacroTargets REST_TARGET = new MacroTargets(2100, 165.0, 190.0, 75.0);
 
-  private static final DayTargetSource PLAN_TARGETS =
+  private static final PlannedDaySource PLAN_DAYS =
       (userId, type) ->
           java.util.Optional.of(
-              switch (type) {
-                case STRENGTH -> STRENGTH_TARGET;
-                case RUNNING -> RUNNING_TARGET;
-                case REST -> REST_TARGET;
-              });
+              new ResolvedDay(
+                  type,
+                  1,
+                  1,
+                  null,
+                  null,
+                  switch (type) {
+                    case STRENGTH -> STRENGTH_TARGET;
+                    case RUNNING -> RUNNING_TARGET;
+                    case REST -> REST_TARGET;
+                  },
+                  new NutritionTotals(0, 0.0, 0.0, 0.0),
+                  null,
+                  java.util.List.of()));
+
+  /** Nothing in any plan is the caller's, which is what an account with no plan looks like. */
+  private static final PlannedMealOwnership OWNS_NOTHING = (userId, mealId) -> false;
 
   private final RecordingMealLogRepository repository = new RecordingMealLogRepository();
   private final MealLogService service =
       new MealLogService(
-          repository, FIXED_CLOCK, () -> USER_ID, SeededFoodCatalog.service(), PLAN_TARGETS);
+          repository,
+          FIXED_CLOCK,
+          () -> USER_ID,
+          SeededFoodCatalog.service(),
+          PLAN_DAYS,
+          OWNS_NOTHING);
 
   @Test
   void logsACatalogEntryResolvingFoodAndPortionsToMacrosViaTheCalculator() {
@@ -104,6 +121,7 @@ class MealLogServiceTest {
             null,
             null,
             null,
+            null,
             null);
 
     assertThatThrownBy(() -> service.log(command)).isInstanceOf(ValidationException.class);
@@ -113,7 +131,20 @@ class MealLogServiceTest {
   void rejectsAnEntryWithBothFoodItemIdAndFreeMacros() {
     LogMealCommand command =
         new LogMealCommand(
-            TODAY, MealType.LUNCH, "oats", 1.0, "Avena", 90, 5.0, 8.0, 3.0, null, null, null, null);
+            TODAY,
+            MealType.LUNCH,
+            "oats",
+            1.0,
+            "Avena",
+            90,
+            5.0,
+            8.0,
+            3.0,
+            null,
+            null,
+            null,
+            null,
+            null);
 
     assertThatThrownBy(() -> service.log(command)).isInstanceOf(ValidationException.class);
   }
@@ -214,7 +245,8 @@ class MealLogServiceTest {
             FIXED_CLOCK,
             () -> USER_ID,
             SeededFoodCatalog.service(),
-            (userId, type) -> java.util.Optional.empty());
+            (userId, type) -> java.util.Optional.empty(),
+            OWNS_NOTHING);
     planless.log(LogMealCommand.free(TODAY, MealType.BREAKFAST, "A", 100, 10.0, 10.0, 10.0));
 
     DayConsumption consumption = planless.consumption(TODAY);
@@ -276,7 +308,8 @@ class MealLogServiceTest {
             3.0,
             12.0,
             90,
-            2.0);
+            2.0,
+            null);
 
     service.log(command);
     DayConsumption consumption = service.consumption(TODAY);
@@ -300,6 +333,7 @@ class MealLogServiceTest {
             3.0,
             null,
             null,
+            null,
             null);
     LogMealCommand withoutFiber =
         LogMealCommand.free(TODAY, MealType.LUNCH, "B", 100, 10.0, 10.0, 10.0); // no key nutrients
@@ -315,7 +349,20 @@ class MealLogServiceTest {
   void rejectsANegativeFreeEntryFiber() {
     LogMealCommand command =
         new LogMealCommand(
-            TODAY, MealType.LUNCH, null, null, "X", 90, 5.0, 8.0, 3.0, -1.0, null, null, null);
+            TODAY,
+            MealType.LUNCH,
+            null,
+            null,
+            "X",
+            90,
+            5.0,
+            8.0,
+            3.0,
+            -1.0,
+            null,
+            null,
+            null,
+            null);
 
     assertThatThrownBy(() -> service.log(command)).isInstanceOf(ValidationException.class);
   }
@@ -324,7 +371,7 @@ class MealLogServiceTest {
   void rejectsANegativeFreeEntrySodium() {
     LogMealCommand command =
         new LogMealCommand(
-            TODAY, MealType.LUNCH, null, null, "X", 90, 5.0, 8.0, 3.0, null, null, -1, null);
+            TODAY, MealType.LUNCH, null, null, "X", 90, 5.0, 8.0, 3.0, null, null, -1, null, null);
 
     assertThatThrownBy(() -> service.log(command)).isInstanceOf(ValidationException.class);
   }

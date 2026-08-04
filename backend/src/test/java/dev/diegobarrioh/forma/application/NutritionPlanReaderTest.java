@@ -246,17 +246,32 @@ class NutritionPlanReaderTest {
     assertThat(reader.activePlanDays(nobody)).isEmpty();
   }
 
-  /**
-   * What the consumption read model asks for, through the narrow port rather than the whole reader.
-   */
+  /** What the consumption read model asks for, through the port rather than the whole reader. */
   @Test
-  void answersThroughTheNarrowPort() {
-    DayTargetSource source = reader;
+  void answersThroughThePort() {
+    PlannedDaySource source = reader;
 
-    assertThat(source.targetsForDayType(USER, NutritionDayType.STRENGTH)).isPresent();
+    assertThat(source.dayOfType(USER, NutritionDayType.STRENGTH)).isPresent();
     assertThat(
-            source.targetsForDayType(
+            source.dayOfType(
                 UUID.fromString("99999999-9999-9999-9999-999999999999"), NutritionDayType.STRENGTH))
         .isEmpty();
+  }
+
+  /**
+   * A planned meal is only the caller's to log against if it sits under one of their own plans.
+   *
+   * <p>The foreign key cannot say this: it knows the row exists, not whose it is (V55).
+   */
+  @Test
+  void saysWhetherAPlannedMealIsTheCallersOwn() {
+    ResolvedDay day = reader.findDayByType(USER, NutritionDayType.RUNNING).orElseThrow();
+    UUID mealId = day.meals().getFirst().id();
+
+    assertThat(reader.ownsPlannedMeal(USER, mealId)).isTrue();
+    assertThat(
+            reader.ownsPlannedMeal(UUID.fromString("99999999-9999-9999-9999-999999999999"), mealId))
+        .isFalse();
+    assertThat(reader.ownsPlannedMeal(USER, UUID.randomUUID())).isFalse();
   }
 }

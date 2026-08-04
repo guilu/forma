@@ -135,6 +135,11 @@ public class NutritionPlanService {
     return findById(userId, planId);
   }
 
+  /** Whether a planned meal sits under one of this user's plans (V55). */
+  public boolean ownsPlannedMeal(UUID userId, UUID plannedMealId) {
+    return repository.ownsPlannedMeal(userId, plannedMealId);
+  }
+
   /**
    * Removes a plan and everything under it.
    *

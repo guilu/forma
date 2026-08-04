@@ -35,6 +35,8 @@ import java.util.List;
  * @param comparison consumed-vs-target comparison, or {@code null} when {@code target} is {@code
  *     null}
  * @param entries the day's logged entries, in the order they were logged
+ * @param plannedMeals which of the day's planned meals have been eaten (V55), derived on every read
+ *     from the entries pointing at them. Empty when there is no active plan
  */
 public record DayConsumption(
     LocalDate date,
@@ -43,4 +45,5 @@ public record DayConsumption(
     KeyNutrientTotals keyNutrients,
     MacroTargets target,
     TargetComparison comparison,
-    List<StoredMealLogEntry> entries) {}
+    List<StoredMealLogEntry> entries,
+    List<PlannedMealStatus> plannedMeals) {}

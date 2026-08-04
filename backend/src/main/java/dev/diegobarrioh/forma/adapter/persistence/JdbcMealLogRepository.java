@@ -58,7 +58,8 @@ public class JdbcMealLogRepository implements MealLogRepository {
                       nullableDouble(rs, "fiber_g"),
                       nullableDouble(rs, "sugars_g"),
                       nullableInteger(rs, "sodium_mg"),
-                      nullableDouble(rs, "saturated_fat_g"))));
+                      nullableDouble(rs, "saturated_fat_g")),
+                  nullableUuid(rs, "nutrition_plan_meal_id")));
 
   private final JdbcTemplate jdbcTemplate;
 
@@ -70,7 +71,7 @@ public class JdbcMealLogRepository implements MealLogRepository {
   public List<StoredMealLogEntry> findByOwnerAndDate(UUID userId, LocalDate date) {
     return jdbcTemplate.query(
         "SELECT id, log_date, meal_type, food_item_id, name, kcal, protein_g, carbs_g, fat_g,"
-            + " fiber_g, sugars_g, sodium_mg, saturated_fat_g"
+            + " fiber_g, sugars_g, sodium_mg, saturated_fat_g, nutrition_plan_meal_id"
             + " FROM meal_log_entry WHERE user_id = ? AND log_date = ? ORDER BY logged_at, id",
         ROW_MAPPER,
         userId,
@@ -84,8 +85,9 @@ public class JdbcMealLogRepository implements MealLogRepository {
     jdbcTemplate.update(
         "INSERT INTO meal_log_entry"
             + " (id, user_id, log_date, meal_type, food_item_id, name, kcal, protein_g,"
-            + " carbs_g, fat_g, fiber_g, sugars_g, sodium_mg, saturated_fat_g)"
-            + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            + " carbs_g, fat_g, fiber_g, sugars_g, sodium_mg, saturated_fat_g,"
+            + " nutrition_plan_meal_id)"
+            + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (ps) -> {
           ps.setObject(1, id);
           ps.setObject(2, userId);
@@ -101,8 +103,16 @@ public class JdbcMealLogRepository implements MealLogRepository {
           setNullableDouble(ps, 12, keyNutrients.sugarsG());
           setNullableInteger(ps, 13, keyNutrients.sodiumMg());
           setNullableDouble(ps, 14, keyNutrients.saturatedFatG());
+          // Which planned meal this was (V55). Null for most entries: an unplanned snack, a free
+          // entry, or anything logged by an account with no plan at all.
+          ps.setObject(15, entry.plannedMealId());
         });
     return new StoredMealLogEntry(id.toString(), entry);
+  }
+
+  private static UUID nullableUuid(ResultSet rs, String column) throws SQLException {
+    Object value = rs.getObject(column);
+    return value == null ? null : UUID.fromString(value.toString());
   }
 
   private static Double nullableDouble(ResultSet rs, String column) throws SQLException {
