@@ -46,15 +46,31 @@ const MEASUREMENTS = [
   leanMassKg: Number((m.weightKg * (1 - m.bodyFatPercentage / 100)).toFixed(1)),
 }));
 
+/**
+ * A day of the plan.
+ *
+ * <p>`totals` and `targetComparison` are not optional decoration: the API has returned them since
+ * FOR-105 and the page reads them. A fixture missing them is a *successful* response of the wrong
+ * shape, which is precisely the failure the note on `stubApi` warns about — reading a field off it
+ * throws and takes the whole page down, h1 and all.
+ */
 const NUTRITION_DAY = {
   type: 'running',
   targets: { calories: 2300, proteinG: 160, carbsG: 250, fatG: 70 },
+  totals: { calories: 2010, proteinG: 148, carbsG: 232, fatG: 61 },
+  targetComparison: {
+    caloriesReached: false,
+    proteinReached: false,
+    carbsReached: false,
+    fatReached: false,
+  },
   meals: [
     {
       mealType: 'BREAKFAST',
       name: 'Desayuno',
       preferredTime: '08:00',
       optional: false,
+      totals: { calories: 296, proteinG: 10.4, carbsG: 48, fatG: 5.6 },
       items: [{ food: 'Avena', quantityG: 80 }],
     },
     {
@@ -62,8 +78,30 @@ const NUTRITION_DAY = {
       name: 'Comida',
       preferredTime: '14:00',
       optional: false,
+      totals: { calories: 330, proteinG: 62, carbsG: 0, fatG: 7.2 },
       items: [{ food: 'Pollo', quantityG: 200 }],
     },
+  ],
+};
+
+/** What has been eaten today (FOR-127/FOR-134), read by the meal log and the key-nutrient card. */
+const NUTRITION_CONSUMPTION = {
+  date: '2026-08-04',
+  dayType: 'RUNNING',
+  consumed: { kcal: 626, proteinG: 72.4, carbsG: 48, fatG: 12.8 },
+  // Two known and two unknown, so the screen's «Sin datos» path is exercised rather than assumed.
+  keyNutrients: { fiberG: 8.5, sugarsG: null, sodiumMg: 320, saturatedFatG: null },
+  target: { kcal: 2300, proteinG: 160, carbsG: 250, fatG: 70 },
+  comparison: {
+    caloriesReached: false,
+    proteinReached: false,
+    carbsReached: false,
+    fatReached: false,
+  },
+  entries: [{ id: 'e1', mealType: 'BREAKFAST', name: 'Avena', kcal: 296 }],
+  plannedMeals: [
+    { id: 'm1', mealType: 'BREAKFAST', name: 'Desayuno', optional: false, state: 'EATEN' },
+    { id: 'm2', mealType: 'LUNCH', name: 'Comida', optional: false, state: 'PENDING' },
   ],
 };
 
@@ -133,6 +171,9 @@ const FIXTURES: ReadonlyArray<readonly [string, unknown]> = [
     },
   ],
   ['/api/v1/nutrition/days/running', NUTRITION_DAY],
+  // Matched on the pathname, so the `?date=` the page sends does not have to be guessed here.
+  ['/api/v1/nutrition/consumption', NUTRITION_CONSUMPTION],
+  ['/api/v1/foods', []],
   // All three provider rows the backend knows about, so the settings checks
   // see what the UI does with the two FORMA does not offer yet.
   [
