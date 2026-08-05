@@ -16,37 +16,31 @@ import styles from './PlanGenerator.module.css';
 const ACTIVITY: ReadonlyArray<{
   readonly value: ActivityLevel;
   readonly label: string;
-  readonly factor: string;
   readonly description: string;
 }> = [
   {
     value: 'SEDENTARY',
     label: 'Sedentario',
-    factor: '×1,2',
     description: 'Poco o ningún ejercicio',
   },
   {
     value: 'LIGHT',
     label: 'Ligero',
-    factor: '×1,375',
     description: 'Ejercicio 1–3 días por semana',
   },
   {
     value: 'MODERATE',
     label: 'Moderado',
-    factor: '×1,55',
     description: 'Ejercicio 3–5 días por semana',
   },
   {
     value: 'ACTIVE',
     label: 'Activo',
-    factor: '×1,725',
     description: 'Ejercicio 6–7 días por semana',
   },
   {
     value: 'VERY_ACTIVE',
     label: 'Atleta',
-    factor: '×1,9',
     description: 'Entrenamiento intenso diario',
   },
 ];
@@ -81,6 +75,7 @@ export function StepPatient({ state, energy, onChange, onNext }: StepPatientProp
               onSelect={(value) => onChange({ sex: value as Sex })}
               glyph="🧔"
               title="Hombre"
+              stacked
             />
             <ChoiceCard
               name="sexo"
@@ -89,6 +84,7 @@ export function StepPatient({ state, energy, onChange, onNext }: StepPatientProp
               onSelect={(value) => onChange({ sex: value as Sex })}
               glyph="👩"
               title="Mujer"
+              stacked
             />
           </div>
         </fieldset>
@@ -101,27 +97,33 @@ export function StepPatient({ state, energy, onChange, onNext }: StepPatientProp
             min="14"
             max="120"
             inputMode="numeric"
+            placeholder="25"
+            suffix="años"
             value={state.ageYears}
             onChange={(event) => onChange({ ageYears: event.target.value })}
           />
           <TextField
             id="gen-peso"
-            label="Peso (kg)"
+            label="Peso"
             type="number"
             min="1"
             max="400"
             step="0.1"
             inputMode="decimal"
+            placeholder="65"
+            suffix="kg"
             value={state.weightKg}
             onChange={(event) => onChange({ weightKg: event.target.value })}
           />
           <TextField
             id="gen-altura"
-            label="Altura (cm)"
+            label="Altura"
             type="number"
             min="1"
             max="260"
             inputMode="numeric"
+            placeholder="179"
+            suffix="cm"
             value={state.heightCm}
             onChange={(event) => onChange({ heightCm: event.target.value })}
           />
@@ -137,7 +139,7 @@ export function StepPatient({ state, energy, onChange, onNext }: StepPatientProp
                 value={level.value}
                 checked={state.activityLevel === level.value}
                 onSelect={(value) => onChange({ activityLevel: value as ActivityLevel })}
-                title={`${level.label} ${level.factor}`}
+                title={level.label}
                 description={level.description}
               />
             ))}

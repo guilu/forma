@@ -35,8 +35,8 @@ function renderFunnel() {
 /** Rellena el paso 1 con el ejemplo del mockup y pasa al 2. */
 async function completeStepOne(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText('Edad'), '45');
-  await user.type(screen.getByLabelText('Peso (kg)'), '75');
-  await user.type(screen.getByLabelText('Altura (cm)'), '182');
+  await user.type(screen.getByLabelText('Peso'), '75');
+  await user.type(screen.getByLabelText('Altura'), '182');
   await waitFor(() => expect(screen.getByRole('button', { name: /Siguiente/ })).toBeEnabled());
   await user.click(screen.getByRole('button', { name: /Siguiente/ }));
 }
@@ -66,8 +66,8 @@ describe('PlanGeneratorPage — el embudo público', () => {
     const user = renderFunnel();
 
     await user.type(screen.getByLabelText('Edad'), '45');
-    await user.type(screen.getByLabelText('Peso (kg)'), '75');
-    await user.type(screen.getByLabelText('Altura (cm)'), '182');
+    await user.type(screen.getByLabelText('Peso'), '75');
+    await user.type(screen.getByLabelText('Altura'), '182');
 
     // El formateador español no agrupa cuatro cifras: 1668, no 1.668.
     expect(await screen.findByText('1668 kcal')).toBeInTheDocument();

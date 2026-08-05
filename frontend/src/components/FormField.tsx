@@ -27,22 +27,40 @@ function errorIdOf(id: string): string {
 }
 
 interface TextFieldProps
-  extends FieldChromeProps, Omit<InputHTMLAttributes<HTMLInputElement>, 'id' | 'className'> {}
+  extends FieldChromeProps, Omit<InputHTMLAttributes<HTMLInputElement>, 'id' | 'className'> {
+  /**
+   * Unidad de la medida, dibujada dentro del campo y pegada a la derecha ("kg", "cm").
+   * Es decoración: el dato lo sigue diciendo la etiqueta, así que no se anuncia dos veces.
+   */
+  readonly suffix?: string;
+}
 
-export function TextField({ id, label, error, ...rest }: TextFieldProps) {
+export function TextField({ id, label, error, suffix, ...rest }: TextFieldProps) {
   const errorId = errorIdOf(id);
+  const input = (
+    <input
+      id={id}
+      className={styles.input}
+      aria-invalid={error ? true : undefined}
+      aria-describedby={error ? errorId : undefined}
+      {...rest}
+    />
+  );
   return (
     <div className={styles.field}>
       <label className={styles.label} htmlFor={id}>
         {label}
       </label>
-      <input
-        id={id}
-        className={styles.input}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? errorId : undefined}
-        {...rest}
-      />
+      {suffix ? (
+        <div className={styles.inputWithSuffix}>
+          {input}
+          <span className={styles.suffix} aria-hidden="true">
+            {suffix}
+          </span>
+        </div>
+      ) : (
+        input
+      )}
       {error && <ValidationError id={errorId} message={error} />}
     </div>
   );

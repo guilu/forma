@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  max-width: 1100px;
+  max-width: 1280px;
   margin: 0 auto;
   padding: var(--space-6) var(--space-4);
 }
@@ -91,9 +91,13 @@
 
 /* --- Estructura de un paso --- */
 
+/*
+ * El panel lateral es un acompañante, no un protagonista: con 1,6fr se comía
+ * el ancho que necesitan las cinco tarjetas de actividad para caber en una fila.
+ */
 .step2col {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 4.6fr) minmax(0, 1fr);
   gap: var(--space-5);
 }
 
@@ -168,6 +172,28 @@
   border-color: var(--color-text-secondary);
 }
 
+/*
+ * Variante en columna: el icono encima del texto, todo centrado. La usa el sexo,
+ * donde solo hay dos opciones y la tarjeta puede permitirse respirar.
+ */
+.choiceStacked {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 96px;
+  padding: var(--space-4);
+  text-align: center;
+}
+
+.choiceStacked .choiceText {
+  align-items: center;
+}
+
+.choiceStacked .choiceGlyph {
+  font-size: 1.5rem;
+}
+
 .choice[data-disabled='true'],
 .choiceOn[data-disabled='true'] {
   opacity: 0.5;
@@ -211,7 +237,7 @@
 }
 
 .choiceDescription {
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-label-md);
   color: var(--color-text-secondary);
 }
 
@@ -276,7 +302,12 @@
   color: var(--color-text-primary);
 }
 
-.asideEmpty,
+.asideEmpty {
+  margin: 0;
+  font-size: var(--font-size-label-md);
+  color: var(--color-text-secondary);
+}
+
 .asideNote {
   margin: 0;
   font-size: var(--font-size-xs);
@@ -430,7 +461,7 @@
 
 .disclaimer {
   margin: 0;
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-label-md);
   color: var(--color-text-secondary);
 }
 

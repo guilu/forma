@@ -48,6 +48,7 @@ export function ChoiceCard({
   title,
   description,
   disabled,
+  stacked,
 }: {
   readonly name: string;
   readonly value: string;
@@ -57,9 +58,15 @@ export function ChoiceCard({
   readonly title: string;
   readonly description?: string;
   readonly disabled?: boolean;
+  /** Icono encima del texto y todo centrado, en lugar de icono y texto en fila. */
+  readonly stacked?: boolean;
 }) {
+  const base = checked ? styles.choiceOn : styles.choice;
   return (
-    <label className={checked ? styles.choiceOn : styles.choice} data-disabled={disabled}>
+    <label
+      className={stacked ? `${base} ${styles.choiceStacked}` : base}
+      data-disabled={disabled}
+    >
       <input
         type="radio"
         className={styles.choiceInput}
