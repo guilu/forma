@@ -63,10 +63,7 @@ export function ChoiceCard({
 }) {
   const base = checked ? styles.choiceOn : styles.choice;
   return (
-    <label
-      className={stacked ? `${base} ${styles.choiceStacked}` : base}
-      data-disabled={disabled}
-    >
+    <label className={stacked ? `${base} ${styles.choiceStacked}` : base} data-disabled={disabled}>
       <input
         type="radio"
         className={styles.choiceInput}
