@@ -6,6 +6,15 @@ import { NutritionPage } from './NutritionPage';
 import { getNutritionDay, type NutritionDay } from '../api/nutrition';
 
 vi.mock('../api/nutrition', () => ({
+  // The water tile reads real hydration now (FOR-130's endpoints, reachable at last). These tests
+  // are not about it, so it answers with an empty day and stays out of the way.
+  getHydration: vi.fn().mockResolvedValue({
+    date: '2026-08-04',
+    totalMl: 0,
+    goalMl: 2000,
+    progress: 0,
+  }),
+  logWaterIntake: vi.fn(),
   getNutritionDay: vi.fn(),
   // The page now also carries the meal log (FOR-127's endpoints, reachable at last). These tests
   // are about the PLAN half of the page, so the log answers with an empty day and stays out of the

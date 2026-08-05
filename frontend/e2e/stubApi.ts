@@ -173,6 +173,12 @@ const FIXTURES: ReadonlyArray<readonly [string, unknown]> = [
   ['/api/v1/nutrition/days/running', NUTRITION_DAY],
   // Matched on the pathname, so the `?date=` the page sends does not have to be guessed here.
   ['/api/v1/nutrition/consumption', NUTRITION_CONSUMPTION],
+  // The water tile reads this for real since FOR-130's endpoints got a caller. Without a fixture it
+  // renders its failure state, which is honest but not what these layout checks are looking at.
+  [
+    '/api/v1/nutrition/hydration',
+    { date: '2026-08-04', totalMl: 1500, goalMl: 2500, progress: 0.6 },
+  ],
   ['/api/v1/foods', []],
   // All three provider rows the backend knows about, so the settings checks
   // see what the UI does with the two FORMA does not offer yet.

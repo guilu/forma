@@ -44,3 +44,41 @@
   border-color: var(--color-accent);
   background-color: var(--color-accent);
 }
+
+/* Loading and failure both say something rather than showing an invented figure. */
+.empty {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.add {
+  flex: 1;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  /* No `nowrap`: with `flex: 1` it stops the button shrinking below its label, and two of them in a
+     narrow dashboard column push the whole page past the viewport. The layout check caught it. */
+  min-width: 0;
+}
+
+.add:hover:not(:disabled) {
+  border-color: var(--color-accent, #2563eb);
+  color: var(--color-text-primary);
+}
+
+.add:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
