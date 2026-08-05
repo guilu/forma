@@ -100,8 +100,10 @@ export function LandingPage() {
                 aquí.
               </p>
               <div className={styles.heroActions}>
-                <Link className={styles.ctaPrimary} to="/register">
-                  Empezar ahora
+                {/* El embudo: cuatro pasos, sin cuenta y sin tarjeta. Pedir registro antes de
+                    enseñar nada es lo que hace que nadie empiece. */}
+                <Link className={styles.ctaPrimary} to="/plan">
+                  Crea tu plan gratis
                 </Link>
                 <a className={styles.ctaGlass} href="#producto">
                   Ver Demo

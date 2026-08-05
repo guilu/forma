@@ -556,14 +556,16 @@ test.describe('landing hero CTAs', () => {
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
+    // El primer CTA lleva al generador de plan desde que existe el embudo: es lo que
+    // se le ofrece a alguien que aún no tiene cuenta.
     const ctas = page
-      .getByRole('link', { name: 'Empezar ahora' })
+      .getByRole('link', { name: 'Crea tu plan gratis' })
       .or(page.getByRole('link', { name: 'Ver Demo' }));
     const boxes = await ctas.evaluateAll((links) =>
       links.map((link) => {
         const rect = link.getBoundingClientRect();
         // One client rect per line the label occupies: a narrower button that
-        // wraps "Empezar ahora" onto two lines is not the fix we want.
+        // wraps its label onto two lines is not the fix we want.
         const range = document.createRange();
         range.selectNodeContents(link);
         const lines = new Set([...range.getClientRects()].map((line) => Math.round(line.top))).size;
