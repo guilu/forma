@@ -119,6 +119,13 @@ public class SecurityConfig {
                         ApiPaths.V1 + "/auth/register",
                         ApiPaths.V1 + "/auth/login")
                     .permitAll()
+                    // El generador de planes es público a propósito: es el embudo de la portada, y
+                    // pedir cuenta antes de enseñar nada lo vaciaría de sentido. Todo lo que hay
+                    // detrás son cálculos sin efecto y una validación; nada escribe en la base de
+                    // datos. Cuando eso cambie —cuentas, correos— hará falta limitar el ritmo
+                    // antes.
+                    .requestMatchers(HttpMethod.POST, ApiPaths.V1 + "/public/**")
+                    .permitAll()
                     .requestMatchers(HttpMethod.GET, "/actuator/health")
                     .permitAll()
                     .anyRequest()

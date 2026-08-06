@@ -56,6 +56,12 @@ const OnboardingPage = lazyPage(
   'OnboardingPage',
 );
 const AuthCallbackPage = lazyPage(() => import('../pages/AuthCallbackPage'), 'AuthCallbackPage');
+// Perezosa, como todo lo que cuelga de /app: la portada la ve todo el mundo y el
+// generador solo quien pulsa el CTA, así que su código no tiene por qué viajar con ella.
+const PlanGeneratorPage = lazyPage(
+  () => import('../pages/generator/PlanGeneratorPage'),
+  'PlanGeneratorPage',
+);
 
 /**
  * Route table (FOR-81). Paths mirror the centralized NAV_ITEMS model.
@@ -91,6 +97,10 @@ export const routes: RouteObject[] = [
     element: <RootLayout />,
     children: [
       { path: '/', element: <LandingPage /> },
+      // El generador es PÚBLICO a propósito: es el embudo de la portada, y pedir
+      // cuenta antes de enseñar nada lo vaciaría de sentido. Los dos endpoints que
+      // hay detrás son los únicos de la API que responden sin sesión.
+      { path: '/plan', element: <PlanGeneratorPage /> },
       { path: '/login', element: <LoginPage /> },
       { path: '/register', element: <RegisterPage /> },
       {

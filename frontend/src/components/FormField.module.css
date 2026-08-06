@@ -22,6 +22,24 @@
   min-height: 44px;
 }
 
+.inputWithSuffix {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.inputWithSuffix .input {
+  padding-right: 3.5rem;
+}
+
+.suffix {
+  position: absolute;
+  right: var(--space-3);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
 .input:focus-visible,
 .select:focus-visible {
   outline: 2px solid var(--color-accent-strong);
