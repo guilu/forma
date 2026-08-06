@@ -80,8 +80,26 @@ public class PlanActivationService {
     NutritionPlan draft =
         draftOf(userId)
             .orElseThrow(() -> new NotFoundException("No hay ningún plan pendiente de activar."));
-    plans.activate(userId, draft.id());
+    activate(userId, draft.id());
+  }
+
+  /**
+   * Switches a plan on and records that this account is following one.
+   *
+   * <p><b>Every activation goes through here, and that is the point.</b> The modal is not the only
+   * door: the plans screen has an "activate" button of its own, and when that one only flipped the
+   * plan's status it left the training calendar empty for good — its gate asks about the
+   * acceptance, and nobody had written one. Two doors into the same room, one of them not turning
+   * the light on.
+   *
+   * <p>So activating a plan IS accepting it, wherever it is done from. Recording it in the same
+   * transaction as the activation is what keeps the two from drifting again.
+   */
+  @Transactional
+  public NutritionPlan activate(UUID userId, UUID planId) {
+    NutritionPlan activated = plans.activate(userId, planId);
     acceptances.markAccepted(userId, Instant.now());
+    return activated;
   }
 
   /**

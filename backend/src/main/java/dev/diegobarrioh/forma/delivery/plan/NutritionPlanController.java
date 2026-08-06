@@ -4,6 +4,7 @@ import dev.diegobarrioh.forma.application.CurrentUserProvider;
 import dev.diegobarrioh.forma.application.NutritionPlan;
 import dev.diegobarrioh.forma.application.NutritionPlanReader;
 import dev.diegobarrioh.forma.application.NutritionPlanService;
+import dev.diegobarrioh.forma.application.PlanActivationService;
 import dev.diegobarrioh.forma.application.ValidationException;
 import dev.diegobarrioh.forma.delivery.ApiPaths;
 import dev.diegobarrioh.forma.domain.PlanStatus;
@@ -41,14 +42,17 @@ public class NutritionPlanController {
   private final NutritionPlanService service;
   private final NutritionPlanReader reader;
   private final CurrentUserProvider currentUserProvider;
+  private final PlanActivationService activations;
 
   public NutritionPlanController(
       NutritionPlanService service,
       NutritionPlanReader reader,
-      CurrentUserProvider currentUserProvider) {
+      CurrentUserProvider currentUserProvider,
+      PlanActivationService activations) {
     this.service = service;
     this.reader = reader;
     this.currentUserProvider = currentUserProvider;
+    this.activations = activations;
   }
 
   /**
@@ -95,11 +99,18 @@ public class NutritionPlanController {
     return NutritionPlanResponse.from(stored, reader.days(user, id));
   }
 
-  /** Makes this the plan the caller is following; whatever they followed becomes COMPLETED. */
+  /**
+   * Makes this the plan the caller is following; whatever they followed becomes COMPLETED.
+   *
+   * <p>Goes through {@link PlanActivationService} rather than straight to {@code service.activate}
+   * so the acceptance is recorded too (V58). Flipping the status alone left the training calendar
+   * empty for good: its gate asks whether this account is following a plan, and activating from
+   * here never answered.
+   */
   @PostMapping("/{id}/activation")
   public NutritionPlanResponse activate(@PathVariable UUID id) {
     UUID user = userId();
-    return NutritionPlanResponse.from(service.activate(user, id), reader.days(user, id));
+    return NutritionPlanResponse.from(activations.activate(user, id), reader.days(user, id));
   }
 
   /**

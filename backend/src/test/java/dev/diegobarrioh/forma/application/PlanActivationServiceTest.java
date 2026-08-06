@@ -113,6 +113,24 @@ class PlanActivationServiceTest {
     verify(acceptances, never()).markAccepted(any(), any());
   }
 
+  /**
+   * The plans screen has an activate button of its own, and it must count as accepting.
+   *
+   * <p>When it only flipped the plan's status, nutrition came back to life and training stayed
+   * empty for good — its gate asks about the acceptance and nothing had written one. Two doors into
+   * the same room, and one of them did not turn the light on.
+   */
+  @Test
+  void activatingFromAnywhereAlsoRecordsTheAcceptance() {
+    UUID planId = UUID.randomUUID();
+    NutritionPlan activated = plan(planId, "Dieta semanal", PlanStatus.ACTIVE);
+    when(plans.activate(USER, planId)).thenReturn(activated);
+
+    assertThat(service.activate(USER, planId)).isSameAs(activated);
+
+    verify(acceptances).markAccepted(eq(USER), any(Instant.class));
+  }
+
   /** What the training gate asks: the plan in code is withheld until the account has said yes. */
   @Test
   void reportsAcceptanceForTheGates() {
