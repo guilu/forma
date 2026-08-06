@@ -5,6 +5,7 @@ import { BodyFigure } from '../components/BodyFigure';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { EmptyState } from '../components/EmptyState';
+import { NoPlanEmptyState } from '../components/NoPlanEmptyState';
 import { ErrorState } from '../components/ErrorState';
 import { Icon, type IconName } from '../components/Icon';
 import { LoadingState } from '../components/LoadingState';
@@ -262,7 +263,7 @@ function renderContent(
 
   const hasAnySession = state.week.days.some((day) => day.sessions.length > 0);
   if (!hasAnySession) {
-    return <EmptyState title="No hay entrenamientos planificados esta semana." />;
+    return <NoPlanEmptyState />;
   }
 
   const today = state.week.days.find((day) => day.dayOfWeek === todayDayOfWeek());
