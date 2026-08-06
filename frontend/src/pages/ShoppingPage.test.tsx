@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { ShoppingPage } from './ShoppingPage';
 import { buildCategoryTabs, filterItemsByCategory } from './shoppingCategories';
 import { formatGeneratedAt, totalServings, unitLabel } from './shoppingDisplay';
@@ -19,12 +20,17 @@ import {
 } from '../api/shopping';
 import { axe } from '../test/axe';
 
-/** ShoppingPage calls `useNotify()` (FOR-63), which requires a provider. */
+/**
+ * ShoppingPage calls `useNotify()` (FOR-63), which requires a provider — and its empty state now
+ * links to the public plan generator, which requires a router.
+ */
 function renderPage() {
   return render(
-    <NotificationProvider>
-      <ShoppingPage />
-    </NotificationProvider>,
+    <MemoryRouter>
+      <NotificationProvider>
+        <ShoppingPage />
+      </NotificationProvider>
+    </MemoryRouter>,
   );
 }
 
@@ -536,7 +542,7 @@ describe('ShoppingPage', () => {
 
     renderPage();
 
-    expect(await screen.findByText(/No hay artículos en la lista/)).toBeInTheDocument();
+    expect(await screen.findByText(/No existe ningún plan planificado/)).toBeInTheDocument();
     expect(screen.getAllByText(/0,00/).length).toBeGreaterThan(0);
     expect(screen.getByRole('heading', { name: 'Generada', level: 2 })).toBeInTheDocument();
     expect(screen.getByText(formatGeneratedAt('2026-07-06T00:00:00Z'))).toBeInTheDocument();

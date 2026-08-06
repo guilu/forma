@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Badge } from '../components/Badge';
 import { Card } from '../components/Card';
-import { EmptyState } from '../components/EmptyState';
+import { NoPlanEmptyState } from '../components/NoPlanEmptyState';
 import { ErrorState } from '../components/ErrorState';
 import { Icon } from '../components/Icon';
 import { LoadingState } from '../components/LoadingState';
@@ -223,7 +223,7 @@ function renderContent(
   }
 
   if (state.status === 'empty') {
-    return <EmptyState title="No hay un plan de comidas para este tipo de día." />;
+    return <NoPlanEmptyState />;
   }
 
   const { day } = state;
