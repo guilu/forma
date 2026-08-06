@@ -30,6 +30,8 @@ class ExcelDietPlanTest {
 
   private static final UUID USER = UUID.fromString("00000000-0000-0000-0000-000000000000");
 
+  private static final String PLAN_NAME = "Dieta semanal — recomposición";
+
   @Autowired private NutritionPlanReader reader;
   @Autowired private NutritionPlanService plans;
 
@@ -43,11 +45,17 @@ class ExcelDietPlanTest {
     SecurityContextHolder.clearContext();
   }
 
+  /**
+   * Written, and waiting to be started (V58).
+   *
+   * <p>It used to be seeded ACTIVE, which meant a fresh install began mid-plan without anybody
+   * having said to. Now it arrives as a DRAFT and the first login offers it; accepting is what
+   * switches it on.
+   */
   @Test
-  void isThePlanTheUserIsFollowing() {
-    assertThat(plans.findActive(USER))
-        .map(NutritionPlan::name)
-        .contains("Dieta semanal — recomposición");
+  void isWrittenButNotYetTheOneBeingFollowed() {
+    assertThat(excelPlan().status()).isEqualTo(PlanStatus.DRAFT);
+    assertThat(plans.findActive(USER)).isEmpty();
   }
 
   /** The plan it replaced is kept, not deleted: it is what the app followed before. */
@@ -62,7 +70,7 @@ class ExcelDietPlanTest {
 
   @Test
   void carriesTheCalorieBandFromTheSheetsTitle() {
-    NutritionPlan plan = plans.findActive(USER).orElseThrow();
+    NutritionPlan plan = excelPlan();
 
     assertThat(plan.targets().kcalMin()).isEqualTo(2200);
     assertThat(plan.targets().kcalMax()).isEqualTo(2400);
@@ -76,7 +84,7 @@ class ExcelDietPlanTest {
    */
   @Test
   void classifiesTheWeekTheSameWayTheTrainingPolicyDoes() {
-    List<ResolvedDay> days = reader.activePlanDays(USER);
+    List<ResolvedDay> days = excelPlanDays();
 
     assertThat(days).hasSize(7);
     assertThat(days)
@@ -173,7 +181,7 @@ class ExcelDietPlanTest {
   /** The sheet gives no times, so none is invented. */
   @Test
   void setsNoMealTimes() {
-    assertThat(reader.activePlanDays(USER))
+    assertThat(excelPlanDays())
         .flatExtracting(ResolvedDay::meals)
         .extracting(ResolvedMeal::scheduledTime)
         .containsOnlyNulls();
@@ -182,7 +190,7 @@ class ExcelDietPlanTest {
   /** Every line resolves: no food id in the sheet is missing from the catalog. */
   @Test
   void namesOnlyFoodsTheCatalogHas() {
-    assertThat(reader.activePlanDays(USER))
+    assertThat(excelPlanDays())
         .flatExtracting(ResolvedDay::meals)
         .flatExtracting(ResolvedMeal::items)
         .extracting(ResolvedItem::unresolved)
@@ -211,7 +219,7 @@ class ExcelDietPlanTest {
    */
   @Test
   void reportsEveryDayComingInUnderWhatTheModelClaimed() {
-    for (ResolvedDay day : reader.activePlanDays(USER)) {
+    for (ResolvedDay day : excelPlanDays()) {
       assertThat(day.totals().calories())
           .describedAs("día %d: el modelo dijo %d kcal", day.dayNumber(), day.targets().calories())
           .isLessThan(day.targets().calories());
@@ -229,7 +237,7 @@ class ExcelDietPlanTest {
    */
   @Test
   void landsFarCloserOnProteinThanOnCalories() {
-    for (ResolvedDay day : reader.activePlanDays(USER)) {
+    for (ResolvedDay day : excelPlanDays()) {
       double proteinError =
           Math.abs(day.totals().proteinG() - day.targets().proteinG()) / day.targets().proteinG();
       double calorieError =
@@ -249,9 +257,27 @@ class ExcelDietPlanTest {
   }
 
   private ResolvedDay day(int dayNumber) {
-    return reader.activePlanDays(USER).stream()
+    return excelPlanDays().stream()
         .filter(candidate -> candidate.dayNumber() == dayNumber)
         .findFirst()
         .orElseThrow();
+  }
+
+  /**
+   * The plan from the sheet, found by name rather than by being the active one.
+   *
+   * <p>It is a DRAFT until somebody accepts it (V58), so {@code findActive} does not see it — and
+   * these tests are about what the transcription SAYS, which does not depend on it being switched
+   * on.
+   */
+  private NutritionPlan excelPlan() {
+    return plans.findAll(USER).stream()
+        .filter(plan -> plan.name().equals(PLAN_NAME))
+        .findFirst()
+        .orElseThrow();
+  }
+
+  private List<ResolvedDay> excelPlanDays() {
+    return reader.days(USER, excelPlan().id());
   }
 }

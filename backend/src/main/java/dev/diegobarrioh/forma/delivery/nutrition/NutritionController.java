@@ -5,7 +5,6 @@ import dev.diegobarrioh.forma.application.HydrationService;
 import dev.diegobarrioh.forma.application.MealLogService;
 import dev.diegobarrioh.forma.application.NotFoundException;
 import dev.diegobarrioh.forma.application.NutritionPlanReader;
-import dev.diegobarrioh.forma.application.UserProfileService;
 import dev.diegobarrioh.forma.delivery.ApiPaths;
 import dev.diegobarrioh.forma.domain.NutritionDayType;
 import jakarta.validation.Valid;
@@ -47,38 +46,37 @@ public class NutritionController {
   private final CurrentUserProvider currentUserProvider;
   private final MealLogService mealLogService;
   private final HydrationService hydrationService;
-  private final UserProfileService profileService;
 
   public NutritionController(
       NutritionPlanReader planReader,
       CurrentUserProvider currentUserProvider,
       MealLogService mealLogService,
-      HydrationService hydrationService,
-      UserProfileService profileService) {
+      HydrationService hydrationService) {
     this.planReader = planReader;
     this.currentUserProvider = currentUserProvider;
     this.mealLogService = mealLogService;
     this.hydrationService = hydrationService;
-    this.profileService = profileService;
   }
 
   /**
    * Returns the day of this kind from the caller's active plan (V53/V54).
    *
-   * <p>First-run gate (FOR-169): before onboarding, the endpoint returns an empty day so the UI
-   * shows its "configure your plan" empty state.
+   * <p>An account with no active plan gets an empty day rather than a 404. Before V54 this could
+   * only be an unknown day TYPE, which is a client error; now it is far more often "this account
+   * has not made a plan yet", which is an ordinary state of the app and not something to report as
+   * missing. An unknown type is still a 404, from {@link #parseType}.
    *
-   * <p>An account with no active plan gets that same empty day rather than a 404. Before V54 this
-   * could only be an unknown day TYPE, which is a client error; now it is far more often "this
-   * account has not made a plan yet", which is an ordinary state of the app and not something to
-   * report as missing. An unknown type is still a 404, from {@link #parseType}.
+   * <p><b>The first-run gate is gone (V58), and it was one opinion too many.</b> It asked {@code
+   * firstRunCompleted} — whether the onboarding form had been filled in — to decide whether to show
+   * a plan, while {@code /consumption} read the very same plan with no gate at all. The two
+   * disagreed on screen: the log card showed today's target while this endpoint swore there was no
+   * plan. A plan that has not been started is now a DRAFT, and a DRAFT is invisible to {@code
+   * findActive} by construction, so the empty day falls out of the data instead of a second flag
+   * that was free to contradict it.
    */
   @GetMapping("/days/{type}")
   public NutritionDayResponse day(@PathVariable String type) {
     NutritionDayType dayType = parseType(type);
-    if (!profileService.firstRunCompleted()) {
-      return NutritionDayResponse.empty(dayType);
-    }
     return planReader
         .findDayByType(currentUserProvider.currentUserId(), dayType)
         .map(day -> NutritionDayResponse.from(dayType, day))

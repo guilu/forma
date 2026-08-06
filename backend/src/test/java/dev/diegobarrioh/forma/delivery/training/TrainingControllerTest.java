@@ -12,9 +12,9 @@ import dev.diegobarrioh.forma.application.MuscleWorkedMap;
 import dev.diegobarrioh.forma.application.MuscleWorkedMap.MuscleWorked;
 import dev.diegobarrioh.forma.application.MuscleWorkedMapService;
 import dev.diegobarrioh.forma.application.NotFoundException;
+import dev.diegobarrioh.forma.application.PlanActivationService;
 import dev.diegobarrioh.forma.application.StoredSessionStatus;
 import dev.diegobarrioh.forma.application.TrainingSessionStatusService;
-import dev.diegobarrioh.forma.application.UserProfileService;
 import dev.diegobarrioh.forma.application.WeeklyTrainingSchedule;
 import dev.diegobarrioh.forma.application.WeeklyTrainingSchedule.TrainingDay;
 import dev.diegobarrioh.forma.application.WeeklyTrainingSchedule.TrainingEntry;
@@ -47,17 +47,17 @@ class TrainingControllerTest {
   @MockBean private TrainingSessionStatusService statusService;
   @MockBean private WeeklyTrainingSummaryService summaryService;
   @MockBean private MuscleWorkedMapService muscleWorkedMapService;
-  @MockBean private UserProfileService profileService;
+  @MockBean private PlanActivationService planActivationService;
 
-  /** Default to a completed first run so the plan is served; individual tests override. */
+  /** Default to an accepted plan so the week is served; individual tests override. */
   @org.junit.jupiter.api.BeforeEach
-  void onboardingCompletedByDefault() {
-    when(profileService.firstRunCompleted()).thenReturn(true);
+  void planAcceptedByDefault() {
+    when(planActivationService.accepted()).thenReturn(true);
   }
 
   @Test
-  void returnsAnEmptyWeekBeforeOnboardingFirstRunGate() throws Exception {
-    when(profileService.firstRunCompleted()).thenReturn(false);
+  void returnsAnEmptyWeekUntilThePlanIsAccepted() throws Exception {
+    when(planActivationService.accepted()).thenReturn(false);
 
     mockMvc
         .perform(get("/api/v1/training/week"))
