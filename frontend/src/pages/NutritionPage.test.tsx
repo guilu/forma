@@ -266,9 +266,7 @@ describe('NutritionPage', () => {
 
     renderPage();
 
-    expect(
-      await screen.findByText('No hay un plan de comidas para este tipo de día.'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('No existe ningún plan planificado.')).toBeInTheDocument();
   });
 
   it('shows an error state with a retry action', async () => {

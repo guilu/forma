@@ -3,6 +3,7 @@ import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { EmptyState } from '../components/EmptyState';
+import { NoPlanEmptyState } from '../components/NoPlanEmptyState';
 import { ErrorState } from '../components/ErrorState';
 import { Icon } from '../components/Icon';
 import { LoadingState } from '../components/LoadingState';
@@ -364,7 +365,7 @@ function renderContent(
       </div>
 
       {items.length === 0 ? (
-        <EmptyState title="No hay artículos en la lista de esta semana." />
+        <NoPlanEmptyState />
       ) : filteredItems.length === 0 ? (
         <EmptyState variant="filtered" title="No hay artículos en esta categoría." />
       ) : (

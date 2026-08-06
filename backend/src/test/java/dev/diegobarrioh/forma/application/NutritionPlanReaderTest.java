@@ -271,9 +271,15 @@ class NutritionPlanReaderTest {
     assertThat(reader.activePlanDays(nobody)).isEmpty();
   }
 
-  /** What the consumption read model asks for, through the port rather than the whole reader. */
+  /**
+   * What the consumption read model asks for, through the port rather than the whole reader.
+   *
+   * <p>The plan is started first: since V58 the seeded one arrives as a DRAFT, and the port answers
+   * about the plan being FOLLOWED. Asking it before anybody accepted is the other test above.
+   */
   @Test
   void answersThroughThePort() {
+    startTheSeededPlan();
     PlannedDaySource source = reader;
 
     assertThat(source.dayOfType(USER, NutritionDayType.STRENGTH)).isPresent();
@@ -298,5 +304,16 @@ class NutritionPlanReaderTest {
             reader.ownsPlannedMeal(UUID.fromString("99999999-9999-9999-9999-999999999999"), mealId))
         .isFalse();
     assertThat(reader.ownsPlannedMeal(USER, UUID.randomUUID())).isFalse();
+  }
+
+  /**
+   * Switches on the plan the migrations seed as a DRAFT (V58), for tests that are about what the
+   * ACTIVE plan answers rather than about the acceptance itself.
+   */
+  private void startTheSeededPlan() {
+    plans.findAll(USER).stream()
+        .filter(plan -> plan.status() == dev.diegobarrioh.forma.domain.PlanStatus.DRAFT)
+        .findFirst()
+        .ifPresent(plan -> plans.activate(USER, plan.id()));
   }
 }

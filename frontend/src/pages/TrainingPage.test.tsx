@@ -337,9 +337,7 @@ describe('TrainingPage', () => {
     // states), so wait for the terminal content instead of the first status
     // match to avoid a race against the still-in-flight loading state.
     await waitFor(() => {
-      expect(screen.getByRole('status')).toHaveTextContent(
-        'No hay entrenamientos planificados esta semana',
-      );
+      expect(screen.getByRole('status')).toHaveTextContent('No existe ningún plan planificado.');
     });
   });
 

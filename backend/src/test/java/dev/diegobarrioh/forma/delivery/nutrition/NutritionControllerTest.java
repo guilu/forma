@@ -14,7 +14,6 @@ import dev.diegobarrioh.forma.application.NutritionPlanReader;
 import dev.diegobarrioh.forma.application.ResolvedDay;
 import dev.diegobarrioh.forma.application.ResolvedItem;
 import dev.diegobarrioh.forma.application.ResolvedMeal;
-import dev.diegobarrioh.forma.application.UserProfileService;
 import dev.diegobarrioh.forma.domain.MacroTargets;
 import dev.diegobarrioh.forma.domain.MealType;
 import dev.diegobarrioh.forma.domain.NutritionDayType;
@@ -53,30 +52,21 @@ class NutritionControllerTest {
   @MockBean private CurrentUserProvider currentUserProvider;
   @MockBean private MealLogService mealLogService;
   @MockBean private HydrationService hydrationService;
-  @MockBean private UserProfileService profileService;
 
-  /** Default to a completed first run so the plan is served; individual tests override. */
   @BeforeEach
-  void onboardingCompletedByDefault() {
-    when(profileService.firstRunCompleted()).thenReturn(true);
+  void callerIsKnown() {
     when(currentUserProvider.currentUserId()).thenReturn(SOMEBODY);
-  }
-
-  @Test
-  void returnsAnEmptyDayBeforeOnboardingFirstRunGate() throws Exception {
-    when(profileService.firstRunCompleted()).thenReturn(false);
-
-    mockMvc
-        .perform(get("/api/v1/nutrition/days/running"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.type").value("RUNNING"))
-        .andExpect(jsonPath("$.meals").isEmpty());
   }
 
   /**
    * An account with no plan is not a missing resource. Before plans were owned, every account
    * shared three constants and the only way to reach this path was an unknown day type; now "nobody
    * has made a plan yet" is an ordinary state of the app.
+   *
+   * <p>This is also the path a plan nobody has STARTED takes (V58): it is a DRAFT, a DRAFT is not
+   * the active plan, and the empty day falls out of the data. There used to be a second condition
+   * here — the onboarding flag — which let this endpoint contradict {@code /consumption} about the
+   * very same plan.
    */
   @Test
   void returnsAnEmptyDayWhenTheAccountHasNoActivePlan() throws Exception {

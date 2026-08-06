@@ -1,7 +1,8 @@
-import { Suspense, useEffect, useRef } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { LoadingState } from '../components/LoadingState';
 import { IntegrationsProvider } from '../integrations/IntegrationsContext';
+import { PlanActivationGate } from '../app/PlanActivationGate';
 import { Sidebar } from './Sidebar';
 import { MobileNav } from './MobileNav';
 import styles from './AppShell.module.css';
@@ -28,6 +29,13 @@ import styles from './AppShell.module.css';
  */
 export function AppShell() {
   const mainRef = useRef<HTMLElement>(null);
+  /*
+   * Activar el plan cambia lo que responden entrenamiento, nutrición y la lista de compra, y esas
+   * pantallas ya han preguntado. Cambiar la clave las vuelve a montar, que es lo que hace que sus
+   * cargas se repitan; refrescar la ventana entera haría lo mismo tirando también la sesión de
+   * scroll y el estado del resto del marco.
+   */
+  const [planGeneration, setPlanGeneration] = useState(0);
   const isFirstRender = useRef(true);
   const location = useLocation();
 
@@ -49,6 +57,7 @@ export function AppShell() {
      * reload.
      */
     <IntegrationsProvider>
+      <PlanActivationGate onActivated={() => setPlanGeneration((generation) => generation + 1)} />
       <div className={styles.shell}>
         <Sidebar />
         <main id="main-content" ref={mainRef} tabIndex={-1} className={styles.content}>
@@ -59,7 +68,7 @@ export function AppShell() {
           and only the content area shows the loading state.
         */}
           <Suspense fallback={<LoadingState message="Cargando la sección…" />}>
-            <Outlet />
+            <Outlet key={planGeneration} />
           </Suspense>
         </main>
         <MobileNav />

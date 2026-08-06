@@ -1,8 +1,8 @@
 package dev.diegobarrioh.forma.delivery.training;
 
 import dev.diegobarrioh.forma.application.MuscleWorkedMapService;
+import dev.diegobarrioh.forma.application.PlanActivationService;
 import dev.diegobarrioh.forma.application.TrainingSessionStatusService;
-import dev.diegobarrioh.forma.application.UserProfileService;
 import dev.diegobarrioh.forma.application.WeeklyTrainingScheduleService;
 import dev.diegobarrioh.forma.application.WeeklyTrainingSummaryService;
 import dev.diegobarrioh.forma.delivery.ApiPaths;
@@ -32,29 +32,36 @@ public class TrainingController {
   private final TrainingSessionStatusService statusService;
   private final WeeklyTrainingSummaryService summaryService;
   private final MuscleWorkedMapService muscleWorkedMapService;
-  private final UserProfileService profileService;
+  private final PlanActivationService planActivationService;
 
   public TrainingController(
       WeeklyTrainingScheduleService scheduleService,
       TrainingSessionStatusService statusService,
       WeeklyTrainingSummaryService summaryService,
       MuscleWorkedMapService muscleWorkedMapService,
-      UserProfileService profileService) {
+      PlanActivationService planActivationService) {
     this.scheduleService = scheduleService;
     this.statusService = statusService;
     this.summaryService = summaryService;
     this.muscleWorkedMapService = muscleWorkedMapService;
-    this.profileService = profileService;
+    this.planActivationService = planActivationService;
   }
 
   /**
-   * Returns the current week's training calendar (Monday through Sunday). First-run gate (FOR-169):
-   * before onboarding the in-code training plan is not exposed as the user's active week — the
-   * endpoint returns an empty (all-rest) week so the UI shows its empty state.
+   * Returns the current week's training calendar (Monday through Sunday).
+   *
+   * <p>Gated on the account having ACCEPTED its plan (V58), not on having filled in the onboarding
+   * form. They used to be the same check and they are not the same question: V57 left accounts
+   * holding a seeded plan with an unset onboarding flag, and this endpoint answered "no training"
+   * to somebody whose plan was sitting right there.
+   *
+   * <p>The nutrition endpoints need no equivalent check — their plan is a row whose status already
+   * says whether it is being followed. This one's plan lives in code ({@code
+   * RunningPlanGenerator}), so the acceptance is the only thing there is to ask.
    */
   @GetMapping("/week")
   public TrainingWeekResponse week() {
-    if (!profileService.firstRunCompleted()) {
+    if (!planActivationService.accepted()) {
       return TrainingWeekResponse.empty();
     }
     return TrainingWeekResponse.from(scheduleService.currentWeek());

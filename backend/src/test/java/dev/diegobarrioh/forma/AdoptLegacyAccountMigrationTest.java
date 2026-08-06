@@ -65,18 +65,25 @@ class AdoptLegacyAccountMigrationTest {
         .isEmpty();
   }
 
-  /** And it is still the ACTIVE one, which is what the nutrition page reads. */
+  /**
+   * And it arrives under its new owner waiting to be started, not already running (V58).
+   *
+   * <p>Adoption moves the plan; it does not decide to follow it. The account is asked on first
+   * login, and until it answers there is no active plan at all.
+   */
   @Test
-  void keepsTheDietActiveUnderItsNewOwner() throws Exception {
+  void handsTheDietOverWaitingToBeStarted() throws Exception {
     Connection db = upToV56Then("adopt_active", AdoptLegacyAccountMigrationTest::registerDiego);
 
     assertThat(
             column(
                 db,
-                "SELECT name FROM nutrition_plan WHERE user_id = '"
+                "SELECT status FROM nutrition_plan WHERE user_id = '"
                     + DIEGO
-                    + "' AND active_marker IS NOT NULL"))
-        .containsExactly("Dieta semanal — recomposición");
+                    + "' AND name = 'Dieta semanal — recomposición'"))
+        .containsExactly("DRAFT");
+    assertThat(column(db, "SELECT name FROM nutrition_plan WHERE active_marker IS NOT NULL"))
+        .isEmpty();
   }
 
   /**
