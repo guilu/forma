@@ -1,0 +1,24 @@
+.message {
+  margin: 0 0 var(--space-4);
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+}
+
+.error {
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-danger-surface, rgba(220, 38, 38, 0.1));
+  color: var(--color-danger);
+  font-size: var(--font-size-sm);
+}
+
+/*
+ * En columna y no en fila: las dos respuestas son frases, no verbos sueltos, y una al lado de otra
+ * se parten en dos líneas cada una en cuanto la pantalla se estrecha.
+ */
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
