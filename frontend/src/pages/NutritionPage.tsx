@@ -167,6 +167,30 @@ export function NutritionPage() {
   );
 }
 
+/** Sin tildes, sin mayúsculas y sin espacios de sobra, para comparar «Media mañana» con «MEDIA MAÑANA». */
+function plain(text: string): string {
+  return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+}
+
+/**
+ * Qué titula una comida.
+ *
+ * <p>El plan transcrito del Excel llama a cada comida por su tipo: la del desayuno se llama
+ * «Desayuno». Puesta bajo la etiqueta del tipo salía dos veces la misma palabra y ninguna decía qué
+ * se come. Cuando el nombre no añade nada al tipo, titulan los alimentos, que es lo que alguien
+ * mira para saber si le toca cocinar.
+ *
+ * <p>Un plan que SÍ nombre sus comidas —«Bowl de yogur proteico y fruta»— conserva su nombre: lo
+ * escribió alguien y dice más que la lista de la compra de ese plato.
+ */
+function headlineOf(meal: NutritionMeal): string {
+  const namesTheType = plain(meal.name) === plain(MEAL_LABELS[meal.mealType] ?? meal.mealType);
+  if (!namesTheType || meal.items.length === 0) {
+    return meal.name;
+  }
+  return meal.items.map((item) => item.food).join(', ');
+}
+
 interface MealActions {
   /** The meal whose request is in flight, so only its own control shows the wait. */
   readonly marking: string | undefined;
@@ -237,10 +261,15 @@ function renderContent(
   );
 }
 
+/**
+ * Un color por macro, y el mismo en todas partes: el punto de la leyenda, la barra y la etiqueta
+ * de cada comida. Proteína y carbohidratos compartían verde, así que la barra distinguía dos cosas
+ * con el mismo color mientras el texto de al lado decía que eran distintas.
+ */
 const MACROS = [
-  { key: 'proteinG', label: 'Proteína', color: 'var(--color-accent)' },
-  { key: 'carbsG', label: 'Carbohidratos', color: 'var(--color-success, #22c55e)' },
-  { key: 'fatG', label: 'Grasas', color: 'var(--color-warning, #f59e0b)' },
+  { key: 'proteinG', label: 'Proteína', color: 'var(--color-info)' },
+  { key: 'carbsG', label: 'Carbohidratos', color: 'var(--color-accent)' },
+  { key: 'fatG', label: 'Grasas', color: 'var(--color-warning)' },
 ] as const;
 
 /**
@@ -321,12 +350,12 @@ function MealCard({
           {MEAL_LABELS[meal.mealType] ?? meal.mealType}
           {meal.optional && <span className={styles.mealOptional}> · opcional</span>}
         </p>
-        <h3 className={styles.mealName}>{meal.name}</h3>
+        <h3 className={styles.mealName}>{headlineOf(meal)}</h3>
         <p className={styles.chips}>
           <span className={styles.chipKcal}>{meal.totals.calories} kcal</span>
-          <span className={styles.chip}>{meal.totals.proteinG} g P</span>
-          <span className={styles.chip}>{meal.totals.carbsG} g C</span>
-          <span className={styles.chip}>{meal.totals.fatG} g G</span>
+          <span className={`${styles.chip} ${styles.chipProtein}`}>{meal.totals.proteinG}g P</span>
+          <span className={`${styles.chip} ${styles.chipCarbs}`}>{meal.totals.carbsG}g C</span>
+          <span className={`${styles.chip} ${styles.chipFat}`}>{meal.totals.fatG}g G</span>
         </p>
       </div>
       <label className={styles.check}>

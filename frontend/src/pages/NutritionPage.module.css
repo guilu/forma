@@ -200,16 +200,36 @@
 .chip,
 .chipKcal {
   padding: 0.125rem var(--space-2);
-  border-radius: var(--radius-full, 999px);
+  border-radius: var(--radius-sm, 0.375rem);
   background-color: var(--color-surface-muted, rgba(0, 0, 0, 0.04));
   font-size: var(--font-size-label-sm);
+  font-weight: 600;
   color: var(--color-text-muted);
   font-variant-numeric: tabular-nums;
 }
 
 .chipKcal {
   color: var(--color-text-primary);
-  font-weight: 600;
+}
+
+/*
+ * Un color por macro, el mismo que su barra y su punto en la tarjeta de arriba. El fondo se saca
+ * del propio color con color-mix, así que sigue al tema en vez de fijar dos parejas de literales.
+ * La letra final (P/C/G) va en el texto: el color acompaña, no es quien lo dice.
+ */
+.chipProtein {
+  color: var(--color-info);
+  background-color: color-mix(in srgb, var(--color-info) 14%, transparent);
+}
+
+.chipCarbs {
+  color: var(--color-accent);
+  background-color: color-mix(in srgb, var(--color-accent) 14%, transparent);
+}
+
+.chipFat {
+  color: var(--color-warning);
+  background-color: color-mix(in srgb, var(--color-warning) 16%, transparent);
 }
 
 /* --- La casilla de "hecha" --- */

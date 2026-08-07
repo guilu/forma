@@ -154,8 +154,46 @@ describe('NutritionPage', () => {
 
     expect(await screen.findByText('Bowl de Yogur Proteico y Fruta')).toBeInTheDocument();
     expect(screen.getByText('350 kcal')).toBeInTheDocument();
-    expect(screen.getByText('30 g P')).toBeInTheDocument();
+    expect(screen.getByText('30g P')).toBeInTheDocument();
     expect(screen.getByText('1 de 2 completadas')).toBeInTheDocument();
+  });
+
+  /**
+   * The seeded plan names each meal after its own type — the breakfast is called "Desayuno" — so
+   * under the type label the same word came out twice and neither said what there was to eat.
+   */
+  it('titles a meal with its food when its name only repeats the meal type', async () => {
+    getDayMock.mockResolvedValue({
+      ...strengthDay,
+      meals: [
+        {
+          id: 'meal-desayuno',
+          mealType: 'BREAKFAST',
+          name: 'Desayuno',
+          preferredTime: '08:00',
+          optional: false,
+          totals: { calories: 372, proteinG: 22.8, carbsG: 36.4, fatG: 15.2 },
+          items: [
+            { food: 'Copos de avena', quantityG: 80 },
+            { food: 'Plátano', quantityG: 120 },
+          ],
+        },
+      ],
+    });
+    renderPage();
+
+    expect(
+      await screen.findByRole('heading', { name: 'Copos de avena, Plátano' }),
+    ).toBeInTheDocument();
+  });
+
+  /** A plan that does name its meals keeps the name: somebody wrote it and it says more. */
+  it('keeps a meal name that says something the type does not', async () => {
+    renderPage();
+
+    expect(
+      await screen.findByRole('heading', { name: 'Bowl de Yogur Proteico y Fruta' }),
+    ).toBeInTheDocument();
   });
 
   /** The check reflects the state the server reports, and an eaten meal cannot be logged twice. */
