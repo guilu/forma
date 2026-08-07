@@ -177,6 +177,20 @@ describe('api client session and CSRF handling (FOR-145d)', () => {
     );
   });
 
+  it('marks string request bodies as JSON so Spring can read command DTOs', async () => {
+    document.cookie = 'XSRF-TOKEN=json-token; path=/';
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{}'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await createApiClient('').request('/api/v1/nutrition/log', {
+      method: 'POST',
+      body: JSON.stringify({ date: '2026-08-07', mealType: 'BREAKFAST' }),
+    });
+
+    const headers = new Headers(fetchMock.mock.calls[0]?.[1]?.headers);
+    expect(headers.get('Content-Type')).toBe('application/json');
+  });
+
   it('fails safely when priming does not expose an XSRF token', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response('{}'));
     vi.stubGlobal('fetch', fetchMock);

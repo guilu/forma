@@ -76,6 +76,7 @@ const nutritionDay: NutritionDay = {
   },
   meals: [
     {
+      id: 'meal-desayuno',
       mealType: 'BREAKFAST',
       name: 'Desayuno',
       preferredTime: '08:00',

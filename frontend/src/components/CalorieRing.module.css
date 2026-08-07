@@ -1,0 +1,81 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+/*
+ * El anillo es un gradiente cónico recortado por el centro: una sola caja, sin SVG ni una segunda
+ * capa que mantener alineada. `--sweep` lo escribe el componente, que es quien sabe la proporción.
+ */
+.ring {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 11rem;
+  height: 11rem;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--color-accent) var(--sweep, 0deg),
+    var(--color-border) var(--sweep, 0deg)
+  );
+}
+
+.ring::before {
+  content: '';
+  position: absolute;
+  inset: 0.75rem;
+  border-radius: 50%;
+  background: var(--color-surface);
+}
+
+.figures {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+  text-align: center;
+}
+
+.consumed {
+  font-size: var(--font-size-headline-lg);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.target {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.legend {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  width: 100%;
+  margin: 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+  text-align: center;
+}
+
+.legend dt {
+  font-size: var(--font-size-label-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-secondary);
+}
+
+.legend dd {
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+}

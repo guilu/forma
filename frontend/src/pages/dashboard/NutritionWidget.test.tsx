@@ -28,6 +28,7 @@ const day: NutritionDay = {
   },
   meals: [
     {
+      id: 'meal-desayuno',
       mealType: 'BREAKFAST',
       name: 'Desayuno',
       preferredTime: '08:00',
@@ -36,6 +37,7 @@ const day: NutritionDay = {
       items: [],
     },
     {
+      id: 'meal-comida',
       mealType: 'LUNCH',
       name: 'Comida',
       preferredTime: '14:00',

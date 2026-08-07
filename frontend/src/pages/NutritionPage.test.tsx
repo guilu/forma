@@ -1,283 +1,280 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { NutritionPage } from './NutritionPage';
-import { getNutritionDay, type NutritionDay } from '../api/nutrition';
+import { NotificationProvider } from '../components/NotificationProvider';
+import {
+  getDayConsumption,
+  getNutritionDay,
+  logPlannedMealAsPlanned,
+  type DayConsumption,
+  type NutritionDay,
+} from '../api/nutrition';
 
 vi.mock('../api/nutrition', () => ({
-  // The water tile reads real hydration now (FOR-130's endpoints, reachable at last). These tests
-  // are not about it, so it answers with an empty day and stays out of the way.
+  // La tarjeta de agua lee hidratación de verdad; estos tests no van de eso, así que responde un
+  // día vacío y se aparta.
   getHydration: vi.fn().mockResolvedValue({
-    date: '2026-08-04',
+    date: '2026-08-07',
     totalMl: 0,
     goalMl: 2000,
     progress: 0,
   }),
   logWaterIntake: vi.fn(),
   getNutritionDay: vi.fn(),
-  // The page now also carries the meal log (FOR-127's endpoints, reachable at last). These tests
-  // are about the PLAN half of the page, so the log answers with an empty day and stays out of the
-  // way; MealLogPanel.test.tsx covers it on its own.
-  getDayConsumption: vi.fn().mockResolvedValue({
-    date: '2026-08-04',
-    dayType: null,
-    consumed: { kcal: 0, proteinG: 0, carbsG: 0, fatG: 0 },
-    keyNutrients: { fiberG: null, sugarsG: null, sodiumMg: null, saturatedFatG: null },
-    target: null,
-    comparison: null,
-    entries: [],
-    plannedMeals: [],
-  }),
+  getDayConsumption: vi.fn(),
   logMeal: vi.fn(),
+  logPlannedMealAsPlanned: vi.fn(),
 }));
 
 const getDayMock = vi.mocked(getNutritionDay);
-
-const runningDay: NutritionDay = {
-  type: 'RUNNING',
-  targets: { calories: 1940, proteinG: 162, carbsG: 271, fatG: 25 },
-  totals: { calories: 1776, proteinG: 62.4, carbsG: 288, fatG: 33.6 },
-  targetComparison: {
-    caloriesReached: false,
-    proteinReached: false,
-    carbsReached: false,
-    fatReached: false,
-  },
-  meals: [
-    {
-      mealType: 'BREAKFAST',
-      name: 'Desayuno',
-      preferredTime: '08:00',
-      optional: false,
-      totals: { calories: 444, proteinG: 15.6, carbsG: 72, fatG: 8.4 },
-      items: [
-        { food: 'Avena', quantityG: 120 },
-        { food: 'Plátano', quantityG: 120 },
-      ],
-    },
-    {
-      mealType: 'PRE_WORKOUT',
-      name: 'Snack pre-carrera',
-      preferredTime: '18:00',
-      optional: false,
-      totals: { calories: 444, proteinG: 15.6, carbsG: 72, fatG: 8.4 },
-      items: [{ food: 'Plátano', quantityG: 120 }],
-    },
-    {
-      mealType: 'POST_WORKOUT',
-      name: 'Recuperación (opcional)',
-      preferredTime: '20:00',
-      optional: true,
-      totals: { calories: 444, proteinG: 15.6, carbsG: 72, fatG: 8.4 },
-      items: [{ food: 'Proteína whey', quantityG: 20 }],
-    },
-    {
-      mealType: 'DINNER',
-      name: 'Cena ligera',
-      preferredTime: '21:30',
-      optional: false,
-      totals: { calories: 444, proteinG: 15.6, carbsG: 72, fatG: 8.4 },
-      items: [{ food: 'Pescado blanco', quantityG: 150 }],
-    },
-  ],
-};
+const getConsumptionMock = vi.mocked(getDayConsumption);
+const logAsPlannedMock = vi.mocked(logPlannedMealAsPlanned);
 
 const strengthDay: NutritionDay = {
   type: 'STRENGTH',
-  targets: { calories: 2200, proteinG: 180, carbsG: 220, fatG: 60 },
-  totals: { calories: 1776, proteinG: 62.4, carbsG: 288, fatG: 33.6 },
+  targets: { calories: 2850, proteinG: 180, carbsG: 320, fatG: 75 },
+  totals: { calories: 2850, proteinG: 180, carbsG: 320, fatG: 75 },
   targetComparison: {
-    caloriesReached: false,
-    proteinReached: false,
-    carbsReached: false,
-    fatReached: false,
+    caloriesReached: true,
+    proteinReached: true,
+    carbsReached: true,
+    fatReached: true,
   },
   meals: [
     {
+      id: 'meal-desayuno',
       mealType: 'BREAKFAST',
-      name: 'Desayuno de fuerza',
+      name: 'Bowl de Yogur Proteico y Fruta',
       preferredTime: '08:00',
       optional: false,
-      totals: { calories: 444, proteinG: 15.6, carbsG: 72, fatG: 8.4 },
-      items: [{ food: 'Huevos', quantityG: 150 }],
+      totals: { calories: 350, proteinG: 30, carbsG: 45, fatG: 8 },
+      items: [{ food: 'Yogur griego', quantityG: 200 }],
     },
     {
-      mealType: 'DINNER',
-      name: 'Cena de fuerza',
-      preferredTime: '21:00',
+      id: 'meal-comida',
+      mealType: 'LUNCH',
+      name: 'Pollo a la Plancha con Boniato',
+      preferredTime: '14:00',
       optional: false,
-      totals: { calories: 444, proteinG: 15.6, carbsG: 72, fatG: 8.4 },
-      items: [{ food: 'Pollo', quantityG: 200 }],
+      totals: { calories: 650, proteinG: 55, carbsG: 70, fatG: 12 },
+      items: [{ food: 'Pechuga de pollo', quantityG: 180 }],
     },
   ],
 };
 
+function consumption(overrides: Partial<DayConsumption> = {}): DayConsumption {
+  return {
+    date: '2026-08-07',
+    dayType: 'STRENGTH',
+    consumed: { kcal: 2150, proteinG: 140, carbsG: 250, fatG: 55 },
+    keyNutrients: { fiberG: null, sugarsG: null, sodiumMg: null, saturatedFatG: null },
+    target: { kcal: 2850, proteinG: 180, carbsG: 320, fatG: 75 },
+    comparison: {
+      caloriesReached: false,
+      proteinReached: false,
+      carbsReached: false,
+      fatReached: false,
+    },
+    entries: [],
+    plannedMeals: [
+      {
+        id: 'meal-desayuno',
+        mealType: 'BREAKFAST',
+        name: 'Bowl de Yogur Proteico y Fruta',
+        optional: false,
+        state: 'EATEN',
+      },
+      {
+        id: 'meal-comida',
+        mealType: 'LUNCH',
+        name: 'Pollo a la Plancha con Boniato',
+        optional: false,
+        state: 'PENDING',
+      },
+    ],
+    ...overrides,
+  };
+}
+
+/** El formulario de registro usa `useNotify`; en la aplicación el proveedor vive en App.tsx. */
 function renderPage() {
   return render(
     <MemoryRouter>
-      <NutritionPage />
+      <NotificationProvider>
+        <NutritionPage />
+      </NotificationProvider>
     </MemoryRouter>,
   );
 }
 
 describe('NutritionPage', () => {
   beforeEach(() => {
-    getDayMock.mockReset();
-  });
-
-  it('renders the day, the macro summary and the meal list with items', async () => {
-    getDayMock.mockResolvedValue(runningDay);
-
-    renderPage();
-
-    expect(await screen.findByRole('heading', { name: 'Nutrición', level: 1 })).toBeInTheDocument();
-    // Macro summary: what the day aims for and what its meals come to, both real.
-    // Every card here is a direct sibling of the page <h1> (no intervening
-    // <h2>), so per FOR-112 each must render as <h2>.
-    expect(
-      screen.getByRole('heading', { name: 'Calorías del plan', level: 2 }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', { name: 'Distribución de macros', level: 2 }),
-    ).toBeInTheDocument();
-    expect(screen.getByText('1940')).toBeInTheDocument();
-    expect(screen.getByText('162 g')).toBeInTheDocument();
-    // Meal list: name, time and items. "Comidas del día" becomes <h2>
-    // (FOR-112); the nested meal name was a hardcoded <h4> that would have
-    // skipped a level under the new <h2> — fixed to <h3> as part of this
-    // audit (NutritionPage.tsx MealCard).
-    expect(screen.getByRole('heading', { name: 'Comidas del día', level: 2 })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Desayuno', level: 3 })).toBeInTheDocument();
-    expect(screen.getByText('08:00')).toBeInTheDocument();
-    expect(screen.getByText('Avena')).toBeInTheDocument();
-    expect(screen.getByText('150 g')).toBeInTheDocument();
-  });
-
-  /**
-   * The FOR-164 placeholders are gone, and this test is what they looked like: it used to assert a
-   * fabricated "480 kcal" chip and a "kcal restantes" figure derived from an invented ratio. Both
-   * numbers now come from the API, which had been sending them since FOR-105.
-   */
-  it('shows real figures where the FOR-164 placeholders used to be', async () => {
-    getDayMock.mockResolvedValue(runningDay);
-
-    renderPage();
-
-    // The day's target, and what its meals actually add up to. Both real, and free to disagree.
-    expect(await screen.findByText('1940')).toBeInTheDocument();
-    expect(screen.getByText('1776')).toBeInTheDocument();
-    // 1940 asked for, 1776 on the plate: 164 short, and the page says which way.
-    expect(screen.getByText('164 kcal por debajo del objetivo')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Agua', level: 2 })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Nutrientes clave', level: 2 })).toBeInTheDocument();
-    expect(screen.getByText('Fibra')).toBeInTheDocument();
-    // The first meal's own total, from the API rather than from a cycled fixture.
-    expect(screen.getAllByText('444 kcal').length).toBeGreaterThan(0);
-  });
-
-  /**
-   * A key nutrient nobody can compute reads as unknown, never as zero.
-   *
-   * <p>A day's total is null when any single thing eaten has no figure for it (FOR-134): summing
-   * the rest would report a number lower than the truth and look like a measurement.
-   */
-  it('says «sin datos» for a key nutrient rather than showing a zero', async () => {
-    getDayMock.mockResolvedValue(runningDay);
-
-    renderPage();
-
-    expect(await screen.findByText('Fibra')).toBeInTheDocument();
-    expect(screen.getAllByText('Sin datos').length).toBeGreaterThan(0);
-  });
-
-  it('switches between day types via the selector and refetches the plan', async () => {
-    getDayMock.mockImplementation((type: string) =>
-      Promise.resolve(type === 'strength' ? strengthDay : runningDay),
-    );
-
-    renderPage();
-
-    expect(await screen.findByRole('heading', { name: 'Desayuno' })).toBeInTheDocument();
-    expect(getDayMock).toHaveBeenCalledWith('running');
-
-    await userEvent.click(screen.getByRole('radio', { name: 'Fuerza' }));
-
-    expect(await screen.findByRole('heading', { name: 'Desayuno de fuerza' })).toBeInTheDocument();
-    expect(getDayMock).toHaveBeenCalledWith('strength');
-  });
-
-  it('shows the running-day guidance with the carbs-early / lighter-dinner explanation', async () => {
-    getDayMock.mockResolvedValue(runningDay);
-
-    renderPage();
-
-    expect(await screen.findByText(/carbohidratos se concentran temprano/)).toBeInTheDocument();
-    expect(
-      screen.getByRole('list', { name: 'Flujo de comidas del día de carrera' }),
-    ).toBeInTheDocument();
-    expect(screen.getByText('Correr')).toBeInTheDocument();
-    // Direct sibling of the page <h1>, so it must render as <h2> (FOR-112).
-    expect(
-      screen.getByRole('heading', { name: 'Estrategia de día de carrera', level: 2 }),
-    ).toBeInTheDocument();
-  });
-
-  it('hides the running-day guidance for a strength day', async () => {
-    getDayMock.mockImplementation((type: string) =>
-      Promise.resolve(type === 'strength' ? strengthDay : runningDay),
-    );
-
-    renderPage();
-
-    expect(await screen.findByRole('heading', { name: 'Desayuno' })).toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole('radio', { name: 'Fuerza' }));
-
-    expect(await screen.findByRole('heading', { name: 'Desayuno de fuerza' })).toBeInTheDocument();
-    expect(screen.queryByText(/carbohidratos se concentran temprano/)).not.toBeInTheDocument();
-  });
-
-  it('shows the recovery recommendation when the day includes an optional meal', async () => {
-    getDayMock.mockResolvedValue(runningDay);
-
-    renderPage();
-
-    // Direct sibling of the page <h1>, so it must render as <h2> (FOR-112).
-    expect(
-      await screen.findByRole('heading', { name: 'Recomendación de recuperación', level: 2 }),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/Proteína whey \(20 g\)/)).toBeInTheDocument();
-  });
-
-  it('hides the recovery recommendation when no meal is optional', async () => {
+    vi.clearAllMocks();
+    getConsumptionMock.mockResolvedValue(consumption());
     getDayMock.mockResolvedValue(strengthDay);
-
-    renderPage();
-
-    expect(await screen.findByRole('heading', { name: 'Desayuno de fuerza' })).toBeInTheDocument();
-    expect(
-      screen.queryByRole('heading', { name: 'Recomendación de recuperación' }),
-    ).not.toBeInTheDocument();
   });
 
-  it('shows an empty state when there is no plan for the day', async () => {
-    getDayMock.mockResolvedValue({ ...runningDay, meals: [] });
+  /**
+   * The day type is not chosen on screen any more: the server resolves today's date to its kind and
+   * the plan is asked for THAT. This is what stops the two halves of the page describing different
+   * days, which is exactly what the old selector allowed.
+   */
+  it('asks the plan for the kind of day the server says today is', async () => {
+    renderPage();
 
+    await waitFor(() => expect(getDayMock).toHaveBeenCalledWith('strength'));
+    expect(screen.queryByRole('radiogroup', { name: 'Tipo de día' })).not.toBeInTheDocument();
+  });
+
+  it('shows calories eaten against the target', async () => {
+    renderPage();
+
+    // El separador de miles depende del ICU del entorno, así que el matcher lo hace opcional en
+    // vez de fijar el del navegador o el del runner.
+    expect(
+      await screen.findByRole('img', { name: /2\.?150 de 2\.?850 kcal consumidas/ }),
+    ).toBeInTheDocument();
+    // Restantes: lo que falta, no lo que suma el plan.
+    expect(screen.getByText('700')).toBeInTheDocument();
+  });
+
+  it('shows each macro eaten against its target', async () => {
+    renderPage();
+
+    expect(await screen.findByText('140 g')).toBeInTheDocument();
+    expect(screen.getByText('/ 180 g')).toBeInTheDocument();
+    expect(screen.getByText('250 g')).toBeInTheDocument();
+    expect(screen.getByText('55 g')).toBeInTheDocument();
+  });
+
+  it('lists the meals with their macros and how many are done', async () => {
+    renderPage();
+
+    expect(await screen.findByText('Bowl de Yogur Proteico y Fruta')).toBeInTheDocument();
+    expect(screen.getByText('350 kcal')).toBeInTheDocument();
+    expect(screen.getByText('30g P')).toBeInTheDocument();
+    expect(screen.getByText('1 de 2 completadas')).toBeInTheDocument();
+  });
+
+  /**
+   * The seeded plan names each meal after its own type — the breakfast is called "Desayuno" — so
+   * under the type label the same word came out twice and neither said what there was to eat.
+   */
+  it('titles a meal with its food when its name only repeats the meal type', async () => {
+    getDayMock.mockResolvedValue({
+      ...strengthDay,
+      meals: [
+        {
+          id: 'meal-desayuno',
+          mealType: 'BREAKFAST',
+          name: 'Desayuno',
+          preferredTime: '08:00',
+          optional: false,
+          totals: { calories: 372, proteinG: 22.8, carbsG: 36.4, fatG: 15.2 },
+          items: [
+            { food: 'Copos de avena', quantityG: 80 },
+            { food: 'Plátano', quantityG: 120 },
+          ],
+        },
+      ],
+    });
+    renderPage();
+
+    expect(
+      await screen.findByRole('heading', { name: 'Copos de avena, Plátano' }),
+    ).toBeInTheDocument();
+  });
+
+  /** A plan that does name its meals keeps the name: somebody wrote it and it says more. */
+  it('keeps a meal name that says something the type does not', async () => {
+    renderPage();
+
+    expect(
+      await screen.findByRole('heading', { name: 'Bowl de Yogur Proteico y Fruta' }),
+    ).toBeInTheDocument();
+  });
+
+  /** The check reflects the state the server reports, and an eaten meal cannot be logged twice. */
+  it('ticks the meals already eaten and leaves the rest open', async () => {
+    renderPage();
+
+    const eaten = await screen.findByRole('checkbox', {
+      name: 'Bowl de Yogur Proteico y Fruta: hecha',
+    });
+    expect(eaten).toBeChecked();
+    expect(eaten).toBeDisabled();
+
+    expect(
+      screen.getByRole('checkbox', { name: 'Marcar Pollo a la Plancha con Boniato como hecha' }),
+    ).not.toBeChecked();
+  });
+
+  /** Ticking logs the meal as the plan wrote it, with the totals the server worked out. */
+  it('logs a meal as planned when its check is ticked', async () => {
+    logAsPlannedMock.mockResolvedValue({
+      id: 'entry-1',
+      date: '2026-08-07',
+      mealType: 'LUNCH',
+      name: 'Pollo a la Plancha con Boniato',
+      kcal: 650,
+      proteinG: 55,
+      carbsG: 70,
+      fatG: 12,
+    });
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(
+      await screen.findByRole('checkbox', {
+        name: 'Marcar Pollo a la Plancha con Boniato como hecha',
+      }),
+    );
+
+    await waitFor(() =>
+      expect(logAsPlannedMock).toHaveBeenCalledWith(
+        '2026-08-07',
+        expect.objectContaining({ id: 'meal-comida' }),
+      ),
+    );
+    // Y se vuelve a preguntar, o el check se quedaría mintiendo hasta recargar.
+    await waitFor(() => expect(getConsumptionMock).toHaveBeenCalledTimes(2));
+  });
+
+  it('opens the log form from the header action', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole('button', { name: '+ Registrar' }));
+
+    expect(within(screen.getByRole('dialog')).getByText('Registrar comida')).toBeInTheDocument();
+  });
+
+  /** A plan that sets no target draws no bar: the only ceiling available would be invented here. */
+  it('shows the figures without bars when the plan sets no target', async () => {
+    getConsumptionMock.mockResolvedValue(consumption({ target: null, comparison: null }));
+    renderPage();
+
+    expect(await screen.findByText('140 g')).toBeInTheDocument();
+    expect(screen.queryByText('/ 180 g')).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/Tu plan no fija un objetivo/)).toBeInTheDocument();
+  });
+
+  it('points at the generator when there is no plan for today', async () => {
+    getDayMock.mockResolvedValue({ ...strengthDay, meals: [] });
     renderPage();
 
     expect(await screen.findByText('No existe ningún plan planificado.')).toBeInTheDocument();
   });
 
   it('shows an error state with a retry action', async () => {
-    getDayMock.mockRejectedValueOnce(new Error('network')).mockResolvedValueOnce(runningDay);
-
+    getDayMock.mockRejectedValueOnce(new Error('network')).mockResolvedValueOnce(strengthDay);
+    const user = userEvent.setup();
     renderPage();
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo cargar');
+    await user.click(await screen.findByRole('button', { name: 'Reintentar' }));
 
-    await userEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
-
-    expect(await screen.findByRole('heading', { name: 'Desayuno' })).toBeInTheDocument();
+    expect(await screen.findByText('Bowl de Yogur Proteico y Fruta')).toBeInTheDocument();
   });
 });

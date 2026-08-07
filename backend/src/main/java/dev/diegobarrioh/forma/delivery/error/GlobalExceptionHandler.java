@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -88,6 +89,22 @@ public class GlobalExceptionHandler {
       HttpMessageNotReadableException ex, HttpServletRequest request) {
     return ApiError.of(
         ApiErrorCode.VALIDATION_ERROR, "Malformed request body", correlationId(request), null);
+  }
+
+  /**
+   * A JSON command endpoint reached with a non-JSON media type is caller input, not an internal
+   * error. Map Spring's converter rejection to 415 so the UI/debugging surface says "bad request
+   * shape" instead of looking like backend business logic failed.
+   */
+  @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+  @ResponseStatus(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
+  public ApiError handleUnsupportedMediaType(
+      HttpMediaTypeNotSupportedException ex, HttpServletRequest request) {
+    return ApiError.of(
+        ApiErrorCode.VALIDATION_ERROR,
+        "Unsupported request content type",
+        correlationId(request),
+        null);
   }
 
   /**

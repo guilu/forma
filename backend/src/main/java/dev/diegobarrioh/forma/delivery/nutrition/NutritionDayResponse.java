@@ -75,7 +75,13 @@ public record NutritionDayResponse(
     }
   }
 
+  /**
+   * @param id the planned meal's own id, so a screen showing the plan can match each meal with the
+   *     state the consumption read model reports for it. Without it the two answers could only be
+   *     paired by name and type, which two meals of a day are free to share.
+   */
   public record Meal(
+      String id,
       String mealType,
       String name,
       String preferredTime,
@@ -118,6 +124,7 @@ public record NutritionDayResponse(
 
   private static Meal meal(ResolvedMeal meal) {
     return new Meal(
+        meal.id() == null ? null : meal.id().toString(),
         meal.mealType().name(),
         meal.name(),
         meal.scheduledTime() == null ? null : meal.scheduledTime().toString(),

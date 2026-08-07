@@ -70,6 +70,15 @@ class GlobalExceptionHandlerTest {
         .andExpect(jsonPath("$.details[0].field").value("name"));
   }
 
+  @Test
+  void unsupportedJsonCommandMediaTypeMapsToUnsupportedMediaType() throws Exception {
+    mockMvc
+        .perform(post("/echo").contentType(MediaType.TEXT_PLAIN).content("{\"name\":\"Ada\"}"))
+        .andExpect(status().isUnsupportedMediaType())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.message").value("Unsupported request content type"));
+  }
+
   /**
    * {@link ForbiddenException} maps to 403 {@code FORBIDDEN} (FOR-140, first real use of the
    * placeholder {@link ApiErrorCode#FORBIDDEN} reserved by FOR-88) with the caller-safe message,
