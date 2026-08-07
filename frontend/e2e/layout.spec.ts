@@ -735,15 +735,23 @@ test.describe('page headers on a phone', () => {
     expect(secondStartsAfter, 'The action is not to the right of the title').toBe(true);
   });
 
-  test('nutrition puts its date beside the title', async ({ page }) => {
+  /**
+   * Nutrition's date moved out of the row and under the title, and that is the point.
+   *
+   * <p>It used to sit beside it inside a date navigator with two arrows that moved nothing. A date
+   * you cannot change is a date, not a control, so it reads as one now: same column as the title,
+   * on the line below it. What is still worth asserting is that it stays inside the header and
+   * does not drift off to its own corner.
+   */
+  test('nutrition puts its date under the title', async ({ page }) => {
     await page.goto('/app/nutrition');
 
     const title = await page.getByRole('heading', { level: 1 }).boundingBox();
     const date = await page.getByText(/\bago/i).first().boundingBox();
-    const { overlap, secondStartsAfter } = await sharesARowWith(title!, date!);
 
-    expect(overlap, `The date sits on its own row (overlap ${overlap}px)`).toBeGreaterThan(0);
-    expect(secondStartsAfter, 'The date is not to the right of the title').toBe(true);
+    expect(date!.y, 'The date is not below the title').toBeGreaterThanOrEqual(title!.y);
+    // Misma columna: alineada con el título, no empujada al otro extremo de la cabecera.
+    expect(Math.abs(date!.x - title!.x), 'The date is not aligned with the title').toBeLessThan(4);
   });
 
   test('training puts its date beside the title', async ({ page }) => {
