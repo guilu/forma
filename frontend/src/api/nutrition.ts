@@ -13,6 +13,11 @@ export interface NutritionItem {
 
 /** A meal in the day's flow; `optional` marks a skippable item (e.g. post-run recovery). */
 export interface NutritionMeal {
+  /**
+   * The planned meal's own id, which is what pairs it with the state the consumption read model
+   * reports. Matching by name and type would break on a day with two meals that share both.
+   */
+  readonly id: string;
   readonly mealType: string;
   readonly name: string;
   readonly preferredTime: string;
@@ -184,6 +189,35 @@ export function logMeal(body: LogMealBody, client: ApiClient = apiClient): Promi
     method: 'POST',
     body: JSON.stringify(body),
   });
+}
+
+/**
+ * Records that a planned meal was eaten as the plan wrote it.
+ *
+ * <p>Logged as the meal's own totals rather than as its list of foods, and that is a real
+ * limitation rather than a shortcut: the plan sends each line's NAME and grams but not the catalog
+ * id behind it, so the individual foods cannot be logged from here. The totals are the server's own
+ * arithmetic over those same foods, so the day adds up to the right number — what is lost is the
+ * breakdown of which food contributed what, in a screen that never showed it anyway.
+ */
+export function logPlannedMealAsPlanned(
+  date: string,
+  meal: NutritionMeal,
+  client: ApiClient = apiClient,
+): Promise<LoggedMeal> {
+  return logMeal(
+    {
+      date,
+      mealType: meal.mealType,
+      plannedMealId: meal.id,
+      name: meal.name,
+      kcal: meal.totals.calories,
+      proteinG: meal.totals.proteinG,
+      carbsG: meal.totals.carbsG,
+      fatG: meal.totals.fatG,
+    },
+    client,
+  );
 }
 
 /**
