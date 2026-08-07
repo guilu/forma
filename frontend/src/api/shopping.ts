@@ -45,7 +45,8 @@ export interface ShoppingList {
   readonly items: ShoppingItem[];
   readonly budget: ShoppingBudget;
   /** When this list was generated/created (FOR-108); backfilled for pre-migration lists. */
-  readonly generatedAt: string;
+  /** Nulo mientras la cuenta no haya generado su lista: no hay nada que fechar. */
+  readonly generatedAt: string | null;
 }
 
 /** The updated item returned by the check toggle. */

@@ -221,7 +221,9 @@ describe('ShoppingPage', () => {
     // "Generada" tile shows the list's generatedAt, formatted consistently
     // with the app's other date displays (FOR-117).
     expect(screen.getByRole('heading', { name: 'Generada', level: 2 })).toBeInTheDocument();
-    expect(screen.getByText(formatGeneratedAt(list.generatedAt))).toBeInTheDocument();
+    // El fixture siempre trae fecha; el nulo es el caso de «lista sin generar», que tiene su
+    // propio test más abajo.
+    expect(screen.getByText(formatGeneratedAt(list.generatedAt!))).toBeInTheDocument();
 
     // "Porciones" aggregate tile (FOR-164): sums per-item servings, skipping
     // non-food items (Detergente / second Leche row, servings: null) —
@@ -542,10 +544,39 @@ describe('ShoppingPage', () => {
 
     renderPage();
 
-    expect(await screen.findByText(/No existe ningún plan planificado/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Todavía no has generado tu lista de la compra/),
+    ).toBeInTheDocument();
+    // Y la salida está a mano: el estado vacío ofrece generarla, no manda a otra pantalla.
+    expect(screen.getAllByRole('button', { name: 'Generar nueva lista' }).length).toBeGreaterThan(
+      0,
+    );
     expect(screen.getAllByText(/0,00/).length).toBeGreaterThan(0);
     expect(screen.getByRole('heading', { name: 'Generada', level: 2 })).toBeInTheDocument();
     expect(screen.getByText(formatGeneratedAt('2026-07-06T00:00:00Z'))).toBeInTheDocument();
+  });
+
+  /**
+   * Una cuenta que nunca generó su lista no tiene fecha que enseñar.
+   *
+   * <p>El servidor manda `generatedAt: null` ahí, y la tarjeta desaparece en vez de pintar una
+   * fecha inventada junto al aviso de que la lista está sin generar.
+   */
+  it('hides the generated-on tile when the list was never generated', async () => {
+    getListMock.mockResolvedValue({
+      weekStartDate: '2026-08-03',
+      status: 'ACTIVE',
+      generatedAt: null,
+      items: [],
+      budget: { weeklyEur: 0, monthlyEur: 0 },
+    });
+
+    renderPage();
+
+    expect(
+      await screen.findByText(/Todavía no has generado tu lista de la compra/),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Generada', level: 2 })).not.toBeInTheDocument();
   });
 
   it('reaches the product price/URL edit entry point and saves changes', async () => {
