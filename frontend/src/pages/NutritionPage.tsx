@@ -1,118 +1,110 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Badge } from '../components/Badge';
+import { Button } from '../components/Button';
+import { CalorieRing } from '../components/CalorieRing';
 import { Card } from '../components/Card';
 import { NoPlanEmptyState } from '../components/NoPlanEmptyState';
 import { ErrorState } from '../components/ErrorState';
 import { Icon } from '../components/Icon';
 import { LoadingState } from '../components/LoadingState';
-import { MacroRing } from '../components/MacroRing';
+import { Modal } from '../components/Modal';
 import { WaterTracker } from '../components/WaterTracker';
 import {
   getDayConsumption,
   getNutritionDay,
+  logPlannedMealAsPlanned,
   type DayConsumption,
-  type KeyNutrients,
   type NutritionDay,
   type NutritionMeal,
+  type PlannedMealState,
 } from '../api/nutrition';
-import { MealLogPanel } from './nutrition/MealLogPanel';
+import { LogMealForm } from './nutrition/LogMealForm';
 import { ProgressBar } from './dashboard/ProgressBar';
 import { formatShortDate } from './dateLabel';
 import styles from './NutritionPage.module.css';
 
 /**
- * Nutrition page (FOR-33/34, built out to the mockup by FOR-54):
- * `docs/4-nutricion.png` — day-type selector, the daily meal plan, a macro
- * summary and the FOR-34 running-day guidance, reading only from the
- * `GET /api/v1/nutrition/days/{type}` read model (ADR-006 — no calculations
- * here, ADR-001).
+ * Nutrition, for today.
  *
- * <p>This comment used to list four things the mockup showed and the API could
- * not back. Three of them it could, and two of those it always could:
+ * <p>The page used to ask two questions at once and let the answers sit side by side: a "what have
+ * you eaten" card fed by the date-based consumption endpoint, and a day-type selector
+ * (Carrera/Fuerza/Descanso) feeding a separate view of the plan. They were free to disagree, and
+ * did — the card showed today's target while the block below it swore there was no plan.
+ *
+ * <p>Now there is one question — <b>today</b> — and the two endpoints answer different halves of
+ * it. The consumption read model already knows which KIND of day today is (it resolves the date
+ * through the shared training-day policy), so the plan side is asked for that kind instead of for
+ * whatever a selector happened to point at. The selector is gone: it let you read Tuesday's food on
+ * a Thursday, which is not something a screen called "today" should offer.
+ *
  * <ul>
- *   <li><b>Per-meal macros and kcal</b> — said to be unreturned. They have been
- *       returned since FOR-105; {@code api/nutrition.ts} simply never declared
- *       the field, so the page drew invented chips beside real food.
- *   <li><b>"Objetivo vs actual"</b> — said to have no "actual". The day's own
- *       total has been returned since FOR-105 too, and what was actually EATEN
- *       arrived with the meal log. Both are shown now, in the two places they
- *       belong: the plan card compares the plan to its target, and the log
- *       compares the day to it.
- *   <li><b>Meal logging and key nutrients</b> — said to be modeled nowhere.
- *       Logging has existed since FOR-127 and key nutrients since FOR-134; what
- *       was missing was a screen, which {@link MealLogPanel} now is.
+ *   <li>consumption — calories and macros EATEN, the target they are measured against, and the
+ *       state of each planned meal;
+ *   <li>the plan's day — the meals themselves and what each one comes to.
  * </ul>
  *
- * <p>What is still genuinely absent, and stays absent rather than invented:
- * <ul>
- *   <li>A TARGET for fibre, sugars, sodium or saturated fat. Nothing sets one,
- *       so the key-nutrient card shows figures without bars.
- *   <li>Meal photographs — no image data on any endpoint.
- *   <li>A date-parameterised plan. The log is per-date; the plan side can only
- *       be asked by day KIND, so the header's date navigator stays decorative.
- * </ul>
- *
- * <p>Day-type selection: the API takes an explicit `type` path segment
- * (`running`/`strength`/`rest`), so the selector below re-fetches on change.
- * There is no "which type is today" resolution in the backend (the FOR-51
- * dashboard widget and the pre-FOR-54 version of this page both hardcoded
- * `running`); this page now defaults to `running` and lets the user switch.
+ * <p><b>No meal photographs.</b> The mockup shows one per meal and no endpoint carries image data —
+ * not the plan, not the food catalog, not recipes. The frame stays with the nutrition glyph in it
+ * rather than filled with a stock photo of a dish nobody cooked.
  */
-type DayType = 'running' | 'strength' | 'rest';
-
 type State =
   | { readonly status: 'loading' }
   | { readonly status: 'error' }
   | { readonly status: 'empty' }
   | { readonly status: 'ready'; readonly day: NutritionDay };
 
-const DAY_TYPES: ReadonlyArray<{ readonly key: DayType; readonly label: string }> = [
-  { key: 'running', label: 'Carrera' },
-  { key: 'strength', label: 'Fuerza' },
-  { key: 'rest', label: 'Descanso' },
-];
+/** Today, for both halves of the page. Read once so they cannot land on different days. */
+const TODAY = new Date();
+const TODAY_ISO = TODAY.toISOString().slice(0, 10);
+const TODAY_LABEL = formatShortDate(TODAY);
 
-/**
- * The FOR-164 placeholders are gone, and two of the three never needed to exist.
- *
- * <p>They were three invented numbers standing in for endpoints that "did not
- * exist yet": consumed calories, per-meal macros, and key nutrients. Two of them
- * were arriving from the API the whole time — the day and each of its meals have
- * carried computed totals since FOR-105, and `api/nutrition.ts` simply never
- * declared the fields, so the page drew fabrications beside real food for want of
- * a type. The third, key nutrients, has been persisted since FOR-134 and became
- * readable when the meal log got a screen.
- *
- * <p>What is genuinely not modeled is a TARGET for fibre, sugars, sodium or
- * saturated fat. Nothing anywhere sets one, so none is shown: a real figure with
- * no bar beside it says less than a bar, and says only true things.
- */
-
-/** Static date label for the visual-only navigator (no date-parameterised API). */
-const TODAY_LABEL = formatShortDate(new Date());
-
-/**
- * Today, for the meal log.
- *
- * <p>The consumption endpoint IS date-parameterised, unlike the plan-day one above whose navigator
- * is still decorative. Wiring the navigator to move both is a bigger change than this screen: the
- * plan side would need a way to ask "which kind of day was the fourth of August", which it has no
- * endpoint for.
- */
-const TODAY_ISO = new Date().toISOString().slice(0, 10);
+const MEAL_LABELS: Record<string, string> = {
+  BREAKFAST: 'Desayuno',
+  MID_MORNING: 'Media mañana',
+  LUNCH: 'Comida',
+  SNACK: 'Merienda',
+  PRE_WORKOUT: 'Pre-entreno',
+  POST_WORKOUT: 'Post-entreno',
+  DINNER: 'Cena',
+};
 
 export function NutritionPage() {
-  const [dayType, setDayType] = useState<DayType>('running');
   const [retryToken, setRetryToken] = useState(0);
   const [state, setState] = useState<State>({ status: 'loading' });
+  const [consumption, setConsumption] = useState<DayConsumption | undefined>(undefined);
+  const [logging, setLogging] = useState(false);
+  const [marking, setMarking] = useState<string | undefined>(undefined);
 
+  const reloadConsumption = useCallback(() => {
+    return getDayConsumption(TODAY_ISO)
+      .then((day) => {
+        setConsumption(day);
+        return day;
+      })
+      .catch(() => undefined);
+  }, []);
+
+  /*
+   * El plan se pide para el tipo de día que dice el servidor, así que las dos mitades hablan del
+   * mismo día. Encadenado y no en paralelo por eso mismo: la segunda petición necesita la respuesta
+   * de la primera, y adivinarla aquí metería la política de tipos de día en el navegador.
+   */
   useEffect(() => {
     let active = true;
     setState({ status: 'loading' });
-    getNutritionDay(dayType)
+    reloadConsumption()
       .then((day) => {
-        if (active) {
+        if (!active) {
+          return undefined;
+        }
+        if (!day?.dayType) {
+          setState({ status: 'empty' });
+          return undefined;
+        }
+        return getNutritionDay(day.dayType.toLowerCase());
+      })
+      .then((day) => {
+        if (active && day) {
           setState(day.meals.length === 0 ? { status: 'empty' } : { status: 'ready', day });
         }
       })
@@ -124,90 +116,68 @@ export function NutritionPage() {
     return () => {
       active = false;
     };
-  }, [dayType, retryToken]);
+  }, [reloadConsumption, retryToken]);
 
-  // Fetched here rather than inside MealLogPanel, because two things on this page read it: the log
-  // itself and the key-nutrient card. One request, one answer — two would be free to disagree by a
-  // second.
-  const [consumption, setConsumption] = useState<DayConsumption | undefined>(undefined);
-  const reloadConsumption = useCallback(() => {
-    getDayConsumption(TODAY_ISO)
-      .then(setConsumption)
-      .catch(() => setConsumption(undefined));
-  }, []);
-
-  useEffect(reloadConsumption, [reloadConsumption]);
+  const markAsEaten = (meal: NutritionMeal) => {
+    setMarking(meal.id);
+    logPlannedMealAsPlanned(TODAY_ISO, meal)
+      .then(reloadConsumption)
+      .finally(() => setMarking(undefined));
+  };
 
   return (
     <div className={styles.wrapper}>
       <header className={styles.header}>
         <div className={styles.titles}>
-          <h1 className={styles.title}>Nutrición</h1>
-          <p className={styles.subtitle}>Alimenta tu cuerpo, alcanza tus objetivos.</p>
+          <h1 className={styles.title}>Tu Nutrición de Hoy</h1>
+          <p className={styles.subtitle}>
+            {TODAY_LABEL} · Sigue el plan para alcanzar tu objetivo.
+          </p>
         </div>
-        {/* Date navigator — visual only (no date-parameterised nutrition API). */}
-        <div className={styles.dateNav} aria-hidden="true">
-          <span className={styles.dateArrow}>
-            <Icon name="chevron" size={16} className={styles.dateArrowPrev} />
-          </span>
-          <span className={styles.dateLabel}>{TODAY_LABEL}</span>
-          <span className={styles.dateArrow}>
-            <Icon name="chevron" size={16} />
-          </span>
-        </div>
+        <Button variant="accent" type="button" onClick={() => setLogging(true)}>
+          + Registrar
+        </Button>
       </header>
 
-      {/* What was actually eaten, beside what the plan asked for. The endpoints behind it have
-          existed since FOR-127 with no screen calling them. */}
-      <MealLogPanel date={TODAY_ISO} day={consumption} onLogged={reloadConsumption} />
+      {renderContent(state, consumption, () => setRetryToken((token) => token + 1), {
+        marking,
+        onMark: markAsEaten,
+      })}
 
-      <DayTypeSelector value={dayType} onChange={setDayType} />
-
-      {/* V53/V54: what this page shows is a day of the plan being followed, and
-          until now there was no way to reach the plan itself from here. */}
+      {/* El único acceso a los planes: no está en la navegación lateral, así que quitarlo de aquí
+          los dejaría inalcanzables. */}
       <Link className={styles.plansLink} to="/app/nutrition/plans">
         Editar mis planes
       </Link>
 
-      {renderContent(state, dayType, () => setRetryToken((token) => token + 1), consumption)}
+      {logging && (
+        <Modal title="Registrar comida" onClose={() => setLogging(false)}>
+          <LogMealForm
+            date={TODAY_ISO}
+            plannedMeals={consumption?.plannedMeals ?? []}
+            onCancel={() => setLogging(false)}
+            onLogged={() => {
+              setLogging(false);
+              void reloadConsumption();
+            }}
+          />
+        </Modal>
+      )}
     </div>
   );
 }
 
-function DayTypeSelector({
-  value,
-  onChange,
-}: {
-  readonly value: DayType;
-  readonly onChange: (type: DayType) => void;
-}) {
-  return (
-    <div className={styles.selector} role="radiogroup" aria-label="Tipo de día">
-      {DAY_TYPES.map((option) => (
-        <button
-          key={option.key}
-          type="button"
-          role="radio"
-          aria-checked={value === option.key}
-          className={
-            value === option.key
-              ? `${styles.selectorButton} ${styles.selectorActive}`
-              : styles.selectorButton
-          }
-          onClick={() => onChange(option.key)}
-        >
-          {option.label}
-        </button>
-      ))}
-    </div>
-  );
+interface MealActions {
+  /** The meal whose request is in flight, so only its own control shows the wait. */
+  readonly marking: string | undefined;
+  readonly onMark: (meal: NutritionMeal) => void;
 }
 
 function renderContent(
   state: State,
-  dayType: DayType,
-  retry: () => void,
   consumption: DayConsumption | undefined,
+  retry: () => void,
+  actions: MealActions,
 ) {
   if (state.status === 'loading') {
     return <LoadingState message="Cargando tu día de nutrición…" />;
@@ -226,197 +196,154 @@ function renderContent(
     return <NoPlanEmptyState />;
   }
 
-  const { day } = state;
-  const target = day.targets.calories;
-  // What the plan's own meals come to, not what was eaten — that is the meal log's business, and
-  // showing it twice on one page would be one number with two homes.
-  const planned = day.totals.calories;
-  const gap = target - planned;
+  const consumed = consumption?.consumed;
+  const target = consumption?.target ?? null;
+  const states = new Map(consumption?.plannedMeals.map((meal) => [meal.id, meal.state]) ?? []);
+  const eaten = state.day.meals.filter((meal) => states.get(meal.id) === 'EATEN').length;
 
   return (
     <>
-      <section className={styles.summary} aria-label="Resumen de macronutrientes">
-        <Card title="Calorías del plan" headingLevel={2}>
-          {/* Both figures real: what the day aims for, and what its meals add up to. They can
-              disagree, which is the whole reason the model keeps them apart. */}
-          <p className={styles.calories}>
-            <span className={styles.caloriesValue}>{planned}</span>
-            <span className={styles.caloriesUnit}>
-              {' / '}
-              <span className={styles.caloriesTarget}>{target}</span> kcal
-            </span>
-          </p>
-          <ProgressBar value={planned} max={target} label="Calorías que suma el plan" />
-          <p className={styles.caloriesNote}>
-            {gap > 0
-              ? `${gap} kcal por debajo del objetivo`
-              : gap < 0
-                ? `${-gap} kcal por encima del objetivo`
-                : 'Justo en el objetivo'}
-          </p>
+      <section className={styles.summary} aria-label="Resumen del día">
+        <Card title="Calorías" headingLevel={2}>
+          <CalorieRing consumed={consumed?.kcal ?? 0} target={target?.kcal ?? null} />
         </Card>
-        <Card title="Distribución de macros" headingLevel={2}>
-          <MacroRing
-            proteinG={day.targets.proteinG}
-            carbsG={day.targets.carbsG}
-            fatG={day.targets.fatG}
-          />
+        <Card title="Macronutrientes" headingLevel={2}>
+          <MacroProgress consumed={consumed} target={target} />
         </Card>
         <WaterTracker headingLevel={2} />
       </section>
 
-      {dayType === 'running' && <RunningGuidance meals={day.meals} />}
-
-      <div className={styles.mainSide}>
-        <Card title="Comidas del día" headingLevel={2}>
-          <ol className={styles.meals}>
-            {day.meals.map((meal) => (
-              <li key={`${meal.mealType}-${meal.preferredTime}`}>
-                <MealCard meal={meal} />
-              </li>
-            ))}
-          </ol>
-        </Card>
-
-        <KeyNutrientsCard nutrients={consumption?.keyNutrients} />
-      </div>
-
-      <RecoveryRecommendation meals={day.meals} />
+      <section className={styles.meals} aria-label="Comidas de hoy">
+        <div className={styles.mealsHead}>
+          <h2 className={styles.mealsTitle}>Comidas de Hoy</h2>
+          <p className={styles.mealsCount}>
+            {eaten} de {state.day.meals.length} completadas
+          </p>
+        </div>
+        <ol className={styles.mealList}>
+          {state.day.meals.map((meal) => (
+            <li key={meal.id}>
+              <MealCard
+                meal={meal}
+                state={states.get(meal.id)}
+                marking={actions.marking === meal.id}
+                onMark={() => actions.onMark(meal)}
+              />
+            </li>
+          ))}
+        </ol>
+      </section>
     </>
   );
 }
 
-function MealCard({ meal }: { readonly meal: NutritionMeal }) {
-  return (
-    <Card>
-      <div className={styles.mealHeader}>
-        {/* Photo placeholder — no meal image data on the API. */}
-        <span className={styles.mealPhoto} aria-hidden="true">
-          <Icon name="nutrition" size={20} />
-        </span>
-        <div className={styles.mealHeaderText}>
-          <p className={styles.mealTime}>{meal.preferredTime}</p>
-          {/* FOR-112: <h3> under the <h2> "Comidas del día". */}
-          <h3 className={styles.mealName}>{meal.name}</h3>
-        </div>
-        {meal.optional && <Badge tone="warning">Opcional</Badge>}
-      </div>
-      <ul className={styles.items}>
-        {meal.items.map((item) => (
-          <li key={item.food} className={styles.item}>
-            <span className={styles.food}>{item.food}</span>
-            <span className={styles.quantity}>{item.quantityG} g</span>
-          </li>
-        ))}
-      </ul>
-      {/* Real, and always were: the API has returned per-meal totals since FOR-105. */}
-      <p className={styles.mealMacros}>
-        <span>P {meal.totals.proteinG} g</span>
-        <span>C {meal.totals.carbsG} g</span>
-        <span>G {meal.totals.fatG} g</span>
-        <span className={styles.mealKcal}>{meal.totals.calories} kcal</span>
-      </p>
-    </Card>
-  );
-}
+const MACROS = [
+  { key: 'proteinG', label: 'Proteína', color: 'var(--color-accent)' },
+  { key: 'carbsG', label: 'Carbohidratos', color: 'var(--color-success, #22c55e)' },
+  { key: 'fatG', label: 'Grasas', color: 'var(--color-warning, #f59e0b)' },
+] as const;
 
 /**
- * "Nutrientes clave" — fibre, sugars, sodium and saturated fat actually consumed
- * today (FOR-134).
+ * Eaten against target, per macro.
  *
- * <p>No progress bars, and their absence is the honest part. Nothing in the app
- * sets a target for any of these four: the profile has none, the plan has none,
- * and the source documents never asked for one. A bar needs a maximum, and the
- * only maximum available would have been invented — which is what the number
- * beside it used to be.
- *
- * <p><b>A null is not a zero.</b> A day's total for one of these is null when any
- * single thing eaten has no figure for it, because summing the rest would report a
- * number lower than the truth and look like a measurement. Saying so is more use
- * than a dash: it tells you the gap is in the catalog, not in what you ate.
+ * <p>Both figures are the server's. A target of `null` means the plan sets none, and then the bar
+ * is dropped rather than drawn against an invented maximum — a bar needs a ceiling, and the only
+ * one available would have been made up here (FOR-134).
  */
-function KeyNutrientsCard({ nutrients }: { readonly nutrients: KeyNutrients | undefined }) {
-  const rows = [
-    { label: 'Fibra', value: nutrients?.fiberG ?? null, unit: 'g' },
-    { label: 'Azúcares', value: nutrients?.sugarsG ?? null, unit: 'g' },
-    { label: 'Sodio', value: nutrients?.sodiumMg ?? null, unit: 'mg' },
-    { label: 'Grasas saturadas', value: nutrients?.saturatedFatG ?? null, unit: 'g' },
-  ];
+function MacroProgress({
+  consumed,
+  target,
+}: {
+  readonly consumed: DayConsumption['consumed'] | undefined;
+  readonly target: DayConsumption['target'];
+}) {
   return (
-    <Card title="Nutrientes clave" headingLevel={2}>
-      <ul className={styles.nutrients}>
-        {rows.map((row) => (
-          <li key={row.label} className={styles.nutrient}>
-            <div className={styles.nutrientHead}>
-              <span>{row.label}</span>
-              <span className={styles.nutrientValue}>
-                {row.value === null ? 'Sin datos' : `${row.value} ${row.unit}`}
+    <ul className={styles.macros}>
+      {MACROS.map((macro) => {
+        const eaten = consumed?.[macro.key] ?? 0;
+        const goal = target?.[macro.key] ?? null;
+        return (
+          <li key={macro.key} className={styles.macro}>
+            <div className={styles.macroHead}>
+              <span className={styles.macroName}>
+                <span className={styles.macroDot} style={{ background: macro.color }} />
+                {macro.label}
+              </span>
+              <span className={styles.macroValue}>
+                {eaten} g{goal !== null && <span className={styles.macroGoal}> / {goal} g</span>}
               </span>
             </div>
+            {goal !== null && (
+              <ProgressBar
+                value={eaten}
+                max={goal}
+                label={`${macro.label} consumida`}
+                color={macro.color}
+                showPercent={false}
+              />
+            )}
           </li>
-        ))}
-      </ul>
-      <p className={styles.nutrientsNote}>
-        Lo que llevas hoy. Un &laquo;sin datos&raquo; significa que algo de lo registrado no tiene
-        ese valor en el catálogo, no que sea cero.
-      </p>
-    </Card>
+        );
+      })}
+    </ul>
   );
 }
 
 /**
- * Builds the running-day flow labels (FOR-34): the meals in preferred-time
- * order (as the API already returns them) with a "Correr" marker inserted
- * after the pre-run snack, matching the spec's "Breakfast → Lunch → Pre-run
- * snack → Run → Light recovery → Light dinner" narrative. The marker is a
- * purely presentational label, not derived nutrition data.
+ * One meal of the plan, with the answer to "have you had it?".
+ *
+ * <p>A real checkbox and not a styled div: it says what it is to a screen reader and takes a
+ * keyboard without any of that being rebuilt worse here. Ticking it logs the meal as the plan wrote
+ * it. It does not untick — undoing a log is a different operation with no endpoint behind it, and a
+ * control that looked like it toggled while silently refusing would be worse than one that plainly
+ * only goes one way.
  */
-function runningFlowLabels(meals: readonly NutritionMeal[]): string[] {
-  const labels: string[] = [];
-  meals.forEach((meal) => {
-    labels.push(meal.name);
-    if (meal.mealType === 'PRE_WORKOUT') {
-      labels.push('Correr');
-    }
-  });
-  return labels;
-}
-
-function RunningGuidance({ meals }: { readonly meals: readonly NutritionMeal[] }) {
+function MealCard({
+  meal,
+  state,
+  marking,
+  onMark,
+}: {
+  readonly meal: NutritionMeal;
+  readonly state: PlannedMealState['state'] | undefined;
+  readonly marking: boolean;
+  readonly onMark: () => void;
+}) {
+  const eaten = state === 'EATEN';
   return (
-    <Card title="Estrategia de día de carrera" headingLevel={2}>
-      <p className={styles.explanation}>
-        Los carbohidratos se concentran temprano; la cena es más ligera tras correr por la noche. La
-        recuperación post-carrera es opcional: sáltala si ya has alcanzado tu proteína diaria.
-      </p>
-      <ol className={styles.flow} aria-label="Flujo de comidas del día de carrera">
-        {runningFlowLabels(meals).map((label, index) => (
-          <li key={`${label}-${index}`} className={styles.flowStep}>
-            {index > 0 && (
-              <span className={styles.flowArrow} aria-hidden="true">
-                →
-              </span>
-            )}
-            {label}
-          </li>
-        ))}
-      </ol>
-    </Card>
-  );
-}
-
-function RecoveryRecommendation({ meals }: { readonly meals: readonly NutritionMeal[] }) {
-  const recovery = meals.find((meal) => meal.optional);
-  if (!recovery) {
-    return null;
-  }
-  const items = recovery.items.map((item) => `${item.food} (${item.quantityG} g)`).join(', ');
-  return (
-    <Card title="Recomendación de recuperación" headingLevel={2}>
-      <p className={styles.explanation}>
-        {recovery.name} · {recovery.preferredTime}: {items}. Es opcional — sáltala si ya has
-        alcanzado tu proteína diaria.
-      </p>
-    </Card>
+    <article className={eaten ? `${styles.mealCard} ${styles.mealDone}` : styles.mealCard}>
+      {/* Sin foto: ningún endpoint la tiene. El marco se queda con el glifo. */}
+      <span className={styles.mealPhoto} aria-hidden="true">
+        <Icon name="nutrition" size={22} />
+      </span>
+      <div className={styles.mealBody}>
+        <p className={styles.mealType}>
+          {MEAL_LABELS[meal.mealType] ?? meal.mealType}
+          {meal.optional && <span className={styles.mealOptional}> · opcional</span>}
+        </p>
+        <h3 className={styles.mealName}>{meal.name}</h3>
+        <p className={styles.chips}>
+          <span className={styles.chipKcal}>{meal.totals.calories} kcal</span>
+          <span className={styles.chip}>{meal.totals.proteinG} g P</span>
+          <span className={styles.chip}>{meal.totals.carbsG} g C</span>
+          <span className={styles.chip}>{meal.totals.fatG} g G</span>
+        </p>
+      </div>
+      <label className={styles.check}>
+        <input
+          type="checkbox"
+          className={styles.checkInput}
+          checked={eaten}
+          disabled={eaten || marking}
+          onChange={onMark}
+        />
+        <span className={styles.checkMark} aria-hidden="true">
+          {eaten && <Icon name="check" size={16} />}
+        </span>
+        <span className={styles.checkLabel}>
+          {eaten ? `${meal.name}: hecha` : `Marcar ${meal.name} como hecha`}
+        </span>
+      </label>
+    </article>
   );
 }

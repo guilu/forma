@@ -4,8 +4,7 @@
   gap: var(--space-5);
 }
 
-/* Title and date share a row at every width (FOR-193), like the dashboard's and
-   the training header's. */
+/* Título y acción comparten fila a cualquier ancho (FOR-193), como el resto de cabeceras. */
 .header {
   display: flex;
   align-items: flex-start;
@@ -17,8 +16,8 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  /* A flex item's automatic minimum size is its content, so without this the
-     subtitle refuses to wrap and pushes the date off the row. */
+  /* El mínimo automático de un ítem flex es su contenido: sin esto el subtítulo se niega a
+     partirse y empuja al botón fuera de la fila. */
   min-width: 0;
 }
 
@@ -26,249 +25,259 @@
   font-size: var(--font-size-xl);
 }
 
+/* La fecha vive aquí desde que el navegador decorativo se fue: enseñaba flechas que no movían
+   nada, y una fecha que no se puede cambiar es una fecha, no un control. */
 .subtitle {
   margin: 0;
   color: var(--color-text-muted);
 }
 
-.dateNav {
+.summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: var(--space-4);
+}
+
+/* --- Macronutrientes --- */
+
+.macros {
   display: flex;
-  flex-shrink: 0;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.macro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.macroHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.macroName {
+  display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-}
-
-.dateArrow {
-  display: flex;
-  align-items: center;
-  color: var(--color-text-muted);
-}
-
-.dateArrowPrev {
-  transform: rotate(180deg);
-}
-
-/* No `text-transform: capitalize`: it capitalises every word. The label arrives
-   capitalised from `formatShortDate`. */
-.dateLabel {
   font-size: var(--font-size-sm);
-  font-weight: 600;
-  white-space: nowrap;
   color: var(--color-text);
 }
 
-.selector {
+/* El punto de color repite lo que ya dice la barra; el nombre en texto es lo que lo sostiene
+   cuando el color no llega (daltonismo, alto contraste, impresión). */
+.macroDot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.macroValue {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.macroGoal {
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+/* --- Comidas de hoy --- */
+
+.meals {
   display: flex;
-  gap: var(--space-2);
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.mealsHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
   flex-wrap: wrap;
 }
 
-.selectorButton {
-  padding: var(--space-2) var(--space-4);
+.mealsTitle {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.mealsCount {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.mealList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mealCard {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
   border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-border);
   border-radius: var(--radius-md);
   background-color: var(--color-card);
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  cursor: pointer;
 }
 
-.selectorActive {
-  color: var(--color-accent-contrast);
-  background-color: var(--color-accent);
-  border-color: var(--color-accent);
-}
-
-.summary {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
-  gap: var(--space-4);
-}
-
-.calories {
-  margin: 0 0 var(--space-3);
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-1);
-}
-
-.caloriesValue {
-  font-family: var(--font-heading);
-  font-size: var(--font-size-xl);
-  font-weight: 700;
-  line-height: 1.1;
-}
-
-.caloriesUnit {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-base);
-}
-
-.caloriesTarget {
-  color: var(--color-text);
-  font-weight: 600;
-}
-
-.caloriesNote {
-  margin: var(--space-2) 0 0;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
-}
-
-/* Two-column main (meals) + side (key nutrients). */
-.mainSide {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space-4);
-  align-items: start;
+/* Hecha: el borde izquierdo se enciende. Nunca es lo único que lo dice — la casilla marcada y su
+   etiqueta lo cuentan sin depender del color. */
+.mealDone {
+  border-left-color: var(--color-accent);
 }
 
 .mealPhoto {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
+  display: grid;
+  place-items: center;
+  width: 3.25rem;
+  height: 3.25rem;
   flex-shrink: 0;
-  color: var(--color-accent-strong);
-  background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
   border-radius: var(--radius-md);
+  background-color: var(--color-surface-muted, rgba(0, 0, 0, 0.04));
+  color: var(--color-text-muted);
 }
 
-.mealHeaderText {
-  flex: 1;
+.mealBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
   min-width: 0;
+  flex: 1;
 }
 
-.mealMacros {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-  margin: var(--space-3) 0 0;
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--color-border);
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
-}
-
-.mealKcal {
-  margin-left: auto;
+.mealType {
+  margin: 0;
+  font-size: var(--font-size-label-sm);
   font-weight: 600;
-  color: var(--color-accent-strong);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-accent);
 }
 
-.nutrients {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.nutrientHead {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-2);
-  margin-bottom: var(--space-1);
-  font-size: var(--font-size-sm);
-}
-
-.nutrientValue {
+.mealOptional {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
   color: var(--color-text-muted);
-  font-weight: 600;
-}
-
-@media (min-width: 900px) {
-  .mainSide {
-    grid-template-columns: 2fr 1fr;
-  }
-}
-
-.explanation {
-  margin: 0;
-  color: var(--color-text);
-}
-
-.flow {
-  list-style: none;
-  margin: var(--space-3) 0 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.flowStep {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--font-size-sm);
-  color: var(--color-text);
-}
-
-.flowArrow {
-  color: var(--color-text-muted);
-}
-
-.meals {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.mealHeader {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-bottom: var(--space-3);
-}
-
-.mealTime {
-  margin: 0;
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
 }
 
 .mealName {
   margin: 0;
   font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--color-text-primary);
 }
 
-.items {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.chips {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: var(--space-2);
+  margin: var(--space-1) 0 0;
 }
 
-.item {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.food {
-  color: var(--color-text);
-}
-
-.quantity {
+.chip,
+.chipKcal {
+  padding: 0.125rem var(--space-2);
+  border-radius: var(--radius-full, 999px);
+  background-color: var(--color-surface-muted, rgba(0, 0, 0, 0.04));
+  font-size: var(--font-size-label-sm);
   color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
 }
 
-/* V53/V54: the way through to the plan this page is showing a day of. */
+.chipKcal {
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+/* --- La casilla de "hecha" --- */
+
+.check {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.check:has(.checkInput:disabled) {
+  cursor: default;
+}
+
+/* El control real sigue ahí, invisible pero enfocable: el teclado y el lector de pantalla son
+   suyos, y reimplementarlos peor es la forma más común de dejar a alguien fuera. */
+.checkInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.checkMark {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  color: transparent;
+}
+
+.checkInput:checked + .checkMark {
+  border-color: var(--color-accent);
+  background-color: var(--color-accent);
+  color: var(--color-accent-contrast, #fff);
+}
+
+.checkInput:focus-visible + .checkMark {
+  outline: 2px solid var(--color-accent-strong, var(--color-accent));
+  outline-offset: 2px;
+}
+
+.checkInput:disabled:not(:checked) + .checkMark {
+  opacity: 0.5;
+}
+
+/* Visible para quien escucha la página, no para quien la mira: la casilla ya se explica sola al
+   lado de la comida que nombra. */
+.checkLabel {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .plansLink {
   align-self: flex-start;
   font-size: var(--font-size-sm);
@@ -281,9 +290,14 @@
   text-decoration: underline;
 }
 
-/* The key-nutrient card carries no bars, so it needs a line saying why a value can be missing. */
-.nutrientsNote {
-  margin: var(--space-3) 0 0;
-  font-size: var(--font-size-xs);
-  color: var(--color-text-secondary);
+@media (max-width: 599px) {
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  /* La foto se va antes que el texto: es el elemento que menos dice de los tres. */
+  .mealPhoto {
+    display: none;
+  }
 }

@@ -164,7 +164,7 @@ describe('App', () => {
     );
 
     expect(
-      await screen.findByRole('heading', { name: 'Nutrición' }, CHUNK_TIMEOUT),
+      await screen.findByRole('heading', { name: 'Tu Nutrición de Hoy' }, CHUNK_TIMEOUT),
     ).toBeInTheDocument();
   });
 
