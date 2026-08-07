@@ -135,6 +135,9 @@ export function createApiClient(baseUrl: string = getApiBaseUrl()): ApiClient {
     const method = (init?.method ?? 'GET').toUpperCase();
     const headers = new Headers(init?.headers);
     headers.set('Accept', 'application/json');
+    if (typeof init?.body === 'string' && !headers.has('Content-Type')) {
+      headers.set('Content-Type', 'application/json');
+    }
 
     if (!SAFE_METHODS.has(method)) {
       let token = readCookie('XSRF-TOKEN');
