@@ -9,6 +9,7 @@ import dev.diegobarrioh.forma.domain.ShoppingUnit;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -93,11 +94,14 @@ public class JdbcShoppingListRepository implements ShoppingListRepository {
   @Override
   public Optional<ActiveShoppingList> regenerate(
       UUID userId, List<ShoppingListItem> items, Instant generatedAt) {
-    Optional<ActiveList> activeList = findActiveListRow(userId);
-    if (activeList.isEmpty()) {
-      return Optional.empty();
-    }
-    UUID listId = UUID.fromString(activeList.get().id());
+    // Sin lista activa se crea una, y ese es el arreglo. Antes se devolvía vacío, que el servicio
+    // convertía en un 404: la cuenta no tenía lista, regenerar era la única forma de tenerla, y
+    // regenerar exigía tener una. V23 borró las listas sembradas y nadie dejó una puerta para la
+    // primera, así que la pantalla entera quedó fuera de alcance para siempre.
+    UUID listId =
+        findActiveListRow(userId)
+            .map(list -> UUID.fromString(list.id()))
+            .orElseGet(() -> createActiveList(userId, generatedAt));
     jdbcTemplate.update("DELETE FROM shopping_list_items WHERE shopping_list_id = ?", listId);
     for (ShoppingListItem item : items) {
       jdbcTemplate.update(
@@ -142,6 +146,29 @@ public class JdbcShoppingListRepository implements ShoppingListRepository {
   @Override
   public Optional<StoredShoppingListItem> findItem(UUID userId, String itemId) {
     return findItemRow(userId, UUID.fromString(itemId));
+  }
+
+  /**
+   * Crea la lista activa de la semana en curso.
+   *
+   * <p>La semana empieza el lunes, como el calendario de entrenamiento y como las listas sembradas
+   * que esto sustituye: la fecha es lo que ordena las listas de una cuenta, así que dos criterios
+   * distintos las mezclarían.
+   */
+  private UUID createActiveList(UUID userId, Instant generatedAt) {
+    UUID listId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO shopping_lists (id, user_id, week_start_date, status, generated_at)"
+            + " VALUES (?, ?, ?, 'ACTIVE', ?)",
+        listId,
+        userId,
+        mondayOf(generatedAt),
+        toOffsetDateTime(generatedAt));
+    return listId;
+  }
+
+  private static LocalDate mondayOf(Instant moment) {
+    return LocalDate.ofInstant(moment, ZoneOffset.UTC).with(DayOfWeek.MONDAY);
   }
 
   private Optional<ActiveList> findActiveListRow(UUID userId) {

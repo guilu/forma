@@ -2,13 +2,19 @@ package dev.diegobarrioh.forma.application;
 
 import dev.diegobarrioh.forma.application.ShoppingListView.Entry;
 import dev.diegobarrioh.forma.domain.ShoppingCategory;
+import dev.diegobarrioh.forma.domain.ShoppingList;
 import dev.diegobarrioh.forma.domain.ShoppingListItem;
+import dev.diegobarrioh.forma.domain.ShoppingListStatus;
 import dev.diegobarrioh.forma.domain.ShoppingUnit;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.DayOfWeek;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
@@ -78,10 +84,11 @@ public class ShoppingListService {
    */
   public ShoppingListView currentView() {
     UUID userId = currentUserProvider.currentUserId();
-    ActiveShoppingList active =
-        listRepository
-            .findActive(userId)
-            .orElseThrow(() -> new NotFoundException("No hay lista de compra activa"));
+    Optional<ActiveShoppingList> current = listRepository.findActive(userId);
+    if (current.isEmpty()) {
+      return emptyWeek();
+    }
+    ActiveShoppingList active = current.get();
 
     Map<String, StoredShoppingProduct> productsById = productsById(userId);
 
@@ -93,6 +100,24 @@ public class ShoppingListService {
         entries,
         budgetService.budgetFor(active.toDomain()),
         active.generatedAt());
+  }
+
+  /**
+   * The week of somebody who has no list yet.
+   *
+   * <p>Not a 404, and the difference matters on screen: a missing resource made the page show "no
+   * se pudo cargar", which said something had broken when nothing had. An account simply has no
+   * list until it generates one — an ordinary state, and one the screen already has an empty state
+   * for, with the button that fixes it.
+   */
+  private ShoppingListView emptyWeek() {
+    // UTC como el repositorio cuando crea la lista de verdad: dos husos distintos pondrían la
+    // semana vacía en un lunes y la creada en otro.
+    Instant now = Instant.now();
+    LocalDate monday = LocalDate.ofInstant(now, ZoneOffset.UTC).with(DayOfWeek.MONDAY);
+    ShoppingList empty = new ShoppingList(monday, ShoppingListStatus.ACTIVE, List.of(), null, now);
+    return new ShoppingListView(
+        monday, ShoppingListStatus.ACTIVE, List.of(), budgetService.budgetFor(empty), null);
   }
 
   /**

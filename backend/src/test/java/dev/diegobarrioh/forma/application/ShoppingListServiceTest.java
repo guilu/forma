@@ -347,7 +347,7 @@ class ShoppingListServiceTest {
   }
 
   @Test
-  void regenerateWithNoActiveListThrowsNotFound() {
+  void regenerateCreatesTheFirstListWhenTheAccountHasNone() {
     FakeListRepository listsWithNoActive = new FakeListRepository();
     listsWithNoActive.hasActiveList = false;
     ShoppingListService serviceWithNoActiveList =
@@ -358,7 +358,29 @@ class ShoppingListServiceTest {
             () -> USER_ID,
             CATALOG);
 
-    assertThatThrownBy(serviceWithNoActiveList::regenerate).isInstanceOf(NotFoundException.class);
+    assertThat(serviceWithNoActiveList.regenerate().items()).isNotEmpty();
+  }
+
+  /**
+   * Una cuenta sin lista no es un fallo, y decirlo importa: el 404 hacía que la pantalla enseñara
+   * «no se pudo cargar», que acusa de una avería donde solo falta pulsar un botón.
+   */
+  @Test
+  void currentViewOfAnAccountWithNoListIsAnEmptyWeek() {
+    FakeListRepository listsWithNoActive = new FakeListRepository();
+    listsWithNoActive.hasActiveList = false;
+    ShoppingListService serviceWithNoActiveList =
+        new ShoppingListService(
+            listsWithNoActive,
+            products,
+            new ShoppingBudgetService(products, () -> USER_ID),
+            () -> USER_ID,
+            CATALOG);
+
+    ShoppingListView view = serviceWithNoActiveList.currentView();
+
+    assertThat(view.items()).isEmpty();
+    assertThat(view.weekStartDate().getDayOfWeek()).isEqualTo(java.time.DayOfWeek.MONDAY);
   }
 
   @Test
@@ -481,9 +503,9 @@ class ShoppingListServiceTest {
     @Override
     public Optional<ActiveShoppingList> regenerate(
         UUID userId, List<ShoppingListItem> items, Instant newGeneratedAt) {
-      if (!hasActiveList) {
-        return Optional.empty();
-      }
+      // Regenerar CREA la lista cuando no hay ninguna, igual que el adaptador JDBC: era la única
+      // puerta a la primera lista y estaba cerrada por dentro.
+      this.hasActiveList = true;
       this.lastRegeneratedItems = new ArrayList<>(items);
       this.lastRegeneratedAt = newGeneratedAt;
       itemsById.clear();

@@ -66,6 +66,9 @@ public record ShoppingListResponse(
         view.status().name(),
         items,
         budget,
-        view.generatedAt().toString());
+        // Nulo cuando la cuenta todavía no tiene lista: no se ha generado nada, y una fecha
+        // inventada aquí saldría en pantalla como «Generada» al lado de «todavía no la has
+        // generado».
+        view.generatedAt() == null ? null : view.generatedAt().toString());
   }
 }

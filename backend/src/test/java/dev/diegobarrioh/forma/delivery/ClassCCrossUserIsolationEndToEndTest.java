@@ -219,12 +219,15 @@ class ClassCCrossUserIsolationEndToEndTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.items.length()").value(1));
 
-    // User B has no active list of their own -- 404, never A's data leaking as a fabricated list.
+    // User B has no list of their own, and gets an EMPTY one -- never A's data leaking as a
+    // fabricated list. The status changed from 404 to 200 (an account without a list is an ordinary
+    // state, not a missing resource); what this test guards did not: B's week comes back with zero
+    // items, and none of them are A's.
     mockMvc
         .perform(
             get("/api/v1/shopping/list").with(AuthTestSupport.asUser(USER_B, EMAIL_B)).with(csrf()))
-        .andExpect(status().isNotFound())
-        .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items.length()").value(0));
 
     // User B cannot toggle A's item by id -- 404, never mutates it.
     mockMvc
