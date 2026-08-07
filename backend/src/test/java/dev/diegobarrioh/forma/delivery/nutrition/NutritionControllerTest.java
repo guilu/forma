@@ -90,6 +90,9 @@ class NutritionControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.type").value("RUNNING"))
         .andExpect(jsonPath("$.targets.proteinG").value(162))
+        // El id de la comida planificada viaja para que la pantalla pueda casar cada comida con su
+        // estado; sin él solo quedaría emparejar por nombre y tipo, que dos comidas pueden repetir.
+        .andExpect(jsonPath("$.meals[0].id").isNotEmpty())
         .andExpect(jsonPath("$.meals[0].mealType").value("BREAKFAST"))
         .andExpect(jsonPath("$.meals[0].name").value("Desayuno"))
         .andExpect(jsonPath("$.meals[0].preferredTime").value("08:00"))
