@@ -58,7 +58,7 @@ export function TrainingWidget({ date = new Date() }: { readonly date?: Date } =
   }, []);
 
   return (
-    <WidgetSection id="training-widget-title" title="Entrenamiento de hoy">
+    <WidgetSection id="training-widget-title" title="Entrenamiento">
       {renderContent(state, date)}
     </WidgetSection>
   );

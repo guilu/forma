@@ -23,7 +23,7 @@ export function CaloriesWidget({ state }: { readonly state: TodayConsumptionStat
     return <ErrorState message="No se pudieron cargar tus calorías de hoy." />;
   }
   return (
-    <Card title="Calorías hoy">
+    <Card title="Calorias">
       <CalorieRing
         consumed={state.consumption.consumed.kcal}
         target={state.consumption.target?.kcal ?? null}

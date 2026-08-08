@@ -41,7 +41,7 @@ export function NutritionWidget({
   return (
     <WidgetSection
       id="nutrition-widget-title"
-      title="Menú de hoy"
+      title="Menu"
       linkTo="/app/nutrition"
       linkLabel="Ver plan"
     >

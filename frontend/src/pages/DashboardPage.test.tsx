@@ -166,9 +166,9 @@ describe('DashboardPage', () => {
 
     // Second- and third-row panels each render as a <h2> section heading.
     expect(
-      await screen.findByRole('heading', { name: 'Entrenamiento de hoy', level: 2 }),
+      await screen.findByRole('heading', { name: 'Entrenamiento', level: 2 }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Menú de hoy', level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Menu', level: 2 })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Macronutrientes', level: 2 })).toBeInTheDocument();
     expect(
       screen.getByRole('heading', { name: 'Tendencia 30 días', level: 2 }),
@@ -185,7 +185,7 @@ describe('DashboardPage', () => {
     // Metrics-row tiles are <h3> under the (sr-only) row <h2>, so heading order
     // never skips a level (FOR-112).
     expect(await screen.findByRole('heading', { name: 'Peso', level: 3 })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Calorías hoy', level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Calorias', level: 3 })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Agua', level: 3 })).toBeInTheDocument();
   });
 
@@ -280,7 +280,7 @@ describe('DashboardPage', () => {
     mockAllSuccess();
 
     renderDashboard();
-    await screen.findByRole('heading', { name: 'Entrenamiento de hoy' });
+    await screen.findByRole('heading', { name: 'Entrenamiento' });
 
     const hrefs = screen.getAllByRole('link').map((el) => el.getAttribute('href'));
     expect(hrefs).toEqual(
@@ -346,7 +346,7 @@ describe('DashboardPage', () => {
     mockAllSuccess();
 
     const { container } = renderDashboard();
-    await screen.findByRole('heading', { name: 'Entrenamiento de hoy', level: 2 });
+    await screen.findByRole('heading', { name: 'Entrenamiento', level: 2 });
     await screen.findByRole('heading', { name: 'Peso', level: 3 });
 
     expect(await axe(container)).toHaveNoViolations();

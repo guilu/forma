@@ -18,9 +18,11 @@ describe('CaloriesWidget', () => {
   it('reuses the nutrition calorie donut with real consumed and target values', () => {
     render(<CaloriesWidget state={{ status: 'ready', consumption }} />);
 
-    expect(screen.getByRole('heading', { name: 'Calorías hoy' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Calorias' })).toBeInTheDocument();
     // Real target in the caption (es-ES omits the separator for 4 digits).
-    expect(screen.getAllByText('1264')).toHaveLength(2);
+    expect(screen.getAllByText('1264')).toHaveLength(1);
+    expect(screen.queryByText('Consumidas')).not.toBeInTheDocument();
+    expect(screen.queryByText('Restantes')).not.toBeInTheDocument();
     expect(screen.getByText('/ 2320 kcal')).toBeInTheDocument();
     expect(screen.getByRole('img', { name: /1264 de 2320 kcal consumidas/ })).toBeInTheDocument();
   });

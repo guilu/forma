@@ -40,17 +40,19 @@ export function CalorieRing({ consumed, target, compact = false }: CalorieRingPr
           {target !== null && <span className={styles.target}>/ {NUM.format(target)} kcal</span>}
         </p>
       </div>
-      <dl className={styles.legend}>
-        <div>
-          <dt>Consumidas</dt>
-          <dd>{NUM.format(consumed)}</dd>
-        </div>
-        <div>
-          <dt>Restantes</dt>
-          {/* Un guion y no un cero: nadie ha fijado objetivo, que no es lo mismo que no quedar nada. */}
-          <dd>{remaining === null ? '—' : NUM.format(remaining)}</dd>
-        </div>
-      </dl>
+      {!compact && (
+        <dl className={styles.legend}>
+          <div>
+            <dt>Consumidas</dt>
+            <dd>{NUM.format(consumed)}</dd>
+          </div>
+          <div>
+            <dt>Restantes</dt>
+            {/* Un guion y no un cero: nadie ha fijado objetivo, que no es lo mismo que no quedar nada. */}
+            <dd>{remaining === null ? '—' : NUM.format(remaining)}</dd>
+          </div>
+        </dl>
+      )}
     </div>
   );
 }
