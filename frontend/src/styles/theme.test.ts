@@ -1,4 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import foodFormCss from '../pages/admin/FoodForm.module.css?raw';
+import planGeneratorCss from '../pages/generator/PlanGenerator.module.css?raw';
+import nutritionCss from '../pages/NutritionPage.module.css?raw';
+import nutritionPageSource from '../pages/NutritionPage.tsx?raw';
+import trainingCss from '../pages/TrainingPage.module.css?raw';
+import trainingPageSource from '../pages/TrainingPage.tsx?raw';
 import themeCss from './theme.css?raw';
 
 /**
@@ -90,27 +96,18 @@ describe('theme.css design tokens (FOR-163 reconciliation)', () => {
       expect(tokenValue(light, token)).toBeTruthy();
     });
 
-    // FOR-185 replaced FOR-163's derived light accent (#006d42, the template's
-    // `inverse-primary`) with a brighter brand-chosen green. The guard is kept
-    // but re-pointed, so a future silent drift is still caught.
-    it('pins the light accent to the brand green and its readable ink', () => {
-      // FOR-189: brightened to the brand owner's green so light mode reads like
-      // dark. Deliberately not asserted equal to the dark accent (#4cdf97) —
-      // they are a nudge apart, and the value was given as-is.
-      expect(tokenValue(light, '--color-accent')).toBe('#3ce78b');
-      // NOT #ffffff, which would be ~1.5:1 on that green. #0f1a13 (= light
-      // --color-text) is ~11:1 there, and ~10 components paint text or icons on
-      // an accent fill.
+    it('pins the light accent to the reference green and its readable ink', () => {
+      expect(tokenValue(light, '--color-accent')).toBe('#78c92d');
       expect(tokenValue(light, '--color-accent-contrast')).toBe('#0f1a13');
     });
 
     it('splits the text-safe accent out from the fill accent (FOR-185)', () => {
-      // The brand green is a fill colour: ~1.5:1 on the light page background,
+      // The reference green is a fill colour: ~1.91:1 on the light page background,
       // far below the AA 4.5:1 bar. Accent-coloured *text* uses the darkened
-      // counterpart instead (~4.75:1). Dark needs no split — its accent is
+      // counterpart instead (~4.99:1). Dark needs no split — its accent is
       // already ~10.8:1 on its own background — but declares the token anyway
       // so component CSS can name the text role unconditionally.
-      expect(tokenValue(light, '--color-accent-strong')).toBe('#2e7d32');
+      expect(tokenValue(light, '--color-accent-strong')).toBe('#3e7810');
       expect(tokenValue(dark, '--color-accent-strong')).toBe(tokenValue(dark, '--color-accent'));
       expect(tokenValue(light, '--color-accent-strong')).not.toBe(
         tokenValue(light, '--color-accent'),
@@ -127,10 +124,29 @@ describe('theme.css design tokens (FOR-163 reconciliation)', () => {
       );
     });
 
-    it('keeps the light warning accessible (AA) after the amber hue reconciliation', () => {
-      // Pre-existing #b7791f only reached ~3.38:1 on the light bg (fails AA);
-      // reconciling to the template's amber hue also fixes that regression.
-      expect(tokenValue(light, '--color-warning')).toBe('#8f4d13');
+    it('keeps warning text accessible (AA) beside the exact reference graphic colour', () => {
+      // Exact #f19c2b is reserved for marks; #9a5700 reaches ~5.21:1 on the light bg.
+      expect(tokenValue(light, '--color-warning')).toBe('#9a5700');
+    });
+
+    it('maps the reference palette to light-theme semantic roles', () => {
+      expect(tokenValue(light, '--color-accent')).toBe('#78c92d');
+      expect(tokenValue(light, '--color-info')).toBe('#53adf3');
+      expect(tokenValue(light, '--color-warning-graphic')).toBe('#f19c2b');
+      expect(tokenValue(light, '--color-danger-graphic')).toBe('#ec5c51');
+    });
+
+    it('pairs bright reference fills with text-safe light-theme variants', () => {
+      expect(tokenValue(light, '--color-accent-strong')).toBe('#3e7810');
+      expect(tokenValue(light, '--color-info-strong')).toBe('#1f71ae');
+      expect(tokenValue(light, '--color-warning')).toBe('#9a5700');
+      expect(tokenValue(light, '--color-danger')).toBe('#b63b33');
+    });
+
+    it('does not leak the reference palette into the dark theme', () => {
+      for (const referenceColour of ['#78c92d', '#53adf3', '#f19c2b', '#ec5c51']) {
+        expect(dark).not.toContain(referenceColour);
+      }
     });
   });
 
@@ -178,6 +194,31 @@ describe('theme.css design tokens (FOR-163 reconciliation)', () => {
     it('never references fonts.googleapis.com or a CDN url()', () => {
       expect(themeCss).not.toMatch(/fonts\.googleapis\.com/);
       expect(themeCss).not.toMatch(/@import\s+url\(/);
+    });
+  });
+
+  describe('semantic colour consumers preserve the light palette roles', () => {
+    it('uses the accessible accent for nutrition labels rather than the fill colour', () => {
+      expect(nutritionCss).toMatch(/\.mealsCount\s*{[^}]*color:\s*var\(--color-accent-strong\)/s);
+      expect(nutritionCss).toMatch(/\.mealType\s*{[^}]*color:\s*var\(--color-accent-strong\)/s);
+    });
+
+    it('uses text-safe accent values for generator labels and focus outlines', () => {
+      expect(planGeneratorCss).not.toMatch(
+        /(?:^|\n)\s*color:\s*var\(--color-accent(?:,\s*#[0-9a-f]+)?\)/i,
+      );
+      expect(planGeneratorCss).not.toMatch(
+        /outline:[^;]*var\(--color-accent(?:,\s*#[0-9a-f]+)?\)/i,
+      );
+      expect(foodFormCss).toMatch(/outline:[^;]*var\(--color-accent-strong\)/i);
+    });
+
+    it('keeps fat series and training dots on the orange graphic role', () => {
+      expect(nutritionPageSource).toContain(
+        "label: 'Grasas', color: 'var(--color-warning-graphic)'",
+      );
+      expect(trainingPageSource).toContain('conic-gradient(var(--color-warning-graphic)');
+      expect(trainingCss).not.toMatch(/background-color:\s*var\(--color-warning\)/);
     });
   });
 

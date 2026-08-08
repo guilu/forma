@@ -118,7 +118,7 @@
 .mealsCount {
   margin: 0;
   font-size: var(--font-size-sm);
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   font-variant-numeric: tabular-nums;
 }
 
@@ -173,7 +173,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
 }
 
 .mealOptional {
@@ -218,18 +218,18 @@
  * La letra final (P/C/G) va en el texto: el color acompaña, no es quien lo dice.
  */
 .chipProtein {
-  color: var(--color-info);
+  color: var(--color-info-strong);
   background-color: color-mix(in srgb, var(--color-info) 14%, transparent);
 }
 
 .chipCarbs {
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
   background-color: color-mix(in srgb, var(--color-accent) 14%, transparent);
 }
 
 .chipFat {
   color: var(--color-warning);
-  background-color: color-mix(in srgb, var(--color-warning) 16%, transparent);
+  background-color: color-mix(in srgb, var(--color-warning-graphic) 16%, transparent);
 }
 
 /* --- La casilla de "hecha" --- */

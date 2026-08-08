@@ -526,7 +526,7 @@ function WeeklyDistribution({ days }: { readonly days: readonly TrainingDay[] })
   const runningDeg = totalParts > 0 ? (running / totalParts) * 360 : 0;
 
   const ringStyle = {
-    background: `conic-gradient(var(--color-warning) 0deg ${strengthDeg}deg, var(--color-accent) ${strengthDeg}deg ${
+    background: `conic-gradient(var(--color-warning-graphic) 0deg ${strengthDeg}deg, var(--color-accent) ${strengthDeg}deg ${
       strengthDeg + runningDeg
     }deg, var(--color-border) ${strengthDeg + runningDeg}deg 360deg)`,
   };

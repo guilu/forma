@@ -278,7 +278,7 @@ function renderContent(
 const MACROS = [
   { key: 'proteinG', label: 'Proteína', color: 'var(--color-info)' },
   { key: 'carbsG', label: 'Carbohidratos', color: 'var(--color-accent)' },
-  { key: 'fatG', label: 'Grasas', color: 'var(--color-warning)' },
+  { key: 'fatG', label: 'Grasas', color: 'var(--color-warning-graphic)' },
 ] as const;
 
 /**
