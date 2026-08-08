@@ -14,16 +14,17 @@ interface CalorieRingProps {
   readonly consumed: number;
   /** The day's target, or `null` when the plan sets none — then there is no ring to draw. */
   readonly target: number | null;
+  readonly compact?: boolean;
 }
 
 const NUM = new Intl.NumberFormat('es-ES');
 
-export function CalorieRing({ consumed, target }: CalorieRingProps) {
+export function CalorieRing({ consumed, target, compact = false }: CalorieRingProps) {
   const ratio = target && target > 0 ? Math.min(consumed / target, 1) : 0;
   const remaining = target === null ? null : Math.max(target - consumed, 0);
 
   return (
-    <div className={styles.wrapper}>
+    <div className={compact ? `${styles.wrapper} ${styles.compact}` : styles.wrapper}>
       <div
         className={styles.ring}
         style={{ '--sweep': `${ratio * 360}deg` } as React.CSSProperties}

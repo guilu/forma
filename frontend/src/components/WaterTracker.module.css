@@ -40,9 +40,14 @@
   clip-path: polygon(12% 0, 88% 0, 78% 100%, 22% 100%);
 }
 
+.glass {
+  border-color: var(--color-text-muted);
+  background-color: color-mix(in srgb, var(--color-text-muted) 20%, transparent);
+}
+
 .glassFilled {
-  border-color: var(--color-accent);
-  background-color: var(--color-accent);
+  border-color: var(--color-info);
+  background-color: var(--color-info);
 }
 
 /* Loading and failure both say something rather than showing an invented figure. */
@@ -54,31 +59,33 @@
 
 .actions {
   display: flex;
-  gap: var(--space-2);
-  margin-top: var(--space-3);
+  gap: var(--space-1);
 }
 
-.add {
-  flex: 1;
-  padding: var(--space-2);
+.action {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: transparent;
   color: var(--color-text-secondary);
   font: inherit;
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-lg);
+  line-height: 1;
   cursor: pointer;
   /* No `nowrap`: with `flex: 1` it stops the button shrinking below its label, and two of them in a
      narrow dashboard column push the whole page past the viewport. The layout check caught it. */
-  min-width: 0;
 }
 
-.add:hover:not(:disabled) {
+.action:hover:not(:disabled) {
   border-color: var(--color-accent, #2563eb);
   color: var(--color-text-primary);
 }
 
-.add:disabled {
+.action:disabled {
   opacity: 0.6;
   cursor: default;
 }

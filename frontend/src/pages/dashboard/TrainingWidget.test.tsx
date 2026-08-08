@@ -11,7 +11,7 @@ const trainingMock = vi.mocked(getTrainingWeek);
 function renderWidget() {
   return render(
     <MemoryRouter>
-      <TrainingWidget />
+      <TrainingWidget date={new Date('2026-08-04T12:00:00Z')} />
     </MemoryRouter>,
   );
 }
@@ -60,7 +60,7 @@ describe('TrainingWidget', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Cargando tu semana de entrenamiento');
   });
 
-  it('shows the next planned session and the completed/total tally', async () => {
+  it("shows today's session and the completed/total tally", async () => {
     trainingMock.mockResolvedValue(week);
 
     renderWidget();

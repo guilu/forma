@@ -44,9 +44,12 @@
   color: var(--color-text);
 }
 
-.mealTime {
+.mealDescription {
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .mealKcal {

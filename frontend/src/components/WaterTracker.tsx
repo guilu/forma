@@ -7,6 +7,7 @@ import {
   type HydrationProgress,
 } from '../api/nutrition';
 import styles from './WaterTracker.module.css';
+import { localIsoDate } from '../pages/localIsoDate';
 
 /**
  * Hydration tile (FOR-164 dashboard mockup: "AGUA 2.1 / 2.5 L · 84%").
@@ -39,7 +40,7 @@ interface WaterTrackerProps {
 }
 
 export function WaterTracker({ headingLevel, date }: WaterTrackerProps = {}) {
-  const day = date ?? new Date().toISOString().slice(0, 10);
+  const day = date ?? localIsoDate(new Date());
   const [progress, setProgress] = useState<HydrationProgress | undefined>(undefined);
   const [failed, setFailed] = useState(false);
   const [pending, setPending] = useState(false);
@@ -99,7 +100,32 @@ export function WaterTracker({ headingLevel, date }: WaterTrackerProps = {}) {
   const percent = progress.progress === null ? null : Math.round(progress.progress * 100);
 
   return (
-    <Card title="Agua" headingLevel={headingLevel}>
+    <Card
+      title="Agua"
+      headingLevel={headingLevel}
+      action={
+        <div className={styles.actions}>
+          <button
+            type="button"
+            className={styles.action}
+            aria-label="Añadir vaso (250 ml)"
+            disabled={pending}
+            onClick={() => add(250)}
+          >
+            +
+          </button>
+          <button
+            type="button"
+            className={styles.action}
+            aria-label="Quitar vaso (250 ml)"
+            disabled={pending || progress.totalMl <= 0}
+            onClick={remove}
+          >
+            −
+          </button>
+        </div>
+      }
+    >
       <p className={styles.value}>
         {NUM.format(currentL)}
         {/* No goal is a real state the API documents: it renders as no denominator,
@@ -127,19 +153,6 @@ export function WaterTracker({ headingLevel, date }: WaterTrackerProps = {}) {
             aria-hidden="true"
           />
         ))}
-      </div>
-      <div className={styles.actions}>
-        <button type="button" className={styles.add} disabled={pending} onClick={() => add(250)}>
-          + Vaso (250 ml)
-        </button>
-        <button
-          type="button"
-          className={styles.add}
-          disabled={pending || progress.totalMl <= 0}
-          onClick={remove}
-        >
-          − Vaso (250 ml)
-        </button>
       </div>
     </Card>
   );
