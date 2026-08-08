@@ -8,6 +8,7 @@ import {
   getDayConsumption,
   getNutritionDay,
   logPlannedMealAsPlanned,
+  unmarkPlannedMeal,
   type DayConsumption,
   type NutritionDay,
 } from '../api/nutrition';
@@ -26,11 +27,13 @@ vi.mock('../api/nutrition', () => ({
   getDayConsumption: vi.fn(),
   logMeal: vi.fn(),
   logPlannedMealAsPlanned: vi.fn(),
+  unmarkPlannedMeal: vi.fn(),
 }));
 
 const getDayMock = vi.mocked(getNutritionDay);
 const getConsumptionMock = vi.mocked(getDayConsumption);
 const logAsPlannedMock = vi.mocked(logPlannedMealAsPlanned);
+const unmarkMock = vi.mocked(unmarkPlannedMeal);
 const TODAY = new Date('2026-08-07T12:00:00Z');
 
 const strengthDay: NutritionDay = {
@@ -204,19 +207,93 @@ describe('NutritionPage', () => {
     ).toBeInTheDocument();
   });
 
-  /** The check reflects the state the server reports, and an eaten meal cannot be logged twice. */
+  /** The check reflects the state the server reports and remains interactive for undo. */
   it('ticks the meals already eaten and leaves the rest open', async () => {
     renderPage();
 
     const eaten = await screen.findByRole('checkbox', {
-      name: 'Bowl de Yogur Proteico y Fruta: hecha',
+      name: 'Desmarcar Bowl de Yogur Proteico y Fruta como hecha',
     });
     expect(eaten).toBeChecked();
-    expect(eaten).toBeDisabled();
+    expect(eaten).toBeEnabled();
 
     expect(
       screen.getByRole('checkbox', { name: 'Marcar Pollo a la Plancha con Boniato como hecha' }),
     ).not.toBeChecked();
+  });
+
+  it('unmarks an eaten planned meal and reloads persisted consumption', async () => {
+    unmarkMock.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(
+      await screen.findByRole('checkbox', {
+        name: 'Desmarcar Bowl de Yogur Proteico y Fruta como hecha',
+      }),
+    );
+
+    await waitFor(() => expect(unmarkMock).toHaveBeenCalledWith('2026-08-07', 'meal-desayuno'));
+    await waitFor(() => expect(getConsumptionMock).toHaveBeenCalledTimes(2));
+  });
+
+  it('keeps each meal disabled until its own overlapping request finishes', async () => {
+    let resolveBreakfast!: () => void;
+    let resolveLunch!: (value: Awaited<ReturnType<typeof logPlannedMealAsPlanned>>) => void;
+    unmarkMock.mockReturnValue(new Promise<void>((resolve) => (resolveBreakfast = resolve)));
+    logAsPlannedMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolveLunch = resolve;
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    const breakfast = await screen.findByRole('checkbox', {
+      name: 'Desmarcar Bowl de Yogur Proteico y Fruta como hecha',
+    });
+    const lunch = screen.getByRole('checkbox', {
+      name: 'Marcar Pollo a la Plancha con Boniato como hecha',
+    });
+
+    await user.click(breakfast);
+    await user.click(lunch);
+    expect(breakfast).toBeDisabled();
+    expect(lunch).toBeDisabled();
+
+    resolveBreakfast();
+    await waitFor(() => expect(breakfast).toBeEnabled());
+    expect(lunch).toBeDisabled();
+    await user.click(lunch);
+    expect(logAsPlannedMock).toHaveBeenCalledTimes(1);
+
+    resolveLunch({
+      id: 'entry-2',
+      date: '2026-08-07',
+      mealType: 'LUNCH',
+      name: 'Pollo',
+      kcal: 650,
+      proteinG: 55,
+      carbsG: 70,
+      fatG: 12,
+    });
+    await waitFor(() => expect(lunch).toBeEnabled());
+  });
+
+  it('reports a rejected toggle and re-enables only that meal', async () => {
+    unmarkMock.mockRejectedValue(new Error('network down'));
+    const user = userEvent.setup();
+    renderPage();
+    const breakfast = await screen.findByRole('checkbox', {
+      name: 'Desmarcar Bowl de Yogur Proteico y Fruta como hecha',
+    });
+
+    await user.click(breakfast);
+
+    expect(
+      await screen.findByText('No se pudo actualizar la comida. Inténtalo de nuevo.'),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(breakfast).toBeEnabled());
+    expect(getConsumptionMock).toHaveBeenCalledTimes(1);
   });
 
   /** Ticking logs the meal as the plan wrote it, with the totals the server worked out. */

@@ -10,8 +10,10 @@ import dev.diegobarrioh.forma.domain.NutritionDayType;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.util.Locale;
+import java.util.UUID;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -100,6 +102,14 @@ public class NutritionController {
     return DayConsumptionResponse.from(mealLogService.consumption(date));
   }
 
+  @DeleteMapping("/log/planned/{plannedMealId}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void unmarkPlannedMeal(
+      @PathVariable UUID plannedMealId,
+      @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+    mealLogService.unmarkPlannedMeal(date, plannedMealId);
+  }
+
   /** Logs a water-intake volume for a day (FOR-130). */
   @PostMapping("/hydration")
   @ResponseStatus(HttpStatus.CREATED)
@@ -115,6 +125,12 @@ public class NutritionController {
   public HydrationProgressResponse hydration(
       @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
     return HydrationProgressResponse.from(hydrationService.hydrationProgress(date));
+  }
+
+  @DeleteMapping("/hydration/glass")
+  public HydrationProgressResponse removeHydrationGlass(
+      @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+    return HydrationProgressResponse.from(hydrationService.removeGlass(date));
   }
 
   private static NutritionDayType parseType(String type) {

@@ -197,6 +197,19 @@ public class MealLogService {
         adherence(planned.orElse(null), stored, date));
   }
 
+  /** Removes every log answering one planned meal on one day for the current owner. */
+  public void unmarkPlannedMeal(LocalDate date, UUID plannedMealId) {
+    validateDate(date);
+    if (plannedMealId == null) {
+      throw new ValidationException("plannedMealId is required");
+    }
+    UUID userId = currentUserProvider.currentUserId();
+    if (!plannedMeals.ownsPlannedMeal(userId, plannedMealId)) {
+      throw new ValidationException("No existe esa comida en tu plan.");
+    }
+    repository.deleteByOwnerDateAndPlannedMeal(userId, date, plannedMealId);
+  }
+
   /**
    * How many grams a logged catalog entry comes to.
    *

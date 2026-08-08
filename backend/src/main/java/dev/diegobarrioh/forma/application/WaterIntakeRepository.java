@@ -8,9 +8,9 @@ import java.util.UUID;
 /**
  * Port for persisting and reading logged water-intake entries (FOR-130). Owned by the
  * application/domain side; adapters implement it (ADR-001). Every method is owner-scoped (ADR-002)
- * — the caller always supplies the owner id, the adapter never returns another owner's rows.
- * Append-only for this slice (spec FOR-130 Open Questions): no update/delete method exists yet,
- * mirroring {@code MealLogRepository} (FOR-127).
+ * — the caller always supplies the owner id, the adapter never returns another owner's rows. Intake
+ * is logged as entries; removing a glass consumes the newest owner/date-scoped volume, deleting
+ * whole entries or retaining a positive remainder.
  *
  * <p>{@code userId} is a real account id (FOR-145b-1, migration V27) — {@code
  * water_intake_entry.user_id UUID}, FK-referencing {@code users(id)}.
@@ -25,4 +25,6 @@ public interface WaterIntakeRepository {
 
   /** Persists a new entry for {@code userId}, generating and returning its id. */
   StoredWaterIntakeEntry save(UUID userId, WaterIntakeEntry entry);
+
+  double removeLatestVolume(UUID userId, LocalDate date, double volumeMl);
 }

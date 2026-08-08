@@ -136,6 +136,28 @@ class JdbcMealLogRepositoryTest {
     assertThat(repository.findByOwnerAndDate(OWNER, DAY)).isEmpty();
   }
 
+  @Test
+  void deletesOnlyEntriesForTheOwnersPlannedMealAndDate() {
+    UUID plannedMeal = UUID.fromString("5be2d51e-ed14-5b32-8c11-5f08692acbc8");
+    MealLogEntry matching =
+        MealLogEntry.freeEntry(
+                DAY, MealType.LUNCH, "Plan", new NutritionTotals(200, 20.0, 20.0, 5.0))
+            .withPlannedMeal(plannedMeal);
+    repository.save(OWNER, matching);
+    repository.save(OWNER, matching);
+    repository.save(
+        OWNER,
+        MealLogEntry.freeEntry(
+            DAY, MealType.SNACK, "Libre", new NutritionTotals(50, 1.0, 1.0, 1.0)));
+
+    repository.deleteByOwnerDateAndPlannedMeal(OWNER, DAY, plannedMeal);
+
+    assertThat(repository.findByOwnerAndDate(OWNER, DAY))
+        .singleElement()
+        .extracting(row -> row.entry().name())
+        .isEqualTo("Libre");
+  }
+
   /**
    * FOR-134 (migration V17): a catalog entry's key nutrients, snapshotted at logging time from the
    * FOR-30 catalog food, survive a full JDBC round trip — proving they are genuinely persisted to

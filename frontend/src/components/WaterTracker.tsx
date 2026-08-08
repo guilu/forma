@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Card, type HeadingLevel } from './Card';
-import { getHydration, logWaterIntake, type HydrationProgress } from '../api/nutrition';
+import {
+  getHydration,
+  logWaterIntake,
+  removeWaterGlass,
+  type HydrationProgress,
+} from '../api/nutrition';
 import styles from './WaterTracker.module.css';
 
 /**
@@ -25,11 +30,6 @@ import styles from './WaterTracker.module.css';
 const SEGMENTS = 5;
 
 /** Common amounts, offered as shortcuts. The label says the millilitres it logs. */
-const SHORTCUTS = [
-  { label: '+ Vaso', ml: 250 },
-  { label: '+ Botella', ml: 500 },
-] as const;
-
 const NUM = new Intl.NumberFormat('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
 interface WaterTrackerProps {
@@ -45,7 +45,7 @@ export function WaterTracker({ headingLevel, date }: WaterTrackerProps = {}) {
   const [pending, setPending] = useState(false);
 
   const reload = useCallback(() => {
-    getHydration(day)
+    return getHydration(day)
       .then((fresh) => {
         setProgress(fresh);
         setFailed(false);
@@ -53,14 +53,29 @@ export function WaterTracker({ headingLevel, date }: WaterTrackerProps = {}) {
       .catch(() => setFailed(true));
   }, [day]);
 
-  useEffect(reload, [reload]);
+  useEffect(() => {
+    void reload();
+  }, [reload]);
 
   async function add(volumeMl: number) {
     if (pending) return;
     setPending(true);
     try {
       await logWaterIntake(day, volumeMl);
-      reload();
+      await reload();
+    } catch {
+      setFailed(true);
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function remove() {
+    if (pending || (progress?.totalMl ?? 0) <= 0) return;
+    setPending(true);
+    try {
+      setProgress(await removeWaterGlass(day));
+      setFailed(false);
     } catch {
       setFailed(true);
     } finally {
@@ -114,17 +129,17 @@ export function WaterTracker({ headingLevel, date }: WaterTrackerProps = {}) {
         ))}
       </div>
       <div className={styles.actions}>
-        {SHORTCUTS.map((shortcut) => (
-          <button
-            key={shortcut.ml}
-            type="button"
-            className={styles.add}
-            disabled={pending}
-            onClick={() => add(shortcut.ml)}
-          >
-            {shortcut.label} ({shortcut.ml} ml)
-          </button>
-        ))}
+        <button type="button" className={styles.add} disabled={pending} onClick={() => add(250)}>
+          + Vaso (250 ml)
+        </button>
+        <button
+          type="button"
+          className={styles.add}
+          disabled={pending || progress.totalMl <= 0}
+          onClick={remove}
+        >
+          − Vaso (250 ml)
+        </button>
       </div>
     </Card>
   );

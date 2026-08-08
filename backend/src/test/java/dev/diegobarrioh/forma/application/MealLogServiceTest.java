@@ -412,6 +412,42 @@ class MealLogServiceTest {
     assertThatThrownBy(() -> service.log(command)).isInstanceOf(ValidationException.class);
   }
 
+  @Test
+  void unmarksOnlyTheOwnersPlannedMealForTheRequestedDate() {
+    UUID plannedMealId = UUID.randomUUID();
+    MealLogService ownerService =
+        new MealLogService(
+            repository,
+            FIXED_CLOCK,
+            () -> USER_ID,
+            SeededFoodCatalog.service(),
+            PLAN_DAYS,
+            (userId, mealId) -> userId.equals(USER_ID) && mealId.equals(plannedMealId),
+            SERVINGS);
+    ownerService.log(
+        new LogMealCommand(
+            TODAY,
+            MealType.LUNCH,
+            null,
+            null,
+            null,
+            null,
+            "Plan",
+            200,
+            20.0,
+            20.0,
+            5.0,
+            null,
+            null,
+            null,
+            null,
+            plannedMealId));
+
+    ownerService.unmarkPlannedMeal(TODAY, plannedMealId);
+
+    assertThat(ownerService.consumption(TODAY).consumed().calories()).isZero();
+  }
+
   /** In-memory fake, matching {@code RecordingGoalRepository} (FOR-125). */
   private static class RecordingMealLogRepository implements MealLogRepository {
     final List<OwnedEntry> rows = new ArrayList<>();
@@ -429,6 +465,15 @@ class MealLogServiceTest {
       StoredMealLogEntry stored = new StoredMealLogEntry(UUID.randomUUID().toString(), entry);
       rows.add(new OwnedEntry(userId, stored));
       return stored;
+    }
+
+    @Override
+    public void deleteByOwnerDateAndPlannedMeal(UUID userId, LocalDate date, UUID plannedMealId) {
+      rows.removeIf(
+          row ->
+              row.userId.equals(userId)
+                  && row.stored.entry().date().equals(date)
+                  && plannedMealId.equals(row.stored.entry().plannedMealId()));
     }
   }
 

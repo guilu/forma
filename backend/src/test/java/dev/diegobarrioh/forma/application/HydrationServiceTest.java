@@ -142,6 +142,15 @@ class HydrationServiceTest {
     assertThat(progress.totalMl()).isZero();
   }
 
+  @Test
+  void removesUpToAQuarterLitreWithoutGoingBelowZero() {
+    service.log(new LogWaterIntakeCommand(TODAY, 100.0));
+
+    HydrationProgress progress = service.removeGlass(TODAY);
+
+    assertThat(progress.totalMl()).isZero();
+  }
+
   private static UserProfile profileWithDailyWaterMl(double dailyWaterMl) {
     return new UserProfile(
         USER_ID,
@@ -179,6 +188,27 @@ class HydrationServiceTest {
           new StoredWaterIntakeEntry(UUID.randomUUID().toString(), entry);
       rows.add(new OwnedEntry(userId, stored));
       return stored;
+    }
+
+    @Override
+    public double removeLatestVolume(UUID userId, LocalDate date, double volumeMl) {
+      double remaining = volumeMl;
+      for (int index = rows.size() - 1; index >= 0 && remaining > 0; index--) {
+        OwnedEntry row = rows.get(index);
+        if (!row.ownerId.equals(userId) || !row.stored.entry().date().equals(date)) continue;
+        double amount = row.stored.entry().volumeMl();
+        rows.remove(index);
+        if (amount > remaining) {
+          rows.add(
+              index,
+              new OwnedEntry(
+                  userId,
+                  new StoredWaterIntakeEntry(
+                      row.stored.id(), new WaterIntakeEntry(date, amount - remaining))));
+        }
+        remaining -= Math.min(amount, remaining);
+      }
+      return volumeMl - remaining;
     }
   }
 
