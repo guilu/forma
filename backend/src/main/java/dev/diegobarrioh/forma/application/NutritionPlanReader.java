@@ -10,6 +10,8 @@ import dev.diegobarrioh.forma.domain.PersonalTargets;
 import dev.diegobarrioh.forma.domain.TargetComparison;
 import dev.diegobarrioh.forma.domain.UserProfile;
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -29,25 +31,29 @@ import org.springframework.stereotype.Service;
  * agree.
  */
 @Service
-public class NutritionPlanReader implements PlannedDaySource, PlannedMealOwnership {
+public class NutritionPlanReader
+    implements PlannedDaySource, PlannedMealOwnership, PlannedWeekSource {
 
   private final NutritionPlanService plans;
   private final FoodCatalogService foods;
   private final FoodServingRepository servings;
   private final RecipeService recipes;
   private final UserProfileService profiles;
+  private final Clock clock;
 
   public NutritionPlanReader(
       NutritionPlanService plans,
       FoodCatalogService foods,
       FoodServingRepository servings,
       RecipeService recipes,
-      UserProfileService profiles) {
+      UserProfileService profiles,
+      Clock clock) {
     this.plans = plans;
     this.foods = foods;
     this.servings = servings;
     this.recipes = recipes;
     this.profiles = profiles;
+    this.clock = clock;
   }
 
   /**
@@ -69,11 +75,17 @@ public class NutritionPlanReader implements PlannedDaySource, PlannedMealOwnersh
                     .map(day -> resolve(plan, day)));
   }
 
-  /** Every day of the user's active plan, worked out, in order. */
+  /** The current calendar week's days from the user's active plan, worked out, in order. */
+  @Override
   public List<ResolvedDay> activePlanDays(UUID userId) {
     return plans
         .findActive(userId)
-        .map(plan -> plan.days().stream().map(day -> resolve(plan, day)).toList())
+        .map(
+            plan ->
+                PlanWeekSelector.currentWeek(plan.days(), plan.startDate(), LocalDate.now(clock))
+                    .stream()
+                    .map(day -> resolve(plan, day))
+                    .toList())
         .orElse(List.of());
   }
 
@@ -143,7 +155,13 @@ public class NutritionPlanReader implements PlannedDaySource, PlannedMealOwnersh
         NutritionCalculator.itemTotals(
             new MealItem(item.foodId(), Math.max(1, (int) Math.round(grams))), foods);
     return new ResolvedItem(
-        food.get().name(), round1(grams), totals, item.optional(), item.preparationNotes(), null);
+        item.foodId(),
+        food.get().name(),
+        round1(grams),
+        totals,
+        item.optional(),
+        item.preparationNotes(),
+        null);
   }
 
   private ResolvedItem resolveRecipe(PlanItem item) {
@@ -157,6 +175,7 @@ public class NutritionPlanReader implements PlannedDaySource, PlannedMealOwnersh
     double grams = item.amount() * gramsPerServing(dish);
     NutritionTotals totals = scale(dish.perServing(), item.amount());
     return new ResolvedItem(
+        null,
         dish.recipe().name(),
         round1(grams),
         totals,
@@ -193,7 +212,13 @@ public class NutritionPlanReader implements PlannedDaySource, PlannedMealOwnersh
 
   private static ResolvedItem unresolved(PlanItem item, String id) {
     return new ResolvedItem(
-        id, 0, new NutritionTotals(0, 0, 0, 0), item.optional(), item.preparationNotes(), id);
+        item.foodId(),
+        id,
+        0,
+        new NutritionTotals(0, 0, 0, 0),
+        item.optional(),
+        item.preparationNotes(),
+        id);
   }
 
   /**

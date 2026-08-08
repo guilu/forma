@@ -435,48 +435,55 @@ function renderContent(
                       )}
                     </span>
 
-                    {/* Quantity +/- controls (FOR-109/FOR-118): disabled during
-                        this item's own in-flight request or while a regenerate
-                        is in flight, to avoid racing a per-item edit against a
-                        full-list rebuild. The decrement is additionally
-                        disabled at quantity 1 (client-side guard mirroring the
-                        backend's `quantity >= 1` invariant). */}
+                    {/* Quantity +/- controls (FOR-109/FOR-118): only catalog-backed
+                        products can use the quantity endpoint. Editability is explicit
+                        and independent from price availability. */}
                     <span className={styles.quantityStepper}>
-                      <button
-                        type="button"
-                        className={styles.stepperButton}
-                        aria-label={`Disminuir cantidad de ${item.productName}`}
-                        disabled={item.quantity <= 1 || pendingId === item.id || regenerating}
-                        onClick={() => onChangeQuantity(item, -1)}
-                      >
-                        −
-                      </button>
+                      {item.catalogued && (
+                        <button
+                          type="button"
+                          className={styles.stepperButton}
+                          aria-label={`Disminuir cantidad de ${item.productName}`}
+                          disabled={item.quantity <= 1 || pendingId === item.id || regenerating}
+                          onClick={() => onChangeQuantity(item, -1)}
+                        >
+                          −
+                        </button>
+                      )}
                       <span className={styles.quantityValue}>{item.quantity}</span>
-                      <button
-                        type="button"
-                        className={styles.stepperButton}
-                        aria-label={`Aumentar cantidad de ${item.productName}`}
-                        disabled={pendingId === item.id || regenerating}
-                        onClick={() => onChangeQuantity(item, 1)}
-                      >
-                        +
-                      </button>
+                      {item.catalogued && (
+                        <button
+                          type="button"
+                          className={styles.stepperButton}
+                          aria-label={`Aumentar cantidad de ${item.productName}`}
+                          disabled={pendingId === item.id || regenerating}
+                          onClick={() => onChangeQuantity(item, 1)}
+                        >
+                          +
+                        </button>
+                      )}
                     </span>
 
                     <span className={styles.unit}>{unitLabel(item.unit)}</span>
 
-                    <span className={styles.cost}>{EUR.format(item.estimatedCostEur)}</span>
+                    <span className={styles.cost}>
+                      {item.estimatedCostEur === null
+                        ? 'Sin precio'
+                        : EUR.format(item.estimatedCostEur)}
+                    </span>
 
                     <span className={styles.itemActions}>
                       {/* Edit product price/URL (FOR-36). */}
-                      <button
-                        type="button"
-                        className={styles.actionButton}
-                        onClick={() => onEdit(item)}
-                        aria-label={`Editar producto ${item.productName}`}
-                      >
-                        <Icon name="edit" size={16} />
-                      </button>
+                      {item.catalogued && (
+                        <button
+                          type="button"
+                          className={styles.actionButton}
+                          onClick={() => onEdit(item)}
+                          aria-label={`Editar producto ${item.productName}`}
+                        >
+                          <Icon name="edit" size={16} />
+                        </button>
+                      )}
                       {/* Provider link-out (FOR-108/FOR-109/FOR-118): a real
                           link opening in a new tab; omitted (not disabled) when
                           the item has no productUrl. */}

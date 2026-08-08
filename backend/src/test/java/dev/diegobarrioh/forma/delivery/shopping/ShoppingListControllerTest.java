@@ -59,6 +59,7 @@ class ShoppingListControllerTest {
                 "Avena",
                 ShoppingCategory.CEREALES_Y_LEGUMBRES,
                 2,
+                true,
                 new BigDecimal("3.90"),
                 false,
                 ShoppingUnit.KG,
@@ -82,6 +83,7 @@ class ShoppingListControllerTest {
         .andExpect(jsonPath("$.items[0].productId").value("p1"))
         .andExpect(jsonPath("$.items[0].productName").value("Avena"))
         .andExpect(jsonPath("$.items[0].category").value("CEREALES_Y_LEGUMBRES"))
+        .andExpect(jsonPath("$.items[0].catalogued").value(true))
         .andExpect(jsonPath("$.items[0].unit").value("KG"))
         .andExpect(jsonPath("$.items[0].servings").value(4))
         .andExpect(jsonPath("$.items[0].productUrl").value("https://tienda.mercadona.es/p1"))
@@ -104,6 +106,7 @@ class ShoppingListControllerTest {
                     "Bolsas",
                     ShoppingCategory.OTROS,
                     1,
+                    true,
                     new BigDecimal("0.90"),
                     false,
                     ShoppingUnit.UD,
@@ -171,6 +174,7 @@ class ShoppingListControllerTest {
                     "Avena",
                     ShoppingCategory.CEREALES_Y_LEGUMBRES,
                     1,
+                    true,
                     new BigDecimal("1.95"),
                     false,
                     ShoppingUnit.UD,

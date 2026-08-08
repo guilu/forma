@@ -13,7 +13,8 @@ import java.math.BigDecimal;
  *
  * @param productId stable id of a FOR-36 shopping product; required, non-blank
  * @param quantity number of units/packages; must be >= 1
- * @param estimatedCostEur estimated line cost in euros; required, non-negative
+ * @param estimatedCostEur estimated line cost in euros; nullable when unknown, otherwise
+ *     non-negative
  * @param checked whether the item has been picked up
  * @param unit unit of measure for {@code quantity} (FOR-108); {@code null} defaults to {@link
  *     ShoppingUnit#UD} so old rows/callers stay backward compatible
@@ -35,10 +36,10 @@ public record ShoppingListItem(
     if (quantity < 1) {
       throw new IllegalArgumentException("quantity must be >= 1, was: " + quantity);
     }
-    if (estimatedCostEur == null) {
-      throw new IllegalArgumentException("estimatedCostEur must not be null");
-    }
-    if (estimatedCostEur.signum() < 0) {
+    // Nulo es un precio que nadie ha dicho, y es distinto de cero: lo que el plan pide y la tienda
+    // no tiene catalogado entra en la lista sin precio, para que se vea que falta, en vez de entrar
+    // a 0,00 € y hacer creer que sale gratis. Negativo sigue sin significar nada.
+    if (estimatedCostEur != null && estimatedCostEur.signum() < 0) {
       throw new IllegalArgumentException("estimatedCostEur must be >= 0, was: " + estimatedCostEur);
     }
     if (unit == null) {
