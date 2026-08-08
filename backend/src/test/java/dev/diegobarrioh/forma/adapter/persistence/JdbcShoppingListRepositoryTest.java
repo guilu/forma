@@ -150,14 +150,6 @@ class JdbcShoppingListRepositoryTest {
   }
 
   @Test
-  void regenerateWithNoActiveListReturnsEmpty() {
-    jdbcTemplate.update("DELETE FROM shopping_list_items");
-    jdbcTemplate.update("DELETE FROM shopping_lists");
-
-    assertThat(repository.regenerate(OWNER, List.of(), Instant.now())).isEmpty();
-  }
-
-  @Test
   void updatesItemQuantityAndCost() {
     var updated =
         repository.updateQuantity(OWNER, ITEM_ID, 5, new BigDecimal("9.75")).orElseThrow();
@@ -188,5 +180,52 @@ class JdbcShoppingListRepositoryTest {
   @Test
   void findItemOfUnknownIdReturnsEmpty() {
     assertThat(repository.findItem(OWNER, "00000000-0000-0000-0000-000000000000")).isEmpty();
+  }
+
+  /**
+   * La primera lista de una cuenta.
+   *
+   * <p>El agujero que cierra esto: V23 borró las listas sembradas y ningún INSERT quedó en el
+   * código, así que una cuenta sin lista no podía obtener ninguna. `currentView` daba 404 y
+   * regenerar —la única salida— empezaba buscando la lista que no existía. La pantalla entera
+   * quedaba fuera de alcance de forma permanente.
+   */
+  @Test
+  void regenerateCreatesTheListWhenTheAccountHasNone() {
+    jdbcTemplate.update("DELETE FROM shopping_list_items");
+    jdbcTemplate.update("DELETE FROM shopping_lists");
+    assertThat(repository.findActive(OWNER)).isEmpty();
+
+    Instant generatedAt = Instant.parse("2026-08-07T10:00:00Z");
+    var created =
+        repository.regenerate(
+            OWNER,
+            List.of(
+                new ShoppingListItem(
+                    "p1", 2, new BigDecimal("1.55"), false, ShoppingUnit.UD, null)),
+            generatedAt);
+
+    assertThat(created).isPresent();
+    assertThat(created.get().items()).hasSize(1);
+    // La semana empieza en lunes: el 7 de agosto de 2026 es viernes, así que su lunes es el 3.
+    assertThat(created.get().weekStartDate()).isEqualTo(LocalDate.of(2026, 8, 3));
+    assertThat(repository.findActive(OWNER)).isPresent();
+  }
+
+  /**
+   * Y solo la primera: regenerar otra vez reescribe la que hay en vez de acumular listas activas.
+   */
+  @Test
+  void regeneratingAgainKeepsOneActiveList() {
+    Instant generatedAt = Instant.parse("2026-08-07T10:00:00Z");
+    repository.regenerate(OWNER, List.of(), generatedAt);
+    repository.regenerate(OWNER, List.of(), generatedAt.plusSeconds(60));
+
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM shopping_lists WHERE user_id = ? AND status = 'ACTIVE'",
+                Integer.class,
+                OWNER))
+        .isEqualTo(1);
   }
 }

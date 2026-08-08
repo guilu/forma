@@ -53,11 +53,6 @@ type State =
   | { readonly status: 'empty' }
   | { readonly status: 'ready'; readonly day: NutritionDay };
 
-/** Today, for both halves of the page. Read once so they cannot land on different days. */
-const TODAY = new Date();
-const TODAY_ISO = TODAY.toISOString().slice(0, 10);
-const TODAY_LABEL = formatShortDate(TODAY);
-
 const MEAL_LABELS: Record<string, string> = {
   BREAKFAST: 'Desayuno',
   MID_MORNING: 'Media mañana',
@@ -69,6 +64,11 @@ const MEAL_LABELS: Record<string, string> = {
 };
 
 export function NutritionPage() {
+  // Read once per mounted page: both endpoints and the label share a date, without freezing
+  // "today" at module-import time for the lifetime of the browser tab.
+  const [today] = useState(() => new Date());
+  const todayIso = today.toISOString().slice(0, 10);
+  const todayLabel = formatShortDate(today);
   const [retryToken, setRetryToken] = useState(0);
   const [state, setState] = useState<State>({ status: 'loading' });
   const [consumption, setConsumption] = useState<DayConsumption | undefined>(undefined);
@@ -76,13 +76,13 @@ export function NutritionPage() {
   const [marking, setMarking] = useState<string | undefined>(undefined);
 
   const reloadConsumption = useCallback(() => {
-    return getDayConsumption(TODAY_ISO)
+    return getDayConsumption(todayIso)
       .then((day) => {
         setConsumption(day);
         return day;
       })
       .catch(() => undefined);
-  }, []);
+  }, [todayIso]);
 
   /*
    * El plan se pide para el tipo de día que dice el servidor, así que las dos mitades hablan del
@@ -120,7 +120,7 @@ export function NutritionPage() {
 
   const markAsEaten = (meal: NutritionMeal) => {
     setMarking(meal.id);
-    logPlannedMealAsPlanned(TODAY_ISO, meal)
+    logPlannedMealAsPlanned(todayIso, meal)
       .then(reloadConsumption)
       .finally(() => setMarking(undefined));
   };
@@ -130,9 +130,7 @@ export function NutritionPage() {
       <header className={styles.header}>
         <div className={styles.titles}>
           <h1 className={styles.title}>Tu Nutrición de Hoy</h1>
-          <p className={styles.subtitle}>
-            {TODAY_LABEL} · Sigue el plan para alcanzar tu objetivo.
-          </p>
+          <p className={styles.subtitle}>{todayLabel} · Sigue el plan para alcanzar tu objetivo.</p>
         </div>
         <Button variant="accent" type="button" onClick={() => setLogging(true)}>
           + Registrar
@@ -153,7 +151,7 @@ export function NutritionPage() {
       {logging && (
         <Modal title="Registrar comida" onClose={() => setLogging(false)}>
           <LogMealForm
-            date={TODAY_ISO}
+            date={todayIso}
             plannedMeals={consumption?.plannedMeals ?? []}
             onCancel={() => setLogging(false)}
             onLogged={() => {

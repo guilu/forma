@@ -20,6 +20,13 @@ import dev.diegobarrioh.forma.domain.NutritionTotals;
  *     if it ever happens a day with one bad line should still render the rest
  */
 public record ResolvedItem(
+    /**
+     * El alimento del catálogo que hay detrás de esta línea, o {@code null} cuando la línea es una
+     * receta. Viaja para que la lista de la compra pueda casar lo que pide el plan con lo que vende
+     * la tienda: el nombre no sirve para eso, porque «Copos de avena» y «Copos de avena Brüggen»
+     * son la misma cosa escrita por dos sitios distintos.
+     */
+    String foodId,
     String label,
     double grams,
     NutritionTotals totals,

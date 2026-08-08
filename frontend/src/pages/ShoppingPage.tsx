@@ -3,7 +3,6 @@ import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { EmptyState } from '../components/EmptyState';
-import { NoPlanEmptyState } from '../components/NoPlanEmptyState';
 import { ErrorState } from '../components/ErrorState';
 import { Icon } from '../components/Icon';
 import { LoadingState } from '../components/LoadingState';
@@ -260,6 +259,7 @@ export function ShoppingPage() {
         selectedCategory,
         setSelectedCategory,
         changeQuantity,
+        () => setConfirmRegenerate(true),
       )}
       {editingItem && (
         <ProductEditModal item={editingItem} onClose={() => setEditingItem(undefined)} />
@@ -292,6 +292,7 @@ function renderContent(
   selectedCategory: string,
   onSelectCategory: (category: string) => void,
   onChangeQuantity: (item: ShoppingItem, delta: 1 | -1) => void,
+  onRegenerate: () => void,
 ) {
   if (state.status === 'loading') {
     return <LoadingState message="Cargando tu lista de compra…" />;
@@ -338,13 +339,16 @@ function renderContent(
           value={String(totalServings(items))}
           unit="para 7 días"
         />
-        {/* List-level generation timestamp (FOR-117). */}
-        <MetricCard
-          label="Generada"
-          headingLevel={2}
-          icon="progress"
-          value={formatGeneratedAt(generatedAt)}
-        />
+        {/* Fecha de generación de la lista (FOR-117). Sin lista generada no hay fecha, y la
+            tarjeta desaparece en vez de enseñar una inventada. */}
+        {generatedAt && (
+          <MetricCard
+            label="Generada"
+            headingLevel={2}
+            icon="progress"
+            value={formatGeneratedAt(generatedAt)}
+          />
+        )}
       </section>
 
       {/* Category filter tabs (FOR-111): one tab per distinct category present
@@ -365,7 +369,20 @@ function renderContent(
       </div>
 
       {items.length === 0 ? (
-        <NoPlanEmptyState />
+        /*
+         * Una lista sin artículos no es un plan que falte: es una lista sin generar. Aquí se
+         * enseñaba el estado vacío del plan, que mandaba a crear uno cuando lo que hacía falta era
+         * pulsar un botón que ya estaba en la cabecera.
+         */
+        <EmptyState
+          title="Todavía no has generado tu lista de la compra."
+          description="Se construye con los productos del catálogo para que puedas ajustarla."
+          action={
+            <Button variant="secondary" onClick={onRegenerate} disabled={regenerating}>
+              Generar nueva lista
+            </Button>
+          }
+        />
       ) : filteredItems.length === 0 ? (
         <EmptyState variant="filtered" title="No hay artículos en esta categoría." />
       ) : (
@@ -418,48 +435,55 @@ function renderContent(
                       )}
                     </span>
 
-                    {/* Quantity +/- controls (FOR-109/FOR-118): disabled during
-                        this item's own in-flight request or while a regenerate
-                        is in flight, to avoid racing a per-item edit against a
-                        full-list rebuild. The decrement is additionally
-                        disabled at quantity 1 (client-side guard mirroring the
-                        backend's `quantity >= 1` invariant). */}
+                    {/* Quantity +/- controls (FOR-109/FOR-118): only catalog-backed
+                        products can use the quantity endpoint. Editability is explicit
+                        and independent from price availability. */}
                     <span className={styles.quantityStepper}>
-                      <button
-                        type="button"
-                        className={styles.stepperButton}
-                        aria-label={`Disminuir cantidad de ${item.productName}`}
-                        disabled={item.quantity <= 1 || pendingId === item.id || regenerating}
-                        onClick={() => onChangeQuantity(item, -1)}
-                      >
-                        −
-                      </button>
+                      {item.catalogued && (
+                        <button
+                          type="button"
+                          className={styles.stepperButton}
+                          aria-label={`Disminuir cantidad de ${item.productName}`}
+                          disabled={item.quantity <= 1 || pendingId === item.id || regenerating}
+                          onClick={() => onChangeQuantity(item, -1)}
+                        >
+                          −
+                        </button>
+                      )}
                       <span className={styles.quantityValue}>{item.quantity}</span>
-                      <button
-                        type="button"
-                        className={styles.stepperButton}
-                        aria-label={`Aumentar cantidad de ${item.productName}`}
-                        disabled={pendingId === item.id || regenerating}
-                        onClick={() => onChangeQuantity(item, 1)}
-                      >
-                        +
-                      </button>
+                      {item.catalogued && (
+                        <button
+                          type="button"
+                          className={styles.stepperButton}
+                          aria-label={`Aumentar cantidad de ${item.productName}`}
+                          disabled={pendingId === item.id || regenerating}
+                          onClick={() => onChangeQuantity(item, 1)}
+                        >
+                          +
+                        </button>
+                      )}
                     </span>
 
                     <span className={styles.unit}>{unitLabel(item.unit)}</span>
 
-                    <span className={styles.cost}>{EUR.format(item.estimatedCostEur)}</span>
+                    <span className={styles.cost}>
+                      {item.estimatedCostEur === null
+                        ? 'Sin precio'
+                        : EUR.format(item.estimatedCostEur)}
+                    </span>
 
                     <span className={styles.itemActions}>
                       {/* Edit product price/URL (FOR-36). */}
-                      <button
-                        type="button"
-                        className={styles.actionButton}
-                        onClick={() => onEdit(item)}
-                        aria-label={`Editar producto ${item.productName}`}
-                      >
-                        <Icon name="edit" size={16} />
-                      </button>
+                      {item.catalogued && (
+                        <button
+                          type="button"
+                          className={styles.actionButton}
+                          onClick={() => onEdit(item)}
+                          aria-label={`Editar producto ${item.productName}`}
+                        >
+                          <Icon name="edit" size={16} />
+                        </button>
+                      )}
                       {/* Provider link-out (FOR-108/FOR-109/FOR-118): a real
                           link opening in a new tab; omitted (not disabled) when
                           the item has no productUrl. */}

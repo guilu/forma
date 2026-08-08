@@ -14,6 +14,8 @@ export interface ShoppingItem {
   /** Resolved product category (FOR-106); `OTROS` when the product has none. */
   readonly category: string;
   readonly quantity: number;
+  /** Whether productId resolves to a catalog-backed, editable shopping product. */
+  readonly catalogued: boolean;
   /** Unit of measure for {@link quantity} (FOR-108, e.g. `UD`, `G`, `KG`, `L`, `PAQUETE`). */
   readonly unit: string;
   /**
@@ -21,7 +23,8 @@ export interface ShoppingItem {
    * linked to a nutrition food — never fabricated for non-food items.
    */
   readonly servings: number | null;
-  readonly estimatedCostEur: number;
+  /** Null when the item has no known price, whether or not its product is catalogued. */
+  readonly estimatedCostEur: number | null;
   readonly checked: boolean;
   /**
    * Provider link-out/add-to-cart URL (FOR-108/FOR-109); absent/`null` when
@@ -45,7 +48,8 @@ export interface ShoppingList {
   readonly items: ShoppingItem[];
   readonly budget: ShoppingBudget;
   /** When this list was generated/created (FOR-108); backfilled for pre-migration lists. */
-  readonly generatedAt: string;
+  /** Nulo mientras la cuenta no haya generado su lista: no hay nada que fechar. */
+  readonly generatedAt: string | null;
 }
 
 /** The updated item returned by the check toggle. */
@@ -62,7 +66,7 @@ export interface CheckedResult {
 export interface QuantityResult {
   readonly id: string;
   readonly quantity: number;
-  readonly estimatedCostEur: number;
+  readonly estimatedCostEur: number | null;
   readonly unit: string;
 }
 

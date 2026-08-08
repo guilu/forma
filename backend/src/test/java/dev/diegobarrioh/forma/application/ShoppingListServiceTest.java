@@ -3,6 +3,10 @@ package dev.diegobarrioh.forma.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.diegobarrioh.forma.domain.MacroTargets;
+import dev.diegobarrioh.forma.domain.MealType;
+import dev.diegobarrioh.forma.domain.NutritionDayType;
+import dev.diegobarrioh.forma.domain.NutritionTotals;
 import dev.diegobarrioh.forma.domain.ShoppingCategory;
 import dev.diegobarrioh.forma.domain.ShoppingListItem;
 import dev.diegobarrioh.forma.domain.ShoppingListStatus;
@@ -90,7 +94,8 @@ class ShoppingListServiceTest {
           products,
           new ShoppingBudgetService(products, () -> USER_ID),
           () -> USER_ID,
-          CATALOG);
+          CATALOG,
+          userId -> List.of());
 
   @Test
   void resolvesProductNamesAndComputesBudget() {
@@ -126,7 +131,8 @@ class ShoppingListServiceTest {
             linkedProducts,
             new ShoppingBudgetService(linkedProducts, () -> USER_ID),
             () -> USER_ID,
-            CATALOG);
+            CATALOG,
+            userId -> List.of());
 
     ShoppingListView view = serviceWithLinkedProduct.currentView();
 
@@ -146,7 +152,8 @@ class ShoppingListServiceTest {
             products,
             new ShoppingBudgetService(products, () -> USER_ID),
             () -> USER_ID,
-            CATALOG);
+            CATALOG,
+            userId -> List.of());
 
     ShoppingListView view = serviceWithUnlinkedProduct.currentView();
 
@@ -184,7 +191,8 @@ class ShoppingListServiceTest {
             },
             new ShoppingBudgetService(products, () -> USER_ID),
             () -> USER_ID,
-            CATALOG);
+            CATALOG,
+            userId -> List.of());
 
     ShoppingListView view = serviceWithNoProducts.currentView();
 
@@ -213,7 +221,8 @@ class ShoppingListServiceTest {
             productsWithoutUrl,
             new ShoppingBudgetService(productsWithoutUrl, () -> USER_ID),
             () -> USER_ID,
-            CATALOG);
+            CATALOG,
+            userId -> List.of());
 
     ShoppingListView view = serviceWithoutUrl.currentView();
 
@@ -235,7 +244,8 @@ class ShoppingListServiceTest {
             products,
             new ShoppingBudgetService(products, () -> USER_ID),
             () -> USER_ID,
-            CATALOG);
+            CATALOG,
+            userId -> List.of());
 
     ShoppingListView view = serviceWithStaleCost.currentView();
 
@@ -255,7 +265,8 @@ class ShoppingListServiceTest {
             products,
             new ShoppingBudgetService(products, () -> USER_ID),
             () -> USER_ID,
-            CATALOG);
+            CATALOG,
+            userId -> List.of());
 
     ShoppingListView view = serviceWithQuantityThree.currentView();
 
@@ -339,7 +350,8 @@ class ShoppingListServiceTest {
             noProducts,
             new ShoppingBudgetService(noProducts, () -> USER_ID),
             () -> USER_ID,
-            CATALOG);
+            CATALOG,
+            userId -> List.of());
 
     ShoppingListView view = serviceWithNoProducts.regenerate();
 
@@ -347,7 +359,7 @@ class ShoppingListServiceTest {
   }
 
   @Test
-  void regenerateWithNoActiveListThrowsNotFound() {
+  void regenerateCreatesTheFirstListWhenTheAccountHasNone() {
     FakeListRepository listsWithNoActive = new FakeListRepository();
     listsWithNoActive.hasActiveList = false;
     ShoppingListService serviceWithNoActiveList =
@@ -356,9 +368,33 @@ class ShoppingListServiceTest {
             products,
             new ShoppingBudgetService(products, () -> USER_ID),
             () -> USER_ID,
-            CATALOG);
+            CATALOG,
+            userId -> List.of());
 
-    assertThatThrownBy(serviceWithNoActiveList::regenerate).isInstanceOf(NotFoundException.class);
+    assertThat(serviceWithNoActiveList.regenerate().items()).isNotEmpty();
+  }
+
+  /**
+   * Una cuenta sin lista no es un fallo, y decirlo importa: el 404 hacía que la pantalla enseñara
+   * «no se pudo cargar», que acusa de una avería donde solo falta pulsar un botón.
+   */
+  @Test
+  void currentViewOfAnAccountWithNoListIsAnEmptyWeek() {
+    FakeListRepository listsWithNoActive = new FakeListRepository();
+    listsWithNoActive.hasActiveList = false;
+    ShoppingListService serviceWithNoActiveList =
+        new ShoppingListService(
+            listsWithNoActive,
+            products,
+            new ShoppingBudgetService(products, () -> USER_ID),
+            () -> USER_ID,
+            CATALOG,
+            userId -> List.of());
+
+    ShoppingListView view = serviceWithNoActiveList.currentView();
+
+    assertThat(view.items()).isEmpty();
+    assertThat(view.weekStartDate().getDayOfWeek()).isEqualTo(java.time.DayOfWeek.MONDAY);
   }
 
   @Test
@@ -395,7 +431,8 @@ class ShoppingListServiceTest {
             products,
             new ShoppingBudgetService(products, () -> USER_ID),
             () -> USER_ID,
-            CATALOG);
+            CATALOG,
+            userId -> List.of());
 
     assertThatThrownBy(() -> serviceWithOrphanItem.updateQuantity("i1", 3))
         .isInstanceOf(NotFoundException.class);
@@ -481,9 +518,9 @@ class ShoppingListServiceTest {
     @Override
     public Optional<ActiveShoppingList> regenerate(
         UUID userId, List<ShoppingListItem> items, Instant newGeneratedAt) {
-      if (!hasActiveList) {
-        return Optional.empty();
-      }
+      // Regenerar CREA la lista cuando no hay ninguna, igual que el adaptador JDBC: era la única
+      // puerta a la primera lista y estaba cerrada por dentro.
+      this.hasActiveList = true;
       this.lastRegeneratedItems = new ArrayList<>(items);
       this.lastRegeneratedAt = newGeneratedAt;
       itemsById.clear();
@@ -537,18 +574,27 @@ class ShoppingListServiceTest {
     private final List<String> addedReferences = new ArrayList<>();
     private final String linkedFoodItemId;
     private final boolean withUrl;
+    private final BigDecimal price;
+    private final String storeProductId;
 
     FakeProductRepository() {
-      this(null, true);
+      this(null, true, new BigDecimal("1.95"), null);
     }
 
     FakeProductRepository(String linkedFoodItemId) {
-      this(linkedFoodItemId, true);
+      this(linkedFoodItemId, true, new BigDecimal("1.95"), null);
     }
 
     FakeProductRepository(String linkedFoodItemId, boolean withUrl) {
+      this(linkedFoodItemId, withUrl, new BigDecimal("1.95"), null);
+    }
+
+    FakeProductRepository(
+        String linkedFoodItemId, boolean withUrl, BigDecimal price, String storeProductId) {
       this.linkedFoodItemId = linkedFoodItemId;
       this.withUrl = withUrl;
+      this.price = price;
+      this.storeProductId = storeProductId;
     }
 
     @Override
@@ -560,12 +606,13 @@ class ShoppingListServiceTest {
                   "Avena",
                   withUrl ? "https://tienda.mercadona.es/p1" : null,
                   null,
-                  new BigDecimal("1.95"),
+                  price,
                   null,
                   linkedFoodItemId,
                   null,
                   null,
-                  ShoppingCategory.CEREALES_Y_LEGUMBRES)));
+                  ShoppingCategory.CEREALES_Y_LEGUMBRES,
+                  storeProductId)));
     }
 
     @Override
@@ -587,5 +634,209 @@ class ShoppingListServiceTest {
     List<String> addedReferences() {
       return addedReferences;
     }
+  }
+
+  private record SingleProductCatalog(CatalogStoreProduct product)
+      implements StoreProductRepository {
+    @Override
+    public List<CatalogStoreProduct> findAll(String store) {
+      return List.of(product);
+    }
+
+    @Override
+    public Optional<CatalogStoreProduct> findById(String id) {
+      return product.id().equals(id) ? Optional.of(product) : Optional.empty();
+    }
+
+    @Override
+    public void insert(CatalogStoreProduct ignored) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void update(CatalogStoreProduct ignored) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean delete(String id) {
+      throw new UnsupportedOperationException();
+    }
+  }
+
+  /** Un producto del catálogo que cubre un alimento, con el envase que declara la tienda. */
+  private static CatalogStoreProduct catalogProductFor(
+      String id, String foodId, String packageAmount, String packageUnit, String price) {
+    return new CatalogStoreProduct(
+        id,
+        "MERCADONA",
+        "Producto " + id,
+        foodId,
+        packageAmount + " " + packageUnit,
+        price == null ? null : new BigDecimal(price),
+        null,
+        ShoppingCategory.CEREALES_Y_LEGUMBRES,
+        null,
+        null,
+        null,
+        null,
+        null,
+        packageAmount == null ? null : new BigDecimal(packageAmount),
+        packageUnit,
+        true,
+        null,
+        null);
+  }
+
+  private static ResolvedDay dayEating(String foodId, double grams) {
+    ResolvedMeal meal =
+        new ResolvedMeal(
+            UUID.randomUUID(),
+            MealType.BREAKFAST,
+            "Desayuno",
+            null,
+            false,
+            null,
+            MacroTargets.none(),
+            new NutritionTotals(0, 0, 0, 0),
+            List.of(
+                new ResolvedItem(
+                    foodId,
+                    "Alimento",
+                    grams,
+                    new NutritionTotals(0, 0, 0, 0),
+                    false,
+                    null,
+                    null)));
+    return new ResolvedDay(
+        NutritionDayType.RUNNING,
+        1,
+        1,
+        null,
+        null,
+        MacroTargets.none(),
+        new NutritionTotals(0, 0, 0, 0),
+        null,
+        List.of(meal));
+  }
+
+  private ShoppingListService serviceFollowing(
+      List<ResolvedDay> planDays, List<CatalogStoreProduct> catalog) {
+    StoreProductRepository catalogRepo =
+        new StoreProductRepository() {
+          @Override
+          public List<CatalogStoreProduct> findAll(String store) {
+            return catalog;
+          }
+
+          @Override
+          public Optional<CatalogStoreProduct> findById(String id) {
+            return Optional.empty();
+          }
+
+          @Override
+          public void insert(CatalogStoreProduct product) {
+            throw new UnsupportedOperationException("not used by this test");
+          }
+
+          @Override
+          public void update(CatalogStoreProduct product) {
+            throw new UnsupportedOperationException("not used by this test");
+          }
+
+          @Override
+          public boolean delete(String id) {
+            throw new UnsupportedOperationException("not used by this test");
+          }
+        };
+    return new ShoppingListService(
+        lists,
+        products,
+        new ShoppingBudgetService(products, () -> USER_ID),
+        () -> USER_ID,
+        catalogRepo,
+        userId -> planDays);
+  }
+
+  /**
+   * La semana se suma entera y se pide en envases enteros.
+   *
+   * <p>80 g de avena en siete días son 560, y en bolsas de 500 g eso son dos bolsas: quedarse en
+   * una dejaría la semana corta el último día.
+   */
+  @Test
+  void asksForThePackagesThatCoverTheWeek() {
+    List<ResolvedDay> week =
+        List.of(
+            dayEating("oats", 80),
+            dayEating("oats", 80),
+            dayEating("oats", 80),
+            dayEating("oats", 80),
+            dayEating("oats", 80),
+            dayEating("oats", 80),
+            dayEating("oats", 80));
+    ShoppingListService service =
+        serviceFollowing(
+            week, List.of(catalogProductFor("mercadona-oats", "oats", "500", "G", "1.55")));
+
+    ShoppingListView view = service.regenerate();
+
+    assertThat(view.items())
+        .singleElement()
+        .satisfies(item -> assertThat(item.quantity()).isEqualTo(2));
+  }
+
+  /**
+   * Lo que el plan pide y la tienda no tiene catalogado entra igualmente, y entra SIN precio.
+   *
+   * <p>Cero diría que sale gratis y arrastraría el presupuesto hacia abajo; nulo dice que nadie lo
+   * ha dicho, que es la verdad y además es la señal de qué falta por catalogar.
+   */
+  @Test
+  void listsWhatIsMissingFromTheCatalogWithoutAPrice() {
+    ShoppingListService service = serviceFollowing(List.of(dayEating("quinoa", 300)), List.of());
+
+    ShoppingListView view = service.regenerate();
+
+    assertThat(view.items())
+        .singleElement()
+        .satisfies(
+            item -> {
+              assertThat(item.productId()).isEqualTo("quinoa");
+              assertThat(item.estimatedCostEur()).isNull();
+            });
+  }
+
+  @Test
+  void keepsACataloguedProductWithUnknownPriceReadableAndBudgetable() {
+    FakeProductRepository unpricedProducts =
+        new FakeProductRepository("oats", true, null, "mercadona-oats");
+    ShoppingListService service =
+        new ShoppingListService(
+            lists,
+            unpricedProducts,
+            new ShoppingBudgetService(unpricedProducts, () -> USER_ID),
+            () -> USER_ID,
+            new SingleProductCatalog(catalogProductFor("mercadona-oats", "oats", "500", "G", null)),
+            userId -> List.of(dayEating("oats", 400)));
+
+    ShoppingListView view = service.regenerate();
+
+    assertThat(view.items())
+        .singleElement()
+        .satisfies(
+            item -> {
+              assertThat(item.catalogued()).isTrue();
+              assertThat(item.estimatedCostEur()).isNull();
+            });
+    assertThat(view.budget().weeklyEur()).isEqualByComparingTo("0.00");
+  }
+
+  /** Sin plan activo la lista sigue saliendo del catálogo, como antes de todo esto. */
+  @Test
+  void fallsBackToTheCatalogWhenNoPlanIsBeingFollowed() {
+    ShoppingListService service = serviceFollowing(List.of(), List.of(catalogProduct("x")));
+
+    assertThat(service.regenerate().items()).isNotEmpty();
   }
 }
