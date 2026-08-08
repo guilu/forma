@@ -220,6 +220,18 @@ export function logPlannedMealAsPlanned(
   );
 }
 
+/** Removes the persisted entry or entries that mark this planned meal eaten on this date. */
+export function unmarkPlannedMeal(
+  date: string,
+  plannedMealId: string,
+  client: ApiClient = apiClient,
+): Promise<void> {
+  return client.request<void>(
+    `/api/v1/nutrition/log/planned/${encodeURIComponent(plannedMealId)}?date=${encodeURIComponent(date)}`,
+    { method: 'DELETE' },
+  );
+}
+
 /**
  * Hydration (FOR-130).
  *
@@ -266,4 +278,15 @@ export function logWaterIntake(
     method: 'POST',
     body: JSON.stringify({ date, volumeMl }),
   });
+}
+
+/** Removes up to one 250 ml glass from the persisted intake for a day. */
+export function removeWaterGlass(
+  date: string,
+  client: ApiClient = apiClient,
+): Promise<HydrationProgress> {
+  return client.request<HydrationProgress>(
+    `/api/v1/nutrition/hydration/glass?date=${encodeURIComponent(date)}`,
+    { method: 'DELETE' },
+  );
 }

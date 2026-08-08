@@ -8,11 +8,13 @@ import { ErrorState } from '../components/ErrorState';
 import { Icon } from '../components/Icon';
 import { LoadingState } from '../components/LoadingState';
 import { Modal } from '../components/Modal';
+import { useNotify } from '../components/NotificationProvider';
 import { WaterTracker } from '../components/WaterTracker';
 import {
   getDayConsumption,
   getNutritionDay,
   logPlannedMealAsPlanned,
+  unmarkPlannedMeal,
   type DayConsumption,
   type NutritionDay,
   type NutritionMeal,
@@ -64,6 +66,7 @@ const MEAL_LABELS: Record<string, string> = {
 };
 
 export function NutritionPage() {
+  const notify = useNotify();
   // Read once per mounted page: both endpoints and the label share a date, without freezing
   // "today" at module-import time for the lifetime of the browser tab.
   const [today] = useState(() => new Date());
@@ -73,15 +76,13 @@ export function NutritionPage() {
   const [state, setState] = useState<State>({ status: 'loading' });
   const [consumption, setConsumption] = useState<DayConsumption | undefined>(undefined);
   const [logging, setLogging] = useState(false);
-  const [marking, setMarking] = useState<string | undefined>(undefined);
+  const [marking, setMarking] = useState<ReadonlySet<string>>(() => new Set());
 
   const reloadConsumption = useCallback(() => {
-    return getDayConsumption(todayIso)
-      .then((day) => {
-        setConsumption(day);
-        return day;
-      })
-      .catch(() => undefined);
+    return getDayConsumption(todayIso).then((day) => {
+      setConsumption(day);
+      return day;
+    });
   }, [todayIso]);
 
   /*
@@ -118,11 +119,18 @@ export function NutritionPage() {
     };
   }, [reloadConsumption, retryToken]);
 
-  const markAsEaten = (meal: NutritionMeal) => {
-    setMarking(meal.id);
-    logPlannedMealAsPlanned(todayIso, meal)
+  const toggleEaten = (meal: NutritionMeal, eaten: boolean) => {
+    setMarking((current) => new Set(current).add(meal.id));
+    (eaten ? unmarkPlannedMeal(todayIso, meal.id) : logPlannedMealAsPlanned(todayIso, meal))
       .then(reloadConsumption)
-      .finally(() => setMarking(undefined));
+      .catch(() => notify.error('No se pudo actualizar la comida. Inténtalo de nuevo.'))
+      .finally(() =>
+        setMarking((current) => {
+          const next = new Set(current);
+          next.delete(meal.id);
+          return next;
+        }),
+      );
   };
 
   return (
@@ -139,7 +147,7 @@ export function NutritionPage() {
 
       {renderContent(state, consumption, () => setRetryToken((token) => token + 1), {
         marking,
-        onMark: markAsEaten,
+        onToggle: toggleEaten,
       })}
 
       {/* El único acceso a los planes: no está en la navegación lateral, así que quitarlo de aquí
@@ -156,7 +164,9 @@ export function NutritionPage() {
             onCancel={() => setLogging(false)}
             onLogged={() => {
               setLogging(false);
-              void reloadConsumption();
+              void reloadConsumption().catch(() =>
+                notify.error('No se pudo actualizar el resumen del día.'),
+              );
             }}
           />
         </Modal>
@@ -191,8 +201,8 @@ function headlineOf(meal: NutritionMeal): string {
 
 interface MealActions {
   /** The meal whose request is in flight, so only its own control shows the wait. */
-  readonly marking: string | undefined;
-  readonly onMark: (meal: NutritionMeal) => void;
+  readonly marking: ReadonlySet<string>;
+  readonly onToggle: (meal: NutritionMeal, eaten: boolean) => void;
 }
 
 function renderContent(
@@ -248,8 +258,8 @@ function renderContent(
               <MealCard
                 meal={meal}
                 state={states.get(meal.id)}
-                marking={actions.marking === meal.id}
-                onMark={() => actions.onMark(meal)}
+                marking={actions.marking.has(meal.id)}
+                onMark={() => actions.onToggle(meal, states.get(meal.id) === 'EATEN')}
               />
             </li>
           ))}
@@ -320,10 +330,8 @@ function MacroProgress({
  * One meal of the plan, with the answer to "have you had it?".
  *
  * <p>A real checkbox and not a styled div: it says what it is to a screen reader and takes a
- * keyboard without any of that being rebuilt worse here. Ticking it logs the meal as the plan wrote
- * it. It does not untick — undoing a log is a different operation with no endpoint behind it, and a
- * control that looked like it toggled while silently refusing would be worse than one that plainly
- * only goes one way.
+ * keyboard without any of that being rebuilt worse here. Ticking logs the planned meal; unticking
+ * removes the owner/date-scoped persisted answer and reloads the server read model.
  */
 function MealCard({
   meal,
@@ -361,14 +369,18 @@ function MealCard({
           type="checkbox"
           className={styles.checkInput}
           checked={eaten}
-          disabled={eaten || marking}
+          disabled={marking}
           onChange={onMark}
         />
         <span className={styles.checkMark} aria-hidden="true">
           {eaten && <Icon name="check" size={16} />}
         </span>
         <span className={styles.checkLabel}>
-          {eaten ? `${meal.name}: hecha` : `Marcar ${meal.name} como hecha`}
+          {marking
+            ? `Actualizando ${meal.name}`
+            : eaten
+              ? `Desmarcar ${meal.name} como hecha`
+              : `Marcar ${meal.name} como hecha`}
         </span>
       </label>
     </article>
