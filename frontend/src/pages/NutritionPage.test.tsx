@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
@@ -31,6 +31,7 @@ vi.mock('../api/nutrition', () => ({
 const getDayMock = vi.mocked(getNutritionDay);
 const getConsumptionMock = vi.mocked(getDayConsumption);
 const logAsPlannedMock = vi.mocked(logPlannedMealAsPlanned);
+const TODAY = new Date('2026-08-07T12:00:00Z');
 
 const strengthDay: NutritionDay = {
   type: 'STRENGTH',
@@ -111,9 +112,16 @@ function renderPage() {
 
 describe('NutritionPage', () => {
   beforeEach(() => {
+    // Mock Date only: RTL polling timers remain real, while every render gets the same "today".
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(TODAY);
     vi.clearAllMocks();
     getConsumptionMock.mockResolvedValue(consumption());
     getDayMock.mockResolvedValue(strengthDay);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   /**

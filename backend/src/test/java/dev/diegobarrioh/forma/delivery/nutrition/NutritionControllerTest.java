@@ -167,6 +167,7 @@ class NutritionControllerTest {
             new NutritionTotals(444, 15.6, 72.0, 8.4),
             List.of(
                 new ResolvedItem(
+                    "oats",
                     "Copos de avena",
                     120,
                     new NutritionTotals(444, 15.6, 72.0, 8.4),
@@ -185,6 +186,7 @@ class NutritionControllerTest {
             new NutritionTotals(78, 15.6, 1.6, 1.2),
             List.of(
                 new ResolvedItem(
+                    "whey-protein",
                     "Proteína whey",
                     20,
                     new NutritionTotals(78, 15.6, 1.6, 1.2),

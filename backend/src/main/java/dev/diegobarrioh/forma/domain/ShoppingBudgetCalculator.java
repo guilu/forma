@@ -3,6 +3,7 @@ package dev.diegobarrioh.forma.domain;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Computes the weekly and monthly shopping budget for a {@link ShoppingList} (FOR-38).
@@ -47,8 +48,8 @@ public final class ShoppingBudgetCalculator {
         list.items().stream()
             .map(
                 item ->
-                    unitPriceById
-                        .getOrDefault(item.productId(), BigDecimal.ZERO)
+                    Optional.ofNullable(unitPriceById.get(item.productId()))
+                        .orElse(BigDecimal.ZERO)
                         .multiply(BigDecimal.valueOf(item.quantity())))
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 

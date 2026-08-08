@@ -35,6 +35,7 @@ public record ShoppingListView(
    * @param category resolved product category (FOR-106); {@link ShoppingCategory#OTROS} when the
    *     product id no longer resolves, mirroring the {@code productName} fallback
    * @param quantity units/packages
+   * @param catalogued whether {@code productId} resolves to an editable shopping product
    * @param estimatedCostEur line cost, derived live from the resolved product's current price ×
    *     {@code quantity} ({@link dev.diegobarrioh.forma.application.ShoppingListService}); falls
    *     back to the last stored snapshot when the product no longer resolves
@@ -52,6 +53,7 @@ public record ShoppingListView(
       String productName,
       ShoppingCategory category,
       int quantity,
+      boolean catalogued,
       BigDecimal estimatedCostEur,
       boolean checked,
       ShoppingUnit unit,

@@ -30,6 +30,7 @@ const list: ShoppingList = {
       unit: 'UD',
       servings: null,
       estimatedCostEur: 3.5,
+      catalogued: true,
       checked: false,
     },
   ],

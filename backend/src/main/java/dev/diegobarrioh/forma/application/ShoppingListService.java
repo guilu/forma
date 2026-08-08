@@ -1,6 +1,7 @@
 package dev.diegobarrioh.forma.application;
 
 import dev.diegobarrioh.forma.application.ShoppingListView.Entry;
+import dev.diegobarrioh.forma.domain.GroceryQuantityCalculator;
 import dev.diegobarrioh.forma.domain.ShoppingCategory;
 import dev.diegobarrioh.forma.domain.ShoppingList;
 import dev.diegobarrioh.forma.domain.ShoppingListItem;
@@ -12,6 +13,8 @@ import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -46,16 +49,13 @@ import org.springframework.stereotype.Service;
  * built by REFERENCE to shared reference data rather than from whatever each account happened to
  * type in. Entries the account already has are untouched, including any price it overrode.
  *
- * <p><strong>Regenerate (FOR-109):</strong> the repository has no algorithmic "generate a list from
- * nutrition templates" logic — FOR-37's own spec explicitly deferred that ("automatic generation
- * from nutrition templates is a later concern") and the only list ever created was seeded via a
- * Flyway migration INSERT ({@code V5__shopping_lists.sql}), not runtime code. Per AGENTS.md's
- * repository-priority rule, {@link #regenerate()} does not invent that algorithm. Instead it
- * rebuilds the active list's items from the current FOR-36 product catalog: one item per product,
- * quantity 1, cost = the product's current {@code estimatedPriceEur}, checked reset to {@code
- * false} (per the spec's Open Question recommendation "recommend always resetting for MVP
- * simplicity"). {@code weekStartDate}/{@code status} are left unchanged; only the items and {@code
- * generatedAt} are replaced.
+ * <p><strong>Regenerate (FOR-109):</strong> when an active nutrition plan resolves to food items,
+ * regeneration aggregates their required grams and asks for enough whole catalog packages to cover
+ * them. Until the remaining plan-to-shopping rules are specified, a plan with no resolvable food
+ * items falls back to the previous catalog behavior: one item per product, quantity 1 and the
+ * product's current estimated price. In either path checked state resets, {@code
+ * weekStartDate}/{@code status} stay unchanged, and the items plus {@code generatedAt} are
+ * replaced.
  */
 @Service
 public class ShoppingListService {
@@ -65,18 +65,21 @@ public class ShoppingListService {
   private final ShoppingBudgetService budgetService;
   private final CurrentUserProvider currentUserProvider;
   private final StoreProductRepository storeProductRepository;
+  private final PlannedWeekSource plannedWeek;
 
   public ShoppingListService(
       ShoppingListRepository listRepository,
       ShoppingProductRepository productRepository,
       ShoppingBudgetService budgetService,
       CurrentUserProvider currentUserProvider,
-      StoreProductRepository storeProductRepository) {
+      StoreProductRepository storeProductRepository,
+      PlannedWeekSource plannedWeek) {
     this.listRepository = listRepository;
     this.productRepository = productRepository;
     this.budgetService = budgetService;
     this.currentUserProvider = currentUserProvider;
     this.storeProductRepository = storeProductRepository;
+    this.plannedWeek = plannedWeek;
   }
 
   /**
@@ -132,9 +135,9 @@ public class ShoppingListService {
   }
 
   /**
-   * Rebuilds the active list from the current product catalog (see class javadoc for why this is
-   * not a nutrition-based generation algorithm), resets checked state and stamps a new {@code
-   * generatedAt}. An empty product catalog produces a valid, empty list (spec edge case).
+   * Rebuilds the active list from the active nutrition plan when it yields food items, otherwise
+   * from the current product catalog. Resets checked state and stamps a new {@code generatedAt}. An
+   * empty product catalog produces a valid, empty list (spec edge case).
    *
    * @throws NotFoundException if there is no active list to regenerate
    */
@@ -152,22 +155,98 @@ public class ShoppingListService {
         storeProductRepository.findAll(null).stream().map(CatalogStoreProduct::id).toList();
     productRepository.addMissingCatalogReferences(userId, catalogIds);
 
+    List<ShoppingListItem> fromPlan = itemsFromActivePlan(userId);
     var freshItems =
-        productRepository.findAllByOwner(userId).stream()
-            .map(
-                product ->
-                    new ShoppingListItem(
-                        product.id(),
-                        1,
-                        product.product().estimatedPriceEur(),
-                        false,
-                        ShoppingUnit.UD,
-                        null))
-            .toList();
+        !fromPlan.isEmpty()
+            ? fromPlan
+            : productRepository.findAllByOwner(userId).stream()
+                .map(
+                    product ->
+                        new ShoppingListItem(
+                            product.id(),
+                            1,
+                            product.product().estimatedPriceEur(),
+                            false,
+                            ShoppingUnit.UD,
+                            null))
+                .toList();
     listRepository
         .regenerate(userId, freshItems, Instant.now())
         .orElseThrow(() -> new NotFoundException("No hay lista de compra activa"));
     return currentView();
+  }
+
+  /**
+   * Lo que hay que comprar para la semana del plan.
+   *
+   * <p>Suma los gramos que cada alimento aparece a lo largo de la semana natural en curso del plan
+   * activo, y por cada uno pide los envases que hacen falta para cubrirlos. La semana entera de una
+   * vez, que es como se hace la compra.
+   *
+   * <p><b>Lo que el plan pide y la tienda no tiene catalogado entra igualmente, sin precio.</b> Es
+   * el punto: la lista sirve para saber qué comprar, y omitir lo que falta por catalogar la dejaría
+   * coherente en euros y muda sobre la mitad de la cena. El artículo apunta al alimento por su id
+   * —la referencia es blanda, sin clave foránea— y la pantalla ya sabe enseñar un id que no
+   * resuelve.
+   *
+   * <p>Vacío cuando no hay plan activo, y entonces quien llama se queda con el catálogo entero como
+   * hasta ahora.
+   */
+  private List<ShoppingListItem> itemsFromActivePlan(UUID userId) {
+    Map<String, Double> gramsByFood = new LinkedHashMap<>();
+    for (ResolvedDay day : plannedWeek.activePlanDays(userId)) {
+      for (ResolvedMeal meal : day.meals()) {
+        for (ResolvedItem item : meal.items()) {
+          if (item.foodId() != null) {
+            gramsByFood.merge(item.foodId(), item.grams(), Double::sum);
+          }
+        }
+      }
+    }
+    if (gramsByFood.isEmpty()) {
+      return List.of();
+    }
+
+    Map<String, CatalogStoreProduct> catalogByFood = new LinkedHashMap<>();
+    for (CatalogStoreProduct product : storeProductRepository.findAll(null)) {
+      if (product.foodId() != null) {
+        // El primero que cubra ese alimento. Hay una cadena sola hoy; cuando haya más, esta es la
+        // línea que leerá en cuál compra cada cual.
+        catalogByFood.putIfAbsent(product.foodId(), product);
+      }
+    }
+    Map<String, String> ownIdByStoreProduct =
+        productRepository.findAllByOwner(userId).stream()
+            .filter(stored -> stored.product().storeProductId() != null)
+            .collect(
+                Collectors.toMap(
+                    stored -> stored.product().storeProductId(),
+                    StoredShoppingProduct::id,
+                    (first, second) -> first));
+
+    List<ShoppingListItem> items = new ArrayList<>();
+    gramsByFood.forEach(
+        (foodId, grams) -> {
+          CatalogStoreProduct product = catalogByFood.get(foodId);
+          if (product == null) {
+            // Sin precio: nadie lo ha dicho, y un cero diría que sale gratis.
+            items.add(new ShoppingListItem(foodId, 1, null, false, ShoppingUnit.UD, null));
+            return;
+          }
+          int packages =
+              GroceryQuantityCalculator.packagesFor(
+                  grams, product.packageAmount(), product.packageUnit());
+          BigDecimal price = product.priceEur();
+          items.add(
+              new ShoppingListItem(
+                  ownIdByStoreProduct.getOrDefault(product.id(), product.id()),
+                  packages,
+                  price == null ? null : price.multiply(BigDecimal.valueOf(packages)),
+                  false,
+                  ShoppingUnit.UD,
+                  null));
+        });
+    return items;
   }
 
   /**
@@ -194,11 +273,13 @@ public class ShoppingListService {
     }
 
     BigDecimal newCost =
-        product
-            .product()
-            .estimatedPriceEur()
-            .multiply(BigDecimal.valueOf(quantity))
-            .setScale(2, RoundingMode.HALF_UP);
+        product.product().estimatedPriceEur() == null
+            ? null
+            : product
+                .product()
+                .estimatedPriceEur()
+                .multiply(BigDecimal.valueOf(quantity))
+                .setScale(2, RoundingMode.HALF_UP);
 
     return listRepository
         .updateQuantity(userId, itemId, quantity, newCost)
@@ -232,17 +313,20 @@ public class ShoppingListService {
     BigDecimal estimatedCostEur =
         product == null
             ? stored.item().estimatedCostEur()
-            : product
-                .product()
-                .estimatedPriceEur()
-                .multiply(BigDecimal.valueOf(stored.item().quantity()))
-                .setScale(2, RoundingMode.HALF_UP);
+            : product.product().estimatedPriceEur() == null
+                ? null
+                : product
+                    .product()
+                    .estimatedPriceEur()
+                    .multiply(BigDecimal.valueOf(stored.item().quantity()))
+                    .setScale(2, RoundingMode.HALF_UP);
     return new Entry(
         stored.id(),
         productId,
         productName,
         category,
         stored.item().quantity(),
+        product != null,
         estimatedCostEur,
         stored.item().checked(),
         stored.item().unit(),

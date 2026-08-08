@@ -35,6 +35,7 @@ public class ShoppingBudgetService {
   public ShoppingBudget budgetFor(ShoppingList list) {
     Map<String, BigDecimal> unitPriceById =
         productRepository.findAllByOwner(currentUserProvider.currentUserId()).stream()
+            .filter(stored -> stored.product().estimatedPriceEur() != null)
             .collect(
                 Collectors.toMap(
                     StoredShoppingProduct::id, stored -> stored.product().estimatedPriceEur()));

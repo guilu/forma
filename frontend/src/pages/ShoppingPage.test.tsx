@@ -73,6 +73,7 @@ const list: ShoppingList = {
       unit: 'KG',
       servings: 4,
       estimatedCostEur: 3.9,
+      catalogued: true,
       checked: false,
       // FOR-118: has a provider URL -> the row must render a link-out control.
       productUrl: 'https://tienda.example/avena',
@@ -86,6 +87,7 @@ const list: ShoppingList = {
       unit: 'KG',
       servings: 6,
       estimatedCostEur: 16.5,
+      catalogued: true,
       checked: true,
       // FOR-118: no provider URL -> no link-out control for this row.
       productUrl: null,
@@ -100,6 +102,7 @@ const list: ShoppingList = {
       unit: 'UD',
       servings: null,
       estimatedCostEur: 4.2,
+      catalogued: true,
       checked: false,
       productUrl: null,
     },
@@ -112,6 +115,7 @@ const list: ShoppingList = {
       unit: 'L',
       servings: 8,
       estimatedCostEur: 1.2,
+      catalogued: true,
       checked: false,
       productUrl: null,
     },
@@ -124,6 +128,7 @@ const list: ShoppingList = {
       unit: 'BOLSA',
       servings: null,
       estimatedCostEur: 1.85,
+      catalogued: true,
       checked: false,
       productUrl: null,
     },
@@ -427,6 +432,77 @@ describe('ShoppingPage', () => {
 
     await user.click(decrement);
     expect(updateQuantityMock).not.toHaveBeenCalled();
+  });
+
+  it('shows an uncatalogued item without inventing a price or unusable product actions', async () => {
+    getListMock.mockResolvedValue({
+      weekStartDate: '2026-08-03',
+      status: 'ACTIVE',
+      generatedAt: '2026-08-03T08:00:00Z',
+      items: [
+        {
+          id: 'unknown-item',
+          productId: 'quinoa',
+          productName: 'quinoa',
+          category: 'OTROS',
+          quantity: 1,
+          unit: 'UD',
+          servings: null,
+          estimatedCostEur: null,
+          catalogued: false,
+          checked: false,
+          productUrl: null,
+        },
+      ],
+      budget: { weeklyEur: 0, monthlyEur: 0 },
+    });
+
+    renderPage();
+    const checkbox = await screen.findByRole('checkbox', { name: 'quinoa' });
+    const row = checkbox.closest('li') as HTMLElement;
+
+    expect(within(row).getByText('Sin precio')).toBeInTheDocument();
+    expect(within(row).queryByText(/0,00/)).not.toBeInTheDocument();
+    expect(
+      within(row).queryByRole('button', { name: /cantidad de quinoa/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(row).queryByRole('button', { name: /Editar producto quinoa/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps product actions for a catalogued item whose price is still unknown', async () => {
+    getListMock.mockResolvedValue({
+      weekStartDate: '2026-08-03',
+      status: 'ACTIVE',
+      generatedAt: '2026-08-03T08:00:00Z',
+      items: [
+        {
+          id: 'catalogued-item',
+          productId: 'p1',
+          productName: 'Avena',
+          category: 'CEREALES_Y_LEGUMBRES',
+          quantity: 1,
+          unit: 'UD',
+          servings: null,
+          estimatedCostEur: null,
+          catalogued: true,
+          checked: false,
+          productUrl: null,
+        },
+      ],
+      budget: { weeklyEur: 0, monthlyEur: 0 },
+    });
+
+    renderPage();
+    const checkbox = await screen.findByRole('checkbox', { name: 'Avena' });
+    const row = checkbox.closest('li') as HTMLElement;
+
+    expect(within(row).getByText('Sin precio')).toBeInTheDocument();
+    expect(
+      within(row).getByRole('button', { name: /Aumentar cantidad de Avena/ }),
+    ).toBeInTheDocument();
+    expect(within(row).getByRole('button', { name: /Editar producto Avena/ })).toBeInTheDocument();
   });
 
   it('reverts to the last known quantity and shows an error when a quantity edit fails, without a stuck pending state (FOR-118)', async () => {
@@ -746,6 +822,7 @@ describe('ShoppingPage', () => {
           unit: 'UD',
           servings: null,
           estimatedCostEur: 2.5,
+          catalogued: true,
           checked: false,
         },
       ],
@@ -815,6 +892,7 @@ describe('category filtering helpers (FOR-111)', () => {
       unit: 'UD',
       servings: null,
       estimatedCostEur: 1,
+      catalogued: true,
       checked: false,
     },
   ];
@@ -836,6 +914,7 @@ describe('category filtering helpers (FOR-111)', () => {
         unit: 'UD',
         servings: null,
         estimatedCostEur: 1,
+        catalogued: true,
         checked: false,
       },
     ];
