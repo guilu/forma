@@ -78,16 +78,47 @@ test.describe('dashboard grid', () => {
 
     // Everything that is not one of those tiles still spans the single column.
     const others = await page
-      .locator('main section')
-      .evaluateAll((cards) =>
-        cards
-          .filter((card) => !card.parentElement?.className.includes('body'))
-          .map((card) => Math.round(card.getBoundingClientRect().left)),
-      );
+      .locator('main [class*="todayGrid"] > section')
+      .evaluateAll((cards) => cards.map((card) => Math.round(card.getBoundingClientRect().left)));
     expect(
       new Set(others).size,
       `Widgets start at ${new Set(others).size} different x positions`,
     ).toBe(1);
+  });
+
+  test('places the combined nutrition card before water with donut and macros side by side', async ({
+    page,
+  }) => {
+    await gotoApp(page, '/app');
+
+    const nutrition = widget(page, 'Nutrición');
+    const water = page
+      .getByRole('heading', { name: 'Agua', exact: true })
+      .locator('xpath=ancestor::section[1]');
+    const [nutritionTop, waterTop] = await Promise.all([
+      nutrition.evaluate((card) => Math.round(card.getBoundingClientRect().top)),
+      water.evaluate((card) => Math.round(card.getBoundingClientRect().top)),
+    ]);
+    expect(nutritionTop).toBeLessThan(waterTop);
+
+    const nutritionPrecedesWaterInDom = await nutrition.evaluate((card) => {
+      const waterHeading = [...document.querySelectorAll('h3')].find(
+        (heading) => heading.textContent?.trim() === 'Agua',
+      );
+      const waterCard = waterHeading?.closest('section');
+      return Boolean(
+        waterCard && card.compareDocumentPosition(waterCard) & Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+    });
+    expect(nutritionPrecedesWaterInDom).toBe(true);
+
+    const ringLeft = await nutrition
+      .getByRole('img', { name: /kcal consumidas/ })
+      .evaluate((node) => Math.round(node.getBoundingClientRect().left));
+    const macrosLeft = await nutrition
+      .getByRole('progressbar', { name: /Proteínas/ })
+      .evaluate((node) => Math.round(node.getBoundingClientRect().left));
+    expect(macrosLeft).toBeGreaterThan(ringLeft);
   });
 });
 
@@ -128,38 +159,42 @@ async function rowCards(
 test.describe('dashboard rows', () => {
   test.use({ viewport: WIDE });
 
-  for (const row of ['metrics', 'rowFour', 'rowThree']) {
-    test(`gives every card in the ${row} row the same height`, async ({ page }) => {
+  for (const row of ['todayGrid', 'rowThree']) {
+    test(`gives cards sharing a ${row} grid row the same height`, async ({ page }) => {
       await gotoApp(page, '/app');
 
-      const heights = (await rowCards(page, row)).map((card) => card.height);
-
-      expect(heights.length, `No cards found in the ${row} row`).toBeGreaterThan(1);
-      expect(
-        new Set(heights).size,
-        `Cards in the ${row} row have differing heights: ${heights.join(', ')}`,
-      ).toBe(1);
+      const cards = await rowCards(page, row);
+      const rows = new Map<number, typeof cards>();
+      for (const card of cards) rows.set(card.top, [...(rows.get(card.top) ?? []), card]);
+      expect(cards.length, `No cards found in the ${row}`).toBeGreaterThan(1);
+      for (const [top, entries] of rows) {
+        if (entries.length < 2) continue;
+        const heights = entries.map((card) => card.height);
+        expect(
+          new Set(heights).size,
+          `Cards at y=${top} in ${row} differ: ${heights.join(', ')}`,
+        ).toBe(1);
+      }
     });
   }
 });
 
 /**
- * On a tablet in landscape the six metric tiles across a single row left each
+ * On a tablet in landscape the metric tiles across a single row left each
  * one about 180px wide — too narrow for a headline value and its caption. The
  * band below the desktop layout (1101–1600px) wraps every row at three columns
  * instead.
  */
 // Both ends of the band: the tablet that prompted it and a laptop near the top
-// edge, where six tracks were still breaking "2120 kcal" across two lines.
+// edge, where narrow tracks were still breaking headline figures across lines.
 for (const viewport of [TABLET, LAPTOP]) {
   test.describe(`dashboard grid at ${viewport.width}px`, () => {
     test.use({ viewport });
 
-    // Cards per row, then rows: metrics is six tiles as 3 + 3, and the two
-    // four-widget rows become 3 + 1.
+    // The unified today grid uses three tracks; its body group, water, main
+    // three-card row and final trend occupy four explicit rows.
     for (const [row, columns, rows] of [
-      ['metrics', 3, 2],
-      ['rowFour', 3, 2],
+      ['todayGrid', 3, 4],
       // Two x positions, not three: Evolución took the column the retired
       // "Tu progreso" card left behind, so it starts at track 1 and spans two.
       ['rowThree', 2, 2],
@@ -185,7 +220,9 @@ for (const viewport of [TABLET, LAPTOP]) {
 
 /** The widget card whose section heading is `title`. */
 function widget(page: Page, title: string) {
-  return page.locator('main section').filter({ has: page.getByRole('heading', { name: title }) });
+  return page
+    .getByRole('heading', { name: title, exact: true })
+    .locator('xpath=ancestor::section[1]');
 }
 
 test.describe('dashboard widget internals', () => {

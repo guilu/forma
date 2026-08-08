@@ -169,7 +169,8 @@ describe('DashboardPage', () => {
       await screen.findByRole('heading', { name: 'Entrenamiento', level: 2 }),
     ).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Menu', level: 2 })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Macronutrientes', level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Nutrición', level: 2 })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Macronutrientes' })).not.toBeInTheDocument();
     expect(
       screen.getByRole('heading', { name: 'Tendencia 30 días', level: 2 }),
     ).toBeInTheDocument();
@@ -185,7 +186,7 @@ describe('DashboardPage', () => {
     // Metrics-row tiles are <h3> under the (sr-only) row <h2>, so heading order
     // never skips a level (FOR-112).
     expect(await screen.findByRole('heading', { name: 'Peso', level: 3 })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Calorias', level: 3 })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Calorias' })).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Agua', level: 3 })).toBeInTheDocument();
   });
 
@@ -268,9 +269,7 @@ describe('DashboardPage', () => {
 
       renderDashboard();
 
-      await waitFor(() =>
-        expect(tiles().getByRole('status')).toHaveTextContent('Aún no hay mediciones'),
-      );
+      await waitFor(() => expect(tiles().getByText(/Aún no hay mediciones/)).toBeInTheDocument());
       expect(screen.queryByRole('button', { name: 'Medición anterior' })).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Medición siguiente' })).not.toBeInTheDocument();
     });

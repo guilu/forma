@@ -1,0 +1,69 @@
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.content > :first-child {
+  justify-content: center;
+}
+
+.macros {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.macro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+  min-width: 0;
+}
+
+.macro > :last-child {
+  grid-column: 1 / -1;
+}
+
+.macroLabel,
+.macroValue {
+  font-size: var(--font-size-sm);
+}
+
+.macroLabel {
+  min-width: 0;
+  color: var(--color-text);
+}
+
+.macroValue {
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--color-text-muted);
+}
+
+/* Phones use the width gained by combining the cards: calories on the left,
+   macro progress on the right. Both tracks may shrink, preventing overflow at
+   375 px while keeping one semantic widget and one data state. */
+@media (max-width: 580px) {
+  .content {
+    grid-template-columns: minmax(0, 8rem) minmax(0, 1fr);
+    display: grid;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .macro {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  .macroValue {
+    white-space: normal;
+  }
+}
