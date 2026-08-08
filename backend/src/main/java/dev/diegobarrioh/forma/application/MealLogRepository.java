@@ -8,8 +8,8 @@ import java.util.UUID;
 /**
  * Port for persisting and reading logged meal entries (FOR-127). Owned by the application/domain
  * side; adapters implement it (ADR-001). Every method is owner-scoped (ADR-002) — the caller always
- * supplies the owner id, the adapter never returns another owner's rows. Append-only for this slice
- * (spec FOR-127 Open Questions): no update/delete method exists yet.
+ * supplies the owner id, the adapter never returns another owner's rows. Entries are ordinarily
+ * append-only; the explicit planned-meal delete supports correcting the UI's completion toggle.
  *
  * <p>{@code userId} is a real account id (FOR-145b-1, migration V27) — {@code
  * meal_log_entry.user_id UUID}, FK-referencing {@code users(id)}.
@@ -24,4 +24,6 @@ public interface MealLogRepository {
 
   /** Persists a new entry for {@code userId}, generating and returning its id. */
   StoredMealLogEntry save(UUID userId, MealLogEntry entry);
+
+  void deleteByOwnerDateAndPlannedMeal(UUID userId, LocalDate date, UUID plannedMealId);
 }

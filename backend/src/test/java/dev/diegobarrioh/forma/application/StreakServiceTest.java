@@ -155,6 +155,15 @@ class StreakServiceTest {
       return stored;
     }
 
+    @Override
+    public void deleteByOwnerDateAndPlannedMeal(UUID userId, LocalDate date, UUID plannedMealId) {
+      rows.removeIf(
+          row ->
+              row.userId.equals(userId)
+                  && row.stored.entry().date().equals(date)
+                  && plannedMealId.equals(row.stored.entry().plannedMealId()));
+    }
+
     private record OwnedEntry(UUID userId, StoredMealLogEntry stored) {}
   }
 }

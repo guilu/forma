@@ -23,10 +23,9 @@ import org.springframework.stereotype.Repository;
  * (FOR-127, migration V13; key-nutrient columns added by FOR-134, migration V17).
  *
  * <p>Plain JDBC via {@link JdbcTemplate} — no ORM (ADR-003), following {@link JdbcGoalRepository}'s
- * per-owner list-of-rows shape. Append-only for this slice (spec FOR-127 Open Questions): only
- * insert and owner+date lookup, no update/delete. Rows are ordered by {@code logged_at} so entries
- * always come back in the order they were logged, never re-ordered or overwritten (spec FOR-127
- * edge case: "Multiple entries same meal/day → all counted; never overwrite").
+ * per-owner list-of-rows shape. Rows are ordered by {@code logged_at} so entries always come back
+ * in the order they were logged, never re-ordered or overwritten (spec FOR-127 edge case: "Multiple
+ * entries same meal/day → all counted; never overwrite").
  *
  * <p><b>Key nutrients (FOR-134, V17).</b> {@link MealLogEntry#keyNutrients()} is a snapshot
  * computed once at logging time (from the FOR-30 catalog food, or the free entry's provided values)
@@ -108,6 +107,16 @@ public class JdbcMealLogRepository implements MealLogRepository {
           ps.setObject(15, entry.plannedMealId());
         });
     return new StoredMealLogEntry(id.toString(), entry);
+  }
+
+  @Override
+  public void deleteByOwnerDateAndPlannedMeal(UUID userId, LocalDate date, UUID plannedMealId) {
+    jdbcTemplate.update(
+        "DELETE FROM meal_log_entry WHERE user_id = ? AND log_date = ?"
+            + " AND nutrition_plan_meal_id = ?",
+        userId,
+        Date.valueOf(date),
+        plannedMealId);
   }
 
   private static UUID nullableUuid(ResultSet rs, String column) throws SQLException {

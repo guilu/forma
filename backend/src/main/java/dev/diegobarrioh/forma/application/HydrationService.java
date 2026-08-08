@@ -96,6 +96,13 @@ public class HydrationService {
     return new HydrationProgress(date, log.totalMl(), goalMl, progress, stored);
   }
 
+  /** Removes at most one 250 ml glass from the latest entries of the owner's day. */
+  public HydrationProgress removeGlass(LocalDate date) {
+    validateDate(date);
+    repository.removeLatestVolume(currentUserProvider.currentUserId(), date, 250.0);
+    return hydrationProgress(date);
+  }
+
   /**
    * Resolves the daily water goal from the profile's {@code DefaultObjectives.dailyWaterMl},
    * falling back to {@link #DEFAULT_DAILY_WATER_ML_FALLBACK} when unset (spec FOR-130 Open

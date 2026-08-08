@@ -9,6 +9,9 @@ import dev.diegobarrioh.forma.domain.WaterIntakeEntry;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -65,6 +68,21 @@ class JdbcWaterIntakeRepositoryTest {
     assertThat(repository.findByOwnerAndDate(OWNER, DAY)).isEmpty();
   }
 
+  /**
+   * Structural guard for the PostgreSQL concurrency primitive. H2's successful two-thread test
+   * below proves behavior with its lock implementation, but cannot prove that its MVCC scheduling
+   * matches PostgreSQL in every interleaving. This exact assertion makes removing the row lock a
+   * deterministic regression rather than relying only on thread timing.
+   */
+  @Test
+  void decrementStatementLocksTheSelectedRowsBeforeMutation() {
+    assertThat(JdbcWaterIntakeRepository.LOCK_LATEST_ENTRIES_SQL)
+        .isEqualTo(
+            "SELECT id, log_date, volume_ml FROM water_intake_entry"
+                + " WHERE user_id = ? AND log_date = ?"
+                + " ORDER BY logged_at DESC, id DESC FOR UPDATE");
+  }
+
   @Test
   void savedEntryRoundTripsThroughFindByOwnerAndDate() {
     WaterIntakeEntry entry = new WaterIntakeEntry(DAY, 500.0);
@@ -103,6 +121,61 @@ class JdbcWaterIntakeRepositoryTest {
   @Test
   void findByOwnerAndDateNeverReturnsEntriesForAnotherDate() {
     repository.save(OWNER, new WaterIntakeEntry(OTHER_DAY, 500.0));
+
+    assertThat(repository.findByOwnerAndDate(OWNER, DAY)).isEmpty();
+  }
+
+  @Test
+  void removeLatestVolumeConsumesNewestRowsAndKeepsAnyRemainder() {
+    repository.save(OWNER, new WaterIntakeEntry(DAY, 100.0));
+    repository.save(OWNER, new WaterIntakeEntry(DAY, 300.0));
+
+    double removed = repository.removeLatestVolume(OWNER, DAY, 250.0);
+
+    assertThat(removed).isEqualTo(250.0);
+    assertThat(repository.findByOwnerAndDate(OWNER, DAY))
+        .extracting(row -> row.entry().volumeMl())
+        .containsExactly(100.0, 50.0);
+  }
+
+  @Test
+  void removeLatestVolumeNeverTouchesAnotherOwnerOrDay() {
+    repository.save(OWNER, new WaterIntakeEntry(DAY, 100.0));
+    repository.save(OTHER_OWNER, new WaterIntakeEntry(DAY, 500.0));
+    repository.save(OWNER, new WaterIntakeEntry(OTHER_DAY, 500.0));
+
+    assertThat(repository.removeLatestVolume(OWNER, DAY, 250.0)).isEqualTo(100.0);
+    assertThat(repository.findByOwnerAndDate(OWNER, DAY)).isEmpty();
+    assertThat(repository.findByOwnerAndDate(OTHER_OWNER, DAY)).hasSize(1);
+    assertThat(repository.findByOwnerAndDate(OWNER, OTHER_DAY)).hasSize(1);
+  }
+
+  @Test
+  void concurrentDecrementsAreSerializedWithoutLosingVolume() throws Exception {
+    repository.save(OWNER, new WaterIntakeEntry(DAY, 500.0));
+    var ready = new CountDownLatch(2);
+    var start = new CountDownLatch(1);
+    try (var executor = Executors.newFixedThreadPool(2)) {
+      var first =
+          executor.submit(
+              () -> {
+                ready.countDown();
+                start.await();
+                return repository.removeLatestVolume(OWNER, DAY, 250.0);
+              });
+      var second =
+          executor.submit(
+              () -> {
+                ready.countDown();
+                start.await();
+                return repository.removeLatestVolume(OWNER, DAY, 250.0);
+              });
+      assertThat(ready.await(2, TimeUnit.SECONDS)).isTrue();
+      start.countDown();
+
+      assertThat(first.get(5, TimeUnit.SECONDS)).isEqualTo(250.0);
+      assertThat(second.get(5, TimeUnit.SECONDS)).isEqualTo(250.0);
+    }
 
     assertThat(repository.findByOwnerAndDate(OWNER, DAY)).isEmpty();
   }
