@@ -40,12 +40,13 @@
 }
 
 .mealName {
+  font-size: x-small;
   font-weight: 500;
   color: var(--color-text);
 }
 
 .mealDescription {
-  font-size: var(--font-size-sm);
+  font-size: 12px;
   color: var(--color-text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
