@@ -11,6 +11,12 @@
   gap: var(--space-1);
 }
 
+.session {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
 .nextDay {
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);

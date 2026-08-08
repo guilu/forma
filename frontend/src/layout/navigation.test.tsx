@@ -34,6 +34,12 @@ vi.mock('../api/nutrition', () => ({
     progress: 0,
   }),
   logWaterIntake: vi.fn(),
+  removeWaterGlass: vi.fn(),
+  getDayConsumption: vi.fn().mockResolvedValue({
+    dayType: null,
+    consumed: { kcal: 0, proteinG: 0, carbsG: 0, fatG: 0 },
+    target: null,
+  }),
   getNutritionDay: vi.fn().mockResolvedValue({ type: 'RUNNING', targets: {}, meals: [] }),
 }));
 vi.mock('../api/shopping', () => ({

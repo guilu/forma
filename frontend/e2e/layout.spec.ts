@@ -414,22 +414,19 @@ test.describe('chart colours', () => {
     });
   }
 
-  test('ramps the completed arc of a progress donut instead of filling it flat', async ({
-    page,
-  }) => {
+  test('paints the shared calorie progress donut with a filled arc and track', async ({ page }) => {
     await gotoApp(page, '/app');
 
-    const ring = page.getByRole('img', { name: /Calorías consumidas/ });
+    const ring = page.getByRole('img', { name: /kcal consumidas/ });
     const background = await ring.evaluate((el) => getComputedStyle(el).backgroundImage);
 
     expect(background, 'The donut is not painted with a conic gradient').toContain('conic');
-    // Two ramp stops for the filled arc plus the track colour: a flat fill would
-    // resolve to one colour before the track.
+    // The shared nutrition donut has one progress colour and one track colour.
     const stops = background.match(/rgba?\([^)]+\)/g) ?? [];
     expect(
       new Set(stops).size,
-      `Expected a ramp plus a track, got ${stops.join(', ')}`,
-    ).toBeGreaterThanOrEqual(3);
+      `Expected a filled arc plus a track, got ${stops.join(', ')}`,
+    ).toBeGreaterThanOrEqual(2);
   });
 });
 

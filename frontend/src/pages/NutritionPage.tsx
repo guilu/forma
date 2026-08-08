@@ -23,6 +23,7 @@ import {
 import { LogMealForm } from './nutrition/LogMealForm';
 import { ProgressBar } from './dashboard/ProgressBar';
 import { formatShortDate } from './dateLabel';
+import { localIsoDate } from './localIsoDate';
 import styles from './NutritionPage.module.css';
 
 /**
@@ -70,7 +71,7 @@ export function NutritionPage() {
   // Read once per mounted page: both endpoints and the label share a date, without freezing
   // "today" at module-import time for the lifetime of the browser tab.
   const [today] = useState(() => new Date());
-  const todayIso = today.toISOString().slice(0, 10);
+  const todayIso = localIsoDate(today);
   const todayLabel = formatShortDate(today);
   const [retryToken, setRetryToken] = useState(0);
   const [state, setState] = useState<State>({ status: 'loading' });
