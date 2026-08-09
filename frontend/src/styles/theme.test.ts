@@ -67,7 +67,7 @@ describe('theme.css design tokens (FOR-163 reconciliation)', () => {
       ['--color-border', '#30363d', 'surface-stroke'],
       ['--color-text', '#dfe2eb', 'on-surface / on-background'],
       ['--color-text-muted', '#8b949e', 'text-dimmed'],
-      ['--color-accent', '#4cdf97', 'primary'],
+      ['--color-accent', '#63e662', 'primary'],
       ['--color-accent-contrast', '#003920', 'on-primary'],
       ['--color-warning', '#ffab70', 'warning-amber'],
       ['--color-danger', '#ff5757', 'error-pulse'],
@@ -97,15 +97,15 @@ describe('theme.css design tokens (FOR-163 reconciliation)', () => {
     });
 
     it('pins the light accent to the reference green and its readable ink', () => {
-      expect(tokenValue(light, '--color-accent')).toBe('#78c92d');
+      expect(tokenValue(light, '--color-accent')).toBe('#63e662');
       expect(tokenValue(light, '--color-accent-contrast')).toBe('#0f1a13');
     });
 
     it('splits the text-safe accent out from the fill accent (FOR-185)', () => {
-      // The reference green is a fill colour: ~1.91:1 on the light page background,
+      // The selected green is a fill colour: ~1.38:1 on the light page background,
       // far below the AA 4.5:1 bar. Accent-coloured *text* uses the darkened
       // counterpart instead (~4.99:1). Dark needs no split — its accent is
-      // already ~10.8:1 on its own background — but declares the token anyway
+      // already has strong contrast on its own background — but declares the token anyway
       // so component CSS can name the text role unconditionally.
       expect(tokenValue(light, '--color-accent-strong')).toBe('#3e7810');
       expect(tokenValue(dark, '--color-accent-strong')).toBe(tokenValue(dark, '--color-accent'));
@@ -117,7 +117,7 @@ describe('theme.css design tokens (FOR-163 reconciliation)', () => {
     it('keeps the CTA gradient and its ink identical in both themes (FOR-185)', () => {
       // The brand owner wants one bright ramp everywhere, so light does not
       // derive a darker gradient from its own endpoints. The ink must travel
-      // with it: white on #4cdf97 is ~1.71:1, the dark ink is ~10.8:1.
+      // with it: white on #63e662 is low contrast, while the dark ink remains readable.
       expect(tokenValue(light, '--gradient-accent')).toBe(tokenValue(dark, '--gradient-accent'));
       expect(tokenValue(light, '--color-on-gradient')).toBe(
         tokenValue(dark, '--color-on-gradient'),
@@ -130,7 +130,7 @@ describe('theme.css design tokens (FOR-163 reconciliation)', () => {
     });
 
     it('maps the reference palette to light-theme semantic roles', () => {
-      expect(tokenValue(light, '--color-accent')).toBe('#78c92d');
+      expect(tokenValue(light, '--color-accent')).toBe('#63e662');
       expect(tokenValue(light, '--color-info')).toBe('#53adf3');
       expect(tokenValue(light, '--color-warning-graphic')).toBe('#f19c2b');
       expect(tokenValue(light, '--color-danger-graphic')).toBe('#ec5c51');
@@ -143,8 +143,9 @@ describe('theme.css design tokens (FOR-163 reconciliation)', () => {
       expect(tokenValue(light, '--color-danger')).toBe('#b63b33');
     });
 
-    it('does not leak the reference palette into the dark theme', () => {
-      for (const referenceColour of ['#78c92d', '#53adf3', '#f19c2b', '#ec5c51']) {
+    it('keeps the remaining light-only reference colours out of the dark theme', () => {
+      // Accent is intentionally shared by both themes; blue/orange/red remain light-only.
+      for (const referenceColour of ['#53adf3', '#f19c2b', '#ec5c51']) {
         expect(dark).not.toContain(referenceColour);
       }
     });

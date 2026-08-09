@@ -66,7 +66,7 @@
    * the old neon yellow-green (#9dff57) forked from the templates' actual
    * green family. Template: primary (was #9dff57).
    */
-  --color-accent: #4cdf97;
+  --color-accent: #63e662;
   /*
    * FOR-185: the accent used as *text* (links, emphasis, active nav items,
    * icon glyphs). Split out from --color-accent because a hue that works as a
@@ -74,12 +74,12 @@
    * only ~2.58:1 on its own page background, well below the WCAG AA 4.5:1
    * bar, while the same colour is perfectly fine behind white text.
    *
-   * In this theme the two are the same value -- #4cdf97 on --color-bg is
+   * In this theme the two are the same value -- #63e662 on --color-bg is
    * ~10.8:1, so nothing needs darkening. The token still exists here so
    * component CSS has one name to reach for regardless of theme, and so the
    * split is a no-op in dark mode.
    */
-  --color-accent-strong: #4cdf97;
+  --color-accent-strong: #63e662;
   --color-accent-contrast: #003920; /* template: on-primary (was #0a1206) */
   --color-warning: #ffab70; /* template: warning-amber (was #ffd166) */
   /*
@@ -353,10 +353,10 @@
   /*
    * Light-theme reference palette. The four bright source colours are kept
    * exact for fills and graphical marks; normal-sized text uses the paired
-   * darkened semantic token below. #78c92d is only ~1.91:1 on --color-bg, so
+   * darkened semantic token below. #63e662 is only ~1.38:1 on --color-bg, so
    * it must not carry text or focus outlines directly.
    */
-  --color-accent: #78c92d;
+  --color-accent: #63e662;
   /*
    * FOR-185: the text-safe counterpart, same hue family darkened until it
    * clears AA -- #3e7810 is ~4.99:1 on --color-bg. This is what fixes the
