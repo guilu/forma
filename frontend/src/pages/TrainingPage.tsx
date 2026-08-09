@@ -299,7 +299,7 @@ function TodaySessionCard({
 }) {
   if (!day) {
     return (
-      <Card title="Entrenamiento de hoy" headingLevel={2}>
+      <Card title="Entrenamiento de hoy" headingLevel={2} className={styles.todayCard}>
         <p className={styles.message}>No hay datos de hoy en el plan de esta semana.</p>
       </Card>
     );
@@ -307,7 +307,7 @@ function TodaySessionCard({
 
   if (day.rest) {
     return (
-      <Card title="Entrenamiento de hoy" headingLevel={2}>
+      <Card title="Entrenamiento de hoy" headingLevel={2} className={styles.todayCard}>
         <p className={styles.rest}>Hoy es día de descanso.</p>
       </Card>
     );
@@ -317,7 +317,7 @@ function TodaySessionCard({
   const percent = planned > 0 ? Math.round((completed / planned) * 100) : 0;
 
   return (
-    <Card title="Entrenamiento de hoy" headingLevel={2}>
+    <Card title="Entrenamiento de hoy" headingLevel={2} className={styles.todayCard}>
       <div className={styles.todayLayout}>
         <ul className={styles.todaySessions}>
           {day.sessions.map((session) => (
@@ -328,6 +328,7 @@ function TodaySessionCard({
               </div>
               {/* Placeholder estimated duration + focus (see PLACEHOLDER). */}
               <p className={styles.sessionDetail}>
+                <Icon name="training" size={17} />
                 Duración estimada: {PLACEHOLDER.today.durationMin} min
               </p>
               <p className={styles.sessionDetail}>Enfoque: {PLACEHOLDER.today.focus}</p>
@@ -340,6 +341,7 @@ function TodaySessionCard({
                     loading={pendingId === session.id}
                     onClick={() => mark(session.id, 'COMPLETED')}
                   >
+                    <Icon name="arrowRight" size={17} />
                     Iniciar entrenamiento
                   </Button>
                 )}
@@ -358,6 +360,7 @@ function TodaySessionCard({
                   variant="ghost"
                   onClick={() => openDetail({ dayOfWeek: day.dayOfWeek, session })}
                 >
+                  <Icon name="menu" size={17} />
                   Ver detalle
                 </Button>
               </div>
@@ -377,14 +380,13 @@ function TodaySessionCard({
             >
               <span className={styles.ringPercent}>{percent}%</span>
             </ProgressRing>
+            <p className={styles.ringStatus}>{percent === 100 ? 'Completado' : 'En progreso'}</p>
             <p className={styles.ringCaption}>
               {PLACEHOLDER.today.exercisesDone} / {PLACEHOLDER.today.exercisesTotal} ejercicios
-              completados
             </p>
           </div>
           <div className={styles.todayFigures}>
             <BodyFigure view="front" variant="strength" active size={132} />
-            <BodyFigure view="back" variant="strength" size={132} />
           </div>
         </div>
       </div>
@@ -446,6 +448,24 @@ function WeeklyCalendar({
           </li>
         ))}
       </ul>
+      <div className={styles.calendarTimeline} role="img" aria-label="Progreso semanal">
+        {days.map((day) => {
+          const completed =
+            !day.rest && day.sessions.some((session) => session.status === 'COMPLETED');
+          return (
+            <span
+              key={day.dayOfWeek}
+              className={[
+                styles.calendarTimelineDot,
+                completed ? styles.calendarTimelineDone : '',
+                day.dayOfWeek === todayEnum ? styles.calendarTimelineToday : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+            />
+          );
+        })}
+      </div>
       <ul className={styles.calendarLegend} aria-hidden="true">
         <li>
           <span className={`${styles.legendDot} ${styles.legendDone}`} /> Completado

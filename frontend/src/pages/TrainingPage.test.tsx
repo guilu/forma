@@ -161,6 +161,7 @@ describe('TrainingPage', () => {
     expect(sundayDay).not.toBeNull();
     expect(sundayDay).toHaveTextContent('Descanso');
     expect(sundayDay?.querySelector('button')).toBeNull();
+    expect(screen.getByRole('img', { name: 'Progreso semanal' })).toBeInTheDocument();
   });
 
   it('opens the session detail for a strength session', async () => {
