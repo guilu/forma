@@ -20,6 +20,7 @@ export type IconName =
   | 'heart'
   | 'edit'
   | 'activity'
+  | 'calendar'
   | 'cross'
   | 'chevron'
   | 'search'
@@ -60,6 +61,7 @@ const PATHS: Record<IconName, string> = {
   // Generic activity/heartbeat line — used for fitness-tracking providers
   // (e.g. Google Fit, FOR-57). Not a brand logo.
   activity: 'M3 12h4l2 5 4-14 2 9 2-5h4',
+  calendar: 'M6 3v3M18 3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1z',
   // Generic medical cross — used for health-data providers (e.g. Apple
   // Health, FOR-57). Not a brand logo.
   cross: 'M12 4v16M4 12h16',

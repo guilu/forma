@@ -474,35 +474,57 @@ function WeeklySummary({ days }: { readonly days: readonly TrainingDay[] }) {
   const runningTally = tally(sessions.filter((s) => s.kind === 'RUNNING'));
   const strengthTally = tally(sessions.filter((s) => s.kind === 'STRENGTH'));
 
-  const rows: { label: string; icon: IconName; t: { completed: number; planned: number } }[] = [
-    { label: 'Sesiones totales', icon: 'measurements', t: total },
-    { label: 'Carrera', icon: 'activity', t: runningTally },
-    { label: 'Fuerza', icon: 'training', t: strengthTally },
+  const rows: {
+    label: string;
+    caption: string;
+    icon: IconName;
+    t: { completed: number; planned: number };
+  }[] = [
+    { label: 'Sesiones totales', caption: 'Sesiones completadas', icon: 'calendar', t: total },
+    { label: 'Carrera', caption: 'Carreras completadas', icon: 'activity', t: runningTally },
+    {
+      label: 'Fuerza',
+      caption: 'Entrenamientos completados',
+      icon: 'training',
+      t: strengthTally,
+    },
   ];
 
   return (
-    <Card title="Resumen semanal" headingLevel={2} className={styles.summary}>
+    <Card
+      title="Resumen semanal"
+      headingLevel={2}
+      action={<Icon name="activity" className={styles.summaryTitleIcon} size={24} />}
+      className={styles.summary}
+    >
       <ul className={styles.summaryList}>
         {rows.map((row) => (
-          <li key={row.label} className={styles.summaryRow}>
-            <MetricCard
-              label={row.label}
-              icon={row.icon}
-              value={`${row.t.completed}/${row.t.planned}`}
-            />
-            <ProgressRing
-              value={row.t.completed}
-              max={Math.max(row.t.planned, 1)}
-              label={`${row.label}: ${row.t.completed} de ${row.t.planned}`}
-              size={60}
-            >
-              <span className={styles.summaryRingText}>{summaryPercent(row.t)}%</span>
-            </ProgressRing>
+          <li key={row.label} className={styles.summaryRow} aria-label={row.label}>
+            <span className={styles.summaryIcon} aria-hidden="true">
+              <Icon name={row.icon} size={28} />
+            </span>
+            <div className={styles.summaryContent}>
+              <h3 className={styles.summaryLabel}>{row.label}</h3>
+              <p className={styles.summaryValue}>{`${row.t.completed}/${row.t.planned}`}</p>
+              <p className={styles.summaryCaption}>{row.caption}</p>
+            </div>
+            <div className={styles.summaryProgress}>
+              <ProgressRing
+                value={row.t.completed}
+                max={Math.max(row.t.planned, 1)}
+                label={`${row.label}: ${row.t.completed} de ${row.t.planned}`}
+                size={72}
+              >
+                <span className={styles.summaryRingText}>{summaryPercent(row.t)}%</span>
+              </ProgressRing>
+            </div>
           </li>
         ))}
       </ul>
       <Link className={styles.summaryLink} to="/app/progress">
-        Ver estadísticas completas
+        <Icon name="progress" size={18} />
+        <span>Ver estadísticas completas</span>
+        <Icon name="chevron" size={17} />
       </Link>
     </Card>
   );

@@ -233,6 +233,11 @@
   align-self: start;
 }
 
+.summaryTitleIcon {
+  margin-right: auto;
+  color: var(--color-accent-strong);
+}
+
 .summaryGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
@@ -614,13 +619,63 @@
 }
 
 .summaryRow {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
 }
 
-.summaryRow > :first-child {
-  flex: 1;
+.summaryIcon {
+  display: grid;
+  width: 56px;
+  height: 56px;
+  place-items: center;
+  color: var(--color-accent-strong);
+  background: color-mix(in srgb, var(--color-accent) 13%, transparent);
+  border-radius: var(--radius-lg);
+}
+
+.summaryContent {
+  min-width: 0;
+}
+
+.summaryLabel,
+.summaryValue,
+.summaryCaption {
+  margin: 0;
+}
+
+.summaryLabel {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text);
+}
+
+.summaryValue {
+  margin-top: var(--space-1);
+  font-family: var(--font-heading);
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--color-text);
+}
+
+.summaryCaption {
+  margin-top: var(--space-1);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.summaryProgress {
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--color-border);
 }
 
 .summaryRingText {
@@ -630,11 +685,29 @@
 }
 
 .summaryLink {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
   margin-top: var(--space-4);
   font-size: var(--font-size-sm);
   font-weight: 600;
   color: var(--color-accent-strong);
+}
+
+@media (max-width: 480px) {
+  .summaryRow {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .summaryProgress {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    display: flex;
+    justify-content: center;
+    padding: var(--space-3) 0 0;
+    border-top: 1px solid var(--color-border);
+    border-left: 0;
+  }
 }
 
 /* ── Distribution donut (FOR-164) ───────────────────────────────────── */

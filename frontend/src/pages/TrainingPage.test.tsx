@@ -261,7 +261,7 @@ describe('TrainingPage', () => {
     renderPage();
     await screen.findByText('Tirada larga');
 
-    const runningTile = screen.getByRole('heading', { name: 'Carrera' }).closest('section');
+    const runningTile = screen.getByRole('listitem', { name: 'Carrera' });
     expect(runningTile).not.toBeNull();
     expect(within(runningTile as HTMLElement).getByText('0/1')).toBeInTheDocument();
 
@@ -296,12 +296,23 @@ describe('TrainingPage', () => {
     await screen.findByRole('heading', { name: 'Calendario semanal' });
 
     // Direct sibling of the page <h1>, so it must render as <h2> (FOR-112).
-    expect(screen.getByRole('heading', { name: 'Resumen semanal', level: 2 })).toBeInTheDocument();
-    expect(screen.getByText('0/2')).toBeInTheDocument(); // Sesiones totales
-    expect(screen.getAllByText('0/1')).toHaveLength(2); // Carrera + Fuerza tiles
-    // The MetricCards nested inside "Resumen semanal" stay at the default
-    // <h3> — one level below their now-<h2> container, not re-audited.
-    expect(screen.getByRole('heading', { name: 'Sesiones totales', level: 3 })).toBeInTheDocument();
+    const summaryHeading = screen.getByRole('heading', { name: 'Resumen semanal', level: 2 });
+    const summary = summaryHeading.closest('section');
+    expect(summary).not.toBeNull();
+    const summaryView = within(summary as HTMLElement);
+    expect(summaryView.getByText('0/2')).toBeInTheDocument(); // Sesiones totales
+    expect(summaryView.getAllByText('0/1')).toHaveLength(2); // Carrera + Fuerza tiles
+    expect(
+      summaryView.getByRole('heading', { name: 'Sesiones totales', level: 3 }),
+    ).toBeInTheDocument();
+    expect(summaryView.getByText('Sesiones completadas')).toBeInTheDocument();
+    expect(summaryView.getByText('Carreras completadas')).toBeInTheDocument();
+    expect(summaryView.getByText('Entrenamientos completados')).toBeInTheDocument();
+    expect(summaryView.getAllByText('0%')).toHaveLength(3);
+    expect(summaryView.getByRole('link', { name: /Ver estadísticas completas/i })).toHaveAttribute(
+      'href',
+      '/app/progress',
+    );
   });
 
   it('shows an error when marking fails and preserves the prior status', async () => {
