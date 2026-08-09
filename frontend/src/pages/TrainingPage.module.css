@@ -198,8 +198,9 @@
 
 .calendarDayTitle {
   margin: 0;
-  font-size: var(--font-size-sm);
-  font-weight: 600;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   color: var(--color-text-muted);
   text-transform: uppercase;
 }
@@ -211,6 +212,12 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  flex: 1;
+}
+
+.calendarSessions > li,
+.calendarSessionButton {
+  height: 100%;
 }
 
 .calendarSessionButton {
@@ -229,8 +236,9 @@
 }
 
 .calendarSessionTitle {
-  font-size: var(--font-size-sm);
+  font-size: 0.75rem;
   font-weight: 600;
+  line-height: 1.25;
 }
 
 /* Right-column widget stack (Resumen semanal, Racha actual, Historial
@@ -454,8 +462,9 @@
 
 .todaySessionTitle {
   font-family: var(--font-heading);
-  font-size: var(--font-size-xl);
+  font-size: 1.25rem;
   font-weight: 700;
+  line-height: 1.2;
 }
 
 .todayVisual {
@@ -514,6 +523,19 @@
 
 .calendarSessionButton {
   align-items: center;
+  padding: var(--space-1) 0;
+  text-align: center;
+}
+
+.calendarSessionButton [data-tone],
+.calendarRest [data-tone] {
+  padding: 0.16rem 0.5rem;
+  font-size: 0.68rem;
+  line-height: 1.15;
+}
+
+.calendarSessionButton > [data-tone]:last-child {
+  margin-top: auto;
 }
 
 .calendarLegend {

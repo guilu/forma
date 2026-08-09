@@ -144,6 +144,30 @@ describe('TrainingPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('shows review actions instead of mutation actions when today is completed', async () => {
+    const completedWeek: TrainingWeek = {
+      days: week.days.map((day) =>
+        day.dayOfWeek === 'MONDAY'
+          ? {
+              ...day,
+              sessions: day.sessions.map((session) => ({ ...session, status: 'COMPLETED' })),
+            }
+          : day,
+      ),
+    };
+    getWeekMock.mockResolvedValue(completedWeek);
+
+    renderPage();
+
+    const todayCard = (
+      await screen.findByRole('heading', { name: 'Entrenamiento de hoy' })
+    ).closest('section') as HTMLElement;
+    expect(
+      within(todayCard).getByRole('button', { name: 'Ver entrenamiento' }),
+    ).toBeInTheDocument();
+    expect(within(todayCard).queryByRole('button', { name: 'Saltar' })).not.toBeInTheDocument();
+  });
+
   it('renders the weekly calendar with running, strength and rest days', async () => {
     getWeekMock.mockResolvedValue(week);
 

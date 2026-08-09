@@ -334,7 +334,15 @@ function TodaySessionCard({
               <p className={styles.sessionDetail}>Enfoque: {PLACEHOLDER.today.focus}</p>
               <p className={styles.sessionDetail}>{session.detail}</p>
               <div className={styles.actions}>
-                {session.status !== 'COMPLETED' && (
+                {session.status === 'COMPLETED' ? (
+                  <Button
+                    type="button"
+                    onClick={() => openDetail({ dayOfWeek: day.dayOfWeek, session })}
+                  >
+                    <Icon name="arrowRight" size={17} />
+                    Ver entrenamiento
+                  </Button>
+                ) : (
                   <Button
                     type="button"
                     disabled={pendingId === session.id}
@@ -345,7 +353,7 @@ function TodaySessionCard({
                     Iniciar entrenamiento
                   </Button>
                 )}
-                {session.status !== 'SKIPPED' && (
+                {session.status === 'PLANNED' && (
                   <Button
                     type="button"
                     variant="secondary"
@@ -357,7 +365,7 @@ function TodaySessionCard({
                 )}
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="secondary"
                   onClick={() => openDetail({ dayOfWeek: day.dayOfWeek, session })}
                 >
                   <Icon name="menu" size={17} />
@@ -437,7 +445,7 @@ function WeeklyCalendar({
                       <BodyFigure
                         variant={session.kind === 'RUNNING' ? 'running' : 'strength'}
                         active={session.status === 'COMPLETED'}
-                        size={72}
+                        size={64}
                       />
                       <StatusPill kind="training" value={session.status} />
                     </button>
