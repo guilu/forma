@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
@@ -140,6 +140,9 @@ function mockAllSuccess() {
 
 describe('DashboardPage', () => {
   beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-08-08T12:00:00Z'));
+
     listMock.mockReset();
     trainingMock.mockReset();
     nutritionMock.mockReset();
@@ -149,6 +152,10 @@ describe('DashboardPage', () => {
     profileMock.mockReset();
     // A saved profile with a name → the greeting personalises to it.
     profileMock.mockResolvedValue({ name: 'Diego', firstRunCompleted: true } as never);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('shows the header greeting and renders the mockup panels', async () => {
