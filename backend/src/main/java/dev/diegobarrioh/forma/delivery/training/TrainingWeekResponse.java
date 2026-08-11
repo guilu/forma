@@ -21,7 +21,13 @@ public record TrainingWeekResponse(List<Day> days) {
   /** Null {@code notes} are omitted from the JSON. */
   @JsonInclude(JsonInclude.Include.NON_NULL)
   public record Session(
-      String id, String kind, String title, String detail, String status, String notes) {}
+      String id,
+      String kind,
+      String title,
+      String detail,
+      String status,
+      String notes,
+      String workoutType) {}
 
   /** Maps the composed schedule to its API read model. */
   public static TrainingWeekResponse from(WeeklyTrainingSchedule schedule) {
@@ -41,7 +47,8 @@ public record TrainingWeekResponse(List<Day> days) {
                                         entry.title(),
                                         entry.detail(),
                                         entry.status(),
-                                        entry.notes()))
+                                        entry.notes(),
+                                        entry.workoutType()))
                             .toList()))
             .toList();
     return new TrainingWeekResponse(days);

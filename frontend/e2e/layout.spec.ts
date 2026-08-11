@@ -56,6 +56,82 @@ for (const viewport of [PHONE, NARROW, TABLET, DESKTOP]) {
   });
 }
 
+for (const viewport of [PHONE, DESKTOP]) {
+  test.describe(`training detail at ${viewport.width}px`, () => {
+    test.use({ viewport });
+
+    test('keeps the workout prescription inside the main viewport', async ({ page }) => {
+      const session = {
+        id: 'SUNDAY:STRENGTH',
+        kind: 'STRENGTH',
+        title: 'Fuerza · Pierna y core',
+        detail: '2 ejercicios',
+        status: 'COMPLETED',
+        workoutType: 'LEGS',
+      };
+      await page.route('**/api/v1/training/week', (route) =>
+        route.fulfill({
+          contentType: 'application/json',
+          body: JSON.stringify({
+            days: [{ dayOfWeek: 'SUNDAY', rest: false, sessions: [session] }],
+          }),
+        }),
+      );
+      await page.route('**/api/v1/training/workouts/LEGS', (route) =>
+        route.fulfill({
+          contentType: 'application/json',
+          body: JSON.stringify({
+            workoutType: 'LEGS',
+            items: [
+              {
+                exerciseId: 'goblet-squat',
+                exerciseName: 'Sentadilla goblet',
+                order: 1,
+                sets: 4,
+                repScheme: 'RANGE',
+                repsMin: 10,
+                repsMax: 15,
+                restSeconds: 90,
+                rir: 2,
+              },
+              {
+                exerciseId: 'dead-bug',
+                exerciseName: 'Dead bug',
+                order: 2,
+                sets: 3,
+                repScheme: 'RANGE',
+                repsMin: 10,
+                repsMax: 15,
+                restSeconds: 45,
+                rir: 2,
+              },
+            ],
+          }),
+        }),
+      );
+      await page.route('**/api/v1/training/sessions/SUNDAY%3ASTRENGTH/muscle-map', (route) =>
+        route.fulfill({
+          contentType: 'application/json',
+          body: JSON.stringify({
+            sessionId: session.id,
+            muscles: [
+              { muscle: 'cuádriceps', load: 'HIGH' },
+              { muscle: 'glúteos', load: 'MEDIUM' },
+              { muscle: 'core', load: 'LOW' },
+            ],
+          }),
+        }),
+      );
+
+      await gotoApp(page, '/app/training/SUNDAY%3ASTRENGTH');
+
+      await expect(page.getByRole('heading', { name: 'Pierna y core', level: 1 })).toBeVisible();
+      await expectNoHorizontalOverflow(page);
+      await expectSinglePageScroller(page);
+    });
+  });
+}
+
 test.describe('dashboard grid', () => {
   test.use({ viewport: NARROW });
 

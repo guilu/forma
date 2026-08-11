@@ -23,7 +23,7 @@ sessions are `PLANNED` (completion is FOR-27).
       "dayOfWeek": "MONDAY",
       "rest": false,
       "sessions": [
-        { "id": "MONDAY:STRENGTH", "kind": "STRENGTH", "title": "Fuerza · Empuje", "detail": "3 ejercicios", "status": "PLANNED" }
+        { "id": "MONDAY:STRENGTH", "kind": "STRENGTH", "title": "Fuerza · Empuje", "detail": "3 ejercicios", "status": "PLANNED", "workoutType": "PUSH" }
       ]
     },
     {
@@ -40,6 +40,7 @@ sessions are `PLANNED` (completion is FOR-27).
 
 - `id`: stable session id (`<DAY>:<KIND>`), used to mark completion.
 - `kind`: `RUNNING` or `STRENGTH`.
+- `workoutType`: strength template (`PUSH`, `PULL` or `LEGS`); omitted for running sessions.
 - `rest`: `true` when the day has no sessions.
 - `status`: `PLANNED`, `COMPLETED` or `SKIPPED` (FOR-27).
 - `notes`: optional completion note; omitted when absent.

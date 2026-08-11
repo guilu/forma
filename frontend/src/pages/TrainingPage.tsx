@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Badge } from '../components/Badge';
 import { BodyFigure } from '../components/BodyFigure';
 import { Button } from '../components/Button';
@@ -157,6 +157,7 @@ function tally(sessions: readonly TrainingSession[]): { completed: number; plann
 
 export function TrainingPage() {
   const notify = useNotify();
+  const navigate = useNavigate();
   const [state, setState] = useState<State>({ status: 'loading' });
   const [actionError, setActionError] = useState<string | undefined>(undefined);
   const [pendingId, setPendingId] = useState<string | undefined>(undefined);
@@ -227,7 +228,14 @@ export function TrainingPage() {
         </p>
       )}
 
-      {renderContent(state, mark, pendingId, setDetailTarget, load)}
+      {renderContent(
+        state,
+        mark,
+        pendingId,
+        setDetailTarget,
+        (session) => navigate(`/app/training/${encodeURIComponent(session.id)}`),
+        load,
+      )}
 
       {detailTarget && (
         <SessionDetailModal
@@ -246,6 +254,7 @@ function renderContent(
   mark: (id: string, status: SessionStatus) => void,
   pendingId: string | undefined,
   openDetail: (target: DetailTarget) => void,
+  openTraining: (session: TrainingSession) => void,
   reload: () => void,
 ) {
   if (state.status === 'loading') {
@@ -271,7 +280,13 @@ function renderContent(
   return (
     <div className={styles.layout}>
       <div className={styles.main}>
-        <TodaySessionCard day={today} mark={mark} pendingId={pendingId} openDetail={openDetail} />
+        <TodaySessionCard
+          day={today}
+          mark={mark}
+          pendingId={pendingId}
+          openDetail={openDetail}
+          openTraining={openTraining}
+        />
         <WeeklyCalendar days={state.week.days} openDetail={openDetail} />
         <StatsRow days={state.week.days} />
         <MuscleGroupsSection />
@@ -291,11 +306,13 @@ function TodaySessionCard({
   mark,
   pendingId,
   openDetail,
+  openTraining,
 }: {
   readonly day: TrainingDay | undefined;
   readonly mark: (id: string, status: SessionStatus) => void;
   readonly pendingId: string | undefined;
   readonly openDetail: (target: DetailTarget) => void;
+  readonly openTraining: (session: TrainingSession) => void;
 }) {
   if (!day) {
     return (
@@ -335,10 +352,7 @@ function TodaySessionCard({
               <p className={styles.sessionDetail}>{session.detail}</p>
               <div className={styles.actions}>
                 {session.status === 'COMPLETED' ? (
-                  <Button
-                    type="button"
-                    onClick={() => openDetail({ dayOfWeek: day.dayOfWeek, session })}
-                  >
+                  <Button type="button" onClick={() => openTraining(session)}>
                     <Icon name="arrowRight" size={17} />
                     Ver entrenamiento
                   </Button>

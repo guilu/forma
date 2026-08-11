@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { TrainingPage } from './TrainingPage';
 import { NotificationProvider } from '../components/NotificationProvider';
 import {
@@ -18,9 +18,15 @@ function renderPage() {
     <MemoryRouter>
       <NotificationProvider>
         <TrainingPage />
+        <LocationProbe />
       </NotificationProvider>
     </MemoryRouter>,
   );
+}
+
+function LocationProbe() {
+  const location = useLocation();
+  return <div data-testid="location">{location.pathname}</div>;
 }
 
 vi.mock('../api/training', () => ({
@@ -166,6 +172,9 @@ describe('TrainingPage', () => {
       within(todayCard).getByRole('button', { name: 'Ver entrenamiento' }),
     ).toBeInTheDocument();
     expect(within(todayCard).queryByRole('button', { name: 'Saltar' })).not.toBeInTheDocument();
+
+    await userEvent.click(within(todayCard).getByRole('button', { name: 'Ver entrenamiento' }));
+    expect(screen.getByTestId('location')).toHaveTextContent('/app/training/MONDAY%3ASTRENGTH');
   });
 
   it('renders the weekly calendar with running, strength and rest days', async () => {

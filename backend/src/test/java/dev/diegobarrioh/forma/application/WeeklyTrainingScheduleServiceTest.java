@@ -53,6 +53,7 @@ class WeeklyTrainingScheduleServiceTest {
         .anySatisfy(
             entry -> {
               assertThat(entry.kind()).isEqualTo("RUNNING");
+              assertThat(entry.workoutType()).isNull();
               assertThat(entry.id()).isEqualTo("SATURDAY:RUNNING");
               assertThat(entry.title()).isEqualTo("Tirada larga");
               // Week 1 long run under the FOR-153 real plan is 5.0 km.
@@ -63,6 +64,7 @@ class WeeklyTrainingScheduleServiceTest {
             entry -> {
               assertThat(entry.kind()).isEqualTo("STRENGTH");
               assertThat(entry.id()).isEqualTo("TUESDAY:STRENGTH");
+              assertThat(entry.workoutType()).isEqualTo("PUSH");
             });
   }
 

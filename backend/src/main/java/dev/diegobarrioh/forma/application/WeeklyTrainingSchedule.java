@@ -31,7 +31,14 @@ public record WeeklyTrainingSchedule(List<TrainingDay> days) {
    * @param detail secondary line (e.g. "10.0 km", "4 ejercicios")
    * @param status session status: {@code PLANNED}, {@code COMPLETED} or {@code SKIPPED} (FOR-27)
    * @param notes optional completion note, or {@code null}
+   * @param workoutType strength workout template type, or {@code null} for running sessions
    */
   public record TrainingEntry(
-      String id, String kind, String title, String detail, String status, String notes) {}
+      String id,
+      String kind,
+      String title,
+      String detail,
+      String status,
+      String notes,
+      String workoutType) {}
 }

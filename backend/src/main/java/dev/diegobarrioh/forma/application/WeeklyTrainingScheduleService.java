@@ -88,6 +88,7 @@ public class WeeklyTrainingScheduleService {
                             "RUNNING",
                             runningTitle(session.sessionType()),
                             String.format(Locale.ROOT, "%.1f km", session.targetDistanceKm()),
+                            null,
                             stored)));
 
     // Strength templates on their assigned days.
@@ -106,6 +107,7 @@ public class WeeklyTrainingScheduleService {
                                         "STRENGTH",
                                         strengthTitle(type),
                                         template.items().size() + " ejercicios",
+                                        type.name(),
                                         stored))));
 
     List<TrainingDay> days = new ArrayList<>(DayOfWeek.values().length);
@@ -120,12 +122,13 @@ public class WeeklyTrainingScheduleService {
       String kind,
       String title,
       String detail,
+      String workoutType,
       Map<String, StoredSessionStatus> stored) {
     String id = sessionId(day, kind);
     StoredSessionStatus status = stored.get(id);
     String statusName = (status == null) ? SessionStatus.PLANNED.name() : status.status().name();
     String notes = (status == null) ? null : status.notes();
-    return new TrainingEntry(id, kind, title, detail, statusName, notes);
+    return new TrainingEntry(id, kind, title, detail, statusName, notes, workoutType);
   }
 
   private static String runningTitle(SessionType type) {

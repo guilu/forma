@@ -81,7 +81,16 @@ class TrainingControllerTest {
                             "Tirada larga",
                             "4.0 km",
                             "PLANNED",
-                            null))),
+                            null,
+                            null),
+                        new TrainingEntry(
+                            "SATURDAY:STRENGTH",
+                            "STRENGTH",
+                            "Fuerza · Empuje",
+                            "5 ejercicios",
+                            "PLANNED",
+                            null,
+                            "PUSH"))),
                 new TrainingDay(DayOfWeek.FRIDAY, List.of())));
     when(scheduleService.currentWeek()).thenReturn(schedule);
 
@@ -90,6 +99,8 @@ class TrainingControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.days[0].sessions[0].id").value("SATURDAY:RUNNING"))
         .andExpect(jsonPath("$.days[0].sessions[0].status").value("PLANNED"))
+        .andExpect(jsonPath("$.days[0].sessions[0].workoutType").doesNotExist())
+        .andExpect(jsonPath("$.days[0].sessions[1].workoutType").value("PUSH"))
         .andExpect(jsonPath("$.days[1].rest").value(true));
   }
 
