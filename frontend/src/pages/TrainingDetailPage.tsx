@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   getMuscleMap,
@@ -35,7 +35,16 @@ type DetailState =
     };
 
 const ESTIMATED_DURATION_MIN = 55;
+const REST_SECONDS = 90;
 const LOAD_WEIGHT = { HIGH: 3, MEDIUM: 2, LOW: 1 } as const;
+
+type SetEntry = {
+  readonly weight: string;
+  readonly reps: string;
+  readonly done: boolean;
+};
+
+type SetEntries = Readonly<Record<string, SetEntry>>;
 
 function displayTitle(title: string): string {
   return title.replace(/^Fuerza\s*·\s*/i, '');
@@ -55,6 +64,31 @@ function repTarget(item: WorkoutItem): string {
 
 function workoutDescription(title: string): string {
   return `Entrenamiento enfocado en desarrollar fuerza en ${title.toLocaleLowerCase('es-ES')}. Mantén una técnica controlada y aumenta las cargas de forma progresiva.`;
+}
+
+function formatTimer(totalSeconds: number): string {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+function setKey(item: WorkoutItem, setIndex: number): string {
+  return `${item.exerciseId}:${setIndex}`;
+}
+
+function initialSetEntries(workout: Workout, completed: boolean): SetEntries {
+  return Object.fromEntries(
+    workout.items.flatMap((item) =>
+      Array.from({ length: item.sets }, (_, setIndex) => [
+        setKey(item, setIndex),
+        {
+          weight: '',
+          reps: String(item.repsMin ?? item.repsMax ?? ''),
+          done: completed,
+        },
+      ]),
+    ),
+  );
 }
 
 export function TrainingDetailPage() {
@@ -156,16 +190,76 @@ function TrainingDetailContent({
 }) {
   const title = displayTitle(state.session.title);
   const completed = state.session.status === 'COMPLETED';
+  const [startedAt] = useState(() => Date.now());
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [restSeconds, setRestSeconds] = useState(0);
+  const [restPaused, setRestPaused] = useState(false);
+  const [setEntries, setSetEntries] = useState<SetEntries>(() =>
+    initialSetEntries(state.workout, completed),
+  );
   const muscles = groupMusclesForDisplay(state.muscleMap.muscles);
   const muscleTotal = muscles.reduce((total, muscle) => total + LOAD_WEIGHT[muscle.load], 0);
   const muscleSlices = muscles.map((muscle) => ({
     ...muscle,
     percentage: muscleTotal > 0 ? Math.round((LOAD_WEIGHT[muscle.load] / muscleTotal) * 100) : 0,
   }));
+  const totalVolume = useMemo(
+    () =>
+      Object.values(setEntries).reduce(
+        (total, entry) =>
+          entry.done ? total + (Number(entry.weight) || 0) * (Number(entry.reps) || 0) : total,
+        0,
+      ),
+    [setEntries],
+  );
+
+  useEffect(() => {
+    const interval = window.setInterval(
+      () => setElapsedSeconds(Math.floor((Date.now() - startedAt) / 1000)),
+      1000,
+    );
+    return () => window.clearInterval(interval);
+  }, [startedAt]);
+
+  useEffect(() => {
+    if (restSeconds === 0 || restPaused) return;
+    const interval = window.setInterval(
+      () => setRestSeconds((seconds) => Math.max(0, seconds - 1)),
+      1000,
+    );
+    return () => window.clearInterval(interval);
+  }, [restPaused, restSeconds]);
+
+  function updateSet(key: string, field: 'weight' | 'reps', value: string) {
+    setSetEntries((entries) => ({
+      ...entries,
+      [key]: { ...entries[key], [field]: value },
+    }));
+  }
+
+  function toggleSet(key: string) {
+    const willBeDone = !setEntries[key].done;
+    setSetEntries((entries) => ({
+      ...entries,
+      [key]: { ...entries[key], done: willBeDone },
+    }));
+    if (willBeDone) {
+      setRestSeconds(REST_SECONDS);
+      setRestPaused(false);
+    }
+  }
 
   return (
     <div className={styles.page}>
       <DetailTopbar />
+
+      <SessionMetrics
+        elapsedSeconds={elapsedSeconds}
+        restSeconds={restSeconds}
+        restPaused={restPaused}
+        totalVolume={totalVolume}
+        onToggleRest={() => setRestPaused((paused) => !paused)}
+      />
 
       <div className={styles.layout}>
         <main className={styles.main}>
@@ -209,7 +303,14 @@ function TrainingDetailContent({
             </header>
             <ol className={styles.exerciseList}>
               {state.workout.items.map((item) => (
-                <ExerciseCard key={item.exerciseId} item={item} completed={completed} />
+                <ExerciseCard
+                  key={item.exerciseId}
+                  item={item}
+                  entries={setEntries}
+                  disabled={completed}
+                  onChange={updateSet}
+                  onToggle={toggleSet}
+                />
               ))}
             </ol>
             <div className={styles.exerciseActions}>
@@ -301,6 +402,40 @@ function TrainingDetailContent({
   );
 }
 
+function SessionMetrics({
+  elapsedSeconds,
+  restSeconds,
+  restPaused,
+  totalVolume,
+  onToggleRest,
+}: {
+  readonly elapsedSeconds: number;
+  readonly restSeconds: number;
+  readonly restPaused: boolean;
+  readonly totalVolume: number;
+  readonly onToggleRest: () => void;
+}) {
+  return (
+    <section className={styles.sessionMetrics} aria-label="Métricas de la sesión">
+      <div>
+        <span>Elapsed time</span>
+        <strong>{formatTimer(elapsedSeconds)}</strong>
+      </div>
+      <div>
+        <span>Rest timer</span>
+        <strong className={styles.restTime}>{restSeconds}s</strong>
+        <button type="button" disabled={restSeconds === 0} onClick={onToggleRest}>
+          {restPaused ? 'Continuar' : 'Pausa'}
+        </button>
+      </div>
+      <div>
+        <span>Total volume</span>
+        <strong>{totalVolume.toLocaleString('es-ES')} kg</strong>
+      </div>
+    </section>
+  );
+}
+
 function DetailTopbar() {
   return (
     <header className={styles.topbar}>
@@ -354,10 +489,16 @@ function Metric({
 
 function ExerciseCard({
   item,
-  completed,
+  entries,
+  disabled,
+  onChange,
+  onToggle,
 }: {
   readonly item: WorkoutItem;
-  readonly completed: boolean;
+  readonly entries: SetEntries;
+  readonly disabled: boolean;
+  readonly onChange: (key: string, field: 'weight' | 'reps', value: string) => void;
+  readonly onToggle: (key: string) => void;
 }) {
   return (
     <li className={styles.exerciseCard}>
@@ -377,14 +518,50 @@ function ExerciseCard({
           <span>Reps objetivo</span>
           <span>Estado</span>
         </div>
-        {Array.from({ length: item.sets }, (_, index) => (
-          <div key={index} className={styles.setRow} role="row">
-            <span>{index + 1}</span>
-            <span aria-label="Sin peso registrado">—</span>
-            <span>{repTarget(item)}</span>
-            <Icon name={completed ? 'checkCircle' : 'activity'} size={16} />
-          </div>
-        ))}
+        {Array.from({ length: item.sets }, (_, index) => {
+          const key = setKey(item, index);
+          const entry = entries[key];
+          const setNumber = index + 1;
+          return (
+            <div
+              key={key}
+              className={`${styles.setRow} ${entry.done ? styles.setRowDone : ''}`}
+              role="row"
+            >
+              <span>{setNumber}</span>
+              <input
+                type="number"
+                min="0"
+                step="0.5"
+                value={entry.weight}
+                placeholder="0"
+                disabled={disabled || entry.done}
+                aria-label={`Peso, ${item.exerciseName}, serie ${setNumber}`}
+                onChange={(event) => onChange(key, 'weight', event.target.value)}
+              />
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={entry.reps}
+                placeholder={repTarget(item)}
+                disabled={disabled || entry.done}
+                aria-label={`Repeticiones, ${item.exerciseName}, serie ${setNumber}`}
+                onChange={(event) => onChange(key, 'reps', event.target.value)}
+              />
+              <button
+                type="button"
+                className={styles.doneButton}
+                data-done={entry.done}
+                disabled={disabled}
+                aria-label={`${entry.done ? 'Reabrir' : 'Completar'} ${item.exerciseName}, serie ${setNumber}`}
+                onClick={() => onToggle(key)}
+              >
+                {entry.done ? <Icon name="check" size={17} /> : 'Done'}
+              </button>
+            </div>
+          );
+        })}
       </div>
     </li>
   );

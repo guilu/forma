@@ -150,6 +150,17 @@ describe('TrainingPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('opens the live workout without marking a planned strength session completed', async () => {
+    getWeekMock.mockResolvedValue(week);
+    const user = userEvent.setup();
+
+    renderPage();
+    await user.click(await screen.findByRole('button', { name: 'Iniciar entrenamiento' }));
+
+    expect(screen.getByTestId('location')).toHaveTextContent('/app/training/MONDAY%3ASTRENGTH');
+    expect(updateMock).not.toHaveBeenCalled();
+  });
+
   it('shows review actions instead of mutation actions when today is completed', async () => {
     const completedWeek: TrainingWeek = {
       days: week.days.map((day) =>
@@ -350,7 +361,24 @@ describe('TrainingPage', () => {
   });
 
   it('shows an error when marking fails and preserves the prior status', async () => {
-    getWeekMock.mockResolvedValue(week);
+    getWeekMock.mockResolvedValue({
+      days: week.days.map((day) =>
+        day.dayOfWeek === 'MONDAY'
+          ? {
+              ...day,
+              sessions: [
+                {
+                  id: 'MONDAY:RUNNING',
+                  kind: 'RUNNING',
+                  title: 'Rodaje suave',
+                  detail: '3 km',
+                  status: 'PLANNED',
+                },
+              ],
+            }
+          : day,
+      ),
+    });
     updateMock.mockRejectedValue(new Error('network'));
     const user = userEvent.setup();
 

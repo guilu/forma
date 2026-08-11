@@ -351,10 +351,10 @@ function TodaySessionCard({
               <p className={styles.sessionDetail}>Enfoque: {PLACEHOLDER.today.focus}</p>
               <p className={styles.sessionDetail}>{session.detail}</p>
               <div className={styles.actions}>
-                {session.status === 'COMPLETED' ? (
+                {session.kind === 'STRENGTH' ? (
                   <Button type="button" onClick={() => openTraining(session)}>
                     <Icon name="arrowRight" size={17} />
-                    Ver entrenamiento
+                    {session.status === 'COMPLETED' ? 'Ver entrenamiento' : 'Iniciar entrenamiento'}
                   </Button>
                 ) : (
                   <Button
