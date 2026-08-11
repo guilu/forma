@@ -306,16 +306,16 @@ describe('TrainingPage', () => {
     renderPage();
     await screen.findByText('Tirada larga');
 
-    const runningTile = screen.getByRole('listitem', { name: 'Carrera' });
+    const runningTile = screen.getByRole('listitem', { name: 'Carreras' });
     expect(runningTile).not.toBeNull();
-    expect(within(runningTile as HTMLElement).getByText('0/1')).toBeInTheDocument();
+    expect(within(runningTile as HTMLElement).getByText('0 / 1')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /Carrera.*Tirada larga/s }));
     await user.click(screen.getByRole('button', { name: 'Completar' }));
 
     await waitFor(() => expect(updateMock).toHaveBeenCalledWith('TUESDAY:RUNNING', 'COMPLETED'));
     await waitFor(() =>
-      expect(within(runningTile as HTMLElement).getByText('1/1')).toBeInTheDocument(),
+      expect(within(runningTile as HTMLElement).getByText('1 / 1')).toBeInTheDocument(),
     );
   });
 
@@ -345,19 +345,69 @@ describe('TrainingPage', () => {
     const summary = summaryHeading.closest('section');
     expect(summary).not.toBeNull();
     const summaryView = within(summary as HTMLElement);
-    expect(summaryView.getByText('0/2')).toBeInTheDocument(); // Sesiones totales
-    expect(summaryView.getAllByText('0/1')).toHaveLength(2); // Carrera + Fuerza tiles
+    expect(summaryView.getByText('0 / 2')).toBeInTheDocument(); // Sesiones totales
+    expect(summaryView.getAllByText('0 / 1')).toHaveLength(2); // Carreras + Fuerza tiles
     expect(
       summaryView.getByRole('heading', { name: 'Sesiones totales', level: 3 }),
     ).toBeInTheDocument();
     expect(summaryView.getByText('Sesiones completadas')).toBeInTheDocument();
-    expect(summaryView.getByText('Carreras completadas')).toBeInTheDocument();
-    expect(summaryView.getByText('Entrenamientos completados')).toBeInTheDocument();
+    expect(summaryView.getByRole('heading', { name: 'Carreras', level: 3 })).toBeInTheDocument();
+    expect(summaryView.getByRole('heading', { name: 'Fuerza', level: 3 })).toBeInTheDocument();
+    // The kind is already the row's own heading, so the caption only has to say
+    // what the number counts.
+    expect(summaryView.getAllByText('Completadas')).toHaveLength(2);
     expect(summaryView.getAllByText('0%')).toHaveLength(3);
     expect(summaryView.getByRole('link', { name: /Ver estadísticas completas/i })).toHaveAttribute(
       'href',
       '/app/progress',
     );
+  });
+
+  /*
+   * The day card already carries a "Fuerza"/"Carrera" badge, so repeating the
+   * kind inside the title spent two of the card's four lines saying the same
+   * thing — and the titles wrapped because of it.
+   */
+  it('drops the kind prefix from the calendar day titles the badge already states', async () => {
+    getWeekMock.mockResolvedValue(week);
+    renderPage();
+
+    const calendar = await screen.findByRole('list', {
+      name: 'Calendario semanal de entrenamiento',
+    });
+
+    expect(within(calendar).getByText('Empuje')).toBeInTheDocument();
+    expect(within(calendar).queryByText('Fuerza · Empuje')).not.toBeInTheDocument();
+  });
+
+  /*
+   * Weekday and date are separate elements on purpose: FOR-193 cut the long
+   * date form because it pushed the training header onto a second row at
+   * 390px, so the weekday is the part the stylesheet can drop on a phone while
+   * the compact date stays.
+   */
+  it('leads the header date with the weekday, as its own droppable element', async () => {
+    getWeekMock.mockResolvedValue(week);
+    renderPage();
+    await screen.findByRole('heading', { name: 'Calendario semanal' });
+
+    const weekday = screen.getByTestId('date-weekday');
+
+    expect(weekday.textContent).toMatch(
+      /^(Lunes|Martes|Miércoles|Jueves|Viernes|Sábado|Domingo),$/,
+    );
+  });
+
+  it('names both session kinds in the calendar legend, not just the statuses', async () => {
+    getWeekMock.mockResolvedValue(week);
+    renderPage();
+    await screen.findByRole('heading', { name: 'Calendario semanal' });
+
+    const legend = screen.getByRole('list', { name: 'Leyenda del calendario' });
+
+    for (const entry of ['Completado', 'Hoy', 'Pendiente', 'Fuerza', 'Carrera', 'Descanso']) {
+      expect(within(legend).getByText(entry)).toBeInTheDocument();
+    }
   });
 
   it('shows an error when marking fails and preserves the prior status', async () => {

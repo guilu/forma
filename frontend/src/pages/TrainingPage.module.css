@@ -43,6 +43,10 @@
   border-radius: var(--radius-md);
 }
 
+.dateIcon {
+  color: var(--color-text-muted);
+}
+
 .dateArrow {
   display: flex;
   align-items: center;
@@ -62,6 +66,18 @@
   font-weight: 600;
   color: var(--color-text);
   white-space: nowrap;
+}
+
+/*
+ * The droppable half of the date. FOR-193 removed the long date form because
+ * it took the training header onto a second row at 390px and pushed the whole
+ * page down; the weekday is back for the desktop mockup, but it leaves the row
+ * before that can happen again.
+ */
+@media (max-width: 700px) {
+  .dateWeekday {
+    display: none;
+  }
 }
 
 .message {
@@ -254,8 +270,17 @@
   align-self: start;
 }
 
+/* `order`, not a Card API change: the primitive renders `title` then `action`,
+   and this is the one header in the app whose icon leads. The header's own
+   `space-between` would then throw the two to opposite edges, so this pair
+   packs to the start instead. */
+.summary > header {
+  justify-content: flex-start;
+  gap: var(--space-2);
+}
+
 .summaryTitleIcon {
-  margin-right: auto;
+  order: -1;
   color: var(--color-accent-strong);
 }
 
@@ -545,7 +570,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-4);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   color: var(--color-text-muted);
 }
 
@@ -614,9 +639,11 @@
   gap: var(--space-1);
 }
 
+/* 8px, matching the muscle-focus legend on the detail screen. At 10px the dot
+   read heavier than the label beside it once the legend type came down. */
 .legendDot {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background-color: var(--color-border);
 }
@@ -631,6 +658,26 @@
 
 .legendPending {
   background-color: var(--color-border);
+}
+
+/*
+ * Violet marks a completed *strength session* in the calendar grid — and only
+ * there. The same figure stands in for a muscle group further down the page,
+ * where the hue would mean nothing, so this is scoped to the day card rather
+ * than living on the BodyFigure primitive.
+ */
+.calendarSessionButton [data-variant='strength'][data-active='true'] {
+  fill: var(--color-violet);
+}
+
+/* The two session kinds, matching the badge and figure colours in the grid
+   above: violet is strength everywhere in this feature, green is running. */
+.legendStrength {
+  background-color: var(--color-violet);
+}
+
+.legendRunning {
+  background-color: var(--color-accent);
 }
 
 .legendRest {
@@ -765,6 +812,11 @@
   border-radius: var(--radius-lg);
 }
 
+.summaryIcon[data-kind='strength'] {
+  color: var(--color-violet-strong);
+  background: color-mix(in srgb, var(--color-violet) 13%, transparent);
+}
+
 .summaryContent {
   min-width: 0;
 }
@@ -786,7 +838,7 @@
 .summaryValue {
   margin-top: var(--space-1);
   font-family: var(--font-heading);
-  font-size: 2rem;
+  font-size: 1.75rem;
   font-weight: 700;
   line-height: 1;
   color: var(--color-text);
@@ -877,8 +929,8 @@
 }
 
 .distributionDot {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
 }
 
@@ -895,17 +947,19 @@
 }
 
 .distributionLabel {
+  font-size: var(--font-size-sm);
   color: var(--color-text);
 }
 
 .distributionPercent {
+  font-size: var(--font-size-sm);
   font-weight: 600;
   color: var(--color-text);
 }
 
 .distributionCount {
   grid-column: 2 / -1;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   color: var(--color-text-muted);
 }
 

@@ -27,7 +27,7 @@ import {
   type TrainingWeek,
 } from '../api/training';
 import { groupMusclesForDisplay, type MuscleGroupDisplay } from './trainingMuscleLabels';
-import { formatShortDate } from './dateLabel';
+import { formatShortDate, formatWeekday } from './dateLabel';
 import styles from './TrainingPage.module.css';
 
 /**
@@ -148,6 +148,15 @@ function formatToday(): string {
   return formatShortDate(new Date());
 }
 
+/**
+ * "Fuerza · Empuje" -> "Empuje" for the calendar day cards, where the kind is
+ * already on the badge right above the title. The today card keeps the full
+ * title: it has one session and no grid column to fit it into.
+ */
+function stripKindPrefix(title: string): string {
+  return title.replace(/^(?:Fuerza|Carrera)\s*·\s*/i, '');
+}
+
 function tally(sessions: readonly TrainingSession[]): { completed: number; planned: number } {
   return {
     completed: sessions.filter((s) => s.status === 'COMPLETED').length,
@@ -212,10 +221,16 @@ export function TrainingPage() {
             navigation (docs/api/training-week.md), so the arrows are inert
             decorative affordances and the label is today's real date. */}
         <div className={styles.dateNav}>
+          <Icon name="calendar" size={16} className={styles.dateIcon} />
+          <span className={styles.dateLabel}>
+            <span className={styles.dateWeekday} data-testid="date-weekday">
+              {formatWeekday(new Date())},
+            </span>{' '}
+            {formatToday()}
+          </span>
           <span className={styles.dateArrow} aria-hidden="true">
             <Icon name="chevron" size={16} className={styles.dateArrowPrev} />
           </span>
-          <span className={styles.dateLabel}>{formatToday()}</span>
           <span className={styles.dateArrow} aria-hidden="true">
             <Icon name="chevron" size={16} />
           </span>
@@ -452,10 +467,12 @@ function WeeklyCalendar({
                       className={styles.calendarSessionButton}
                       onClick={() => openDetail({ dayOfWeek: day.dayOfWeek, session })}
                     >
-                      <Badge tone={session.kind === 'RUNNING' ? 'accent' : 'neutral'}>
+                      <Badge tone={session.kind === 'RUNNING' ? 'accent' : 'violet'}>
                         {KIND_LABELS[session.kind]}
                       </Badge>
-                      <span className={styles.calendarSessionTitle}>{session.title}</span>
+                      <span className={styles.calendarSessionTitle}>
+                        {stripKindPrefix(session.title)}
+                      </span>
                       <BodyFigure
                         variant={session.kind === 'RUNNING' ? 'running' : 'strength'}
                         active={session.status === 'COMPLETED'}
@@ -488,18 +505,33 @@ function WeeklyCalendar({
           );
         })}
       </div>
-      <ul className={styles.calendarLegend} aria-hidden="true">
+      {/* Two axes in one legend, as the mockup has it: the timeline's statuses
+          and the badge/figure colour that tells the two session kinds apart.
+          "Pendiente" stays even though the mockup's fully-completed week never
+          shows it — the grid does render that state. */}
+      <ul className={styles.calendarLegend} aria-label="Leyenda del calendario">
         <li>
-          <span className={`${styles.legendDot} ${styles.legendDone}`} /> Completado
+          <span className={`${styles.legendDot} ${styles.legendDone}`} aria-hidden="true" />{' '}
+          Completado
         </li>
         <li>
-          <span className={`${styles.legendDot} ${styles.legendToday}`} /> Hoy
+          <span className={`${styles.legendDot} ${styles.legendToday}`} aria-hidden="true" /> Hoy
         </li>
         <li>
-          <span className={`${styles.legendDot} ${styles.legendPending}`} /> Pendiente
+          <span className={`${styles.legendDot} ${styles.legendPending}`} aria-hidden="true" />{' '}
+          Pendiente
         </li>
         <li>
-          <span className={`${styles.legendDot} ${styles.legendRest}`} /> Descanso
+          <span className={`${styles.legendDot} ${styles.legendStrength}`} aria-hidden="true" />{' '}
+          Fuerza
+        </li>
+        <li>
+          <span className={`${styles.legendDot} ${styles.legendRunning}`} aria-hidden="true" />{' '}
+          Carrera
+        </li>
+        <li>
+          <span className={`${styles.legendDot} ${styles.legendRest}`} aria-hidden="true" />{' '}
+          Descanso
         </li>
       </ul>
     </Card>
@@ -523,13 +555,10 @@ function WeeklySummary({ days }: { readonly days: readonly TrainingDay[] }) {
     t: { completed: number; planned: number };
   }[] = [
     { label: 'Sesiones totales', caption: 'Sesiones completadas', icon: 'calendar', t: total },
-    { label: 'Carrera', caption: 'Carreras completadas', icon: 'activity', t: runningTally },
-    {
-      label: 'Fuerza',
-      caption: 'Entrenamientos completados',
-      icon: 'training',
-      t: strengthTally,
-    },
+    // The row's own heading already names the kind, so the caption only says
+    // what is being counted rather than repeating it.
+    { label: 'Carreras', caption: 'Completadas', icon: 'activity', t: runningTally },
+    { label: 'Fuerza', caption: 'Completadas', icon: 'training', t: strengthTally },
   ];
 
   return (
@@ -542,12 +571,19 @@ function WeeklySummary({ days }: { readonly days: readonly TrainingDay[] }) {
       <ul className={styles.summaryList}>
         {rows.map((row) => (
           <li key={row.label} className={styles.summaryRow} aria-label={row.label}>
-            <span className={styles.summaryIcon} aria-hidden="true">
+            {/* Violet marks the strength row here the same way it marks the
+                strength badge in the calendar and the muscle tags on the
+                detail screen. */}
+            <span
+              className={styles.summaryIcon}
+              data-kind={row.icon === 'training' ? 'strength' : 'default'}
+              aria-hidden="true"
+            >
               <Icon name={row.icon} size={28} />
             </span>
             <div className={styles.summaryContent}>
               <h3 className={styles.summaryLabel}>{row.label}</h3>
-              <p className={styles.summaryValue}>{`${row.t.completed}/${row.t.planned}`}</p>
+              <p className={styles.summaryValue}>{`${row.t.completed} / ${row.t.planned}`}</p>
               <p className={styles.summaryCaption}>{row.caption}</p>
             </div>
             <div className={styles.summaryProgress}>
@@ -566,7 +602,7 @@ function WeeklySummary({ days }: { readonly days: readonly TrainingDay[] }) {
       <Link className={styles.summaryLink} to="/app/progress">
         <Icon name="progress" size={18} />
         <span>Ver estadísticas completas</span>
-        <Icon name="chevron" size={17} />
+        <Icon name="arrowRight" size={17} />
       </Link>
     </Card>
   );
