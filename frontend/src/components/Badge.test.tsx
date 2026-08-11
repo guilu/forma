@@ -15,7 +15,7 @@ describe('Badge', () => {
     expect(screen.getByText('Sin datos')).toHaveAttribute('data-tone', 'neutral');
   });
 
-  it.each(['accent', 'warning', 'danger', 'neutral'] as const)(
+  it.each(['accent', 'warning', 'danger', 'neutral', 'violet'] as const)(
     'applies the %s tone as a data attribute for styling',
     (tone) => {
       render(<Badge tone={tone}>Estado</Badge>);

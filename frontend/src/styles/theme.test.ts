@@ -189,6 +189,42 @@ describe('theme.css design tokens (FOR-163 reconciliation)', () => {
       expect(tokenValue(dark, '--font-size-lg')).toBe('1.125rem'); // template body-lg: 18px (already matched)
       expect(tokenValue(dark, '--font-size-xl')).toBe('1.5rem'); // template headline-lg-mobile: 24px (already matched)
     });
+
+    /*
+     * Regression guard. `--font-size-xs` was consumed by thirteen rules across
+     * six modules (the training detail set tables and session metrics, the plan
+     * generator, the meal form, the calorie ring) but never declared anywhere.
+     * `font-size: var(--font-size-xs)` with no fallback is invalid at computed-
+     * value time, so every one of those micro-labels silently inherited 1rem
+     * and rendered at 16px instead of the ~12px the mockups show. Declaring it
+     * is what actually fixes the "fonts look too big" report.
+     */
+    it('declares --font-size-xs, the micro-label step its consumers already reference', () => {
+      expect(tokenValue(dark, '--font-size-xs')).toBe('0.75rem'); // template label-sm: 12px
+    });
+  });
+
+  /*
+   * The mockups' fourth data hue. The donut/legend palette in the training
+   * screens cycles accent -> info -> warning-graphic -> secondary, and
+   * `--color-secondary` is a lime that reads as a second green next to the
+   * accent; the mockups paint that fourth slice violet instead. Same
+   * fill/text split every other hue in this file uses: one exact reference
+   * value for graphical marks (3:1 bar) and a per-theme darkened/lightened
+   * counterpart that clears AA for text (4.5:1).
+   */
+  describe('violet data hue for the training legends and muscle tags', () => {
+    it('shares one reference violet for graphical marks across both themes', () => {
+      expect(tokenValue(dark, '--color-violet')).toBe('#8b5cf6');
+      expect(tokenValue(light, '--color-violet')).toBe('#8b5cf6');
+    });
+
+    it('re-derives the text-safe counterpart per theme', () => {
+      // ~7.4:1 on the dark page background.
+      expect(tokenValue(dark, '--color-violet-strong')).toBe('#a78bfa');
+      // ~7.5:1 on --color-bg (#f4f7f5); the reference violet is only ~4.2:1.
+      expect(tokenValue(light, '--color-violet-strong')).toBe('#6d28d9');
+    });
   });
 
   describe('no CDN dependency leaks into the token layer', () => {

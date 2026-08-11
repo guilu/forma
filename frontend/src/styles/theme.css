@@ -105,6 +105,18 @@
   --color-info-strong: #3b82f6;
 
   /*
+   * Violet, the mockups' fourth data hue. The training legends and the muscle
+   * donut cycle through four colours, and the slot after amber was falling to
+   * `--color-secondary` — a lime that reads as a second green beside the
+   * accent, so two adjacent slices became hard to tell apart. The mockups
+   * paint that slice violet, and use the same hue for the muscle-group tags.
+   * Split fill/text like every other hue here: this one is the graphical mark
+   * (3:1 bar), `-strong` below carries text.
+   */
+  --color-violet: #8b5cf6;
+  --color-violet-strong: #a78bfa;
+
+  /*
    * FOR-185: the landing's secondary/tertiary accents. The template's palette
    * is a three-hue family — primary (emerald), secondary (lime), tertiary
    * (mint) — used to differentiate the three feature cards' icon tints. Only
@@ -244,6 +256,16 @@
    */
   --font-sans: 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-heading: 'Montserrat', var(--font-sans);
+  /*
+   * The micro-label step. It was already being consumed — thirteen rules
+   * across the training detail, the plan generator, the meal form and the
+   * calorie ring wrote `font-size: var(--font-size-xs)` — against a token that
+   * was never declared. With no fallback that declaration is invalid at
+   * computed-value time, so all of them silently inherited 1rem and painted
+   * their uppercase meta labels at 16px. Declared here at the template's
+   * `label-sm` size, which is what the mockups actually show.
+   */
+  --font-size-xs: 0.75rem; /* template: label-sm (12px) */
   --font-size-sm: 0.8125rem;
   --font-size-base: 1rem; /* template: body-md (was 0.9375rem / 15px) */
   --font-size-lg: 1.125rem; /* template: body-lg -- already matched */
@@ -393,6 +415,15 @@
    */
   --color-info: #53adf3;
   --color-info-strong: #1f71ae;
+
+  /*
+   * The reference violet is kept exact for graphical marks (~4.2:1 on
+   * --color-bg, over the 3:1 bar a donut slice or legend dot needs). Text uses
+   * the darkened counterpart: #6d28d9 is ~7.5:1, while the reference value
+   * would leave the muscle tags below AA.
+   */
+  --color-violet: #8b5cf6;
+  --color-violet-strong: #6d28d9;
 
   /*
    * FOR-185: the template's secondary (#7dde38 lime) and tertiary (#7ed8b6

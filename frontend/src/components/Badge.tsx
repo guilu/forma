@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import styles from './Badge.module.css';
 
-export type BadgeTone = 'accent' | 'warning' | 'danger' | 'neutral';
+export type BadgeTone = 'accent' | 'warning' | 'danger' | 'neutral' | 'violet';
 
 /**
  * Small status/label pill (FOR-50). The base primitive behind severity,

@@ -33,3 +33,11 @@
   color: var(--color-text-muted);
   border-color: var(--color-border);
 }
+
+/* The mockups' category tag hue (training kind, muscle group). Outlined like
+   every other tone -- the fill/outline call belongs to the primitive, not to
+   one page. */
+.badge[data-tone='violet'] {
+  color: var(--color-violet-strong);
+  border-color: var(--color-violet);
+}

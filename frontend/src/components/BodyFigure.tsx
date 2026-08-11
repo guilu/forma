@@ -38,6 +38,10 @@ export function BodyFigure({
       data-placeholder="body-figure"
       data-view={view}
       data-variant={variant}
+      // Exposed as an attribute, not just the class, so a consumer can restyle
+      // the highlighted figure for its own context without reaching for a CSS
+      // module class it cannot name.
+      data-active={active}
       role={decorative ? undefined : 'img'}
       aria-hidden={decorative ? true : undefined}
       aria-label={label}
