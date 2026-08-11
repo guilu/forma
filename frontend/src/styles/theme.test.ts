@@ -3,6 +3,7 @@ import foodFormCss from '../pages/admin/FoodForm.module.css?raw';
 import planGeneratorCss from '../pages/generator/PlanGenerator.module.css?raw';
 import nutritionCss from '../pages/NutritionPage.module.css?raw';
 import nutritionPageSource from '../pages/NutritionPage.tsx?raw';
+import trainingDetailSource from '../pages/TrainingDetailPage.tsx?raw';
 import trainingCss from '../pages/TrainingPage.module.css?raw';
 import trainingPageSource from '../pages/TrainingPage.tsx?raw';
 import themeCss from './theme.css?raw';
@@ -248,6 +249,20 @@ describe('theme.css design tokens (FOR-163 reconciliation)', () => {
         /outline:[^;]*var\(--color-accent(?:,\s*#[0-9a-f]+)?\)/i,
       );
       expect(foodFormCss).toMatch(/outline:[^;]*var\(--color-accent-strong\)/i);
+    });
+
+    /*
+     * The muscle donut and its legend are one chart drawn twice — a
+     * conic-gradient for the ring, a swatch per legend row — so the two palettes
+     * have to stay the same list in the same order or the legend lies about
+     * which slice is which.
+     */
+    it('draws the muscle donut and its legend from one shared palette', () => {
+      expect(trainingDetailSource).toContain("'var(--color-accent)'");
+      expect(trainingDetailSource).toContain("'var(--color-violet)'");
+      expect(trainingDetailSource).toContain("'var(--color-warning-graphic)'");
+      // A single palette constant, consumed by both the ring and the legend.
+      expect(trainingDetailSource).toMatch(/MUSCLE_SLICE_COLORS/);
     });
 
     it('keeps fat series and training dots on the orange graphic role', () => {

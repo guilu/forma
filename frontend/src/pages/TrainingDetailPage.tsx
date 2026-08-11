@@ -38,6 +38,23 @@ const ESTIMATED_DURATION_MIN = 55;
 const REST_SECONDS = 90;
 const LOAD_WEIGHT = { HIGH: 3, MEDIUM: 2, LOW: 1 } as const;
 
+/**
+ * The muscle-focus palette, in slice order. One list feeds both the donut's
+ * conic-gradient and the legend swatches — they are the same chart drawn twice,
+ * and two lists would drift until the legend named the wrong slice.
+ *
+ * <p>Violet sits second because the slot used to fall to `--color-secondary`, a
+ * lime that reads as a second green next to the accent; the mockups paint it
+ * violet so adjacent slices stay tellable apart. All four are the graphic-role
+ * tokens (3:1 bar), never the text-safe ones.
+ */
+const MUSCLE_SLICE_COLORS = [
+  'var(--color-accent)',
+  'var(--color-violet)',
+  'var(--color-warning-graphic)',
+  'var(--color-info)',
+] as const;
+
 type SetEntry = {
   readonly weight: string;
   readonly reps: string;
@@ -199,10 +216,17 @@ function TrainingDetailContent({
   );
   const muscles = groupMusclesForDisplay(state.muscleMap.muscles);
   const muscleTotal = muscles.reduce((total, muscle) => total + LOAD_WEIGHT[muscle.load], 0);
-  const muscleSlices = muscles.map((muscle) => ({
+  const muscleSlices = muscles.map((muscle, index) => ({
     ...muscle,
+    color: MUSCLE_SLICE_COLORS[index % MUSCLE_SLICE_COLORS.length],
     percentage: muscleTotal > 0 ? Math.round((LOAD_WEIGHT[muscle.load] / muscleTotal) * 100) : 0,
   }));
+  /*
+   * The chips above the donut. The mockup shows only the muscles the session
+   * really leans on, not the full legend, and `HIGH` is the backend's own word
+   * for that — so the chips are derived, never a second hand-kept list.
+   */
+  const primaryMuscles = muscles.filter((muscle) => muscle.load === 'HIGH');
   const totalVolume = useMemo(
     () =>
       Object.values(setEntries).reduce(
@@ -265,14 +289,16 @@ function TrainingDetailContent({
         <main className={styles.main}>
           <Card className={styles.hero}>
             <div className={styles.heroCopy}>
-              <Badge tone="neutral">Fuerza</Badge>
+              <Badge tone="violet" className={styles.kindBadge}>
+                Fuerza
+              </Badge>
               <div className={styles.titleRow}>
                 <h1>{title}</h1>
                 <StatusPill kind="training" value={state.session.status} />
               </div>
               <p className={styles.description}>{workoutDescription(title)}</p>
               <dl className={styles.metrics}>
-                <Metric icon="activity" label="Duración" value={`${ESTIMATED_DURATION_MIN} min`} />
+                <Metric icon="clock" label="Duración" value={`${ESTIMATED_DURATION_MIN} min`} />
                 <Metric
                   icon="training"
                   label="Enfoque"
@@ -296,9 +322,15 @@ function TrainingDetailContent({
           <section className={styles.exercises} aria-label="Ejercicios del entrenamiento">
             <header className={styles.sectionHeader}>
               <h2>Ejercicios ({state.workout.items.length})</h2>
+              {/* Legend for the Estado column, which is icon-only in the
+                  mockup: the ticks need something that names them. */}
               <span className={styles.sectionStatus}>
-                <Icon name={completed ? 'checkCircle' : 'activity'} size={17} />
-                {completed ? 'Completado' : 'Pendiente'}
+                <span>
+                  <Icon name="checkCircle" size={15} /> Completado
+                </span>
+                <span className={styles.sectionStatusPending}>
+                  <Icon name="checkCircle" size={15} /> Pendiente
+                </span>
               </span>
             </header>
             <ol className={styles.exerciseList}>
@@ -361,6 +393,15 @@ function TrainingDetailContent({
           </Card>
 
           <Card title="Enfoque muscular">
+            {primaryMuscles.length > 0 && (
+              <ul className={styles.muscleTags}>
+                {primaryMuscles.map((muscle) => (
+                  <li key={muscle.label}>
+                    <Badge tone="violet">{muscle.label}</Badge>
+                  </li>
+                ))}
+              </ul>
+            )}
             <div
               className={styles.muscleChart}
               aria-label="Distribución relativa del enfoque muscular"
@@ -373,6 +414,11 @@ function TrainingDetailContent({
               <ul>
                 {muscleSlices.map((muscle) => (
                   <li key={muscle.label}>
+                    <span
+                      className={styles.muscleDot}
+                      style={{ backgroundColor: muscle.color }}
+                      aria-hidden="true"
+                    />
                     <span>{muscle.label}</span>
                     <strong>{muscle.percentage}%</strong>
                   </li>
@@ -418,18 +464,18 @@ function SessionMetrics({
   return (
     <section className={styles.sessionMetrics} aria-label="Métricas de la sesión">
       <div>
-        <span>Elapsed time</span>
+        <span>Tiempo transcurrido</span>
         <strong>{formatTimer(elapsedSeconds)}</strong>
       </div>
       <div>
-        <span>Rest timer</span>
+        <span>Descanso</span>
         <strong className={styles.restTime}>{restSeconds}s</strong>
         <button type="button" disabled={restSeconds === 0} onClick={onToggleRest}>
           {restPaused ? 'Continuar' : 'Pausa'}
         </button>
       </div>
       <div>
-        <span>Total volume</span>
+        <span>Volumen total</span>
         <strong>{totalVolume.toLocaleString('es-ES')} kg</strong>
       </div>
     </section>
@@ -451,19 +497,13 @@ function DetailTopbar() {
   );
 }
 
-function muscleGradient(slices: readonly { percentage: number }[]): string {
+function muscleGradient(slices: readonly { percentage: number; color: string }[]): string {
   if (slices.length === 0) return 'var(--color-border)';
-  const colors = [
-    'var(--color-accent)',
-    'var(--color-info)',
-    'var(--color-warning-graphic)',
-    'var(--color-secondary)',
-  ];
   let cursor = 0;
-  const segments = slices.map((slice, index) => {
+  const segments = slices.map((slice) => {
     const start = cursor;
     cursor += slice.percentage;
-    return `${colors[index % colors.length]} ${start}% ${Math.min(cursor, 100)}%`;
+    return `${slice.color} ${start}% ${Math.min(cursor, 100)}%`;
   });
   return `conic-gradient(${segments.join(', ')})`;
 }
@@ -473,7 +513,7 @@ function Metric({
   label,
   value,
 }: {
-  readonly icon: 'activity' | 'training' | 'progress';
+  readonly icon: 'clock' | 'training' | 'progress';
   readonly label: string;
   readonly value: string;
 }) {
@@ -507,15 +547,18 @@ function ExerciseCard({
         <Icon name="training" size={30} />
         <div>
           <h3>{item.exerciseName}</h3>
-          <span>Fuerza · RIR {item.rir}</span>
-          <small>Descanso: {item.restSeconds} s</small>
+          <span className={styles.exerciseTag}>Fuerza · RIR {item.rir}</span>
+          <small>Descanso entre series</small>
+          <small className={styles.exerciseRest}>
+            <Icon name="clock" size={13} /> {item.restSeconds} s
+          </small>
         </div>
       </div>
       <div className={styles.setTable} role="table" aria-label={`Series de ${item.exerciseName}`}>
         <div className={styles.setHeader} role="row">
           <span>Serie</span>
-          <span>Peso</span>
-          <span>Reps objetivo</span>
+          <span>Peso (kg)</span>
+          <span>Reps</span>
           <span>Estado</span>
         </div>
         {Array.from({ length: item.sets }, (_, index) => {
@@ -557,7 +600,7 @@ function ExerciseCard({
                 aria-label={`${entry.done ? 'Reabrir' : 'Completar'} ${item.exerciseName}, serie ${setNumber}`}
                 onClick={() => onToggle(key)}
               >
-                {entry.done ? <Icon name="check" size={17} /> : 'Done'}
+                <Icon name="checkCircle" size={17} />
               </button>
             </div>
           );

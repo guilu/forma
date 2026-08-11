@@ -3,12 +3,19 @@
   flex-direction: column;
   gap: var(--space-5);
 }
+/*
+ * Type scale. The mockups run this screen a step below the app's body size --
+ * it is a dense data view (nine exercises, four set rows each), and at 16px the
+ * set tables stopped fitting their column without wrapping. Sizes are set on
+ * the containers so the values inside inherit them.
+ */
 .backLink {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
   width: fit-content;
   color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
   font-weight: 600;
 }
 .topbar {
@@ -47,7 +54,7 @@
 }
 .sessionMetrics strong {
   font-family: var(--font-heading);
-  font-size: 1.25rem;
+  font-size: 1.05rem;
   font-variant-numeric: tabular-nums;
 }
 .sessionMetrics > div:first-child strong {
@@ -69,10 +76,11 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-2) var(--space-3);
   color: var(--color-text);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
 }
 .backIcon {
   transform: rotate(180deg);
@@ -115,17 +123,24 @@
   flex-wrap: wrap;
   gap: var(--space-3);
 }
+.kindBadge {
+  padding: 2px var(--space-2);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
 .titleRow h1 {
   margin: 0;
   font-family: var(--font-heading);
-  font-size: 2rem;
-  line-height: 1.1;
+  font-size: 1.5rem;
+  line-height: 1.15;
 }
 .description {
-  max-width: 38rem;
+  max-width: 34rem;
   margin: 0;
   color: var(--color-text-muted);
-  line-height: 1.7;
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
 }
 .metrics {
   display: grid;
@@ -148,6 +163,7 @@
 }
 .metrics dd {
   margin: var(--space-1) 0 0;
+  font-size: var(--font-size-sm);
   font-weight: 700;
 }
 .exercises {
@@ -166,16 +182,26 @@
 }
 .sectionHeader h2 {
   margin: 0;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.07em;
 }
 .sectionStatus {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: var(--space-4);
   color: var(--color-accent-strong);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
+}
+.sectionStatus > span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+/* The unfilled half of the legend: same tick, muted, so it reads as the
+   "not yet" state of the Estado column rather than a second success. */
+.sectionStatusPending {
+  color: var(--color-text-muted);
 }
 .exerciseList {
   display: flex;
@@ -196,12 +222,13 @@
 }
 .exerciseOrder {
   display: grid;
-  width: 28px;
-  height: 28px;
+  width: 22px;
+  height: 22px;
   place-items: center;
   color: var(--color-accent-strong);
   background: color-mix(in srgb, var(--color-accent) 15%, transparent);
   border-radius: 50%;
+  font-size: var(--font-size-xs);
   font-weight: 700;
 }
 .exerciseIdentity {
@@ -214,17 +241,30 @@
 }
 .exerciseIdentity h3 {
   margin: 0;
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
 }
 .exerciseIdentity span,
 .exerciseIdentity small {
   display: block;
   margin-top: var(--space-1);
   color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+/* The exercise's category line. Violet is this screen's tag hue -- the same
+   one the muscle chips and the second donut slice carry. */
+.exerciseTag {
+  color: var(--color-violet-strong);
+  font-weight: 600;
+}
+.exerciseRest {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
 }
 .setTable {
   min-width: 0;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
 }
 .setHeader,
 .setRow {
@@ -262,22 +302,25 @@
   outline: 2px solid var(--color-accent-strong);
   outline-offset: 1px;
 }
+/*
+ * Icon-only in the mockup: a tick that is grey while the set is open and green
+ * once it is logged. The accessible name still says which set it toggles (see
+ * the aria-label in the TSX), so dropping the "Done" text costs nothing but the
+ * column width the set tables needed back.
+ */
 .doneButton {
   display: inline-grid;
-  min-width: 3.2rem;
-  min-height: 2rem;
+  min-width: 1.75rem;
+  min-height: 1.75rem;
   place-items: center;
   justify-self: end;
-  color: var(--color-text);
-  background: var(--color-surface-muted);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  font-weight: 700;
+  color: var(--color-text-muted);
+  background: none;
+  border: 0;
+  border-radius: 50%;
 }
 .doneButton[data-done='true'] {
-  color: var(--color-accent-contrast);
-  background: var(--color-accent);
-  border-color: var(--color-accent);
+  color: var(--color-accent-strong);
 }
 .exerciseActions {
   padding-top: var(--space-3);
@@ -298,24 +341,37 @@
 }
 .progressPercent {
   font-family: var(--font-heading);
-  font-size: 1.7rem;
+  font-size: 1.4rem;
 }
 .progressMessage {
   color: var(--color-accent-strong);
+  font-size: var(--font-size-sm);
+}
+.progressCard > span {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
 }
 .progressCard > button {
   width: 100%;
   margin-top: var(--space-2);
 }
+.muscleTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  list-style: none;
+}
 .muscleChart {
   display: grid;
-  grid-template-columns: 100px minmax(0, 1fr);
+  grid-template-columns: 92px minmax(0, 1fr);
   gap: var(--space-4);
   align-items: center;
 }
 .muscleDonut {
-  width: 100px;
-  height: 100px;
+  width: 92px;
+  height: 92px;
   border-radius: 50%;
   mask: radial-gradient(circle, transparent 48%, #000 50%);
 }
@@ -327,11 +383,21 @@
   padding: 0;
   list-style: none;
 }
+/* Swatch, label, then the percentage pinned right — the `1fr` on the label is
+   what keeps the numbers in a column however long the muscle names get. */
 .muscleChart li {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
   gap: var(--space-2);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
+}
+/* 8px, not the 10px the weekly screen used: at this type size a 10px dot
+   out-weighed the label it belongs to. */
+.muscleDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
 }
 .tip {
   background: color-mix(in srgb, var(--color-accent) 7%, var(--color-surface));
@@ -342,11 +408,12 @@
   gap: var(--space-2);
   margin: 0;
   color: var(--color-accent-strong);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
 }
 .tip p {
   margin: var(--space-3) 0 0;
   color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
   line-height: 1.6;
 }
 .actionError {
