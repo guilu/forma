@@ -110,7 +110,13 @@ const MARK_ERROR = 'No se pudo actualizar la sesión. Inténtalo de nuevo.';
  * taken from here.
  */
 const PLACEHOLDER = {
-  today: { durationMin: 55, focus: 'Pecho, Hombros, Tríceps', exercisesDone: 4, exercisesTotal: 6 },
+  /*
+   * `today` is gone: its fixed duration, muscle focus and "4 / 6 ejercicios"
+   * were printed under every session regardless of kind, so a running day
+   * announced a chest-and-triceps focus and an exercise count it does not
+   * have. The card now shows the session's own `detail`, the real muscle map
+   * for strength (see SessionFocus), and a session tally on the ring.
+   */
   stats: {
     volume: '12.450',
     volumeDelta: '↑8% vs semana anterior',
@@ -144,8 +150,35 @@ function todayDayOfWeek(): string {
   return JS_DAY_TO_ENUM[new Date().getDay()];
 }
 
-function formatToday(): string {
-  return formatShortDate(new Date());
+/**
+ * The week the arrows walk, in the order the API composes it.
+ *
+ * <p>Monday-to-Sunday and nothing beyond: `GET /training/week` returns the
+ * *current* week and accepts no date parameter (`docs/api/training-week.md` —
+ * "no dates, no week navigation"). Stepping past either end would have no data
+ * to show, so the controls stop there instead of promising a week the backend
+ * cannot answer for.
+ */
+const WEEK_ORDER = [
+  'MONDAY',
+  'TUESDAY',
+  'WEDNESDAY',
+  'THURSDAY',
+  'FRIDAY',
+  'SATURDAY',
+  'SUNDAY',
+] as const;
+
+function weekIndexOf(dayOfWeek: string): number {
+  const index = WEEK_ORDER.indexOf(dayOfWeek as (typeof WEEK_ORDER)[number]);
+  return index === -1 ? 0 : index;
+}
+
+/** The real calendar date of a day in the composed week, relative to today. */
+function dateOfWeekday(dayOfWeek: string): Date {
+  const date = new Date();
+  date.setDate(date.getDate() + (weekIndexOf(dayOfWeek) - weekIndexOf(todayDayOfWeek())));
+  return date;
 }
 
 /**
@@ -171,6 +204,7 @@ export function TrainingPage() {
   const [actionError, setActionError] = useState<string | undefined>(undefined);
   const [pendingId, setPendingId] = useState<string | undefined>(undefined);
   const [detailTarget, setDetailTarget] = useState<DetailTarget | undefined>(undefined);
+  const [selectedDay, setSelectedDay] = useState<string>(() => todayDayOfWeek());
 
   const load = useCallback(async () => {
     try {
@@ -210,6 +244,9 @@ export function TrainingPage() {
     }
   }
 
+  const selectedIndex = weekIndexOf(selectedDay);
+  const selectedDate = dateOfWeekday(selectedDay);
+
   return (
     <div className={styles.wrapper}>
       <header className={styles.header}>
@@ -217,23 +254,36 @@ export function TrainingPage() {
           <h1 className={styles.title}>Entrenamiento</h1>
           <p className={styles.subtitle}>Sigue tu plan y mejora cada día.</p>
         </div>
-        {/* Date navigator — visual only: the composed week has no dates / week
-            navigation (docs/api/training-week.md), so the arrows are inert
-            decorative affordances and the label is today's real date. */}
+        {/* Date navigator. Bounded by the composed week: `GET /training/week`
+            returns the current week and takes no date, so the arrows walk
+            Monday-to-Sunday and stop there rather than asking for a week the
+            API cannot answer for (docs/api/training-week.md). */}
         <div className={styles.dateNav}>
           <Icon name="calendar" size={16} className={styles.dateIcon} />
           <span className={styles.dateLabel}>
             <span className={styles.dateWeekday} data-testid="date-weekday">
-              {formatWeekday(new Date())},
+              {formatWeekday(selectedDate)},
             </span>{' '}
-            {formatToday()}
+            {formatShortDate(selectedDate)}
           </span>
-          <span className={styles.dateArrow} aria-hidden="true">
+          <button
+            type="button"
+            className={styles.dateArrow}
+            aria-label="Día anterior"
+            disabled={selectedIndex === 0}
+            onClick={() => setSelectedDay(WEEK_ORDER[selectedIndex - 1])}
+          >
             <Icon name="chevron" size={16} className={styles.dateArrowPrev} />
-          </span>
-          <span className={styles.dateArrow} aria-hidden="true">
+          </button>
+          <button
+            type="button"
+            className={styles.dateArrow}
+            aria-label="Día siguiente"
+            disabled={selectedIndex === WEEK_ORDER.length - 1}
+            onClick={() => setSelectedDay(WEEK_ORDER[selectedIndex + 1])}
+          >
             <Icon name="chevron" size={16} />
-          </span>
+          </button>
         </div>
       </header>
 
@@ -250,6 +300,7 @@ export function TrainingPage() {
         setDetailTarget,
         (session) => navigate(`/app/training/${encodeURIComponent(session.id)}`),
         load,
+        selectedDay,
       )}
 
       {detailTarget && (
@@ -271,6 +322,7 @@ function renderContent(
   openDetail: (target: DetailTarget) => void,
   openTraining: (session: TrainingSession) => void,
   reload: () => void,
+  selectedDay: string,
 ) {
   if (state.status === 'loading') {
     return <LoadingState message="Cargando tu semana…" />;
@@ -290,13 +342,14 @@ function renderContent(
     return <NoPlanEmptyState />;
   }
 
-  const today = state.week.days.find((day) => day.dayOfWeek === todayDayOfWeek());
+  const selected = state.week.days.find((day) => day.dayOfWeek === selectedDay);
 
   return (
     <div className={styles.layout}>
       <div className={styles.todayArea}>
         <TodaySessionCard
-          day={today}
+          day={selected}
+          dayOfWeek={selectedDay}
           mark={mark}
           pendingId={pendingId}
           openDetail={openDetail}
@@ -328,29 +381,41 @@ function renderContent(
 
 function TodaySessionCard({
   day,
+  dayOfWeek,
   mark,
   pendingId,
   openDetail,
   openTraining,
 }: {
   readonly day: TrainingDay | undefined;
+  readonly dayOfWeek: string;
   readonly mark: (id: string, status: SessionStatus) => void;
   readonly pendingId: string | undefined;
   readonly openDetail: (target: DetailTarget) => void;
   readonly openTraining: (session: TrainingSession) => void;
 }) {
+  // "Entrenamiento de hoy" only while the card really is showing today; once
+  // the arrows move it, the heading has to say which day is on screen.
+  const isToday = dayOfWeek === todayDayOfWeek();
+  const title = isToday
+    ? 'Entrenamiento de hoy'
+    : `Entrenamiento del ${(DAY_LABELS[dayOfWeek] ?? dayOfWeek).toLocaleLowerCase('es-ES')}`;
+  const when = isToday ? 'hoy' : 'ese día';
+
   if (!day) {
     return (
-      <Card title="Entrenamiento de hoy" headingLevel={2} className={styles.todayCard}>
-        <p className={styles.message}>No hay datos de hoy en el plan de esta semana.</p>
+      <Card title={title} headingLevel={2} className={styles.todayCard}>
+        <p className={styles.message}>No hay datos de {when} en el plan de esta semana.</p>
       </Card>
     );
   }
 
   if (day.rest) {
     return (
-      <Card title="Entrenamiento de hoy" headingLevel={2} className={styles.todayCard}>
-        <p className={styles.rest}>Hoy es día de descanso.</p>
+      <Card title={title} headingLevel={2} className={styles.todayCard}>
+        <p className={styles.rest}>
+          {isToday ? 'Hoy es día de descanso.' : 'Ese día es de descanso.'}
+        </p>
       </Card>
     );
   }
@@ -359,7 +424,7 @@ function TodaySessionCard({
   const percent = planned > 0 ? Math.round((completed / planned) * 100) : 0;
 
   return (
-    <Card title="Entrenamiento de hoy" headingLevel={2} className={styles.todayCard}>
+    <Card title={title} headingLevel={2} className={styles.todayCard}>
       <div className={styles.todayLayout}>
         <ul className={styles.todaySessions}>
           {day.sessions.map((session) => (
@@ -368,18 +433,36 @@ function TodaySessionCard({
                 <p className={styles.todaySessionTitle}>{session.title}</p>
                 <StatusPill kind="training" value={session.status} />
               </div>
-              {/* Placeholder estimated duration + focus (see PLACEHOLDER). */}
-              <p className={styles.sessionDetail}>
-                <Icon name="training" size={17} />
-                Duración estimada: {PLACEHOLDER.today.durationMin} min
-              </p>
-              <p className={styles.sessionDetail}>Enfoque: {PLACEHOLDER.today.focus}</p>
+              {/* Only what the session really carries. A fixed duration and a
+                  fixed muscle focus used to print under every session, which
+                  is how a *run* came to announce a chest-and-triceps focus —
+                  neither field exists anywhere in the training API. The focus
+                  of a strength session is derived below from its real
+                  FOR-136 muscle map. */}
               <p className={styles.sessionDetail}>{session.detail}</p>
+              {session.kind === 'STRENGTH' && <SessionFocus sessionId={session.id} />}
               <div className={styles.actions}>
                 {session.kind === 'STRENGTH' ? (
                   <Button type="button" onClick={() => openTraining(session)}>
                     <Icon name="arrowRight" size={17} />
                     {session.status === 'COMPLETED' ? 'Ver entrenamiento' : 'Iniciar entrenamiento'}
+                  </Button>
+                ) : session.status === 'COMPLETED' ? (
+                  /* A run has no per-exercise screen to open, so its action
+                     marks completion in place — and undoes it, or a mistaken
+                     tap would be permanent. Back to PLANNED, not SKIPPED:
+                     undoing means "this did not happen yet", and SKIPPED is a
+                     deliberate different statement. */
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    aria-label="Desmarcar la carrera como completada"
+                    disabled={pendingId === session.id}
+                    loading={pendingId === session.id}
+                    onClick={() => mark(session.id, 'PLANNED')}
+                  >
+                    <Icon name="checkCircle" size={17} />
+                    Completada
                   </Button>
                 ) : (
                   <Button
@@ -388,8 +471,8 @@ function TodaySessionCard({
                     loading={pendingId === session.id}
                     onClick={() => mark(session.id, 'COMPLETED')}
                   >
-                    <Icon name="arrowRight" size={17} />
-                    Iniciar entrenamiento
+                    <Icon name="check" size={17} />
+                    Completar carrera
                   </Button>
                 )}
                 {session.status === 'PLANNED' && (
@@ -428,8 +511,12 @@ function TodaySessionCard({
               <span className={styles.ringPercent}>{percent}%</span>
             </ProgressRing>
             <p className={styles.ringStatus}>{percent === 100 ? 'Completado' : 'En progreso'}</p>
+            {/* The ring counts sessions, which is what the week payload
+                actually carries. It used to be captioned "4 / 6 ejercicios"
+                from a constant — a figure that was wrong for every day and
+                meaningless for a run. */}
             <p className={styles.ringCaption}>
-              {PLACEHOLDER.today.exercisesDone} / {PLACEHOLDER.today.exercisesTotal} ejercicios
+              {completed} / {planned} {planned === 1 ? 'sesión' : 'sesiones'}
             </p>
           </div>
           <div className={styles.todayFigures}>
@@ -438,6 +525,43 @@ function TodaySessionCard({
         </div>
       </div>
     </Card>
+  );
+}
+
+/**
+ * The muscle focus of a strength session, derived from its real FOR-136
+ * muscle map rather than the fixed string this card used to print.
+ *
+ * <p>Renders nothing at all while loading, on failure, or when the session has
+ * no muscle data: this is a one-line supporting detail on a card whose useful
+ * parts (title, status, actions) do not depend on it, so a spinner or an error
+ * row here would cost more attention than the line is worth. The full heatmap,
+ * with its own loading and error states, lives in the session detail.
+ */
+function SessionFocus({ sessionId }: { readonly sessionId: string }) {
+  const [muscles, setMuscles] = useState<readonly MuscleGroupDisplay[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setMuscles([]);
+    getMuscleMap(sessionId)
+      .then((map) => {
+        if (!cancelled) setMuscles(groupMusclesForDisplay(map.muscles));
+      })
+      .catch(() => {
+        if (!cancelled) setMuscles([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId]);
+
+  if (muscles.length === 0) return null;
+
+  return (
+    <p className={styles.sessionDetail}>
+      Enfoque: {muscles.map((muscle) => muscle.label).join(', ')}
+    </p>
   );
 }
 

@@ -276,7 +276,10 @@ describe('TrainingPage', () => {
     await user.click(screen.getByRole('button', { name: /Carrera.*Tirada larga/s }));
 
     await screen.findByRole('dialog', { name: /Martes · Carrera/ });
-    expect(getMuscleMapMock).not.toHaveBeenCalled();
+    // Not "never called": today's card derives the focus of its *strength*
+    // session from the same endpoint. What must never happen is asking for the
+    // muscle map of a run.
+    expect(getMuscleMapMock).not.toHaveBeenCalledWith('TUESDAY:RUNNING');
   });
 
   it('opens the session detail for a running session', async () => {
@@ -410,6 +413,170 @@ describe('TrainingPage', () => {
     }
   });
 
+  /*
+   * Today's card used to print a fixed "Duración estimada: 55 min" and
+   * "Enfoque: Pecho, Hombros, Tríceps" under every session, so a *running* day
+   * announced a chest-and-triceps focus. Nothing in the training API backs
+   * either field, so the card now shows only what the session really carries.
+   */
+  describe("today's card only states what the session actually carries", () => {
+    const runningToday: TrainingWeek = {
+      days: week.days.map((day) =>
+        day.dayOfWeek === 'MONDAY'
+          ? {
+              ...day,
+              sessions: [
+                {
+                  id: 'MONDAY:RUNNING',
+                  kind: 'RUNNING',
+                  title: 'Series',
+                  detail: '4.0 km',
+                  status: 'PLANNED',
+                },
+              ],
+            }
+          : day,
+      ),
+    };
+
+    it('never attaches a muscle focus or an invented duration to a run', async () => {
+      getWeekMock.mockResolvedValue(runningToday);
+
+      renderPage();
+      const todayCard = (
+        await screen.findByRole('heading', { name: 'Entrenamiento de hoy' })
+      ).closest('section') as HTMLElement;
+
+      expect(within(todayCard).getByText('4.0 km')).toBeInTheDocument();
+      expect(within(todayCard).queryByText(/Enfoque/)).not.toBeInTheDocument();
+      expect(within(todayCard).queryByText(/Duración estimada/)).not.toBeInTheDocument();
+      expect(within(todayCard).queryByText(/ejercicios/)).not.toBeInTheDocument();
+    });
+
+    it('derives the focus of a strength session from its real muscle map', async () => {
+      getWeekMock.mockResolvedValue(week);
+      getMuscleMapMock.mockResolvedValue({
+        sessionId: 'MONDAY:STRENGTH',
+        muscles: [
+          { muscle: 'pecho', load: 'HIGH' },
+          { muscle: 'tríceps', load: 'MEDIUM' },
+        ],
+      });
+
+      renderPage();
+      const todayCard = (
+        await screen.findByRole('heading', { name: 'Entrenamiento de hoy' })
+      ).closest('section') as HTMLElement;
+
+      expect(await within(todayCard).findByText('Enfoque: Pecho, Tríceps')).toBeInTheDocument();
+    });
+  });
+
+  /*
+   * A run has no per-exercise screen to open, so its action marks completion
+   * in place — and has to be undoable, or a mistaken tap is permanent.
+   */
+  describe('completing a run from the card', () => {
+    const runningToday = (status: 'PLANNED' | 'COMPLETED'): TrainingWeek => ({
+      days: week.days.map((day) =>
+        day.dayOfWeek === 'MONDAY'
+          ? {
+              ...day,
+              sessions: [
+                {
+                  id: 'MONDAY:RUNNING',
+                  kind: 'RUNNING',
+                  title: 'Series',
+                  detail: '4.0 km',
+                  status,
+                },
+              ],
+            }
+          : day,
+      ),
+    });
+
+    it('offers "Completar carrera" and reflects it in the weekly summary', async () => {
+      getWeekMock
+        .mockResolvedValueOnce(runningToday('PLANNED'))
+        .mockResolvedValue(runningToday('COMPLETED'));
+      updateMock.mockResolvedValue({ id: 'MONDAY:RUNNING', status: 'COMPLETED' });
+      const user = userEvent.setup();
+
+      renderPage();
+      await screen.findByRole('button', { name: 'Completar carrera' });
+
+      // Two runs in the fixture week (Monday and Tuesday), neither done yet.
+      const runningTile = screen.getByRole('listitem', { name: 'Carreras' });
+      expect(within(runningTile).getByText('0 / 2')).toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: 'Completar carrera' }));
+
+      expect(updateMock).toHaveBeenCalledWith('MONDAY:RUNNING', 'COMPLETED');
+      await waitFor(() => expect(within(runningTile).getByText('1 / 2')).toBeInTheDocument());
+    });
+
+    it('turns the action into an undo that puts the run back to planned', async () => {
+      getWeekMock
+        .mockResolvedValueOnce(runningToday('COMPLETED'))
+        .mockResolvedValue(runningToday('PLANNED'));
+      updateMock.mockResolvedValue({ id: 'MONDAY:RUNNING', status: 'PLANNED' });
+      const user = userEvent.setup();
+
+      renderPage();
+      const undo = await screen.findByRole('button', {
+        name: 'Desmarcar la carrera como completada',
+      });
+
+      await user.click(undo);
+
+      expect(updateMock).toHaveBeenCalledWith('MONDAY:RUNNING', 'PLANNED');
+      expect(await screen.findByRole('button', { name: 'Completar carrera' })).toBeInTheDocument();
+    });
+  });
+
+  /*
+   * The arrows used to be inert decoration. They now walk the composed week,
+   * which is the only range the API has: `GET /training/week` returns the
+   * current week and takes no date (docs/api/training-week.md).
+   */
+  describe('the date arrows move the card across the week', () => {
+    it('swaps the card to the chosen day and names it', async () => {
+      getWeekMock.mockResolvedValue(week);
+      const user = userEvent.setup();
+
+      renderPage();
+      await screen.findByRole('heading', { name: 'Entrenamiento de hoy' });
+
+      await user.click(screen.getByRole('button', { name: 'Día siguiente' }));
+
+      const card = (
+        await screen.findByRole('heading', { name: 'Entrenamiento del martes' })
+      ).closest('section') as HTMLElement;
+      expect(within(card).getByText('Tirada larga')).toBeInTheDocument();
+      expect(screen.getByTestId('date-weekday')).toHaveTextContent('Martes,');
+    });
+
+    it('stops at the edges of the week the API actually returns', async () => {
+      getWeekMock.mockResolvedValue(week);
+      const user = userEvent.setup();
+
+      renderPage();
+      await screen.findByRole('heading', { name: 'Entrenamiento de hoy' });
+
+      // TODAY is the Monday of the fixture week, so there is nothing before it.
+      expect(screen.getByRole('button', { name: 'Día anterior' })).toBeDisabled();
+
+      for (let step = 0; step < 6; step += 1) {
+        await user.click(screen.getByRole('button', { name: 'Día siguiente' }));
+      }
+      expect(screen.getByRole('button', { name: 'Día siguiente' })).toBeDisabled();
+      expect(
+        await screen.findByRole('heading', { name: 'Entrenamiento del domingo' }),
+      ).toBeInTheDocument();
+    });
+  });
+
   it('shows an error when marking fails and preserves the prior status', async () => {
     getWeekMock.mockResolvedValue({
       days: week.days.map((day) =>
@@ -435,11 +602,11 @@ describe('TrainingPage', () => {
     renderPage();
     await screen.findByRole('heading', { name: 'Calendario semanal' });
 
-    await user.click(screen.getByRole('button', { name: 'Iniciar entrenamiento' }));
+    await user.click(screen.getByRole('button', { name: 'Completar carrera' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo actualizar la sesión');
-    // Status stayed PLANNED — "Iniciar entrenamiento" is still offered.
-    expect(screen.getByRole('button', { name: 'Iniciar entrenamiento' })).toBeInTheDocument();
+    // Status stayed PLANNED — the run is still offered for completion.
+    expect(screen.getByRole('button', { name: 'Completar carrera' })).toBeInTheDocument();
   });
 
   it('shows an error state with retry when the week fails to load', async () => {
