@@ -36,6 +36,7 @@ export function AppShell() {
    * scroll y el estado del resto del marco.
    */
   const [planGeneration, setPlanGeneration] = useState(0);
+  const [tabletSidebarExpanded, setTabletSidebarExpanded] = useState(false);
   const isFirstRender = useRef(true);
   const location = useLocation();
 
@@ -58,8 +59,8 @@ export function AppShell() {
      */
     <IntegrationsProvider>
       <PlanActivationGate onActivated={() => setPlanGeneration((generation) => generation + 1)} />
-      <div className={styles.shell}>
-        <Sidebar />
+      <div className={styles.shell} data-sidebar-expanded={tabletSidebarExpanded}>
+        <Sidebar expanded={tabletSidebarExpanded} onExpandedChange={setTabletSidebarExpanded} />
         <main id="main-content" ref={mainRef} tabIndex={-1} className={styles.content}>
           {/*
           The pages behind this outlet are code-split (see app/routes.tsx), so

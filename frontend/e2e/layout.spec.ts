@@ -13,6 +13,7 @@ import { expectGlassSurface, expectNoHorizontalOverflow, expectSinglePageScrolle
 const PHONE = { width: 375, height: 720 };
 const NARROW = { width: 574, height: 720 };
 const TABLET = { width: 1180, height: 820 };
+const IPAD_LANDSCAPE = { width: 1194, height: 702 };
 const DESKTOP = { width: 1280, height: 900 };
 /** Near the top of the mid-width band. */
 const LAPTOP = { width: 1440, height: 900 };
@@ -131,6 +132,103 @@ for (const viewport of [PHONE, DESKTOP]) {
     });
   });
 }
+
+test.describe('training on iPad landscape', () => {
+  test.use({ viewport: IPAD_LANDSCAPE });
+
+  test('uses the tablet navigation and purpose-built vertical training flow', async ({ page }) => {
+    const dayNames = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
+    await page.route('**/api/v1/training/week', (route) =>
+      route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          days: dayNames.map((dayOfWeek, index) => ({
+            dayOfWeek,
+            rest: index === 4,
+            sessions:
+              index === 4
+                ? []
+                : [
+                    {
+                      id: `${dayOfWeek}:STRENGTH`,
+                      kind: 'STRENGTH',
+                      title: `Fuerza · Sesión ${index + 1}`,
+                      detail: '5 ejercicios',
+                      status: index < 3 ? 'COMPLETED' : 'PLANNED',
+                      workoutType: 'PUSH',
+                    },
+                  ],
+          })),
+        }),
+      }),
+    );
+    await gotoApp(page, '/app/training');
+
+    const sidebar = page.getByRole('complementary');
+    const expand = page.getByRole('button', { name: 'Expandir navegación' });
+    await expect(sidebar).toHaveCSS('width', '72px');
+    await expand.click();
+    await expect(sidebar).toHaveCSS('width', '252px');
+    await page.getByRole('button', { name: 'Contraer navegación' }).click();
+    await expect(sidebar).toHaveCSS('width', '72px');
+
+    const today = page.getByRole('heading', { name: 'Entrenamiento de hoy' }).locator('..');
+    const summary = page.getByRole('heading', { name: 'Resumen semanal' }).locator('..');
+    const calendar = page.getByRole('heading', { name: 'Calendario semanal' }).locator('..');
+    const todayBox = await today.boundingBox();
+    const summaryBox = await summary.boundingBox();
+    const calendarBox = await calendar.boundingBox();
+    expect(todayBox).not.toBeNull();
+    expect(summaryBox).not.toBeNull();
+    expect(calendarBox).not.toBeNull();
+    expect(summaryBox!.y).toBeGreaterThan(todayBox!.y + todayBox!.height - 2);
+    expect(calendarBox!.y).toBeGreaterThan(summaryBox!.y + summaryBox!.height - 2);
+
+    const summaryRows = page.getByRole('listitem', {
+      name: /Sesiones totales|Carreras|Fuerza/,
+    });
+    const rowBoxes = await summaryRows.evaluateAll((rows) =>
+      rows.slice(0, 3).map((row) => row.getBoundingClientRect().toJSON()),
+    );
+    expect(rowBoxes).toHaveLength(3);
+    expect(
+      Math.max(...rowBoxes.map((box) => box.y)) - Math.min(...rowBoxes.map((box) => box.y)),
+    ).toBeLessThan(3);
+
+    const calendarScroller = page.getByRole('list', {
+      name: 'Calendario semanal de entrenamiento',
+    });
+    await expect
+      .poll(() =>
+        calendarScroller.evaluate((element) => ({
+          clientWidth: element.clientWidth,
+          scrollWidth: element.scrollWidth,
+          snap: getComputedStyle(element).scrollSnapType,
+        })),
+      )
+      .toMatchObject({ snap: 'x mandatory' });
+    const scrollSize = await calendarScroller.evaluate((element) => ({
+      clientWidth: element.clientWidth,
+      scrollWidth: element.scrollWidth,
+    }));
+    expect(scrollSize.scrollWidth).toBeGreaterThan(scrollSize.clientWidth);
+    const currentDay = page.getByRole('heading', { name: 'Miércoles', level: 3 }).locator('..');
+    const centers = await Promise.all([
+      calendarScroller.evaluate((element) => {
+        const box = element.getBoundingClientRect();
+        return box.left + box.width / 2;
+      }),
+      currentDay.evaluate((element) => {
+        const box = element.getBoundingClientRect();
+        return box.left + box.width / 2;
+      }),
+    ]);
+    expect(Math.abs(centers[0] - centers[1])).toBeLessThan(100);
+
+    await expectNoHorizontalOverflow(page);
+    await expectSinglePageScroller(page);
+  });
+});
 
 test.describe('dashboard grid', () => {
   test.use({ viewport: NARROW });

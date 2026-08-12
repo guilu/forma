@@ -106,14 +106,22 @@
 .layout {
   display: grid;
   grid-template-columns: 1fr;
-  gap: var(--space-5);
+  gap: 24px;
 }
 
-.main {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
+.todayArea,
+.summaryArea,
+.calendarArea,
+.tabletPair,
+.muscleArea,
+.streakArea,
+.historyArea {
   min-width: 0;
+}
+
+.tabletPair {
+  display: grid;
+  gap: 24px;
 }
 
 .todaySessions {
@@ -563,6 +571,22 @@
   margin-top: auto;
 }
 
+.calendarSessionProgress {
+  width: 100%;
+  height: 4px;
+  margin-top: auto;
+  overflow: hidden;
+  background: var(--color-border);
+  border-radius: 999px;
+}
+
+.calendarSessionProgress > span {
+  display: block;
+  height: 100%;
+  background: var(--color-accent);
+  border-radius: inherit;
+}
+
 .calendarLegend {
   list-style: none;
   margin: var(--space-4) 0 0;
@@ -994,9 +1018,169 @@
   color: var(--color-accent-strong);
 }
 
-@media (min-width: 900px) {
+@media (min-width: 1200px) {
   .layout {
     grid-template-columns: 2fr 1fr;
     align-items: start;
+  }
+
+  .todayArea {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .summaryArea {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .calendarArea {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .tabletPair {
+    display: contents;
+  }
+
+  .tabletPair > :first-child {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .tabletPair > :last-child {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  .muscleArea {
+    grid-column: 1;
+    grid-row: 4 / span 2;
+  }
+
+  .streakArea {
+    grid-column: 2;
+    grid-row: 3;
+  }
+
+  .historyArea {
+    grid-column: 2;
+    grid-row: 4;
+  }
+}
+
+@media (min-width: 900px) and (max-width: 1199px) {
+  .wrapper {
+    gap: 24px;
+  }
+
+  .layout {
+    gap: 24px;
+  }
+
+  .todayArea {
+    grid-row: 1;
+  }
+
+  .summaryArea {
+    grid-row: 2;
+  }
+
+  .calendarArea {
+    grid-row: 3;
+  }
+
+  .tabletPair {
+    grid-row: 4;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .tabletPair > * {
+    height: 100%;
+  }
+
+  .tabletPair .statsRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .summary {
+    width: 100%;
+  }
+
+  .summaryList {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .summaryRow {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 12px;
+    padding: 20px;
+  }
+
+  .summaryProgress {
+    grid-column: 1 / -1;
+    justify-self: center;
+    padding: 12px 0 0;
+    border-top: 1px solid var(--color-border);
+    border-left: 0;
+  }
+
+  .todayCard {
+    padding: 24px;
+  }
+
+  .todayCard > header h2 {
+    font-size: var(--font-size-base);
+  }
+
+  .todayLayout {
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+
+  .todaySessionTitle {
+    font-size: 1.6rem;
+    white-space: nowrap;
+  }
+
+  .todayVisual {
+    flex-wrap: nowrap;
+    flex-shrink: 0;
+  }
+
+  .actions {
+    flex-wrap: nowrap;
+  }
+
+  .calendarGrid {
+    display: flex;
+    gap: 16px;
+    overflow-x: auto;
+    padding: 4px 4px 16px;
+    scroll-behavior: smooth;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: thin;
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .calendarDay {
+    flex: 0 0 170px;
+    min-height: 250px;
+    padding: 20px;
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
+  }
+
+  .calendarDayTitle,
+  .calendarSessionTitle {
+    font-size: var(--font-size-sm);
+  }
+
+  .calendarTimeline {
+    display: none;
   }
 }

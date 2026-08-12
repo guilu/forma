@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Badge } from '../components/Badge';
 import { BodyFigure } from '../components/BodyFigure';
@@ -294,7 +294,7 @@ function renderContent(
 
   return (
     <div className={styles.layout}>
-      <div className={styles.main}>
+      <div className={styles.todayArea}>
         <TodaySessionCard
           day={today}
           mark={mark}
@@ -302,14 +302,24 @@ function renderContent(
           openDetail={openDetail}
           openTraining={openTraining}
         />
+      </div>
+      <div className={styles.summaryArea}>
+        <WeeklySummary days={state.week.days} />
+      </div>
+      <div className={styles.calendarArea}>
         <WeeklyCalendar days={state.week.days} openDetail={openDetail} />
+      </div>
+      <div className={styles.tabletPair}>
+        <WeeklyDistribution days={state.week.days} />
         <StatsRow days={state.week.days} />
+      </div>
+      <div className={styles.muscleArea}>
         <MuscleGroupsSection />
       </div>
-      <div className={styles.side}>
-        <WeeklySummary days={state.week.days} />
-        <WeeklyDistribution days={state.week.days} />
+      <div className={styles.streakArea}>
         <StreakCard />
+      </div>
+      <div className={styles.historyArea}>
         <WeeklyHistoryCard />
       </div>
     </div>
@@ -413,7 +423,7 @@ function TodaySessionCard({
               value={completed}
               max={Math.max(planned, 1)}
               label={`${completed} de ${planned} sesiones completadas hoy`}
-              size={110}
+              size={128}
             >
               <span className={styles.ringPercent}>{percent}%</span>
             </ProgressRing>
@@ -423,7 +433,7 @@ function TodaySessionCard({
             </p>
           </div>
           <div className={styles.todayFigures}>
-            <BodyFigure view="front" variant="strength" active size={132} />
+            <BodyFigure view="front" variant="strength" active size={150} />
           </div>
         </div>
       </div>
@@ -439,6 +449,20 @@ function WeeklyCalendar({
   readonly openDetail: (target: DetailTarget) => void;
 }) {
   const todayEnum = todayDayOfWeek();
+  const todayRef = useRef<HTMLLIElement>(null);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      const today = todayRef.current;
+      const calendar = today?.parentElement;
+
+      if (!today || !calendar || calendar.scrollWidth <= calendar.clientWidth) return;
+
+      today.scrollIntoView({ behavior: 'instant', inline: 'center', block: 'nearest' });
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   return (
     <Card title="Calendario semanal" headingLevel={2}>
@@ -446,6 +470,7 @@ function WeeklyCalendar({
         {days.map((day) => (
           <li
             key={day.dayOfWeek}
+            ref={day.dayOfWeek === todayEnum ? todayRef : undefined}
             className={[styles.calendarDay, day.dayOfWeek === todayEnum ? styles.calendarToday : '']
               .filter(Boolean)
               .join(' ')}
@@ -479,6 +504,16 @@ function WeeklyCalendar({
                         size={64}
                       />
                       <StatusPill kind="training" value={session.status} />
+                      <span
+                        className={styles.calendarSessionProgress}
+                        role="progressbar"
+                        aria-label={`Progreso de ${session.title}`}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={session.status === 'COMPLETED' ? 100 : 0}
+                      >
+                        <span style={{ width: session.status === 'COMPLETED' ? '100%' : '0%' }} />
+                      </span>
                     </button>
                   </li>
                 ))}
