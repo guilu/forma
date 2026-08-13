@@ -5,10 +5,18 @@ import { describe, expect, it, vi } from 'vitest';
 import { useAuth } from '../auth/AuthContext';
 import { axe } from '../test/axe';
 import { LandingPage } from './LandingPage';
+import landingCss from './LandingPage.module.css?raw';
 
 vi.mock('../auth/AuthContext', () => ({ useAuth: vi.fn() }));
 
 describe('LandingPage', () => {
+  it('uses the branded gradient and the shared primary radius in the closing CTA', () => {
+    expect(landingCss).toMatch(
+      /\.accentText\s*{[^}]*background-image:\s*linear-gradient\(to right, rgb\(18 122 95\), #ff9800, rgb\(125 237 92\)\);[^}]*background-clip:\s*text;[^}]*color:\s*transparent;/s,
+    );
+    expect(landingCss).toMatch(/\.ctaPill\s*{[^}]*border-radius:\s*var\(--radius-lg\);/s);
+  });
+
   it('renders the complete public composition from the FOR-185 design', () => {
     mockLanding({ status: 'anonymous' });
     renderLanding();

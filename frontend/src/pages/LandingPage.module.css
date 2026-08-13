@@ -152,7 +152,9 @@
 }
 
 .accentText {
-  color: var(--color-accent-strong);
+  background-image: linear-gradient(to right, rgb(18 122 95), #ff9800, rgb(125 237 92));
+  background-clip: text;
+  color: transparent;
 }
 
 .accentStrong {
@@ -216,9 +218,9 @@
   width: 100%;
 }
 
-/* Template: the closing CTA is a full pill in the display size. */
+/* The closing CTA keeps the display size while sharing the primary radius. */
 .ctaPill {
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-lg);
   padding: var(--space-5) var(--space-8);
   font-size: var(--font-size-headline-lg);
   line-height: var(--line-height-headline-lg);
