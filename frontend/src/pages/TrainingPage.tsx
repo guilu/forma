@@ -4,7 +4,6 @@ import { Badge } from '../components/Badge';
 import { BodyFigure } from '../components/BodyFigure';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
-import { EmptyState } from '../components/EmptyState';
 import { NoPlanEmptyState } from '../components/NoPlanEmptyState';
 import { ErrorState } from '../components/ErrorState';
 import { Icon, type IconName } from '../components/Icon';
@@ -16,7 +15,8 @@ import { ProgressRing } from '../components/ProgressRing';
 import { StatusPill } from '../components/StatusPill';
 import { WidgetLoading } from '../components/WidgetLoading';
 import { ApiRequestError } from '../api/client';
-import { getStreak, getWeeklyHistory, type Streak, type WeeklyHistory } from '../api/progress';
+import { getStreak, type Streak } from '../api/progress';
+import { getProfile } from '../api/profile';
 import {
   getMuscleMap,
   getTrainingWeek,
@@ -53,15 +53,9 @@ import styles from './TrainingPage.module.css';
  *       …/sessions/{id}/muscle-map}) and is wired into the strength session
  *       detail below, normalized for display by {@code trainingMuscleLabels}
  *       (spec FOR-53: the frontend, not the backend, owns that
- *       normalization). The weekly-history bars and "RACHA ACTUAL" (this
- *       comment's own prior gap note) are now wired by FOR-143 to the FOR-139
- *       {@code GET …/progress/streak} / {@code GET …/progress/weekly-history}
- *       endpoints ({@link StreakCard}, {@link WeeklyHistoryCard} below) — both
- *       are a real **nutrition meal-log** consistency signal, not a training
- *       one (no per-date training-completion history exists to back a
- *       training streak or per-week training bar; spec FOR-139: "do NOT
- *       fabricate per-date training completion" — surfaced here exactly as
- *       the backend documents it, per ADR-001).
+ *       normalization). "RACHA ACTUAL" is wired by FOR-143 to the FOR-139
+ *       {@code GET …/progress/streak} endpoint. It is a real nutrition
+ *       meal-log consistency signal, not a fabricated training streak.
  *   <li>Weekly summary counts (planned vs. completed sessions) are *not* the
  *       FOR-28 {@code WeeklyTrainingSummary} — that calculation is
  *       application-layer only and is not exposed over HTTP. This page tallies
@@ -77,6 +71,8 @@ type State =
   | { readonly status: 'loading' }
   | { readonly status: 'error' }
   | { readonly status: 'ready'; readonly week: TrainingWeek };
+
+type AnatomySex = 'male' | 'female';
 
 interface DetailTarget {
   readonly dayOfWeek: string;
@@ -125,14 +121,6 @@ const PLACEHOLDER = {
     calories: '2.120',
     caloriesDelta: '↑12% vs semana anterior',
   },
-  muscleGroups: [
-    { label: 'Pecho', quality: 'Excelente' },
-    { label: 'Espalda', quality: 'Bueno' },
-    { label: 'Hombros', quality: 'Excelente' },
-    { label: 'Brazos', quality: 'Bueno' },
-    { label: 'Piernas', quality: 'Bueno' },
-    { label: 'Core', quality: 'Excelente' },
-  ],
 } as const;
 
 /** JS `Date#getDay()` (0 = Sunday) indexed to the backend's `dayOfWeek` names. */
@@ -201,6 +189,7 @@ export function TrainingPage() {
   const notify = useNotify();
   const navigate = useNavigate();
   const [state, setState] = useState<State>({ status: 'loading' });
+  const [anatomySex, setAnatomySex] = useState<AnatomySex>('male');
   const [actionError, setActionError] = useState<string | undefined>(undefined);
   const [pendingId, setPendingId] = useState<string | undefined>(undefined);
   const [detailTarget, setDetailTarget] = useState<DetailTarget | undefined>(undefined);
@@ -218,6 +207,20 @@ export function TrainingPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    let active = true;
+    getProfile()
+      .then((profile) => {
+        if (active) setAnatomySex(profile.sex === 'FEMALE' ? 'female' : 'male');
+      })
+      .catch(() => {
+        // The existing male presentation remains the safe fallback when the profile is unavailable.
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function mark(sessionId: string, status: SessionStatus) {
     setActionError(undefined);
@@ -301,6 +304,7 @@ export function TrainingPage() {
         (session) => navigate(`/app/training/${encodeURIComponent(session.id)}`),
         load,
         selectedDay,
+        anatomySex,
       )}
 
       {detailTarget && (
@@ -323,6 +327,7 @@ function renderContent(
   openTraining: (session: TrainingSession) => void,
   reload: () => void,
   selectedDay: string,
+  anatomySex: AnatomySex,
 ) {
   if (state.status === 'loading') {
     return <LoadingState message="Cargando tu semana…" />;
@@ -354,26 +359,21 @@ function renderContent(
           pendingId={pendingId}
           openDetail={openDetail}
           openTraining={openTraining}
+          anatomySex={anatomySex}
         />
       </div>
       <div className={styles.summaryArea}>
         <WeeklySummary days={state.week.days} />
       </div>
       <div className={styles.calendarArea}>
-        <WeeklyCalendar days={state.week.days} openDetail={openDetail} />
+        <WeeklyCalendar days={state.week.days} openDetail={openDetail} anatomySex={anatomySex} />
       </div>
       <div className={styles.tabletPair}>
         <WeeklyDistribution days={state.week.days} />
         <StatsRow days={state.week.days} />
       </div>
-      <div className={styles.muscleArea}>
-        <MuscleGroupsSection />
-      </div>
       <div className={styles.streakArea}>
         <StreakCard />
-      </div>
-      <div className={styles.historyArea}>
-        <WeeklyHistoryCard />
       </div>
     </div>
   );
@@ -386,6 +386,7 @@ function TodaySessionCard({
   pendingId,
   openDetail,
   openTraining,
+  anatomySex,
 }: {
   readonly day: TrainingDay | undefined;
   readonly dayOfWeek: string;
@@ -393,6 +394,7 @@ function TodaySessionCard({
   readonly pendingId: string | undefined;
   readonly openDetail: (target: DetailTarget) => void;
   readonly openTraining: (session: TrainingSession) => void;
+  readonly anatomySex: AnatomySex;
 }) {
   // "Entrenamiento de hoy" only while the card really is showing today; once
   // the arrows move it, the heading has to say which day is on screen.
@@ -422,6 +424,8 @@ function TodaySessionCard({
 
   const { completed, planned } = tally(day.sessions);
   const percent = planned > 0 ? Math.round((completed / planned) * 100) : 0;
+  const visualSession =
+    day.sessions.find((session) => session.kind === 'STRENGTH') ?? day.sessions[0];
 
   return (
     <Card title={title} headingLevel={2} className={styles.todayCard}>
@@ -520,7 +524,13 @@ function TodaySessionCard({
             </p>
           </div>
           <div className={styles.todayFigures}>
-            <BodyFigure view="front" variant="strength" active size={150} />
+            <BodyFigure
+              view={visualSession.bodyView.toLowerCase() as 'front' | 'back'}
+              variant={visualSession.kind === 'RUNNING' ? 'running' : 'strength'}
+              sex={anatomySex}
+              active={visualSession.status === 'COMPLETED'}
+              size={150}
+            />
           </div>
         </div>
       </div>
@@ -568,24 +578,34 @@ function SessionFocus({ sessionId }: { readonly sessionId: string }) {
 function WeeklyCalendar({
   days,
   openDetail,
+  anatomySex,
 }: {
   readonly days: readonly TrainingDay[];
   readonly openDetail: (target: DetailTarget) => void;
+  readonly anatomySex: AnatomySex;
 }) {
   const todayEnum = todayDayOfWeek();
   const todayRef = useRef<HTMLLIElement>(null);
 
   useEffect(() => {
-    const frame = requestAnimationFrame(() => {
+    const centerToday = () => {
       const today = todayRef.current;
       const calendar = today?.parentElement;
 
       if (!today || !calendar || calendar.scrollWidth <= calendar.clientWidth) return;
 
       today.scrollIntoView({ behavior: 'instant', inline: 'center', block: 'nearest' });
-    });
+    };
 
-    return () => cancelAnimationFrame(frame);
+    const frame = requestAnimationFrame(centerToday);
+    const calendar = todayRef.current?.parentElement;
+    const images = [...(calendar?.querySelectorAll('img') ?? [])];
+    images.forEach((image) => image.addEventListener('load', centerToday, { once: true }));
+
+    return () => {
+      cancelAnimationFrame(frame);
+      images.forEach((image) => image.removeEventListener('load', centerToday));
+    };
   }, []);
 
   return (
@@ -595,6 +615,7 @@ function WeeklyCalendar({
           <li
             key={day.dayOfWeek}
             ref={day.dayOfWeek === todayEnum ? todayRef : undefined}
+            aria-current={day.dayOfWeek === todayEnum ? 'date' : undefined}
             className={[styles.calendarDay, day.dayOfWeek === todayEnum ? styles.calendarToday : '']
               .filter(Boolean)
               .join(' ')}
@@ -623,6 +644,8 @@ function WeeklyCalendar({
                         {stripKindPrefix(session.title)}
                       </span>
                       <BodyFigure
+                        view={session.bodyView.toLowerCase() as 'front' | 'back'}
+                        sex={anatomySex}
                         variant={session.kind === 'RUNNING' ? 'running' : 'strength'}
                         active={session.status === 'COMPLETED'}
                         size={64}
@@ -890,40 +913,6 @@ function StatsRow({ days }: { readonly days: readonly TrainingDay[] }) {
   );
 }
 
-/**
- * "Grupos musculares trabajados esta semana" (FOR-164 mockup). Placeholder
- * quality labels + figures for now (the FOR-136 muscle map is per-session; a
- * real weekly aggregate would need a fetch per strength session — deferred).
- * Swap {@link BodyFigure} for the real asset pack later.
- */
-function MuscleGroupsSection() {
-  return (
-    <Card title="Grupos musculares trabajados esta semana" headingLevel={2}>
-      <div className={styles.muscleGroups}>
-        <ul className={styles.muscleGroupGrid}>
-          {PLACEHOLDER.muscleGroups.map((group) => (
-            <li key={group.label} className={styles.muscleGroup}>
-              <span className={styles.muscleGroupName}>{group.label}</span>
-              <BodyFigure variant="strength" active size={84} />
-              <span className={styles.muscleGroupQuality}>{group.quality}</span>
-            </li>
-          ))}
-        </ul>
-        <div className={styles.encourage}>
-          <span className={styles.encourageIcon} aria-hidden="true">
-            🏆
-          </span>
-          <p className={styles.encourageTitle}>¡Sigue así!</p>
-          <p className={styles.encourageText}>Vas por buen camino para alcanzar tu objetivo.</p>
-          <Link className={styles.encourageLink} to="/app/progress">
-            Ver progreso
-          </Link>
-        </div>
-      </div>
-    </Card>
-  );
-}
-
 type StreakState =
   | { readonly status: 'loading' }
   | { readonly status: 'error' }
@@ -990,87 +979,6 @@ function StreakCard() {
           </p>
         </div>
       )}
-    </Card>
-  );
-}
-
-type WeeklyHistoryState =
-  | { readonly status: 'loading' }
-  | { readonly status: 'error' }
-  | { readonly status: 'ready'; readonly history: WeeklyHistory };
-
-const WEEKLY_HISTORY_ERROR = 'No se pudo cargar el historial semanal. Inténtalo de nuevo.';
-
-function formatWeekLabel(weekStart: string): string {
-  return new Date(`${weekStart}T00:00:00`).toLocaleDateString('es-ES', {
-    day: 'numeric',
-    month: 'short',
-  });
-}
-
-/**
- * Weekly-history bars widget (FOR-143, mockup docs/3-entrenamiento.png),
- * wired to the FOR-139 {@code GET /api/v1/progress/weekly-history} endpoint.
- * Fetches independently, same rationale as {@link StreakCard}. Renders one
- * bar per week exactly as returned — including all-zero weeks, which stay
- * visible bars, never hidden (spec FOR-139: "still present in the series,
- * never omitted-as-error"). Only a genuinely empty series (defensive; the
- * backend documents it never happens) falls back to {@link EmptyState}.
- */
-function WeeklyHistoryCard() {
-  const [state, setState] = useState<WeeklyHistoryState>({ status: 'loading' });
-  const [reloadToken, setReloadToken] = useState(0);
-
-  useEffect(() => {
-    let active = true;
-    setState({ status: 'loading' });
-    getWeeklyHistory()
-      .then((history) => {
-        if (active) {
-          setState({ status: 'ready', history });
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setState({ status: 'error' });
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, [reloadToken]);
-
-  return (
-    <Card title="Historial semanal" headingLevel={2}>
-      <p className={styles.widgetCaption}>Días con registro de nutrición por semana.</p>
-      {state.status === 'loading' && <WidgetLoading label="Cargando historial semanal…" rows={3} />}
-      {state.status === 'error' && (
-        <ErrorState message={WEEKLY_HISTORY_ERROR} onRetry={() => setReloadToken((n) => n + 1)} />
-      )}
-      {state.status === 'ready' &&
-        (state.history.weeks.length === 0 ? (
-          <EmptyState variant="filtered" title="Todavía no hay historial semanal." />
-        ) : (
-          <ul className={styles.historyBars} aria-label="Historial semanal de constancia">
-            {state.history.weeks.map((week) => {
-              const ratio = week.planned > 0 ? week.completed / week.planned : 0;
-              return (
-                <li key={week.weekStart} className={styles.historyBarItem}>
-                  <span className={styles.historyBarTrack}>
-                    <span
-                      className={styles.historyBarFill}
-                      style={{ height: `${Math.round(ratio * 100)}%` }}
-                    />
-                  </span>
-                  <span className={styles.historyBarLabel}>{formatWeekLabel(week.weekStart)}</span>
-                  <span className={styles.srOnly}>
-                    {week.completed} de {week.planned} días
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        ))}
     </Card>
   );
 }

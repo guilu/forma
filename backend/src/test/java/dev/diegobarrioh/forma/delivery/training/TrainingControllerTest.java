@@ -21,6 +21,7 @@ import dev.diegobarrioh.forma.application.WeeklyTrainingSchedule.TrainingEntry;
 import dev.diegobarrioh.forma.application.WeeklyTrainingScheduleService;
 import dev.diegobarrioh.forma.application.WeeklyTrainingSummary;
 import dev.diegobarrioh.forma.application.WeeklyTrainingSummaryService;
+import dev.diegobarrioh.forma.domain.BodyView;
 import dev.diegobarrioh.forma.domain.MuscleLoad;
 import dev.diegobarrioh.forma.domain.SessionStatus;
 import dev.diegobarrioh.forma.support.WebMvcAuthTestConfig;
@@ -82,7 +83,8 @@ class TrainingControllerTest {
                             "4.0 km",
                             "PLANNED",
                             null,
-                            null),
+                            null,
+                            BodyView.FRONT),
                         new TrainingEntry(
                             "SATURDAY:STRENGTH",
                             "STRENGTH",
@@ -90,7 +92,8 @@ class TrainingControllerTest {
                             "5 ejercicios",
                             "PLANNED",
                             null,
-                            "PUSH"))),
+                            "PUSH",
+                            BodyView.FRONT))),
                 new TrainingDay(DayOfWeek.FRIDAY, List.of())));
     when(scheduleService.currentWeek()).thenReturn(schedule);
 
@@ -100,6 +103,7 @@ class TrainingControllerTest {
         .andExpect(jsonPath("$.days[0].sessions[0].id").value("SATURDAY:RUNNING"))
         .andExpect(jsonPath("$.days[0].sessions[0].status").value("PLANNED"))
         .andExpect(jsonPath("$.days[0].sessions[0].workoutType").doesNotExist())
+        .andExpect(jsonPath("$.days[0].sessions[0].bodyView").value("FRONT"))
         .andExpect(jsonPath("$.days[0].sessions[1].workoutType").value("PUSH"))
         .andExpect(jsonPath("$.days[1].rest").value(true));
   }

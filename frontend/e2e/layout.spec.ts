@@ -65,6 +65,7 @@ for (const viewport of [PHONE, DESKTOP]) {
       const session = {
         id: 'SUNDAY:STRENGTH',
         kind: 'STRENGTH',
+        bodyView: 'FRONT',
         title: 'Fuerza · Pierna y core',
         detail: '2 ejercicios',
         status: 'COMPLETED',
@@ -152,6 +153,7 @@ test.describe('training on iPad landscape', () => {
                     {
                       id: `${dayOfWeek}:STRENGTH`,
                       kind: 'STRENGTH',
+                      bodyView: dayOfWeek === 'THURSDAY' ? 'BACK' : 'FRONT',
                       title: `Fuerza · Sesión ${index + 1}`,
                       detail: '5 ejercicios',
                       status: index < 3 ? 'COMPLETED' : 'PLANNED',
@@ -212,7 +214,7 @@ test.describe('training on iPad landscape', () => {
       scrollWidth: element.scrollWidth,
     }));
     expect(scrollSize.scrollWidth).toBeGreaterThan(scrollSize.clientWidth);
-    const currentDay = page.getByRole('heading', { name: 'Miércoles', level: 3 }).locator('..');
+    const currentDay = calendarScroller.locator('li[aria-current="date"]');
     const centers = await Promise.all([
       calendarScroller.evaluate((element) => {
         const box = element.getBoundingClientRect();

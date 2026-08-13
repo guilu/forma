@@ -10,7 +10,8 @@ import {
   updateSessionStatus,
   type TrainingWeek,
 } from '../api/training';
-import { getStreak, getWeeklyHistory } from '../api/progress';
+import { getStreak } from '../api/progress';
+import { getProfile } from '../api/profile';
 
 /** TrainingPage calls `useNotify()` (FOR-63), which requires a provider. */
 function renderPage() {
@@ -42,14 +43,15 @@ vi.mock('../api/training', () => ({
 // bottom of this file.
 vi.mock('../api/progress', () => ({
   getStreak: vi.fn(),
-  getWeeklyHistory: vi.fn(),
 }));
+
+vi.mock('../api/profile', () => ({ getProfile: vi.fn() }));
 
 const getWeekMock = vi.mocked(getTrainingWeek);
 const updateMock = vi.mocked(updateSessionStatus);
 const getMuscleMapMock = vi.mocked(getMuscleMap);
 const getStreakMock = vi.mocked(getStreak);
-const getWeeklyHistoryMock = vi.mocked(getWeeklyHistory);
+const getProfileMock = vi.mocked(getProfile);
 
 // Fixed "today" = Monday 2026-07-06, so the MONDAY entry below is always
 // picked up by the today's-session card regardless of when the suite runs.
@@ -64,6 +66,7 @@ const week: TrainingWeek = {
         {
           id: 'MONDAY:STRENGTH',
           kind: 'STRENGTH',
+          bodyView: 'BACK',
           title: 'Fuerza · Empuje',
           detail: '3 ejercicios',
           status: 'PLANNED',
@@ -77,6 +80,7 @@ const week: TrainingWeek = {
         {
           id: 'TUESDAY:RUNNING',
           kind: 'RUNNING',
+          bodyView: 'FRONT',
           title: 'Tirada larga',
           detail: '4.0 km',
           status: 'PLANNED',
@@ -97,7 +101,8 @@ describe('TrainingPage', () => {
     // hang on an unresolved promise.
     getMuscleMapMock.mockResolvedValue({ sessionId: '', muscles: [] });
     getStreakMock.mockReset();
-    getWeeklyHistoryMock.mockReset();
+    getProfileMock.mockReset();
+    getProfileMock.mockResolvedValue({ sex: 'MALE' } as never);
     // Defaults distinct from every other assertion in this file (day names,
     // "N/M" tallies, muscle labels) so pre-existing tests never accidentally
     // match this widget's text.
@@ -105,12 +110,6 @@ describe('TrainingPage', () => {
       currentStreakDays: 4,
       longestStreakDays: 12,
       asOf: '2026-07-06',
-    });
-    getWeeklyHistoryMock.mockResolvedValue({
-      weeks: [
-        { weekStart: '2026-06-22', planned: 7, completed: 5 },
-        { weekStart: '2026-06-29', planned: 7, completed: 7 },
-      ],
     });
     // Only Date is mocked — setTimeout/setInterval stay real so RTL's
     // findBy/waitFor polling keeps working without manually advancing timers.
@@ -148,6 +147,33 @@ describe('TrainingPage', () => {
     expect(
       within(todayCard).getByRole('button', { name: 'Iniciar entrenamiento' }),
     ).toBeInTheDocument();
+    expect(within(todayCard).getByTestId('anatomy-figure')).toHaveAttribute('data-view', 'back');
+    expect(within(todayCard).getByTestId('anatomy-figure')).toHaveAttribute('data-sex', 'male');
+  });
+
+  it('uses the female anatomy asset when the persisted profile is female', async () => {
+    getWeekMock.mockResolvedValue(week);
+    getProfileMock.mockResolvedValue({ sex: 'FEMALE' } as never);
+
+    renderPage();
+
+    const todayCard = (
+      await screen.findByRole('heading', { name: 'Entrenamiento de hoy' })
+    ).closest('section') as HTMLElement;
+    expect(within(todayCard).getByTestId('anatomy-figure')).toHaveAttribute('data-sex', 'female');
+    expect(within(todayCard).getByTestId('anatomy-figure')).toHaveAttribute('data-view', 'back');
+  });
+
+  it('does not render the temporary muscle-groups or weekly-history cards', async () => {
+    getWeekMock.mockResolvedValue(week);
+
+    renderPage();
+    await screen.findByRole('heading', { name: 'Entrenamiento de hoy' });
+
+    expect(
+      screen.queryByRole('heading', { name: 'Grupos musculares trabajados esta semana' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Historial semanal' })).not.toBeInTheDocument();
   });
 
   it('opens the live workout without marking a planned strength session completed', async () => {
@@ -199,6 +225,12 @@ describe('TrainingPage', () => {
     // Each day title nested inside the calendar card stays an <h3> — one
     // level below its now-<h2> "Calendario semanal" container.
     expect(screen.getByRole('heading', { name: 'Lunes', level: 3 })).toBeInTheDocument();
+    const mondayDay = screen.getByRole('heading', { name: 'Lunes', level: 3 }).closest('li');
+    expect(mondayDay).not.toBeNull();
+    expect(within(mondayDay as HTMLElement).getByTestId('anatomy-figure')).toHaveAttribute(
+      'data-view',
+      'back',
+    );
     // Sunday is a rest day: shown, with no session controls for it.
     const sundayHeading = screen.getByText('Domingo');
     const sundayDay = sundayHeading.closest('li');
@@ -429,6 +461,7 @@ describe('TrainingPage', () => {
                 {
                   id: 'MONDAY:RUNNING',
                   kind: 'RUNNING',
+                  bodyView: 'FRONT',
                   title: 'Series',
                   detail: '4.0 km',
                   status: 'PLANNED',
@@ -486,6 +519,7 @@ describe('TrainingPage', () => {
                 {
                   id: 'MONDAY:RUNNING',
                   kind: 'RUNNING',
+                  bodyView: 'FRONT',
                   title: 'Series',
                   detail: '4.0 km',
                   status,
@@ -587,6 +621,7 @@ describe('TrainingPage', () => {
                 {
                   id: 'MONDAY:RUNNING',
                   kind: 'RUNNING',
+                  bodyView: 'FRONT',
                   title: 'Rodaje suave',
                   detail: '3 km',
                   status: 'PLANNED',
@@ -715,84 +750,6 @@ describe('TrainingPage', () => {
       await user.click(within(card).getByRole('button', { name: 'Reintentar' }));
 
       expect(await within(card).findByText('4')).toBeInTheDocument();
-    });
-  });
-
-  describe('weekly-history widget (FOR-143)', () => {
-    it('renders one bar per week with its completed/planned days', async () => {
-      getWeekMock.mockResolvedValue(week);
-      getWeeklyHistoryMock.mockResolvedValue({
-        weeks: [
-          { weekStart: '2026-06-22', planned: 7, completed: 5 },
-          { weekStart: '2026-06-29', planned: 7, completed: 7 },
-        ],
-      });
-
-      renderPage();
-
-      const heading = await screen.findByRole('heading', { name: 'Historial semanal', level: 2 });
-      const card = heading.closest('section') as HTMLElement;
-      expect(await within(card).findByText('5 de 7 días')).toBeInTheDocument();
-      expect(within(card).getAllByRole('listitem')).toHaveLength(2);
-      expect(within(card).getByText('7 de 7 días')).toBeInTheDocument();
-    });
-
-    it('renders zero-valued weeks as visible bars, not an empty/error state', async () => {
-      getWeekMock.mockResolvedValue(week);
-      getWeeklyHistoryMock.mockResolvedValue({
-        weeks: [{ weekStart: '2026-07-06', planned: 7, completed: 0 }],
-      });
-
-      renderPage();
-
-      const heading = await screen.findByRole('heading', { name: 'Historial semanal' });
-      const card = heading.closest('section') as HTMLElement;
-      expect(await within(card).findByText('0 de 7 días')).toBeInTheDocument();
-      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-    });
-
-    it('shows an empty message if the series itself is empty', async () => {
-      getWeekMock.mockResolvedValue(week);
-      getWeeklyHistoryMock.mockResolvedValue({ weeks: [] });
-
-      renderPage();
-
-      const heading = await screen.findByRole('heading', { name: 'Historial semanal' });
-      const card = heading.closest('section') as HTMLElement;
-      expect(await within(card).findByText(/Todavía no hay historial semanal/)).toBeInTheDocument();
-    });
-
-    it('shows a loading state while the weekly-history request resolves', async () => {
-      getWeekMock.mockResolvedValue(week);
-      getWeeklyHistoryMock.mockReturnValue(new Promise(() => {}));
-
-      renderPage();
-
-      // Same rationale as the streak loading test above: wait for the
-      // training week to resolve so the card has actually mounted.
-      await screen.findByRole('heading', { name: 'Calendario semanal' });
-      expect(screen.getByText('Cargando historial semanal…')).toBeInTheDocument();
-    });
-
-    it('shows an error scoped to the weekly-history card and recovers on retry', async () => {
-      getWeekMock.mockResolvedValue(week);
-      getWeeklyHistoryMock.mockRejectedValueOnce(new Error('network'));
-      const user = userEvent.setup();
-
-      renderPage();
-
-      const heading = await screen.findByRole('heading', { name: 'Historial semanal' });
-      const card = heading.closest('section') as HTMLElement;
-      expect(await within(card).findByRole('alert')).toHaveTextContent(
-        'No se pudo cargar el historial semanal',
-      );
-
-      getWeeklyHistoryMock.mockResolvedValue({
-        weeks: [{ weekStart: '2026-06-29', planned: 7, completed: 7 }],
-      });
-      await user.click(within(card).getByRole('button', { name: 'Reintentar' }));
-
-      expect(await within(card).findByText('7 de 7 días')).toBeInTheDocument();
     });
   });
 });

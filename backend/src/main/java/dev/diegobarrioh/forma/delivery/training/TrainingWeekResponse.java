@@ -27,7 +27,8 @@ public record TrainingWeekResponse(List<Day> days) {
       String detail,
       String status,
       String notes,
-      String workoutType) {}
+      String workoutType,
+      String bodyView) {}
 
   /** Maps the composed schedule to its API read model. */
   public static TrainingWeekResponse from(WeeklyTrainingSchedule schedule) {
@@ -48,7 +49,8 @@ public record TrainingWeekResponse(List<Day> days) {
                                         entry.detail(),
                                         entry.status(),
                                         entry.notes(),
-                                        entry.workoutType()))
+                                        entry.workoutType(),
+                                        entry.bodyView().name()))
                             .toList()))
             .toList();
     return new TrainingWeekResponse(days);

@@ -25,6 +25,7 @@ const week: TrainingWeek = {
         {
           id: 'MONDAY:RUNNING',
           kind: 'RUNNING',
+          bodyView: 'FRONT',
           title: 'Running - Intervalos',
           detail: '5 km',
           status: 'COMPLETED',
@@ -38,6 +39,7 @@ const week: TrainingWeek = {
         {
           id: 'TUESDAY:STRENGTH',
           kind: 'STRENGTH',
+          bodyView: 'FRONT',
           title: 'Fuerza - Tren superior',
           detail: '45 min',
           status: 'PLANNED',

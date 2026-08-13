@@ -19,6 +19,7 @@ export interface TrainingSession {
   readonly status: SessionStatus;
   readonly notes?: string;
   readonly workoutType?: string;
+  readonly bodyView: 'FRONT' | 'BACK';
 }
 
 /** One day of the training week; `rest` is true when there are no sessions. */

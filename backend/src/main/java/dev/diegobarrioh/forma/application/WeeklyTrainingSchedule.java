@@ -1,5 +1,6 @@
 package dev.diegobarrioh.forma.application;
 
+import dev.diegobarrioh.forma.domain.BodyView;
 import java.time.DayOfWeek;
 import java.util.List;
 
@@ -32,6 +33,7 @@ public record WeeklyTrainingSchedule(List<TrainingDay> days) {
    * @param status session status: {@code PLANNED}, {@code COMPLETED} or {@code SKIPPED} (FOR-27)
    * @param notes optional completion note, or {@code null}
    * @param workoutType strength workout template type, or {@code null} for running sessions
+   * @param bodyView anatomical side that represents the session's primary muscle focus
    */
   public record TrainingEntry(
       String id,
@@ -40,5 +42,6 @@ public record WeeklyTrainingSchedule(List<TrainingDay> days) {
       String detail,
       String status,
       String notes,
-      String workoutType) {}
+      String workoutType,
+      BodyView bodyView) {}
 }

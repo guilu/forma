@@ -39,6 +39,7 @@ describe('TrainingDetailPage', () => {
             {
               id: 'SUNDAY:STRENGTH',
               kind: 'STRENGTH',
+              bodyView: 'FRONT',
               title: 'Fuerza · Pierna y core',
               detail: '5 ejercicios',
               status: 'COMPLETED',
@@ -173,6 +174,7 @@ describe('TrainingDetailPage', () => {
             {
               id: 'SUNDAY:STRENGTH',
               kind: 'STRENGTH',
+              bodyView: 'FRONT',
               title: 'Fuerza · Pierna y core',
               detail: '5 ejercicios',
               status: 'PLANNED',

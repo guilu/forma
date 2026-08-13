@@ -7,8 +7,18 @@ package dev.diegobarrioh.forma.domain;
  * #FULL_BODY} is part of the model's vocabulary but is not seeded in this story.
  */
 public enum WorkoutType {
-  PUSH,
-  PULL,
-  LEGS,
-  FULL_BODY
+  PUSH(BodyView.FRONT),
+  PULL(BodyView.BACK),
+  LEGS(BodyView.FRONT),
+  FULL_BODY(BodyView.FRONT);
+
+  private final BodyView bodyView;
+
+  WorkoutType(BodyView bodyView) {
+    this.bodyView = bodyView;
+  }
+
+  public BodyView bodyView() {
+    return bodyView;
+  }
 }

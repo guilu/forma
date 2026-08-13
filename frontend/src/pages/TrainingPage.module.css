@@ -113,9 +113,7 @@
 .summaryArea,
 .calendarArea,
 .tabletPair,
-.muscleArea,
-.streakArea,
-.historyArea {
+.streakArea {
   min-width: 0;
 }
 
@@ -336,63 +334,6 @@
   margin: var(--space-2) 0 0;
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
-}
-
-/* Weekly-history bars (FOR-143). */
-.historyBars {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  align-items: flex-end;
-  gap: var(--space-2);
-  height: 8rem;
-}
-
-.historyBarItem {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-1);
-  height: 100%;
-  justify-content: flex-end;
-}
-
-.historyBarTrack {
-  display: flex;
-  align-items: flex-end;
-  width: 100%;
-  max-width: 1.5rem;
-  height: 100%;
-  background-color: var(--color-border);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
-
-.historyBarFill {
-  width: 100%;
-  min-height: 2px;
-  background-color: var(--color-accent);
-  border-radius: var(--radius-sm);
-}
-
-.historyBarLabel {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
-  text-transform: capitalize;
-}
-
-.srOnly {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
 }
 
 .detail {
@@ -722,88 +663,6 @@
   }
 }
 
-/* ── Muscle groups (FOR-164) ────────────────────────────────────────── */
-.muscleGroups {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-4);
-  align-items: stretch;
-}
-
-.muscleGroupGrid {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  flex: 1;
-  min-width: 16rem;
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: var(--space-3);
-}
-
-@media (max-width: 720px) {
-  .muscleGroupGrid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-.muscleGroup {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-1);
-  text-align: center;
-}
-
-.muscleGroupName {
-  font-size: var(--font-size-sm);
-  color: var(--color-text);
-}
-
-.muscleGroupQuality {
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: var(--color-accent-strong);
-}
-
-.encourage {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-1);
-  text-align: center;
-  min-width: 12rem;
-  padding: var(--space-4);
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-}
-
-.encourageIcon {
-  font-size: 1.5rem;
-}
-
-.encourageTitle {
-  margin: 0;
-  font-weight: 700;
-}
-
-.encourageText {
-  margin: 0;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
-}
-
-.encourageLink {
-  margin-top: var(--space-2);
-  padding: var(--space-2) var(--space-4);
-  font-weight: 600;
-  color: var(--color-accent-strong);
-  border: 1px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
-  border-radius: var(--radius-md);
-}
-
 /* ── Weekly summary rows (FOR-164) ──────────────────────────────────── */
 .summaryList {
   list-style: none;
@@ -1052,20 +911,9 @@
     grid-column: 1;
     grid-row: 3;
   }
-
-  .muscleArea {
-    grid-column: 1;
-    grid-row: 4 / span 2;
-  }
-
   .streakArea {
     grid-column: 2;
     grid-row: 3;
-  }
-
-  .historyArea {
-    grid-column: 2;
-    grid-row: 4;
   }
 }
 

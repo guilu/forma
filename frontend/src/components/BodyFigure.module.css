@@ -8,3 +8,11 @@
 .active {
   fill: var(--color-accent);
 }
+
+.anatomy {
+  display: block;
+  flex-shrink: 0;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
