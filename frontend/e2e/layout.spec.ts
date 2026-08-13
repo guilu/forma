@@ -751,52 +751,47 @@ test.describe('glass chrome', () => {
   });
 });
 
-test.describe('landing hero CTAs', () => {
+test.describe('landing hero CTA', () => {
   test.use({ viewport: PHONE });
 
   /**
-   * Stacked on a phone, a CTA stretched edge to edge stops reading as a button
-   * and starts reading as a form field or a banner. The pair is capped and
-   * centred instead, so the gutters make them look like the tappable targets
-   * they are.
+   * On a phone, a CTA stretched edge to edge stops reading as a button and
+   * starts reading as a form field or a banner. It is capped and centred
+   * instead, so the gutters make it look like the tappable target it is.
+   *
+   * <p>The hero used to carry two CTAs and this checked they shared a width and
+   * a left edge. "Ver Demo" is gone — it promised a demo and only scrolled to
+   * the product section — so the pair assertions became the centring check
+   * below, which is what they were really protecting.
    */
-  test('do not span the full width of the phone', async ({ page }) => {
+  test('does not span the full width of the phone', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
-    // El primer CTA lleva al generador de plan desde que existe el embudo: es lo que
-    // se le ofrece a alguien que aún no tiene cuenta.
-    const ctas = page
-      .getByRole('link', { name: 'Crea tu plan gratis' })
-      .or(page.getByRole('link', { name: 'Ver Demo' }));
-    const boxes = await ctas.evaluateAll((links) =>
-      links.map((link) => {
-        const rect = link.getBoundingClientRect();
-        // One client rect per line the label occupies: a narrower button that
-        // wraps its label onto two lines is not the fix we want.
-        const range = document.createRange();
-        range.selectNodeContents(link);
-        const lines = new Set([...range.getClientRects()].map((line) => Math.round(line.top))).size;
-        return { name: link.textContent?.trim() ?? '', width: rect.width, left: rect.left, lines };
-      }),
-    );
+    // El CTA lleva al generador de plan desde que existe el embudo: es lo que se
+    // le ofrece a alguien que aún no tiene cuenta.
+    const cta = page.getByRole('link', { name: 'Crea tu plan gratis' });
+    await expect(cta).toBeVisible();
 
-    expect(boxes.length, 'The hero CTAs were not found').toBe(2);
+    const box = await cta.evaluate((link) => {
+      const rect = link.getBoundingClientRect();
+      // One client rect per line the label occupies: a narrower button that
+      // wraps its label onto two lines is not the fix we want.
+      const range = document.createRange();
+      range.selectNodeContents(link);
+      const lines = new Set([...range.getClientRects()].map((line) => Math.round(line.top))).size;
+      return { width: rect.width, centre: rect.left + rect.width / 2, lines };
+    });
 
-    const maxWidth = PHONE.width * 0.75;
-    for (const box of boxes) {
-      expect(
-        box.width,
-        `"${box.name}" is ${Math.round(box.width)}px wide in a ${PHONE.width}px viewport`,
-      ).toBeLessThanOrEqual(maxWidth);
-      expect(box.lines, `"${box.name}" wraps onto ${box.lines} lines`).toBe(1);
-    }
-
-    // Same width and same left edge: one centred column, not two ragged boxes.
-    const widths = boxes.map((box) => Math.round(box.width));
-    expect(new Set(widths).size, `The CTAs have differing widths: ${widths.join(', ')}`).toBe(1);
-    const lefts = boxes.map((box) => Math.round(box.left));
-    expect(new Set(lefts).size, `The CTAs start at different x: ${lefts.join(', ')}`).toBe(1);
+    expect(
+      box.width,
+      `The hero CTA is ${Math.round(box.width)}px wide in a ${PHONE.width}px viewport`,
+    ).toBeLessThanOrEqual(PHONE.width * 0.75);
+    expect(box.lines, `The hero CTA wraps onto ${box.lines} lines`).toBe(1);
+    expect(
+      Math.abs(box.centre - PHONE.width / 2),
+      `The hero CTA is centred at ${Math.round(box.centre)}px, not ${PHONE.width / 2}px`,
+    ).toBeLessThanOrEqual(1);
   });
 });
 

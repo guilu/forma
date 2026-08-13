@@ -47,8 +47,7 @@
 .featureCard,
 .productFrame,
 .productBadge,
-.ctaCard,
-.ctaGlass {
+.ctaCard {
   background-color: color-mix(in srgb, var(--color-surface) 70%, transparent);
   backdrop-filter: blur(12px);
   border: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
@@ -179,14 +178,12 @@
 }
 
 /*
- * Stacked on a phone, a CTA stretched edge to edge stops reading as a button
- * and starts reading as a form field. Cap the pair at a thumb-friendly width
- * and centre it, so the gutters keep them looking tappable. Both share the cap
- * rather than sizing to their own label, so the stack reads as one column.
- * Released at the row breakpoint below, where they size to their content.
+ * On a phone, a CTA stretched edge to edge stops reading as a button and starts
+ * reading as a form field. Cap it at a thumb-friendly width and centre it, so
+ * the gutters keep it looking tappable. Released at the row breakpoint below,
+ * where it sizes to its content.
  */
-.heroActions .ctaPrimary,
-.heroActions .ctaGlass {
+.heroActions .ctaPrimary {
   width: min(100%, 15rem);
   /* The cap sizes the box now, so the wide inline padding of the row layout
      would only eat into the label and wrap it onto a second line. */
@@ -228,26 +225,6 @@
   font-weight: 900;
   letter-spacing: -0.01em;
   text-transform: uppercase;
-}
-
-.ctaGlass {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  padding: var(--space-4) var(--space-8);
-  border-radius: var(--radius-lg);
-  border-color: var(--color-border);
-  color: var(--color-text);
-  font-family: var(--font-heading);
-  font-size: var(--font-size-headline-md);
-  font-weight: 600;
-  text-align: center;
-  transition: background-color 0.3s ease;
-}
-
-.ctaGlass:hover {
-  background-color: color-mix(in srgb, var(--color-surface-variant) 50%, transparent);
 }
 
 .socialProof {
@@ -786,9 +763,9 @@
     justify-content: center;
   }
 
-  /* Side by side there is no full-bleed to avoid: let each label size itself. */
-  .heroActions .ctaPrimary,
-  .heroActions .ctaGlass {
+  /* With the row's own gutters there is no full-bleed to avoid: let the label
+     size itself. */
+  .heroActions .ctaPrimary {
     width: auto;
     padding-inline: var(--space-8);
   }

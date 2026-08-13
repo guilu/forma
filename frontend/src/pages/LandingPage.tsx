@@ -105,9 +105,6 @@ export function LandingPage() {
                 <Link className={styles.ctaPrimary} to="/plan">
                   Crea tu plan gratis
                 </Link>
-                <a className={styles.ctaGlass} href="#producto">
-                  Ver Demo
-                </a>
               </div>
               <div className={styles.socialProof}>
                 <div className={styles.avatars} aria-hidden="true">
