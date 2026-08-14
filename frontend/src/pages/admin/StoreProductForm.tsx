@@ -275,8 +275,8 @@ export function StoreProductForm({
             setImageState('idle');
           }}
         />
-        <button
-          type="button"
+        <Button
+          variant="surface"
           className={styles.readImage}
           // Nothing to read without a page to read it from.
           disabled={url.trim() === '' || imageState === 'reading' || pending}
@@ -284,7 +284,7 @@ export function StoreProductForm({
         >
           <Icon name="image" size={16} />
           {imageState === 'reading' ? 'Leyendo…' : 'Obtener imagen'}
-        </button>
+        </Button>
       </div>
       {imageState === 'none' && (
         <p className={styles.hint}>Esa página no publica ninguna imagen. Puedes pegar una URL.</p>

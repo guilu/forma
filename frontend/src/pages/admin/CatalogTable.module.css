@@ -64,38 +64,6 @@
    delete should not look alike anywhere, and three bare glyphs in a row made the
    destructive one the easiest to hit by accident.
    ui-guidelines: 44px minimum touch target. */
-.rowEdit,
-.rowDelete {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 44px;
-  min-height: 36px;
-  padding: 0 var(--space-2);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-}
-
-.rowEdit {
-  color: var(--color-accent-strong);
-  background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
-}
-
-.rowEdit:hover {
-  background-color: color-mix(in srgb, var(--color-accent) 22%, transparent);
-}
-
-.rowDelete {
-  color: var(--color-danger);
-  background-color: color-mix(in srgb, var(--color-danger) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent);
-}
-
-.rowDelete:hover {
-  background-color: color-mix(in srgb, var(--color-danger) 18%, transparent);
-}
-
 /* The open row and its panel read as one block lifted out of the list. */
 .openRow > td {
   background-color: color-mix(in srgb, var(--color-accent) 8%, transparent);
@@ -251,34 +219,14 @@
   min-height: 44px;
 }
 
-.detailEdit,
-.detailDelete {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  min-height: 44px;
-  font: inherit;
+/* `Button` (soft, plus `tone="danger"` for the delete) owns the treatment. The
+   detail panel runs at the small type scale, which the shared button does not. */
+.detailAction {
   font-size: var(--font-size-sm);
-  font-weight: 600;
-  border-radius: var(--radius-md);
-  cursor: pointer;
 }
 
 /* Tinted fills rather than solid ones: neither action is the page's primary
    call, and two solid buttons side by side would compete with "+ Alimento". */
-.detailEdit {
-  color: var(--color-accent-strong);
-  background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
-}
-
-.detailDelete {
-  color: var(--color-danger);
-  background-color: color-mix(in srgb, var(--color-danger) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent);
-}
-
 /* Photo and name on one line, so a row keeps its height whether or not the shop
    gave us a picture. */
 .nameCell {

@@ -1,4 +1,5 @@
 import { Icon } from '../../components/Icon';
+import { IconButton } from '../../components/IconButton';
 import styles from './Pagination.module.css';
 
 /**
@@ -26,29 +27,29 @@ export function Pagination({ page, pageCount, onChange }: PaginationProps) {
   }
   return (
     <nav className={styles.pagination} aria-label="Paginación del catálogo">
-      <button
-        type="button"
-        className={styles.step}
-        aria-label="Página anterior"
+      <IconButton
+        variant="surface"
+        size="lg"
+        label="Página anterior"
         disabled={page === 0}
         onClick={() => onChange(page - 1)}
       >
         <Icon name="chevron" size={18} className={styles.back} />
-      </button>
+      </IconButton>
       {/* Polite, not assertive: the page number changing is a confirmation, not
           an interruption — the rows underneath already changed. */}
       <span className={styles.status} aria-live="polite">
         {`Página ${page + 1} de ${pageCount}`}
       </span>
-      <button
-        type="button"
-        className={styles.step}
-        aria-label="Página siguiente"
+      <IconButton
+        variant="surface"
+        size="lg"
+        label="Página siguiente"
         disabled={page >= pageCount - 1}
         onClick={() => onChange(page + 1)}
       >
         <Icon name="chevron" size={18} />
-      </button>
+      </IconButton>
     </nav>
   );
 }

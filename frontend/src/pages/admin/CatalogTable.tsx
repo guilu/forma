@@ -1,5 +1,7 @@
 import { Fragment, type ReactNode } from 'react';
+import { Button } from '../../components/Button';
 import { Icon } from '../../components/Icon';
+import { IconButton } from '../../components/IconButton';
 import styles from './CatalogTable.module.css';
 
 /**
@@ -250,25 +252,26 @@ export function CatalogTable<T>({
                         )}
                         <div className={styles.detailActions}>
                           {extraActions?.(row)}
-                          <button
-                            type="button"
-                            className={styles.detailEdit}
+                          <Button
+                            variant="soft"
+                            className={styles.detailAction}
                             aria-label={`Editar ${nameOf(row)}`}
                             onClick={() => onEdit(row)}
                           >
                             <Icon name="edit" size={16} />
                             Editar
-                          </button>
+                          </Button>
                           {onDelete && (
-                            <button
-                              type="button"
-                              className={styles.detailDelete}
+                            <Button
+                              variant="soft"
+                              tone="danger"
+                              className={styles.detailAction}
                               aria-label={`Eliminar ${nameOf(row)}`}
                               onClick={() => onDelete(row)}
                             >
                               <Icon name="trash" size={16} />
                               Eliminar
-                            </button>
+                            </Button>
                           )}
                         </div>
                       </div>
@@ -332,23 +335,22 @@ export function CatalogTable<T>({
             <td>
               <div className={styles.rowActions}>
                 {extraActions?.(row)}
-                <button
-                  type="button"
-                  className={styles.rowEdit}
-                  aria-label={`Editar ${nameOf(row)}`}
+                <IconButton
+                  variant="soft"
+                  label={`Editar ${nameOf(row)}`}
                   onClick={() => onEdit(row)}
                 >
                   <Icon name="edit" size={18} />
-                </button>
+                </IconButton>
                 {onDelete && (
-                  <button
-                    type="button"
-                    className={styles.rowDelete}
-                    aria-label={`Eliminar ${nameOf(row)}`}
+                  <IconButton
+                    variant="soft"
+                    tone="danger"
+                    label={`Eliminar ${nameOf(row)}`}
                     onClick={() => onDelete(row)}
                   >
                     <Icon name="trash" size={18} />
-                  </button>
+                  </IconButton>
                 )}
               </div>
             </td>

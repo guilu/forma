@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { TextField } from '../../components/FormField';
+import { Button } from '../../components/Button';
 import { Icon } from '../../components/Icon';
 import { LoadingState } from '../../components/LoadingState';
 import { ApiRequestError } from '../../api/client';
@@ -147,10 +148,15 @@ export function ImportFromStore({ store, food, onCancel, onPicked }: ImportFromS
             placeholder="almendra natural"
             onChange={(event) => setQuery(event.target.value)}
           />
-          <button type="submit" className={styles.searchButton} disabled={query.trim() === ''}>
+          <Button
+            type="submit"
+            variant="accent"
+            className={styles.searchButton}
+            disabled={query.trim() === ''}
+          >
             <Icon name="search" size={16} />
             Buscar
-          </button>
+          </Button>
         </form>
       )}
 
@@ -187,23 +193,23 @@ export function ImportFromStore({ store, food, onCancel, onPicked }: ImportFromS
                     .join(' · ')}
                 </p>
               </div>
-              <button
-                type="button"
+              <Button
+                variant="soft"
                 className={styles.pick}
                 aria-label={`Usar ${suggestion.name}`}
                 onClick={() => onPicked(toDraft(suggestion))}
               >
                 Usar
-              </button>
+              </Button>
             </li>
           ))}
         </ul>
       )}
 
       <div className={styles.actions}>
-        <button type="button" className={styles.cancel} onClick={onCancel}>
+        <Button variant="secondary" onClick={onCancel}>
           Cancelar
-        </button>
+        </Button>
       </div>
     </div>
   );
