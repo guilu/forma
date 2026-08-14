@@ -117,22 +117,6 @@
   margin-left: auto;
 }
 
-.iconButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background-color: var(--color-card);
-  color: var(--color-text-muted);
-}
-
-.iconButton:hover {
-  color: var(--color-text);
-}
-
 /* Positioning context for the account menu below. */
 .account {
   position: relative;
@@ -254,24 +238,26 @@
   color: var(--color-accent-strong);
 }
 
-/* Template: outlined pill in the accent colour, tinting on hover — the public
- * bar's only call to action. */
+/*
+ * The public bar's login action: `Button`'s `surface` variant, so it carries
+ * the same card background, neutral border and muted-to-full-contrast label as
+ * the theme toggle beside it and the two read as one pair.
+ *
+ * `composes` rather than `<ButtonLink variant="surface">` because the overrides
+ * below are the point: the bar is a 40px row, not the 44px touch row a
+ * page-level button uses, and the label is bar chrome (label type, weight 500)
+ * rather than a button's 700. `composes` guarantees the base rules are ordered
+ * before these; a `className` on `ButtonLink` would be an equal-specificity
+ * class whose winner depends on bundle order.
+ */
 .loginLink {
-  padding: var(--space-2) var(--space-5);
-  border: 1px solid var(--color-accent);
-  border-radius: var(--radius-lg);
-  color: var(--color-accent-strong);
+  composes: button surface from '../components/Button.module.css';
+  min-height: 40px;
+  padding: 0 var(--space-5);
   font-size: var(--font-size-label-md);
   font-weight: 500;
   letter-spacing: var(--letter-spacing-label-md);
   text-decoration: none;
-  transition:
-    background-color 0.2s ease,
-    color 0.2s ease;
-}
-
-.loginLink:hover {
-  background-color: color-mix(in srgb, var(--color-accent) 10%, transparent);
 }
 
 /*
@@ -284,8 +270,17 @@
   display: none;
 }
 
-/* The hamburger only exists below `md`, where the anchors collapse. */
-.menuButton {
+/*
+ * The hamburger only exists below `md`, where the anchors collapse.
+ *
+ * Doubled selector on purpose. This class is handed to `IconButton`, whose own
+ * `.iconButton` rule sets `display: inline-flex` at the same (0,1,0)
+ * specificity — between two CSS modules the winner would come down to bundle
+ * order, which is not something to leave to chance for a rule that decides
+ * whether the control is on screen at all. Repeating the class raises this to
+ * (0,2,0) so it wins outright, in both directions.
+ */
+.menuButton.menuButton {
   display: none;
 }
 
@@ -430,7 +425,8 @@
     text-align: center;
   }
 
-  .menuButton {
+  /* Doubled to match the base rule's specificity — see the note there. */
+  .menuButton.menuButton {
     display: inline-flex;
   }
 

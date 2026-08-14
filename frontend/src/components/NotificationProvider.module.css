@@ -67,19 +67,11 @@
   font-size: var(--font-size-sm);
 }
 
+/* Surface, size and hover come from `IconButton` (ghost, sm). All that is left
+   here is where it sits in the toast's row. */
 .dismiss {
   flex-shrink: 0;
-  padding: 0 var(--space-1);
-  color: var(--color-text-muted);
-  font-size: var(--font-size-lg);
-  line-height: 1;
-  background: none;
-  border: none;
-  cursor: pointer;
-}
-
-.dismiss:hover {
-  color: var(--color-text);
+  align-self: flex-start;
 }
 
 .srOnly {

@@ -1,6 +1,7 @@
 import { Link, NavLink } from 'react-router-dom';
 import { NAV_ITEMS } from '../app/navigation';
 import { Icon } from '../components/Icon';
+import { IconButton } from '../components/IconButton';
 import { useIntegrations } from '../integrations/IntegrationsContext';
 import styles from './Sidebar.module.css';
 
@@ -54,15 +55,14 @@ export function Sidebar({
 
   return (
     <aside className={styles.sidebar} data-expanded={expanded}>
-      <button
-        type="button"
+      <IconButton
         className={styles.tabletToggle}
-        aria-label={expanded ? 'Contraer navegación' : 'Expandir navegación'}
+        label={expanded ? 'Contraer navegación' : 'Expandir navegación'}
         aria-expanded={expanded}
         onClick={() => onExpandedChange?.(!expanded)}
       >
         <Icon name="menu" />
-      </button>
+      </IconButton>
       {/*
        * FOR-185: every entry is a product section now. "Ajustes" used to be
        * pinned apart at the bottom via a `settings` grouping flag; it moved to

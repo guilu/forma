@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Brand } from '../components/Brand';
 import { Icon } from '../components/Icon';
+import { IconButton } from '../components/IconButton';
 import { ThemeToggleIcon } from '../components/ThemeToggleIcon';
 import { useTheme } from '../theme/ThemeContext';
 import { useAuth } from '../auth/AuthContext';
@@ -52,10 +53,8 @@ export function Topbar() {
   }
 
   const themeToggle = (
-    <button
-      className={styles.iconButton}
-      type="button"
-      aria-label={isDark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
+    <IconButton
+      label={isDark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
       onClick={() => setMode(isDark ? 'light' : 'dark')}
     >
       {/*
@@ -65,7 +64,7 @@ export function Topbar() {
        * sun into the crescent — the treatment the burger below already gets.
        */}
       <ThemeToggleIcon icon={isDark ? 'sun' : 'moon'} />
-    </button>
+    </IconButton>
   );
 
   /**
@@ -106,9 +105,9 @@ export function Topbar() {
         {isAuthenticated ? (
           <div className={styles.actions}>
             {themeToggle}
-            <button className={styles.iconButton} type="button" aria-label="Notificaciones">
+            <IconButton label="Notificaciones">
               <Icon name="bell" />
-            </button>
+            </IconButton>
             {/*
              * The account collapses into a single avatar trigger plus a menu,
              * rather than laying the email and a logout button out in the bar.
@@ -233,10 +232,9 @@ export function Topbar() {
             <div className={styles.publicSide}>
               {themeToggle}
               {loginLink(styles.loginLinkBar)}
-              <button
-                className={[styles.iconButton, styles.menuButton].join(' ')}
-                type="button"
-                aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'}
+              <IconButton
+                className={styles.menuButton}
+                label={menuOpen ? 'Cerrar menú' : 'Abrir menú'}
                 aria-expanded={menuOpen}
                 onClick={() => setMenuOpen((open) => !open)}
               >
@@ -258,7 +256,7 @@ export function Topbar() {
                   <span className={styles.burgerBar} />
                   <span className={styles.burgerBar} />
                 </span>
-              </button>
+              </IconButton>
             </div>
           </>
         )}

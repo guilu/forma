@@ -9,6 +9,7 @@ import {
 } from 'react';
 import type { ReactNode } from 'react';
 import { Icon, type IconName } from './Icon';
+import { IconButton } from './IconButton';
 import styles from './NotificationProvider.module.css';
 
 /**
@@ -140,14 +141,15 @@ function Toast({
         <span className={styles.srOnly}>{TYPE_LABEL[type]}: </span>
         {message}
       </p>
-      <button
-        type="button"
+      <IconButton
+        label={`Descartar notificación: ${message}`}
+        variant="ghost"
+        size="sm"
         className={styles.dismiss}
         onClick={() => onDismiss(id)}
-        aria-label={`Descartar notificación: ${message}`}
       >
-        ×
-      </button>
+        <Icon name="cross" size={16} />
+      </IconButton>
     </div>
   );
 }

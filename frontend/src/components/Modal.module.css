@@ -48,20 +48,5 @@
   font-size: var(--font-size-lg);
 }
 
-.close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  font-size: 1.5rem;
-  line-height: 1;
-  color: var(--color-text-muted);
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-sm);
-}
-
-.close:hover {
-  color: var(--color-text);
-}
+/* The close affordance is `IconButton` (ghost, sm) — see Modal.tsx. Its own
+   surface, size and hover live there, so nothing is declared for it here. */
