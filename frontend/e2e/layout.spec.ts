@@ -973,3 +973,59 @@ test.describe('page headers on a phone', () => {
     expect(secondStartsAfter, 'The date is not to the right of the title').toBe(true);
   });
 });
+
+/**
+ * The public bar renders its login action twice — once for the desktop bar and
+ * once inside the mobile disclosure sheet — and hides the copy that does not
+ * belong at the current width. That only works while the hiding rule outranks
+ * whatever `display` the shared button treatment brings with it.
+ *
+ * <p>It stopped working once `.loginLink` began composing `button` from
+ * `Button.module.css`: that rule sets `display: inline-flex` at the same
+ * (0,1,0) specificity and lands later in the bundle, so both copies rendered at
+ * every width. jsdom cannot catch this — it resolves neither the cascade across
+ * modules nor the media query — which is exactly why the check lives here.
+ */
+test.describe('the public bar login action', () => {
+  /**
+   * The bar only wears its public face when nobody is signed in, and the shared
+   * `stubApi` answers `/auth/me` with a session — so this overrides that one
+   * route with a 401. Registered after `stubApi` in the outer `beforeEach`, and
+   * Playwright tries the most recently added route first.
+   */
+  test.beforeEach(async ({ page }) => {
+    await page.route('**/api/v1/auth/me', (route) =>
+      route.fulfill({ status: 401, contentType: 'application/json', body: '{}' }),
+    );
+  });
+
+  /**
+   * Counts the copies actually laid out, not the ones in the DOM: both are
+   * always rendered and the one that does not belong at this width is hidden
+   * with `display: none`, so a DOM count would pass no matter what the cascade
+   * resolved to — which is the very thing this is here to check.
+   */
+  function visibleLogins(page: Page) {
+    return page.getByRole('link', { name: 'Iniciar Sesión' }).filter({ visible: true });
+  }
+
+  test('lays out exactly one copy on a desktop bar', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    await page.goto('/');
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+
+    await expect(visibleLogins(page)).toHaveCount(1);
+  });
+
+  test('lays out exactly one copy on a phone, inside the menu', async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await page.goto('/');
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+
+    // Closed sheet: the bar carries only the theme toggle and the hamburger.
+    await expect(visibleLogins(page)).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Abrir menú' }).click();
+    await expect(visibleLogins(page)).toHaveCount(1);
+  });
+});

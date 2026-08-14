@@ -266,7 +266,15 @@
  * keeps it in the disclosure sheet, so the bar carries only the toggle and the
  * hamburger. Exactly one is laid out at any width.
  */
-.loginLinkSheet {
+/*
+ * Doubled selectors, same reason as the hamburger below. `.loginLink` composes
+ * `button` from Button.module.css, which sets `display: inline-flex` at the
+ * same (0,1,0) specificity — and lands later in the bundle, so a plain
+ * `.loginLinkSheet { display: none }` lost outright and BOTH copies rendered,
+ * at every width. Repeating the class takes these to (0,2,0) so the one that
+ * decides which copy is laid out wins regardless of bundle order.
+ */
+.loginLinkSheet.loginLinkSheet {
   display: none;
 }
 
@@ -416,11 +424,12 @@
   /* Swap which copy of the login action is live: out of the bar, into the
    * sheet. The bar is then just the brand on the left and the toggle plus the
    * hamburger on the right. */
-  .loginLinkBar {
+  /* Doubled to clear `.button`'s own display — see the note on the base rules. */
+  .loginLinkBar.loginLinkBar {
     display: none;
   }
 
-  .loginLinkSheet {
+  .loginLinkSheet.loginLinkSheet {
     display: inline-flex;
     text-align: center;
   }
