@@ -99,6 +99,94 @@ Initial dashboard should include:
 - Shopping budget
 - Weekly insight
 
+## Controls
+
+Three families, told apart by what they express — not by how they look. Two of
+them look alike on purpose, which is exactly why the split has to be explicit.
+
+### `Button` — actions
+
+An emphasis ladder. Pick the rung by asking what the *screen* is for, not what
+the button does:
+
+| Variant | Use for | Looks like |
+| --- | --- | --- |
+| `primary` | The single action the screen exists for. One per screen. | Brand gradient + glow |
+| `accent` | A strong action that is not that one. | Flat accent fill |
+| `soft` | An action inside a card, accent-coloured but below the card's data. | Accent wash + accent border |
+| `surface` | Chrome sitting on the page background, beside icon buttons. | Card fill + neutral border |
+| `secondary` | Neutral alternative, e.g. the "Cancelar" beside a confirm. | Neutral outline, transparent |
+| `ghost` | Lowest emphasis, in dense or repeated rows. | No border, no fill |
+| `destructive` | The confirm of a destructive dialog. | Danger gradient + glow |
+
+Two `primary` buttons on one screen means neither is primary. That is the rule
+`accent` exists to relieve.
+
+`tone="danger"` is a separate axis: it recolours the quiet variants (`soft`,
+`surface`, `secondary`, `ghost`) into the danger ramp, for a delete that lives
+in a table row or a detail panel. `destructive` stays a variant of its own — it
+is the loud confirm, not a tone.
+
+### `ButtonLink` — a navigation that looks like a button
+
+Same classes, straight from `Button.module.css`, on a real `<Link>`. Use it
+whenever the control navigates: a `<button>` that calls `navigate()` throws away
+middle-click, open-in-new-tab and the browser's own link handling, and a screen
+reader announces it as an action rather than a destination.
+
+If the page also needs to *resize* the button, use
+`composes: button <variant> from '…/Button.module.css'` in its own CSS module
+instead. `composes` guarantees the base rules are ordered before the overrides;
+a `className` is an equal-specificity class whose winner depends on bundle
+order. The same applies to an external `<a href>`, which cannot be a
+`ButtonLink` at all.
+
+### `IconButton` — actions with no label
+
+The square glyph control: topbar controls, modal close, table row actions, date
+and quantity steppers. `label` is required and becomes the accessible name,
+because an icon-only control has no text to name it. `tone="danger"` tints a
+row deletion — presentation only, it does not replace a confirmation.
+
+Three independent axes, because the app genuinely needs the combinations:
+
+| Prop | Values | Pick by |
+| --- | --- | --- |
+| `variant` | `surface` (default), `soft`, `ghost` | How much the control should stand off its background. `soft` is the same accent wash as `Button`'s. |
+| `size` | `sm` (32), `md` (default, 40), `lg` (44) | `sm` in dense rows, `md` in chrome, `lg` for a page-level action needing the full touch target. |
+| `tone` | `default`, `danger` | Whether the action destroys something. |
+
+### `Chip` — selection
+
+Reports whether an option is **chosen**. Category tabs, chart ranges, pickers.
+
+A selected `Chip` and `Button variant="accent"` are nearly identical to the eye
+and mean opposite things: one reports state, the other invites an action. Never
+substitute one for the other.
+
+The appearance is shared across groupings, the accessible state is not. Pass
+`semantics` to match the wrapper the caller renders:
+
+| Grouping | `semantics` | Publishes |
+| --- | --- | --- |
+| `role="tablist"` | `tab` | `aria-selected` |
+| `role="radiogroup"` | `radio` | `aria-checked` |
+| Standalone filter | `toggle` (default) | `aria-pressed` |
+
+`size="md"` (default) is a page-level filter row and keeps the 44px touch
+target; `size="sm"` is for a group inside a card, next to the data it filters.
+
+### Not in these families
+
+Text links, clickable cards (`choiceCard`, calendar days) and list rows are
+their own thing. They are interactive but they are not buttons, and forcing
+them into these components would misreport them.
+
+Every one of these is a shared component under `frontend/src/components/`. A
+new button-like control drawn in a page's own CSS module is a bug — that is how
+the app ended up with the same pill hand-drawn in three places under three
+names.
+
 ## Interaction style
 
 Forma should feel direct and calm:

@@ -40,7 +40,17 @@ describe('DesignSystemExamples', () => {
     expect(screen.getByRole('heading', { name: 'Design system', level: 1 })).toBeInTheDocument();
     // Every card here is a direct sibling of the page <h1>, so per FOR-112
     // each must render as <h2> to avoid skipping a level.
-    expect(screen.getByRole('heading', { name: 'Buttons', level: 2 })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Buttons — acciones', level: 2 }),
+    ).toBeInTheDocument();
+    // The three control families each get their own card, so the showcase
+    // documents the split rather than the appearance alone.
+    expect(
+      screen.getByRole('heading', { name: 'IconButton — acciones sin etiqueta', level: 2 }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Chip — selección, no acción', level: 2 }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Badges y estados', level: 2 })).toBeInTheDocument();
     expect(
       screen.getByRole('heading', { name: 'Campos de formulario', level: 2 }),

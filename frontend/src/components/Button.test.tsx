@@ -9,7 +9,15 @@ import { Button, type ButtonVariant } from './Button';
  * and announced correctly.
  */
 describe('Button', () => {
-  const variants: ButtonVariant[] = ['primary', 'secondary', 'ghost', 'destructive'];
+  const variants: ButtonVariant[] = [
+    'primary',
+    'accent',
+    'soft',
+    'surface',
+    'secondary',
+    'ghost',
+    'destructive',
+  ];
 
   it.each(variants)('renders the %s variant as a native button', (variant) => {
     render(<Button variant={variant}>Guardar</Button>);
@@ -68,5 +76,17 @@ describe('Button', () => {
     render(<Button>Cancelar</Button>);
 
     expect(screen.getByRole('button', { name: 'Cancelar' })).toHaveAttribute('type', 'button');
+  });
+
+  it('keeps the danger tone visual only — it announces nothing extra', () => {
+    render(
+      <Button variant="soft" tone="danger">
+        Eliminar
+      </Button>,
+    );
+
+    const button = screen.getByRole('button', { name: 'Eliminar' });
+    expect(button).toBeEnabled();
+    expect(button).not.toHaveAttribute('aria-pressed');
   });
 });
