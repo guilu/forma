@@ -381,15 +381,24 @@
   --color-accent: #63e662;
   /*
    * FOR-185: the text-safe counterpart, same hue family darkened until it
-   * clears AA -- #47a946 is ~4.99:1 on --color-bg. This is what fixes the
-   * regression the brighter brand accent introduced for links, emphasis, the
-   * sidebar's active item and icon glyphs; the previous accent (#006d42) had
-   * been carrying both roles at ~5.96:1.
+   * clears AA -- #16801f is ~4.70:1 on --color-bg and ~5.07:1 on --color-card.
+   * This is what fixes the regression the brighter brand accent introduced for
+   * links, emphasis, the sidebar's active item and icon glyphs; the previous
+   * accent (#006d42) had been carrying both roles at ~5.96:1.
+   *
+   * Both surfaces are checked, not just the page: this token paints labels on
+   * white cards too (Button's `soft`, IconButton's `soft`, Chip's hover), and a
+   * value that clears AA on --color-bg can still fail on --color-card.
+   *
+   * It is deliberately NOT the brighter #47a946 that briefly sat here: that is
+   * ~2.77:1 on --color-bg, below even the 3:1 large-text bar, which is the
+   * exact regression this token exists to prevent. #16801f is the closest
+   * colour to it (ΔE ~15) that clears AA on both surfaces with margin to spare.
    *
    * The dark theme deliberately declares the same value for both tokens, so
    * component CSS can name the text role unconditionally.
    */
-  --color-accent-strong: #47a946;
+  --color-accent-strong: #16801f;
   /*
    * Flipped from #ffffff to the light theme's own ink. White on #4caf50 is
    * ~2.78:1 -- unreadable for the ~10 components that paint text or icons on

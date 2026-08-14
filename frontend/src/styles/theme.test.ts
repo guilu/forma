@@ -50,6 +50,37 @@ function tokenValue(block: string, name: string): string | null {
   return match ? match[1].trim() : null;
 }
 
+/**
+ * WCAG relative luminance / contrast ratio for the `#rrggbb` literals this file
+ * reads out of `theme.css`.
+ *
+ * Written out here rather than pulled from a colour library: the whole point of
+ * this suite is to check the tokens without a browser, and a dependency added
+ * for four lines of arithmetic is a dependency to keep patched forever. The
+ * formula is WCAG 2.1 §1.4.3 verbatim.
+ */
+function relativeLuminance(hex: string): number {
+  const value = hex.trim().replace('#', '');
+  if (!/^[0-9a-f]{6}$/i.test(value)) {
+    throw new Error(`Not a #rrggbb literal: "${hex}"`);
+  }
+  const channels = [0, 2, 4]
+    .map((offset) => Number.parseInt(value.slice(offset, offset + 2), 16) / 255)
+    .map((channel) => (channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+}
+
+function contrastRatio(foreground: string | null, background: string | null): number {
+  if (foreground === null || background === null) {
+    throw new Error('Missing token — cannot measure contrast against nothing');
+  }
+  const [lighter, darker] = [
+    relativeLuminance(foreground),
+    relativeLuminance(background),
+  ].sort((a, b) => b - a);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
 /** All `--foo` custom property names declared in a CSS block. */
 function tokenNames(block: string): string[] {
   return [...block.matchAll(/(--[a-z0-9-]+):/gi)].map((m) => m[1]);
@@ -105,10 +136,10 @@ describe('theme.css design tokens (FOR-163 reconciliation)', () => {
     it('splits the text-safe accent out from the fill accent (FOR-185)', () => {
       // The selected green is a fill colour: ~1.38:1 on the light page background,
       // far below the AA 4.5:1 bar. Accent-coloured *text* uses the darkened
-      // counterpart instead (~4.99:1). Dark needs no split — its accent is
+      // counterpart instead (~4.70:1). Dark needs no split — its accent is
       // already has strong contrast on its own background — but declares the token anyway
       // so component CSS can name the text role unconditionally.
-      expect(tokenValue(light, '--color-accent-strong')).toBe('#3e7810');
+      expect(tokenValue(light, '--color-accent-strong')).toBe('#16801f');
       expect(tokenValue(dark, '--color-accent-strong')).toBe(tokenValue(dark, '--color-accent'));
       expect(tokenValue(light, '--color-accent-strong')).not.toBe(
         tokenValue(light, '--color-accent'),
@@ -138,7 +169,7 @@ describe('theme.css design tokens (FOR-163 reconciliation)', () => {
     });
 
     it('pairs bright reference fills with text-safe light-theme variants', () => {
-      expect(tokenValue(light, '--color-accent-strong')).toBe('#3e7810');
+      expect(tokenValue(light, '--color-accent-strong')).toBe('#16801f');
       expect(tokenValue(light, '--color-info-strong')).toBe('#1f71ae');
       expect(tokenValue(light, '--color-warning')).toBe('#9a5700');
       expect(tokenValue(light, '--color-danger')).toBe('#b63b33');
@@ -149,6 +180,54 @@ describe('theme.css design tokens (FOR-163 reconciliation)', () => {
       for (const referenceColour of ['#53adf3', '#f19c2b', '#ec5c51']) {
         expect(dark).not.toContain(referenceColour);
       }
+    });
+
+    /*
+     * The rules above pin literal hexes, which is what catches drift back to a
+     * pre-reconciliation value. What they cannot catch is a *new* value that
+     * nobody measured: `--color-accent-strong` was once hand-edited to a
+     * brighter #47a946 (~2.77:1, below even the 3:1 large-text bar) and the
+     * only complaint was a hex mismatch, which reads as "the test is stale"
+     * rather than "the change is unreadable".
+     *
+     * So these compute the ratio instead of comparing a string. They keep
+     * passing when somebody picks a different green on purpose, and fail only
+     * when the token stops doing the job it exists for.
+     */
+    it('keeps every text-role token above AA on both light surfaces', () => {
+      // Text tokens are painted on the page *and* on cards; a value can clear
+      // AA on --color-bg and still fail on the white --color-card underneath a
+      // soft button or a chip label.
+      const surfaces = [
+        ['--color-bg', tokenValue(light, '--color-bg')],
+        ['--color-card', tokenValue(light, '--color-card')],
+      ] as const;
+      const textRoles = [
+        '--color-accent-strong',
+        '--color-info-strong',
+        '--color-warning',
+        '--color-danger',
+      ];
+
+      for (const role of textRoles) {
+        for (const [surfaceName, surface] of surfaces) {
+          const ratio = contrastRatio(tokenValue(light, role), surface);
+          expect(
+            ratio,
+            `${role} on ${surfaceName}: ${ratio.toFixed(2)}:1 is below the AA 4.5:1 bar`,
+          ).toBeGreaterThanOrEqual(4.5);
+        }
+      }
+    });
+
+    it('keeps ink on an accent fill readable', () => {
+      // The other direction: --color-accent-contrast is what gets painted *on*
+      // the bright fill (skip link, PlanBanner, a selected Chip).
+      const ratio = contrastRatio(
+        tokenValue(light, '--color-accent-contrast'),
+        tokenValue(light, '--color-accent'),
+      );
+      expect(ratio, `accent ink: ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5);
     });
   });
 
