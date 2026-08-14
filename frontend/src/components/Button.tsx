@@ -2,13 +2,7 @@ import type { ButtonHTMLAttributes } from 'react';
 import styles from './Button.module.css';
 
 export type ButtonVariant =
-  | 'primary'
-  | 'accent'
-  | 'soft'
-  | 'surface'
-  | 'secondary'
-  | 'ghost'
-  | 'destructive';
+  'primary' | 'accent' | 'soft' | 'surface' | 'secondary' | 'ghost' | 'destructive';
 
 export type ButtonTone = 'default' | 'danger';
 

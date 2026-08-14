@@ -23,8 +23,10 @@ export type ChipSize = 'sm' | 'md';
  * `role="radiogroup"` wrapper and holding the state — so it names the semantics
  * here, and this component publishes exactly the one matching attribute.
  */
-interface ChipProps
-  extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'type' | 'role' | 'aria-pressed'> {
+interface ChipProps extends Omit<
+  ButtonHTMLAttributes<HTMLButtonElement>,
+  'type' | 'role' | 'aria-pressed'
+> {
   readonly selected: boolean;
   readonly semantics?: ChipSemantics;
   readonly size?: ChipSize;

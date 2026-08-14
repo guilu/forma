@@ -74,10 +74,9 @@ function contrastRatio(foreground: string | null, background: string | null): nu
   if (foreground === null || background === null) {
     throw new Error('Missing token — cannot measure contrast against nothing');
   }
-  const [lighter, darker] = [
-    relativeLuminance(foreground),
-    relativeLuminance(background),
-  ].sort((a, b) => b - a);
+  const [lighter, darker] = [relativeLuminance(foreground), relativeLuminance(background)].sort(
+    (a, b) => b - a,
+  );
   return (lighter + 0.05) / (darker + 0.05);
 }
 

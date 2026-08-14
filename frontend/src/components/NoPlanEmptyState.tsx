@@ -16,9 +16,7 @@ export function NoPlanEmptyState() {
     <EmptyState
       title="No existe ningún plan planificado."
       description="Crea uno y verás aquí tus entrenamientos, tus comidas y tu lista de la compra."
-      action={
-        <ButtonLink to="/plan">Crea tu plan gratis</ButtonLink>
-      }
+      action={<ButtonLink to="/plan">Crea tu plan gratis</ButtonLink>}
     />
   );
 }
