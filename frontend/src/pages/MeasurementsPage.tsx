@@ -3,10 +3,12 @@ import { BodyMuscleMap } from '../components/BodyMuscleMap';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { ChartContainer } from '../components/ChartContainer';
+import { Chip } from '../components/Chip';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
 import { Icon } from '../components/Icon';
+import { IconButton } from '../components/IconButton';
 import { LineChart, type ChartPoint } from '../components/LineChart';
 import { LoadingState } from '../components/LoadingState';
 import { MeasurementForm } from '../components/MeasurementForm';
@@ -256,18 +258,16 @@ function MeasurementsDashboard({ measurements, activeTab, setActiveTab, reload }
     <>
       <div className={styles.tabs} role="tablist" aria-label="Secciones de mediciones">
         {TABS.map((tab) => (
-          <button
+          <Chip
             key={tab.key}
-            type="button"
-            role="tab"
+            semantics="tab"
+            selected={activeTab === tab.key}
             id={`tab-${tab.key}`}
-            aria-selected={activeTab === tab.key}
             aria-controls={`panel-${tab.key}`}
-            className={styles.tab}
             onClick={() => setActiveTab(tab.key)}
           >
             {tab.label}
-          </button>
+          </Chip>
         ))}
       </div>
 
@@ -429,15 +429,14 @@ function WeightEvolutionChart({ measurements }: { readonly measurements: BodyMea
         ranges.length > 1 ? (
           <div className={styles.rangeSelector} role="group" aria-label="Rango del gráfico">
             {ranges.map((range) => (
-              <button
+              <Chip
                 key={range.key}
-                type="button"
-                className={styles.rangeButton}
-                aria-pressed={range.key === active.key}
+                size="sm"
+                selected={range.key === active.key}
                 onClick={() => setSelectedRange(range.key)}
               >
                 {range.label}
-              </button>
+              </Chip>
             ))}
           </div>
         ) : undefined
@@ -544,18 +543,19 @@ function HistoryTable({
                       the table does not have, and every row would repeat the
                       same word. The accessible name names the row's date, so
                       it is never just "Eliminar" out of context. */}
-                  <button
-                    type="button"
-                    className={styles.deleteRow}
+                  <IconButton
+                    variant="ghost"
+                    tone="danger"
+                    size="lg"
                     disabled={!m.id}
-                    aria-label={`Eliminar la medición del ${formatDate(m.measuredAt)}`}
+                    label={`Eliminar la medición del ${formatDate(m.measuredAt)}`}
                     onClick={() => {
                       setError(undefined);
                       setTarget(m);
                     }}
                   >
                     <Icon name="trash" size={18} />
-                  </button>
+                  </IconButton>
                 </td>
               </tr>
             ))}

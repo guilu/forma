@@ -75,22 +75,6 @@
   gap: var(--space-2);
 }
 
-.tab {
-  padding: var(--space-2) var(--space-4);
-  font-weight: 600;
-  color: var(--color-text-muted);
-  background: none;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  min-height: 44px;
-}
-
-.tab[aria-selected='true'] {
-  color: var(--color-accent-contrast);
-  background-color: var(--color-accent);
-  border-color: var(--color-accent);
-}
-
 /* The item table lives inside a Card surface (no visible title). */
 .tableCard {
   display: flex;
@@ -219,28 +203,11 @@
   color: var(--color-text);
 }
 
+/* Surface, size, hover and press come from `IconButton` (surface, sm). Only the
+   stepper's own glyph sizing is left: its label is a "+"/"−" character rather
+   than an SVG, so it needs a type size the icon variants never do. */
 .stepperButton {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  min-width: 28px;
-  font-weight: 600;
-  line-height: 1;
-  color: var(--color-text-muted);
-  background: none;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-}
-
-.stepperButton:hover:not(:disabled) {
-  color: var(--color-text);
-  border-color: var(--color-accent);
-}
-
-.stepperButton:disabled {
-  opacity: 0.5;
+  font-size: var(--font-size-lg);
 }
 
 .unit {
@@ -262,21 +229,14 @@
 }
 
 /* Edit + link-out share a compact square affordance. */
+/*
+ * The provider link-out. It is a real `<a href>` opening in a new tab, so it
+ * cannot be an `IconButton` — but it sits next to one in the same row and must
+ * match it exactly, so the treatment is composed from that source rather than
+ * restated here.
+ */
 .actionButton {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  color: var(--color-accent-strong);
-  background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
-  border-radius: var(--radius-sm);
-}
-
-.actionButton:hover {
-  background-color: color-mix(in srgb, var(--color-accent) 22%, transparent);
-  border-color: var(--color-accent);
+  composes: iconButton soft default sm from '../components/IconButton.module.css';
 }
 
 /* Checked toggle styled as the mockup's filled green "done" square. */
@@ -343,19 +303,11 @@
 }
 
 /* Full-width footer CTA (visual only). */
+/* `Button`'s flat accent, stretched to the card width — the footer affordance
+   spans the list it closes. */
 .fullListButton {
-  margin-top: var(--space-2);
-  padding: var(--space-3) var(--space-4);
   width: 100%;
-  font-weight: 600;
-  color: var(--color-accent-contrast);
-  background-color: var(--color-accent);
-  border: none;
-  border-radius: var(--radius-md);
-}
-
-.fullListButton:hover {
-  background-color: color-mix(in srgb, var(--color-accent) 88%, black);
+  margin-top: var(--space-2);
 }
 
 .editForm {

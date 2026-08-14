@@ -1,10 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
+import { Chip } from '../components/Chip';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
 import { Icon } from '../components/Icon';
+import { IconButton } from '../components/IconButton';
 import { LoadingState } from '../components/LoadingState';
 import { MetricCard } from '../components/MetricCard';
 import { Modal } from '../components/Modal';
@@ -355,16 +357,14 @@ function renderContent(
           in the list (FOR-106), plus "Todas" first. */}
       <div className={styles.tabs} role="tablist" aria-label="Categorías">
         {tabs.map((tab) => (
-          <button
+          <Chip
             key={tab.key}
-            type="button"
-            role="tab"
-            aria-selected={tab.key === selectedCategory}
-            className={styles.tab}
+            semantics="tab"
+            selected={tab.key === selectedCategory}
             onClick={() => onSelectCategory(tab.key)}
           >
             {tab.label}
-          </button>
+          </Chip>
         ))}
       </div>
 
@@ -440,27 +440,27 @@ function renderContent(
                         and independent from price availability. */}
                     <span className={styles.quantityStepper}>
                       {item.catalogued && (
-                        <button
-                          type="button"
+                        <IconButton
+                          size="sm"
                           className={styles.stepperButton}
-                          aria-label={`Disminuir cantidad de ${item.productName}`}
+                          label={`Disminuir cantidad de ${item.productName}`}
                           disabled={item.quantity <= 1 || pendingId === item.id || regenerating}
                           onClick={() => onChangeQuantity(item, -1)}
                         >
                           −
-                        </button>
+                        </IconButton>
                       )}
                       <span className={styles.quantityValue}>{item.quantity}</span>
                       {item.catalogued && (
-                        <button
-                          type="button"
+                        <IconButton
+                          size="sm"
                           className={styles.stepperButton}
-                          aria-label={`Aumentar cantidad de ${item.productName}`}
+                          label={`Aumentar cantidad de ${item.productName}`}
                           disabled={pendingId === item.id || regenerating}
                           onClick={() => onChangeQuantity(item, 1)}
                         >
                           +
-                        </button>
+                        </IconButton>
                       )}
                     </span>
 
@@ -475,14 +475,14 @@ function renderContent(
                     <span className={styles.itemActions}>
                       {/* Edit product price/URL (FOR-36). */}
                       {item.catalogued && (
-                        <button
-                          type="button"
-                          className={styles.actionButton}
+                        <IconButton
+                          variant="soft"
+                          size="sm"
+                          label={`Editar producto ${item.productName}`}
                           onClick={() => onEdit(item)}
-                          aria-label={`Editar producto ${item.productName}`}
                         >
                           <Icon name="edit" size={16} />
-                        </button>
+                        </IconButton>
                       )}
                       {/* Provider link-out (FOR-108/FOR-109/FOR-118): a real
                           link opening in a new tab; omitted (not disabled) when
@@ -518,9 +518,9 @@ function renderContent(
 
           {/* Full-list CTA — visual only (FOR-164 mockup): every item is already
               rendered, so this is a static footer affordance, not a paginator. */}
-          <button type="button" className={styles.fullListButton}>
+          <Button variant="accent" className={styles.fullListButton}>
             Ver lista completa ({items.length} productos)
-          </button>
+          </Button>
         </Card>
       )}
     </>

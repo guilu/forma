@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Button } from '../../components/Button';
+import { Chip } from '../../components/Chip';
 import { SelectField, TextField } from '../../components/FormField';
 import { useNotify } from '../../components/NotificationProvider';
 import { ApiRequestError } from '../../api/client';
@@ -157,24 +158,22 @@ export function LogMealForm({
       )}
 
       <div className={styles.shape} role="radiogroup" aria-label="Qué se registra">
-        <button
-          type="button"
-          role="radio"
-          aria-checked={shape === 'catalog'}
-          className={shape === 'catalog' ? styles.shapeActive : styles.shapeButton}
+        <Chip
+          semantics="radio"
+          selected={shape === 'catalog'}
+          className={styles.shapeButton}
           onClick={() => setShape('catalog')}
         >
           Del catálogo
-        </button>
-        <button
-          type="button"
-          role="radio"
-          aria-checked={shape === 'free'}
-          className={shape === 'free' ? styles.shapeActive : styles.shapeButton}
+        </Chip>
+        <Chip
+          semantics="radio"
+          selected={shape === 'free'}
+          className={styles.shapeButton}
           onClick={() => setShape('free')}
         >
           Escribir los macros
-        </button>
+        </Chip>
       </div>
 
       <SelectField

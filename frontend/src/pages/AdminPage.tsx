@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from '../components/Button';
+import { Chip } from '../components/Chip';
 import { CategoriesPanel } from './admin/CategoriesPanel';
 import { FoodsPanel } from './admin/FoodsPanel';
 import { RecipesPanel } from './admin/RecipesPanel';
@@ -75,18 +76,16 @@ export function AdminPage() {
 
       <div className={styles.tabs} role="tablist" aria-label="Catálogos">
         {TABS.map((candidate) => (
-          <button
+          <Chip
             key={candidate.key}
-            type="button"
-            role="tab"
+            semantics="tab"
+            selected={candidate.key === active}
             id={`tab-${candidate.key}`}
-            aria-selected={candidate.key === active}
             aria-controls={`panel-${candidate.key}`}
-            className={candidate.key === active ? styles.tabActive : styles.tab}
             onClick={() => openPanel(candidate.key)}
           >
             {candidate.label}
-          </button>
+          </Chip>
         ))}
       </div>
 
