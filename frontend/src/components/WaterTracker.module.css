@@ -62,30 +62,15 @@
   gap: var(--space-1);
 }
 
+/*
+ * Surface, size, hover and disabled come from `IconButton` (surface, sm). Only
+ * the glyph size is left: the labels are "+"/"−" characters rather than SVGs.
+ *
+ * The hover rule that used to live here pointed at `--color-text-primary` and
+ * `--color-accent, #2563eb`; neither token exists in theme.css, so it fell
+ * through to a hardcoded BLUE in a green app.
+ */
 .action {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--color-text-secondary);
-  font: inherit;
   font-size: var(--font-size-lg);
-  line-height: 1;
-  cursor: pointer;
-  /* No `nowrap`: with `flex: 1` it stops the button shrinking below its label, and two of them in a
-     narrow dashboard column push the whole page past the viewport. The layout check caught it. */
 }
 
-.action:hover:not(:disabled) {
-  border-color: var(--color-accent, #2563eb);
-  color: var(--color-text-primary);
-}
-
-.action:disabled {
-  opacity: 0.6;
-  cursor: default;
-}

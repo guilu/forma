@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { Button } from './Button';
 import { ApiRequestError } from '../api/client';
 import { createBodyMeasurement, type BodyMeasurement } from '../api/bodyMeasurements';
 import styles from './MeasurementForm.module.css';
@@ -157,13 +158,13 @@ export function MeasurementForm({ onCreated, onCancel }: MeasurementFormProps) {
 
       <div className={styles.actions}>
         {onCancel && (
-          <button className={styles.cancel} type="button" onClick={onCancel} disabled={pending}>
+          <Button variant="secondary" onClick={onCancel} disabled={pending}>
             Cancelar
-          </button>
+          </Button>
         )}
-        <button className={styles.submit} type="submit" disabled={pending}>
+        <Button variant="accent" type="submit" disabled={pending}>
           {pending ? 'Guardando…' : 'Guardar medición'}
-        </button>
+        </Button>
       </div>
     </form>
   );

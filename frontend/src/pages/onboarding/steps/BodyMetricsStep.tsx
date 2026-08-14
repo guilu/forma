@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { ButtonLink } from '../../../components/ButtonLink';
 import { MeasurementForm } from '../../../components/MeasurementForm';
 import type { BodyMetricsChoice, OnboardingAnswers } from '../onboardingStorage';
 import styles from './steps.module.css';
@@ -76,9 +76,9 @@ export function BodyMetricsStep({ value, onChange }: BodyMetricsStepProps) {
           <p className={styles.hint}>
             Puedes conectar Withings ahora o más tarde desde Ajustes → Integraciones.
           </p>
-          <Link className={styles.linkButton} to="/app/settings/integrations">
+          <ButtonLink variant="secondary" className={styles.linkButton} to="/app/settings/integrations">
             Ir a Integraciones
-          </Link>
+          </ButtonLink>
         </div>
       )}
     </div>

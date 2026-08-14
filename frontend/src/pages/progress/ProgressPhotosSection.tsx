@@ -5,6 +5,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
 import { Icon } from '../../components/Icon';
+import { IconButton } from '../../components/IconButton';
 import { WidgetLoading } from '../../components/WidgetLoading';
 import { useNotify } from '../../components/NotificationProvider';
 import { ApiRequestError } from '../../api/client';
@@ -285,14 +286,15 @@ function ProgressPhotoThumbnail({
       )}
       <figcaption className={styles.caption}>
         <span>{dateLabel}</span>
-        <button
-          type="button"
-          className={styles.deleteButton}
-          aria-label={`Eliminar foto del ${dateLabel}`}
+        <IconButton
+          variant="ghost"
+          tone="danger"
+          size="sm"
+          label={`Eliminar foto del ${dateLabel}`}
           onClick={onDelete}
         >
           <Icon name="trash" size={16} />
-        </button>
+        </IconButton>
       </figcaption>
     </figure>
   );

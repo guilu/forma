@@ -17,6 +17,7 @@ import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { ErrorState } from '../components/ErrorState';
 import { Icon } from '../components/Icon';
+import { IconButton } from '../components/IconButton';
 import { LoadingState } from '../components/LoadingState';
 import { ProgressRing } from '../components/ProgressRing';
 import { StatusPill } from '../components/StatusPill';
@@ -592,16 +593,17 @@ function ExerciseCard({
                 aria-label={`Repeticiones, ${item.exerciseName}, serie ${setNumber}`}
                 onChange={(event) => onChange(key, 'reps', event.target.value)}
               />
-              <button
-                type="button"
+              <IconButton
+                variant="ghost"
+                size="sm"
                 className={styles.doneButton}
                 data-done={entry.done}
                 disabled={disabled}
-                aria-label={`${entry.done ? 'Reabrir' : 'Completar'} ${item.exerciseName}, serie ${setNumber}`}
+                label={`${entry.done ? 'Reabrir' : 'Completar'} ${item.exerciseName}, serie ${setNumber}`}
                 onClick={() => onToggle(key)}
               >
                 <Icon name="checkCircle" size={17} />
-              </button>
+              </IconButton>
             </div>
           );
         })}

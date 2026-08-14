@@ -1,5 +1,5 @@
-import { Link } from 'react-router-dom';
 import { Button } from '../../components/Button';
+import { ButtonLink } from '../../components/ButtonLink';
 import { Card } from '../../components/Card';
 import { Icon } from '../../components/Icon';
 import styles from './PlanGenerator.module.css';
@@ -55,9 +55,9 @@ export function PlanReady({
           </div>
 
           <div className={styles.readyActions}>
-            <Link className={styles.readyCta} to="/register">
+            <ButtonLink variant="accent" to="/register">
               Crear mi cuenta gratis
-            </Link>
+            </ButtonLink>
             <Button type="button" variant="ghost" onClick={onRestart}>
               Generar otro plan
             </Button>

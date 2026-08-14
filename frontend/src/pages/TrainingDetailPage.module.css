@@ -308,15 +308,15 @@
  * the aria-label in the TSX), so dropping the "Done" text costs nothing but the
  * column width the set tables needed back.
  */
+/*
+ * Surface and hover come from `IconButton` (ghost, sm). What is left is what
+ * makes it a *set* control rather than a generic one: it is round, it is small
+ * enough to sit inside the set row, and it lands at the end of its grid cell.
+ */
 .doneButton {
-  display: inline-grid;
   min-width: 1.75rem;
   min-height: 1.75rem;
-  place-items: center;
   justify-self: end;
-  color: var(--color-text-muted);
-  background: none;
-  border: 0;
   border-radius: 50%;
 }
 .doneButton[data-done='true'] {
