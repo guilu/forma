@@ -42,30 +42,8 @@
 /* Real buttons since FOR-189 — they step through the measurement history, so
    they need a target size, a disabled state at each end and the browser's own
    button chrome stripped back. */
-.dateArrow {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 32px;
-  min-height: 32px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: none;
-  color: var(--color-text-muted);
-  cursor: pointer;
-}
-
-.dateArrow:hover:not(:disabled) {
-  color: var(--color-text);
-  background-color: var(--color-surface-variant);
-}
-
-.dateArrow:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-
+/* The shared chevron only points one way; the "previous" arrow is that same
+   glyph turned around. */
 .dateArrowPrev {
   transform: rotate(180deg);
 }

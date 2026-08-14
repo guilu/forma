@@ -1,6 +1,5 @@
-import { Link } from 'react-router-dom';
+import { ButtonLink } from './ButtonLink';
 import { EmptyState } from './EmptyState';
-import styles from './NoPlanEmptyState.module.css';
 
 /**
  * What training, nutrition and the shopping list show when there is no plan behind them.
@@ -18,9 +17,7 @@ export function NoPlanEmptyState() {
       title="No existe ningún plan planificado."
       description="Crea uno y verás aquí tus entrenamientos, tus comidas y tu lista de la compra."
       action={
-        <Link className={styles.cta} to="/plan">
-          Crea tu plan gratis
-        </Link>
+        <ButtonLink to="/plan">Crea tu plan gratis</ButtonLink>
       }
     />
   );

@@ -40,19 +40,18 @@
   color: var(--color-text-muted);
 }
 
+/*
+ * This widget's accent wash is where `Button`'s `soft` variant came from: an
+ * action that belongs to the card without outweighing the plan data above it.
+ * Composed from that one source now, with only the widget's own compact
+ * measurements and placement left here.
+ */
 .cta {
+  composes: button soft from '../../components/Button.module.css';
   align-self: flex-start;
   padding: var(--space-2) var(--space-4);
+  min-height: 0;
   font-weight: 600;
-  color: var(--color-accent-strong);
-  background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
-  border-radius: var(--radius-md);
-}
-
-.cta:hover {
-  background-color: color-mix(in srgb, var(--color-accent) 22%, transparent);
-  border-color: var(--color-accent);
 }
 
 .completion {

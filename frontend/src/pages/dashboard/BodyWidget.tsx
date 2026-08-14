@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { ButtonLink } from '../../components/ButtonLink';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
 import { MetricCard } from '../../components/MetricCard';
@@ -107,9 +107,7 @@ function renderContent(state: BodyState) {
             // page and mounting a second copy of it here would give the same
             // flow two homes. Styled as the primary action so it reads as the
             // same offer the measurements page makes.
-            <Link className={styles.cta} to="/app/measurements">
-              + Registrar medición
-            </Link>
+            <ButtonLink to="/app/measurements">+ Registrar medición</ButtonLink>
           }
         />
       </div>

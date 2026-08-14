@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Icon } from '../components/Icon';
+import { IconButton } from '../components/IconButton';
 import { WaterTracker } from '../components/WaterTracker';
 import { BodyWidget, type BodyState } from './dashboard/BodyWidget';
 import { TrainingWidget } from './dashboard/TrainingWidget';
@@ -130,28 +131,28 @@ export function DashboardPage() {
         */}
         {body.status === 'ready' && (
           <div className={styles.dateNav}>
-            <button
-              type="button"
-              className={styles.dateArrow}
-              aria-label="Medición anterior"
+            <IconButton
+              variant="ghost"
+              size="sm"
+              label="Medición anterior"
               // `history` is newest-first, so "previous" walks the index up.
               disabled={body.selected >= body.history.length - 1}
               onClick={() => setSelected((index) => index + 1)}
             >
               <Icon name="chevron" size={16} className={styles.dateArrowPrev} />
-            </button>
+            </IconButton>
             <span className={styles.date}>
               {formatShortDate(new Date(body.history[body.selected].measuredAt))}
             </span>
-            <button
-              type="button"
-              className={styles.dateArrow}
-              aria-label="Medición siguiente"
+            <IconButton
+              variant="ghost"
+              size="sm"
+              label="Medición siguiente"
               disabled={body.selected <= 0}
               onClick={() => setSelected((index) => index - 1)}
             >
               <Icon name="chevron" size={16} />
-            </button>
+            </IconButton>
           </div>
         )}
       </header>
