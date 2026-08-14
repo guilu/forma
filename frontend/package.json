@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:layout": "playwright test",
     "test:layout:install": "playwright install --with-deps chromium",
+    "playground": "PLAYGROUND=1 playwright test playground --headed --workers=1",
     "test:watch": "vitest",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
