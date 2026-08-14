@@ -1,11 +1,16 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { DashboardPage } from './DashboardPage';
 import { listBodyMeasurements, type BodyMeasurement } from '../api/bodyMeasurements';
 import { getTrainingWeek, type TrainingWeek } from '../api/training';
-import { getNutritionDay, type NutritionDay } from '../api/nutrition';
+import {
+  getDayConsumption,
+  getNutritionDay,
+  type DayConsumption,
+  type NutritionDay,
+} from '../api/nutrition';
 import { getShoppingList, type ShoppingList } from '../api/shopping';
 import { getProfile } from '../api/profile';
 import { axe } from '../test/axe';
@@ -21,6 +26,7 @@ vi.mock('../api/bodyMeasurements', () => ({ listBodyMeasurements: vi.fn() }));
 vi.mock('../api/training', () => ({ getTrainingWeek: vi.fn() }));
 vi.mock('../api/nutrition', () => ({
   getNutritionDay: vi.fn(),
+  getDayConsumption: vi.fn(),
   // The water tile reads real hydration now (FOR-130's endpoints, reachable at last). These tests
   // are not about it, so it answers with an empty day and stays out of the way.
   getHydration: vi
@@ -34,6 +40,7 @@ vi.mock('../api/profile', () => ({ getProfile: vi.fn() }));
 const listMock = vi.mocked(listBodyMeasurements);
 const trainingMock = vi.mocked(getTrainingWeek);
 const nutritionMock = vi.mocked(getNutritionDay);
+const consumptionMock = vi.mocked(getDayConsumption);
 const shoppingMock = vi.mocked(getShoppingList);
 const profileMock = vi.mocked(getProfile);
 
@@ -49,12 +56,13 @@ const measurement: BodyMeasurement = {
 const trainingWeek: TrainingWeek = {
   days: [
     {
-      dayOfWeek: 'MONDAY',
+      dayOfWeek: 'SATURDAY',
       rest: false,
       sessions: [
         {
-          id: 'MONDAY:RUNNING',
+          id: 'SATURDAY:RUNNING',
           kind: 'RUNNING',
+          bodyView: 'FRONT',
           title: 'Running - Intervalos',
           detail: '5 km',
           status: 'PLANNED',
@@ -86,6 +94,13 @@ const nutritionDay: NutritionDay = {
     },
   ],
 };
+const dayConsumption = {
+  date: '2026-08-08',
+  dayType: 'RUNNING',
+  consumed: { kcal: 444, proteinG: 15.6, carbsG: 72, fatG: 8.4 },
+  target: { kcal: 2300, proteinG: 160, carbsG: 250, fatG: 70 },
+  plannedMeals: [],
+} as unknown as DayConsumption;
 
 const shoppingList: ShoppingList = {
   weekStartDate: '2026-07-06',
@@ -120,18 +135,28 @@ function mockAllSuccess() {
   listMock.mockResolvedValue([measurement]);
   trainingMock.mockResolvedValue(trainingWeek);
   nutritionMock.mockResolvedValue(nutritionDay);
+  consumptionMock.mockResolvedValue(dayConsumption);
   shoppingMock.mockResolvedValue(shoppingList);
 }
 
 describe('DashboardPage', () => {
   beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-08-08T12:00:00Z'));
+
     listMock.mockReset();
     trainingMock.mockReset();
     nutritionMock.mockReset();
+    consumptionMock.mockReset();
+    consumptionMock.mockResolvedValue(dayConsumption);
     shoppingMock.mockReset();
     profileMock.mockReset();
     // A saved profile with a name → the greeting personalises to it.
     profileMock.mockResolvedValue({ name: 'Diego', firstRunCompleted: true } as never);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('shows the header greeting and renders the mockup panels', async () => {
@@ -149,10 +174,11 @@ describe('DashboardPage', () => {
 
     // Second- and third-row panels each render as a <h2> section heading.
     expect(
-      await screen.findByRole('heading', { name: 'Próximo entrenamiento', level: 2 }),
+      await screen.findByRole('heading', { name: 'Entrenamiento', level: 2 }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Menú de hoy', level: 2 })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Macronutrientes', level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Menu', level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Nutrición', level: 2 })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Macronutrientes' })).not.toBeInTheDocument();
     expect(
       screen.getByRole('heading', { name: 'Tendencia 30 días', level: 2 }),
     ).toBeInTheDocument();
@@ -168,7 +194,7 @@ describe('DashboardPage', () => {
     // Metrics-row tiles are <h3> under the (sr-only) row <h2>, so heading order
     // never skips a level (FOR-112).
     expect(await screen.findByRole('heading', { name: 'Peso', level: 3 })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Calorías hoy', level: 3 })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Calorias' })).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Agua', level: 3 })).toBeInTheDocument();
   });
 
@@ -251,9 +277,7 @@ describe('DashboardPage', () => {
 
       renderDashboard();
 
-      await waitFor(() =>
-        expect(tiles().getByRole('status')).toHaveTextContent('Aún no hay mediciones'),
-      );
+      await waitFor(() => expect(tiles().getByText(/Aún no hay mediciones/)).toBeInTheDocument());
       expect(screen.queryByRole('button', { name: 'Medición anterior' })).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Medición siguiente' })).not.toBeInTheDocument();
     });
@@ -263,7 +287,7 @@ describe('DashboardPage', () => {
     mockAllSuccess();
 
     renderDashboard();
-    await screen.findByRole('heading', { name: 'Próximo entrenamiento' });
+    await screen.findByRole('heading', { name: 'Entrenamiento' });
 
     const hrefs = screen.getAllByRole('link').map((el) => el.getAttribute('href'));
     expect(hrefs).toEqual(
@@ -309,11 +333,27 @@ describe('DashboardPage', () => {
     expect(screen.getByText('Desayuno')).toBeInTheDocument();
   });
 
+  it('keeps real calories and macros when only the plan menu request fails', async () => {
+    listMock.mockResolvedValue([measurement]);
+    trainingMock.mockResolvedValue(trainingWeek);
+    shoppingMock.mockResolvedValue(shoppingList);
+    consumptionMock.mockResolvedValue(dayConsumption);
+    nutritionMock.mockRejectedValue(new Error('plan unavailable'));
+
+    renderDashboard();
+
+    expect(
+      await screen.findByRole('img', { name: /444 de 2300 kcal consumidas/ }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('15,6 / 160 g')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('No se pudo cargar tu menú de hoy');
+  });
+
   it('has no accessibility violations once the widgets have settled (FOR-114)', async () => {
     mockAllSuccess();
 
     const { container } = renderDashboard();
-    await screen.findByRole('heading', { name: 'Próximo entrenamiento', level: 2 });
+    await screen.findByRole('heading', { name: 'Entrenamiento', level: 2 });
     await screen.findByRole('heading', { name: 'Peso', level: 3 });
 
     expect(await axe(container)).toHaveNoViolations();

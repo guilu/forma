@@ -23,14 +23,14 @@ sessions are `PLANNED` (completion is FOR-27).
       "dayOfWeek": "MONDAY",
       "rest": false,
       "sessions": [
-        { "id": "MONDAY:STRENGTH", "kind": "STRENGTH", "title": "Fuerza · Empuje", "detail": "3 ejercicios", "status": "PLANNED" }
+        { "id": "MONDAY:STRENGTH", "kind": "STRENGTH", "title": "Fuerza · Empuje", "detail": "3 ejercicios", "status": "PLANNED", "workoutType": "PUSH", "bodyView": "FRONT" }
       ]
     },
     {
       "dayOfWeek": "SATURDAY",
       "rest": false,
       "sessions": [
-        { "id": "SATURDAY:RUNNING", "kind": "RUNNING", "title": "Tirada larga", "detail": "4.0 km", "status": "COMPLETED", "notes": "Buenas sensaciones" }
+        { "id": "SATURDAY:RUNNING", "kind": "RUNNING", "title": "Tirada larga", "detail": "4.0 km", "status": "COMPLETED", "notes": "Buenas sensaciones", "bodyView": "FRONT" }
       ]
     },
     { "dayOfWeek": "SUNDAY", "rest": true, "sessions": [] }
@@ -40,6 +40,8 @@ sessions are `PLANNED` (completion is FOR-27).
 
 - `id`: stable session id (`<DAY>:<KIND>`), used to mark completion.
 - `kind`: `RUNNING` or `STRENGTH`.
+- `workoutType`: strength template (`PUSH`, `PULL` or `LEGS`); omitted for running sessions.
+- `bodyView`: anatomical side (`FRONT` or `BACK`) chosen by the training definition; `PULL` uses `BACK` and the current remaining session types use `FRONT`.
 - `rest`: `true` when the day has no sessions.
 - `status`: `PLANNED`, `COMPLETED` or `SKIPPED` (FOR-27).
 - `notes`: optional completion note; omitted when absent.

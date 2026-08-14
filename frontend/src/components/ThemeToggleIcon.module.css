@@ -1,0 +1,115 @@
+/*
+ * Sun <-> moon morph for the topbar theme toggle.
+ *
+ * The base rules draw the sun; `[data-icon='moon']` drives every element to its
+ * crescent state and the transitions carry them between the two. Nothing mounts
+ * or unmounts, so the swap animates in both directions.
+ *
+ * Geometry comes from Icon.tsx's `sun` and `moon` paths (see ThemeToggleIcon.tsx):
+ * the circles are authored at the moon's radii and positions, and the sun is
+ * those same circles scaled and pushed off-frame. Verified against the original
+ * paths by difference-blending both end states in Chromium — they cancel to
+ * within antialiasing.
+ */
+
+.root {
+  display: block;
+  overflow: visible;
+}
+
+/*
+ * 0.4444 = 4/9, the sun's r=4 over the authored r=9.
+ *
+ * The stroke width is pre-divided by that same factor so the scale cancels it
+ * back to 1.75 and the sun matches every other icon on the bar. Deliberately
+ * NOT `vector-effect: non-scaling-stroke`, which sounds like the right tool and
+ * is not: it pins the stroke to the *viewport*, ignoring the viewBox scale too,
+ * so the glyph would render at 1.75 CSS px at any `size` and stop matching
+ * `Icon` at all. Mid-flight the two interpolations do not cancel exactly (peak
+ * ~17% over, around 200ms in); at the two ends, where the eye actually rests,
+ * the stroke is exact.
+ */
+.disc {
+  transform-box: view-box;
+  transform-origin: 12px 12px;
+  transform: scale(0.4444);
+  stroke-width: 3.9375;
+  transition:
+    transform 420ms cubic-bezier(0.4, 0, 0.2, 1),
+    stroke-width 420ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-icon='moon'] .disc {
+  transform: scale(1);
+  stroke-width: 1.75;
+}
+
+/*
+ * The clip that keeps the inner arc inside the disc. It is a fill, so it takes
+ * the disc's transform but none of its stroke compensation — and it has to
+ * track that transform frame for frame, or the crescent's inner edge would
+ * spill past the outer one mid-morph.
+ */
+.discMask {
+  transform-box: view-box;
+  transform-origin: 12px 12px;
+  transform: scale(0.4444);
+  transition: transform 420ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-icon='moon'] .discMask {
+  transform: scale(1);
+}
+
+/*
+ * The bite and the inner arc are the same circle seen twice — once removing the
+ * outer edge, once drawing the inner one — so they must move together.
+ *
+ * Parked far enough out that neither can touch the shrunken sun: at r=7 around
+ * (24.8, -0.8) it sits ~18 units from the centre, against the 11 it would need
+ * to reach an r=4 disc.
+ */
+.bite,
+.innerArc {
+  transform-box: view-box;
+  transform: translate(8px, -8px);
+  transition: transform 420ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-icon='moon'] .bite,
+[data-icon='moon'] .innerArc {
+  transform: translate(0, 0);
+}
+
+/*
+ * The rays retract into the disc rather than merely fading, so the sun reads as
+ * collapsing into the moon. Rotating as they go is what sells it as one motion.
+ */
+.rays {
+  transform-box: view-box;
+  transform-origin: 12px 12px;
+  transform: rotate(0deg) scale(1);
+  opacity: 1;
+  transition:
+    transform 420ms cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 220ms ease;
+}
+
+[data-icon='moon'] .rays {
+  transform: rotate(-60deg) scale(0.35);
+  opacity: 0;
+}
+
+/*
+ * With motion off the toggle still changes glyph — it just snaps, matching the
+ * treatment the topbar's disclosure and burger already use.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .disc,
+  .discMask,
+  .bite,
+  .innerArc,
+  .rays {
+    transition: none;
+  }
+}

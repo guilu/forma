@@ -66,7 +66,7 @@
    * the old neon yellow-green (#9dff57) forked from the templates' actual
    * green family. Template: primary (was #9dff57).
    */
-  --color-accent: #4cdf97;
+  --color-accent: #63e662;
   /*
    * FOR-185: the accent used as *text* (links, emphasis, active nav items,
    * icon glyphs). Split out from --color-accent because a hue that works as a
@@ -74,12 +74,12 @@
    * only ~2.58:1 on its own page background, well below the WCAG AA 4.5:1
    * bar, while the same colour is perfectly fine behind white text.
    *
-   * In this theme the two are the same value -- #4cdf97 on --color-bg is
+   * In this theme the two are the same value -- #63e662 on --color-bg is
    * ~10.8:1, so nothing needs darkening. The token still exists here so
    * component CSS has one name to reach for regardless of theme, and so the
    * split is a no-op in dark mode.
    */
-  --color-accent-strong: #4cdf97;
+  --color-accent-strong: #63e662;
   --color-accent-contrast: #003920; /* template: on-primary (was #0a1206) */
   --color-warning: #ffab70; /* template: warning-amber (was #ffd166) */
   /*
@@ -92,6 +92,7 @@
    */
   --color-warning-graphic: #ffab70;
   --color-danger: #ff5757; /* template: error-pulse (was #ff5f56) */
+  --color-danger-graphic: #ff5757;
   /*
    * Informational blue (FOR-188). It was already being used — the body-fat trend
    * line and the "Agua" legend dot both wrote `var(--color-info, #3b82f6)`, a
@@ -101,6 +102,19 @@
    * theme.
    */
   --color-info: #3b82f6;
+  --color-info-strong: #3b82f6;
+
+  /*
+   * Violet, the mockups' fourth data hue. The training legends and the muscle
+   * donut cycle through four colours, and the slot after amber was falling to
+   * `--color-secondary` — a lime that reads as a second green beside the
+   * accent, so two adjacent slices became hard to tell apart. The mockups
+   * paint that slice violet, and use the same hue for the muscle-group tags.
+   * Split fill/text like every other hue here: this one is the graphical mark
+   * (3:1 bar), `-strong` below carries text.
+   */
+  --color-violet: #8b5cf6;
+  --color-violet-strong: #a78bfa;
 
   /*
    * FOR-185: the landing's secondary/tertiary accents. The template's palette
@@ -242,6 +256,16 @@
    */
   --font-sans: 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-heading: 'Montserrat', var(--font-sans);
+  /*
+   * The micro-label step. It was already being consumed — thirteen rules
+   * across the training detail, the plan generator, the meal form and the
+   * calorie ring wrote `font-size: var(--font-size-xs)` — against a token that
+   * was never declared. With no fallback that declaration is invalid at
+   * computed-value time, so all of them silently inherited 1rem and painted
+   * their uppercase meta labels at 16px. Declared here at the template's
+   * `label-sm` size, which is what the mockups actually show.
+   */
+  --font-size-xs: 0.75rem; /* template: label-sm (12px) */
   --font-size-sm: 0.8125rem;
   --font-size-base: 1rem; /* template: body-md (was 0.9375rem / 15px) */
   --font-size-lg: 1.125rem; /* template: body-lg -- already matched */
@@ -349,27 +373,15 @@
   --color-text-secondary: #3c4a42;
 
   /*
-   * FOR-189: the light accent is #3ce78b at the brand owner's request, so light
-   * mode reads as the same green rather than a duller cousin of it. It was
-   * #4caf50, itself a FOR-185 brightening of #006d42.
-   *
-   * Not quite the dark theme's accent, which is #4cdf97 — the two are a nudge
-   * apart in hue and lightness, kept as given rather than silently unified.
-   *
-   * This is a FILL token and only a fill token. #3ce78b on --color-bg (#f4f7f5)
-   * is ~1.50:1, so nothing legible can be painted *in* it on a light surface;
-   * text on an accent fill uses --color-accent-contrast (~11:1 against this
-   * green) and accent-coloured text uses --color-accent-strong. The previous
-   * value was 2.58:1 — also below every bar, so this changes the degree, not
-   * the rule.
-   *
-   * The one place that rule was being broken is the focus ring, which needs
-   * 3:1 to be seen: it moves to --color-accent-strong (see global.css).
+   * Light-theme reference palette. The four bright source colours are kept
+   * exact for fills and graphical marks; normal-sized text uses the paired
+   * darkened semantic token below. #63e662 is only ~1.38:1 on --color-bg, so
+   * it must not carry text or focus outlines directly.
    */
-  --color-accent: #3ce78b;
+  --color-accent: #63e662;
   /*
    * FOR-185: the text-safe counterpart, same hue family darkened until it
-   * clears AA -- #2e7d32 is ~4.75:1 on --color-bg. This is what fixes the
+   * clears AA -- #47a946 is ~4.99:1 on --color-bg. This is what fixes the
    * regression the brighter brand accent introduced for links, emphasis, the
    * sidebar's active item and icon glyphs; the previous accent (#006d42) had
    * been carrying both roles at ~5.96:1.
@@ -377,7 +389,7 @@
    * The dark theme deliberately declares the same value for both tokens, so
    * component CSS can name the text role unconditionally.
    */
-  --color-accent-strong: #2e7d32;
+  --color-accent-strong: #47a946;
   /*
    * Flipped from #ffffff to the light theme's own ink. White on #4caf50 is
    * ~2.78:1 -- unreadable for the ~10 components that paint text or icons on
@@ -385,31 +397,33 @@
    * #0f1a13 (= --color-text) on the same fill is ~6.42:1.
    */
   --color-accent-contrast: #0f1a13;
+  /* Text-safe orange counterpart: ~5.21:1 on --color-bg. */
+  --color-warning: #9a5700;
   /*
-   * FOR-163: dark warning moved from #ffd166 to the template's warning-amber
-   * (#ffab70), a more orange hue. The light counterpart is re-derived at the
-   * same hue rather than left at the old yellow-tinted #b7791f, which also
-   * fixes a pre-existing AA failure: #b7791f on --color-bg was only ~3.38:1
-   * (below the 4.5:1 normal-text bar). #8f4d13 is ~6.01:1 on --color-bg.
+   * Exact reference orange for fills and graphical marks. At ~2.04:1 on the
+   * page it is not a text colour; labels use --color-warning above.
    */
-  --color-warning: #8f4d13;
+  --color-warning-graphic: #f19c2b;
+  /* Text-safe red counterpart: ~5.32:1 on --color-bg. */
+  --color-danger: #b63b33;
+  /* Exact reference red for non-text fills and graphical marks. */
+  --color-danger-graphic: #ec5c51;
   /*
-   * Graphical amber, kept amber (see the dark block). #d97706 is ~3.4:1 on
-   * --color-bg — over the 3:1 bar for a non-text mark, and recognisably the
-   * same colour as the dark theme's, which #8f4d13 is not.
+   * Exact reference blue for filled controls and data marks. Its ~2.25:1
+   * contrast on the page is intentionally not used for text; the strong
+   * counterpart clears AA at ~4.83:1.
    */
-  --color-warning-graphic: #d97706;
+  --color-info: #53adf3;
+  --color-info-strong: #1f71ae;
+
   /*
-   * FOR-163: dark danger moved from #ff5f56 to the template's error-pulse
-   * (#ff5757) -- a ~1% hue nudge. The existing light counterpart (#c0392b,
-   * ~5.04:1 on --color-bg) already passes AA and needs no change.
+   * The reference violet is kept exact for graphical marks (~4.2:1 on
+   * --color-bg, over the 3:1 bar a donut slice or legend dot needs). Text uses
+   * the darkened counterpart: #6d28d9 is ~7.5:1, while the reference value
+   * would leave the muscle tags below AA.
    */
-  --color-danger: #c0392b;
-  /*
-   * The dark theme's #3b82f6 is ~2.9:1 on this background — under the 3:1 bar a
-   * chart line or a legend dot needs. Darkened at the same hue to ~5.9:1.
-   */
-  --color-info: #1d4ed8;
+  --color-violet: #8b5cf6;
+  --color-violet-strong: #6d28d9;
 
   /*
    * FOR-185: the template's secondary (#7dde38 lime) and tertiary (#7ed8b6

@@ -94,4 +94,14 @@ describe('AppShell accessibility', () => {
     expect(screen.getByRole('heading', { name: 'Página B' })).toBeInTheDocument();
     expect(screen.getByRole('main')).toHaveFocus();
   });
+
+  it('expands and contracts the tablet sidebar from its hamburger control', async () => {
+    const user = userEvent.setup();
+    renderShell('/a');
+
+    const expand = screen.getByLabelText('Expandir navegación');
+    expect(expand).toHaveAttribute('aria-expanded', 'false');
+    await user.click(expand);
+    expect(screen.getByLabelText('Contraer navegación')).toHaveAttribute('aria-expanded', 'true');
+  });
 });

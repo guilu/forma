@@ -31,6 +31,10 @@
   gap: var(--space-1);
 }
 
+.tabletToggle {
+  display: none;
+}
+
 /*
  * Withings integration status, restyled from a plain icon+text row into a
  * bordered "card" (FOR-164), matching docs/1-dashboard.html's sidebar footer
@@ -129,6 +133,62 @@
 
 /* On small screens the sidebar is replaced by the mobile nav bar. */
 @media (max-width: 768px) {
+  .sidebar {
+    display: none;
+  }
+}
+
+@media (min-width: 900px) and (max-width: 1199px) {
+  .sidebar {
+    width: 100%;
+    padding: var(--space-3);
+    gap: var(--space-4);
+    overflow-x: hidden;
+    transition: width 180ms ease;
+  }
+
+  .tabletToggle {
+    display: grid;
+    flex: 0 0 auto;
+    width: 46px;
+    height: 46px;
+    place-items: center;
+    color: var(--color-text-muted);
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+  }
+
+  .link {
+    width: 46px;
+    min-height: 46px;
+    padding: 0;
+    justify-content: center;
+    gap: var(--space-3);
+    white-space: nowrap;
+  }
+
+  .link span,
+  .integration {
+    display: none;
+  }
+
+  .sidebar[data-expanded='true'] .link {
+    width: 100%;
+    padding: var(--space-3) var(--space-4);
+    justify-content: flex-start;
+  }
+
+  .sidebar[data-expanded='true'] .link span {
+    display: initial;
+  }
+
+  .sidebar[data-expanded='true'] .integration {
+    display: block;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 899px) {
   .sidebar {
     display: none;
   }

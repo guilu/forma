@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
 import { Icon } from '../../components/Icon';
 import { WidgetLoading } from '../../components/WidgetLoading';
-import { getNutritionDay, type NutritionDay } from '../../api/nutrition';
+import type { DayConsumption, NutritionMeal } from '../../api/nutrition';
+import type { TodayMenuState } from './todayNutrition';
 import { WidgetSection } from './WidgetSection';
 import { ProgressBar } from './ProgressBar';
 import styles from './NutritionWidget.module.css';
@@ -11,66 +11,46 @@ import styles from './NutritionWidget.module.css';
 /**
  * "Menú de hoy" widget (FOR-51, rebuilt for the FOR-164 dashboard mockup):
  * today's planned meals from the FOR-33 nutrition day (`GET
- * /nutrition/days/{type}`) — real meal names + preferred times — and the day's
- * calorie target. Renders API values as returned (ADR-006).
- *
- * <p><b>Placeholder data (hybrid).</b> The mockup shows a kcal figure per meal
- * and a "consumed / target" progress bar. Neither is backed: `NutritionMeal`
- * carries no per-meal calories and there is no consumption-logging endpoint. To
- * match the template these are rendered from clearly-labelled placeholder
- * constants ({@link PLACEHOLDER}), NOT real data — they must be replaced once a
- * nutrition-consumption API exists. Meal names/times and the calorie target are
- * real. Day type is hardcoded to `running`, matching NutritionPage.
+ * /nutrition/days/{type}`), paired with the same date's consumption read model.
+ * Meal kcal and food descriptions come from the plan; daily progress comes from
+ * persisted consumption. The server-provided day type selects the plan day.
  */
-type State =
-  | { readonly status: 'loading' }
-  | { readonly status: 'error' }
-  | { readonly status: 'empty' }
-  | { readonly status: 'ready'; readonly day: NutritionDay };
-
-/**
- * Visual-only scaffolding for the FOR-164 mockup: per-meal kcal badges (cycled
- * by meal index) and a "consumed so far" figure for the progress bar. No
- * backend exposes these yet — see the file doc comment.
- */
-const PLACEHOLDER = {
-  mealKcal: [560, 230, 590, 480, 320],
-  consumedKcal: 2320,
-} as const;
-
 const KCAL = new Intl.NumberFormat('es-ES');
 
-export function NutritionWidget() {
-  const [state, setState] = useState<State>({ status: 'loading' });
+const MEAL_LABELS: Record<string, string> = {
+  BREAKFAST: 'Desayuno',
+  MID_MORNING: 'Media mañana',
+  LUNCH: 'Comida',
+  SNACK: 'Merienda',
+  PRE_WORKOUT: 'Pre-entreno',
+  POST_WORKOUT: 'Post-entreno',
+  DINNER: 'Cena',
+};
 
-  useEffect(() => {
-    let active = true;
-    getNutritionDay('running')
-      .then((day) => {
-        if (!active) return;
-        setState(day.meals.length === 0 ? { status: 'empty' } : { status: 'ready', day });
-      })
-      .catch(() => {
-        if (active) setState({ status: 'error' });
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+function descriptionOf(meal: NutritionMeal): string | undefined {
+  return meal.items.length > 0 ? meal.items.map((item) => item.food).join(', ') : undefined;
+}
 
+export function NutritionWidget({
+  menu,
+  consumption,
+}: {
+  readonly menu: TodayMenuState;
+  readonly consumption?: DayConsumption;
+}) {
   return (
     <WidgetSection
       id="nutrition-widget-title"
-      title="Menú de hoy"
+      title="Menu"
       linkTo="/app/nutrition"
       linkLabel="Ver plan"
     >
-      {renderContent(state)}
+      {renderContent(menu, consumption)}
     </WidgetSection>
   );
 }
 
-function renderContent(state: State) {
+function renderContent(state: TodayMenuState, consumption: DayConsumption | undefined) {
   if (state.status === 'loading') {
     return <WidgetLoading label="Cargando tu menú de hoy…" rows={2} />;
   }
@@ -82,37 +62,35 @@ function renderContent(state: State) {
   }
 
   const { day } = state;
-  const targetKcal = day.targets.calories;
+  const targetKcal = consumption?.target?.kcal ?? null;
+  const consumedKcal = consumption?.consumed.kcal ?? 0;
 
   return (
     <div className={styles.card}>
       <ul className={styles.meals}>
-        {day.meals.map((meal, index) => (
-          <li key={meal.mealType} className={styles.meal}>
+        {day.meals.map((meal) => (
+          <li key={meal.id} className={styles.meal}>
             <span className={styles.mealIcon} aria-hidden="true">
               <Icon name="nutrition" size={18} />
             </span>
             <span className={styles.mealText}>
-              <span className={styles.mealName}>{meal.name}</span>
-              <span className={styles.mealTime}>{meal.preferredTime}</span>
+              <span className={styles.mealName}>{MEAL_LABELS[meal.mealType] ?? meal.mealType}</span>
+              {descriptionOf(meal) && (
+                <span className={styles.mealDescription}>{descriptionOf(meal)}</span>
+              )}
             </span>
-            {/* Placeholder kcal (see file doc comment). */}
-            <span className={styles.mealKcal}>
-              {KCAL.format(PLACEHOLDER.mealKcal[index % PLACEHOLDER.mealKcal.length])} kcal
-            </span>
+            <span className={styles.mealKcal}>{KCAL.format(meal.totals.calories)} kcal</span>
           </li>
         ))}
       </ul>
       <div className={styles.total}>
         <span className={styles.totalLabel}>
-          {/* Consumed figure is placeholder; the target is real. */}
-          {KCAL.format(PLACEHOLDER.consumedKcal)} / {KCAL.format(targetKcal)} kcal
+          {KCAL.format(consumedKcal)} kcal{' '}
+          {targetKcal !== null ? `/ ${KCAL.format(targetKcal)} kcal` : '· Sin objetivo'}
         </span>
-        <ProgressBar
-          value={PLACEHOLDER.consumedKcal}
-          max={targetKcal}
-          label="Calorías del plan de hoy"
-        />
+        {targetKcal !== null && (
+          <ProgressBar value={consumedKcal} max={targetKcal} label="Calorías del plan de hoy" />
+        )}
       </div>
     </div>
   );

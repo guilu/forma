@@ -60,7 +60,7 @@ describe('WaterTracker', () => {
     render(<WaterTracker date={DATE} />);
     await screen.findByText('84%');
 
-    await user.click(screen.getByRole('button', { name: '+ Vaso (250 ml)' }));
+    await user.click(screen.getByRole('button', { name: 'Añadir vaso (250 ml)' }));
 
     await waitFor(() => expect(logMock).toHaveBeenCalledWith(DATE, 250));
     await waitFor(() => expect(hydrationMock).toHaveBeenCalledTimes(2));
@@ -71,8 +71,8 @@ describe('WaterTracker', () => {
     render(<WaterTracker date={DATE} />);
     await screen.findByText('84%');
 
-    expect(screen.getByRole('button', { name: '+ Vaso (250 ml)' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '− Vaso (250 ml)' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Añadir vaso (250 ml)' })).toHaveTextContent('+');
+    expect(screen.getByRole('button', { name: 'Quitar vaso (250 ml)' })).toHaveTextContent('−');
     expect(screen.queryByRole('button', { name: /Botella/ })).not.toBeInTheDocument();
   });
 
@@ -81,7 +81,7 @@ describe('WaterTracker', () => {
     render(<WaterTracker date={DATE} />);
     await screen.findByText('84%');
 
-    await user.click(screen.getByRole('button', { name: '− Vaso (250 ml)' }));
+    await user.click(screen.getByRole('button', { name: 'Quitar vaso (250 ml)' }));
 
     await waitFor(() => expect(removeMock).toHaveBeenCalledWith(DATE));
     expect(await screen.findByText('74%')).toBeInTheDocument();

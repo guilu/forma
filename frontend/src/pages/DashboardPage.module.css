@@ -77,20 +77,44 @@
   color: var(--color-text);
 }
 
-/* Metrics row: body tiles (span 4) + calories + hydration = 6 across. */
-.metrics {
+/* One semantic grid owns every "today" card. DOM order follows the phone flow
+   (body, nutrition, water, training, menu, trend); wider layouts place that
+   single set of nodes explicitly without duplicating or hiding widgets. */
+.todayGrid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: var(--space-4);
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--space-5);
   align-items: stretch;
 }
 
-/* Second row: next training / menu / macros / trend. */
-.rowFour {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--space-5);
-  align-items: stretch;
+.todayGrid > :nth-child(1) {
+  grid-column: 1 / span 8;
+  grid-row: 1;
+}
+
+.todayGrid > :nth-child(2) {
+  grid-column: 7 / span 3;
+  grid-row: 2;
+}
+
+.todayGrid > :nth-child(3) {
+  grid-column: 11 / span 2;
+  grid-row: 1;
+}
+
+.todayGrid > :nth-child(4) {
+  grid-column: 1 / span 3;
+  grid-row: 2;
+}
+
+.todayGrid > :nth-child(5) {
+  grid-column: 4 / span 3;
+  grid-row: 2;
+}
+
+.todayGrid > :nth-child(6) {
+  grid-column: 10 / span 3;
+  grid-row: 2;
 }
 
 /* Third row: evolution (two tracks) / shopping / (tip + plan banner). */
@@ -123,8 +147,7 @@
  * Evolución range tabs, a long shopping-list item) would otherwise push the
  * card past the column and give the whole page a horizontal scrollbar.
  */
-.metrics > *,
-.rowFour > *,
+.todayGrid > *,
 .rowThree > * {
   min-width: 0;
 }
@@ -157,20 +180,75 @@
  * two lines and stacking the calorie goal onto three.
  */
 @media (min-width: 1101px) and (max-width: 1600px) {
-  .metrics,
-  .rowFour,
+  .todayGrid,
   .rowThree {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .todayGrid > :nth-child(1) {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .todayGrid > :nth-child(3) {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .todayGrid > :nth-child(4) {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  .todayGrid > :nth-child(5) {
+    grid-column: 2;
+    grid-row: 3;
+  }
+
+  .todayGrid > :nth-child(2) {
+    grid-column: 3;
+    grid-row: 3;
+  }
+
+  .todayGrid > :nth-child(6) {
+    grid-column: 1;
+    grid-row: 4;
   }
 }
 
 @media (max-width: 1100px) {
-  .metrics {
+  .todayGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .rowFour {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .todayGrid > :nth-child(1) {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .todayGrid > :nth-child(2) {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .todayGrid > :nth-child(3) {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .todayGrid > :nth-child(4) {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  .todayGrid > :nth-child(5) {
+    grid-column: 2;
+    grid-row: 3;
+  }
+
+  .todayGrid > :nth-child(6) {
+    grid-column: 1;
+    grid-row: 4;
   }
 
   .rowThree {
@@ -184,9 +262,18 @@
  * value plus its caption without wrapping mid-word).
  */
 @media (max-width: 580px) {
-  .metrics,
-  .rowFour,
+  .todayGrid,
   .rowThree {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .todayGrid > :nth-child(1),
+  .todayGrid > :nth-child(2),
+  .todayGrid > :nth-child(3),
+  .todayGrid > :nth-child(4),
+  .todayGrid > :nth-child(5),
+  .todayGrid > :nth-child(6) {
+    grid-column: 1;
+    grid-row: auto;
   }
 }

@@ -26,17 +26,12 @@
 }
 
 /*
- * Mid-width band (see `DashboardPage.module.css`): the metrics row drops to three
- * columns and the six tiles wrap as 3 + 3. That split runs *through* this
- * block — PESO / GRASA / MASA MUSCULAR on the first line, IMC alongside
- * CALORÍAS and AGUA on the second — so the four tiles have to be items of the
- * parent grid rather than of a nested one. `display: contents` removes this
- * box from the layout and promotes them; `.full` keeps working because it then
- * spans the parent's three tracks instead of this block's four.
+ * Mid-width band: the body group owns its three-column wrap. Keeping the group
+ * as a real box avoids dissolving semantic/layout containers into the parent.
  */
 @media (min-width: 1101px) and (max-width: 1600px) {
   .body {
-    display: contents;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 

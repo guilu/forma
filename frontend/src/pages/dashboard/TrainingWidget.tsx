@@ -36,7 +36,7 @@ const DAY_LABELS: Record<string, string> = {
   SUNDAY: 'Domingo',
 };
 
-export function TrainingWidget() {
+export function TrainingWidget({ date = new Date() }: { readonly date?: Date } = {}) {
   const [state, setState] = useState<State>({ status: 'loading' });
 
   useEffect(() => {
@@ -58,13 +58,13 @@ export function TrainingWidget() {
   }, []);
 
   return (
-    <WidgetSection id="training-widget-title" title="Próximo entrenamiento">
-      {renderContent(state)}
+    <WidgetSection id="training-widget-title" title="Entrenamiento">
+      {renderContent(state, date)}
     </WidgetSection>
   );
 }
 
-function renderContent(state: State) {
+function renderContent(state: State, date: Date) {
   if (state.status === 'loading') {
     return <WidgetLoading label="Cargando tu semana de entrenamiento…" rows={2} />;
   }
@@ -85,23 +85,34 @@ function renderContent(state: State) {
   const completed = allSessions.filter((s) => s.status === 'COMPLETED').length;
   const total = allSessions.length;
 
-  const next = state.week.days
-    .flatMap((day) => day.sessions.map((session) => ({ day: day.dayOfWeek, session })))
-    .find(({ session }) => session.status === 'PLANNED');
+  const todayKey = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'][
+    date.getDay()
+  ];
+  const today = state.week.days.find((day) => day.dayOfWeek === todayKey);
 
   return (
     <div className={styles.content}>
-      {next ? (
+      {today && !today.rest && today.sessions.length > 0 ? (
         <div className={styles.next}>
-          <span className={styles.nextTitle}>
-            <Icon name="training" size={22} className={styles.nextIcon} />
-            {next.session.title}
-          </span>
-          <span className={styles.nextDay}>{DAY_LABELS[next.day] ?? next.day}</span>
-          <span className={styles.nextDetail}>{next.session.detail}</span>
+          {today.sessions.map((session) => (
+            <div key={session.id} className={styles.session}>
+              <span className={styles.nextTitle}>
+                <Icon name="training" size={22} className={styles.nextIcon} />
+                {session.title}
+              </span>
+              <span className={styles.nextDay}>
+                {DAY_LABELS[today.dayOfWeek] ?? today.dayOfWeek}
+              </span>
+              <span className={styles.nextDetail}>{session.detail}</span>
+            </div>
+          ))}
         </div>
       ) : (
-        <p className={styles.message}>No tienes entrenamientos pendientes esta semana.</p>
+        <p className={styles.message}>
+          {today?.rest
+            ? 'Hoy es día de descanso.'
+            : 'No hay datos de hoy en el plan de esta semana.'}
+        </p>
       )}
       <div className={styles.completion}>
         <span className={styles.completionLabel}>

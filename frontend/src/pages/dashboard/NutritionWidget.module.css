@@ -40,13 +40,17 @@
 }
 
 .mealName {
+  font-size: x-small;
   font-weight: 500;
   color: var(--color-text);
 }
 
-.mealTime {
-  font-size: var(--font-size-sm);
+.mealDescription {
+  font-size: 12px;
   color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .mealKcal {

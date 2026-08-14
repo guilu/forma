@@ -43,6 +43,10 @@
   border-radius: var(--radius-md);
 }
 
+.dateIcon {
+  color: var(--color-text-muted);
+}
+
 .dateArrow {
   display: flex;
   align-items: center;
@@ -62,6 +66,18 @@
   font-weight: 600;
   color: var(--color-text);
   white-space: nowrap;
+}
+
+/*
+ * The droppable half of the date. FOR-193 removed the long date form because
+ * it took the training header onto a second row at 390px and pushed the whole
+ * page down; the weekday is back for the desktop mockup, but it leaves the row
+ * before that can happen again.
+ */
+@media (max-width: 700px) {
+  .dateWeekday {
+    display: none;
+  }
 }
 
 .message {
@@ -90,14 +106,20 @@
 .layout {
   display: grid;
   grid-template-columns: 1fr;
-  gap: var(--space-5);
+  gap: 24px;
 }
 
-.main {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
+.todayArea,
+.summaryArea,
+.calendarArea,
+.tabletPair,
+.streakArea {
   min-width: 0;
+}
+
+.tabletPair {
+  display: grid;
+  gap: 24px;
 }
 
 .todaySessions {
@@ -133,11 +155,23 @@
   color: var(--color-text-muted);
 }
 
+.sessionDetail:has(svg) {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
   margin-top: var(--space-2);
+}
+
+.actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .progressWrap {
@@ -170,23 +204,25 @@
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-  gap: var(--space-3);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-2);
 }
 
 .calendarDay {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  padding: var(--space-3);
+  min-width: 0;
+  padding: var(--space-3) var(--space-2);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
 }
 
 .calendarDayTitle {
   margin: 0;
-  font-size: var(--font-size-sm);
-  font-weight: 600;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   color: var(--color-text-muted);
   text-transform: uppercase;
 }
@@ -198,6 +234,12 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  flex: 1;
+}
+
+.calendarSessions > li,
+.calendarSessionButton {
+  height: 100%;
 }
 
 .calendarSessionButton {
@@ -210,14 +252,15 @@
   text-align: left;
   color: inherit;
   background: none;
-  border: 1px solid var(--color-border);
+  border: 0;
   border-radius: var(--radius-sm);
   min-height: 44px;
 }
 
 .calendarSessionTitle {
-  font-size: var(--font-size-sm);
+  font-size: 0.75rem;
   font-weight: 600;
+  line-height: 1.25;
 }
 
 /* Right-column widget stack (Resumen semanal, Racha actual, Historial
@@ -231,6 +274,20 @@
 
 .summary {
   align-self: start;
+}
+
+/* `order`, not a Card API change: the primitive renders `title` then `action`,
+   and this is the one header in the app whose icon leads. The header's own
+   `space-between` would then throw the two to opposite edges, so this pair
+   packs to the start instead. */
+.summary > header {
+  justify-content: flex-start;
+  gap: var(--space-2);
+}
+
+.summaryTitleIcon {
+  order: -1;
+  color: var(--color-accent-strong);
 }
 
 .summaryGrid {
@@ -277,63 +334,6 @@
   margin: var(--space-2) 0 0;
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
-}
-
-/* Weekly-history bars (FOR-143). */
-.historyBars {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  align-items: flex-end;
-  gap: var(--space-2);
-  height: 8rem;
-}
-
-.historyBarItem {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-1);
-  height: 100%;
-  justify-content: flex-end;
-}
-
-.historyBarTrack {
-  display: flex;
-  align-items: flex-end;
-  width: 100%;
-  max-width: 1.5rem;
-  height: 100%;
-  background-color: var(--color-border);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
-
-.historyBarFill {
-  width: 100%;
-  min-height: 2px;
-  background-color: var(--color-accent);
-  border-radius: var(--radius-sm);
-}
-
-.historyBarLabel {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
-  text-transform: capitalize;
-}
-
-.srOnly {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
 }
 
 .detail {
@@ -408,6 +408,23 @@
   gap: var(--space-5);
 }
 
+.todayCard {
+  position: relative;
+  overflow: hidden;
+  border-left: 2px solid var(--color-accent);
+  background:
+    radial-gradient(
+      circle at 60% 100%,
+      color-mix(in srgb, var(--color-accent) 9%, transparent),
+      transparent 42%
+    ),
+    var(--color-surface);
+}
+
+.todayCard > header h2 {
+  color: var(--color-accent-strong);
+}
+
 .todayLayout .todaySessions {
   flex: 1;
   min-width: 14rem;
@@ -415,6 +432,13 @@
 
 .todaySessionHeader {
   justify-content: flex-start;
+}
+
+.todaySessionTitle {
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 .todayVisual {
@@ -446,6 +470,13 @@
   color: var(--color-text-muted);
 }
 
+.ringStatus {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-accent-strong);
+}
+
 .todayFigures {
   display: flex;
   gap: var(--space-2);
@@ -454,6 +485,7 @@
 /* ── Weekly calendar (FOR-164) ──────────────────────────────────────── */
 .calendarToday {
   border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 7%, var(--color-surface));
 }
 
 .calendarRest {
@@ -465,6 +497,35 @@
 
 .calendarSessionButton {
   align-items: center;
+  padding: var(--space-1) 0;
+  text-align: center;
+}
+
+.calendarSessionButton [data-tone],
+.calendarRest [data-tone] {
+  padding: 0.16rem 0.5rem;
+  font-size: 0.68rem;
+  line-height: 1.15;
+}
+
+.calendarSessionButton > [data-tone]:last-child {
+  margin-top: auto;
+}
+
+.calendarSessionProgress {
+  width: 100%;
+  height: 4px;
+  margin-top: auto;
+  overflow: hidden;
+  background: var(--color-border);
+  border-radius: 999px;
+}
+
+.calendarSessionProgress > span {
+  display: block;
+  height: 100%;
+  background: var(--color-accent);
+  border-radius: inherit;
 }
 
 .calendarLegend {
@@ -474,8 +535,67 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-4);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   color: var(--color-text-muted);
+}
+
+.calendarTimeline {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  align-items: center;
+  margin-top: var(--space-4);
+  padding: 0 var(--space-4);
+}
+
+.calendarTimeline::before {
+  position: absolute;
+  right: var(--space-4);
+  left: var(--space-4);
+  height: 2px;
+  content: '';
+  background: var(--color-border);
+}
+
+.calendarTimelineDot {
+  z-index: 1;
+  justify-self: center;
+  width: 10px;
+  height: 10px;
+  background: var(--color-border);
+  border: 2px solid var(--color-surface);
+  border-radius: 50%;
+}
+
+.calendarTimelineDone {
+  background: var(--color-accent-strong);
+}
+
+.calendarTimelineToday {
+  width: 14px;
+  height: 14px;
+  background: var(--color-info);
+}
+
+@media (max-width: 1100px) {
+  .calendarGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .calendarTimeline {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .todayVisual {
+    width: 100%;
+    justify-content: space-around;
+  }
+
+  .calendarGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .calendarLegend li {
@@ -484,9 +604,11 @@
   gap: var(--space-1);
 }
 
+/* 8px, matching the muscle-focus legend on the detail screen. At 10px the dot
+   read heavier than the label beside it once the legend type came down. */
 .legendDot {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background-color: var(--color-border);
 }
@@ -501,6 +623,26 @@
 
 .legendPending {
   background-color: var(--color-border);
+}
+
+/*
+ * Violet marks a completed *strength session* in the calendar grid — and only
+ * there. The same figure stands in for a muscle group further down the page,
+ * where the hue would mean nothing, so this is scoped to the day card rather
+ * than living on the BodyFigure primitive.
+ */
+.calendarSessionButton [data-variant='strength'][data-active='true'] {
+  fill: var(--color-violet);
+}
+
+/* The two session kinds, matching the badge and figure colours in the grid
+   above: violet is strength everywhere in this feature, green is running. */
+.legendStrength {
+  background-color: var(--color-violet);
+}
+
+.legendRunning {
+  background-color: var(--color-accent);
 }
 
 .legendRest {
@@ -521,88 +663,6 @@
   }
 }
 
-/* ── Muscle groups (FOR-164) ────────────────────────────────────────── */
-.muscleGroups {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-4);
-  align-items: stretch;
-}
-
-.muscleGroupGrid {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  flex: 1;
-  min-width: 16rem;
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: var(--space-3);
-}
-
-@media (max-width: 720px) {
-  .muscleGroupGrid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-.muscleGroup {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-1);
-  text-align: center;
-}
-
-.muscleGroupName {
-  font-size: var(--font-size-sm);
-  color: var(--color-text);
-}
-
-.muscleGroupQuality {
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: var(--color-accent-strong);
-}
-
-.encourage {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-1);
-  text-align: center;
-  min-width: 12rem;
-  padding: var(--space-4);
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-}
-
-.encourageIcon {
-  font-size: 1.5rem;
-}
-
-.encourageTitle {
-  margin: 0;
-  font-weight: 700;
-}
-
-.encourageText {
-  margin: 0;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
-}
-
-.encourageLink {
-  margin-top: var(--space-2);
-  padding: var(--space-2) var(--space-4);
-  font-weight: 600;
-  color: var(--color-accent-strong);
-  border: 1px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
-  border-radius: var(--radius-md);
-}
-
 /* ── Weekly summary rows (FOR-164) ──────────────────────────────────── */
 .summaryList {
   list-style: none;
@@ -614,13 +674,68 @@
 }
 
 .summaryRow {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
 }
 
-.summaryRow > :first-child {
-  flex: 1;
+.summaryIcon {
+  display: grid;
+  width: 56px;
+  height: 56px;
+  place-items: center;
+  color: var(--color-accent-strong);
+  background: color-mix(in srgb, var(--color-accent) 13%, transparent);
+  border-radius: var(--radius-lg);
+}
+
+.summaryIcon[data-kind='strength'] {
+  color: var(--color-violet-strong);
+  background: color-mix(in srgb, var(--color-violet) 13%, transparent);
+}
+
+.summaryContent {
+  min-width: 0;
+}
+
+.summaryLabel,
+.summaryValue,
+.summaryCaption {
+  margin: 0;
+}
+
+.summaryLabel {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text);
+}
+
+.summaryValue {
+  margin-top: var(--space-1);
+  font-family: var(--font-heading);
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--color-text);
+}
+
+.summaryCaption {
+  margin-top: var(--space-1);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.summaryProgress {
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--color-border);
 }
 
 .summaryRingText {
@@ -630,11 +745,29 @@
 }
 
 .summaryLink {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
   margin-top: var(--space-4);
   font-size: var(--font-size-sm);
   font-weight: 600;
   color: var(--color-accent-strong);
+}
+
+@media (max-width: 480px) {
+  .summaryRow {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .summaryProgress {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    display: flex;
+    justify-content: center;
+    padding: var(--space-3) 0 0;
+    border-top: 1px solid var(--color-border);
+    border-left: 0;
+  }
 }
 
 /* ── Distribution donut (FOR-164) ───────────────────────────────────── */
@@ -679,13 +812,13 @@
 }
 
 .distributionDot {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
 }
 
 .dotStrength {
-  background-color: var(--color-warning);
+  background-color: var(--color-warning-graphic);
 }
 
 .dotRunning {
@@ -697,17 +830,19 @@
 }
 
 .distributionLabel {
+  font-size: var(--font-size-sm);
   color: var(--color-text);
 }
 
 .distributionPercent {
+  font-size: var(--font-size-sm);
   font-weight: 600;
   color: var(--color-text);
 }
 
 .distributionCount {
   grid-column: 2 / -1;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   color: var(--color-text-muted);
 }
 
@@ -742,9 +877,158 @@
   color: var(--color-accent-strong);
 }
 
-@media (min-width: 900px) {
+@media (min-width: 1200px) {
   .layout {
     grid-template-columns: 2fr 1fr;
     align-items: start;
+  }
+
+  .todayArea {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .summaryArea {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .calendarArea {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .tabletPair {
+    display: contents;
+  }
+
+  .tabletPair > :first-child {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .tabletPair > :last-child {
+    grid-column: 1;
+    grid-row: 3;
+  }
+  .streakArea {
+    grid-column: 2;
+    grid-row: 3;
+  }
+}
+
+@media (min-width: 900px) and (max-width: 1199px) {
+  .wrapper {
+    gap: 24px;
+  }
+
+  .layout {
+    gap: 24px;
+  }
+
+  .todayArea {
+    grid-row: 1;
+  }
+
+  .summaryArea {
+    grid-row: 2;
+  }
+
+  .calendarArea {
+    grid-row: 3;
+  }
+
+  .tabletPair {
+    grid-row: 4;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .tabletPair > * {
+    height: 100%;
+  }
+
+  .tabletPair .statsRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .summary {
+    width: 100%;
+  }
+
+  .summaryList {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .summaryRow {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 12px;
+    padding: 20px;
+  }
+
+  .summaryProgress {
+    grid-column: 1 / -1;
+    justify-self: center;
+    padding: 12px 0 0;
+    border-top: 1px solid var(--color-border);
+    border-left: 0;
+  }
+
+  .todayCard {
+    padding: 24px;
+  }
+
+  .todayCard > header h2 {
+    font-size: var(--font-size-base);
+  }
+
+  .todayLayout {
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+
+  .todaySessionTitle {
+    font-size: 1.6rem;
+    white-space: nowrap;
+  }
+
+  .todayVisual {
+    flex-wrap: nowrap;
+    flex-shrink: 0;
+  }
+
+  .actions {
+    flex-wrap: nowrap;
+  }
+
+  .calendarGrid {
+    display: flex;
+    gap: 16px;
+    overflow-x: auto;
+    padding: 4px 4px 16px;
+    scroll-behavior: smooth;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: thin;
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .calendarDay {
+    flex: 0 0 170px;
+    min-height: 250px;
+    padding: 20px;
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
+  }
+
+  .calendarDayTitle,
+  .calendarSessionTitle {
+    font-size: var(--font-size-sm);
+  }
+
+  .calendarTimeline {
+    display: none;
   }
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { getMuscleMap, getTrainingWeek, updateSessionStatus } from './training';
+import { getMuscleMap, getTrainingWeek, getWorkout, updateSessionStatus } from './training';
 import { type ApiClient } from './client';
 
 describe('training API', () => {
@@ -36,5 +36,16 @@ describe('training API', () => {
 
     expect(request).toHaveBeenCalledWith('/api/v1/training/sessions/MONDAY%3ASTRENGTH/muscle-map');
     expect(result).toBe(map);
+  });
+
+  it('GETs a strength workout template by type', async () => {
+    const workout = { workoutType: 'LEGS', items: [] };
+    const request = vi.fn().mockResolvedValue(workout);
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
+
+    const result = await getWorkout('LEGS', client);
+
+    expect(request).toHaveBeenCalledWith('/api/v1/training/workouts/LEGS');
+    expect(result).toBe(workout);
   });
 });

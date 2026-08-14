@@ -43,6 +43,10 @@ function lazyPage<Name extends string>(
 const DashboardPage = lazyPage(() => import('../pages/DashboardPage'), 'DashboardPage');
 const MeasurementsPage = lazyPage(() => import('../pages/MeasurementsPage'), 'MeasurementsPage');
 const TrainingPage = lazyPage(() => import('../pages/TrainingPage'), 'TrainingPage');
+const TrainingDetailPage = lazyPage(
+  () => import('../pages/TrainingDetailPage'),
+  'TrainingDetailPage',
+);
 const NutritionPage = lazyPage(() => import('../pages/NutritionPage'), 'NutritionPage');
 const PlansPage = lazyPage(() => import('../pages/PlansPage'), 'PlansPage');
 const ShoppingPage = lazyPage(() => import('../pages/ShoppingPage'), 'ShoppingPage');
@@ -114,6 +118,7 @@ export const routes: RouteObject[] = [
           { index: true, element: <DashboardPage /> },
           { path: 'measurements', element: <MeasurementsPage /> },
           { path: 'training', element: <TrainingPage /> },
+          { path: 'training/:sessionId', element: <TrainingDetailPage /> },
           { path: 'nutrition', element: <NutritionPage /> },
           // V53/V54: the user's own plans. NOT under /app/admin, though every
           // other editing screen is: that page is for catalogs shared by the

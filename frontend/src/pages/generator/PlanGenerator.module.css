@@ -80,7 +80,7 @@
 
 .dotDone {
   border-color: var(--color-accent, #2563eb);
-  color: var(--color-accent, #2563eb);
+  color: var(--color-accent-strong, #1d4ed8);
 }
 
 .stepLabel {
@@ -215,7 +215,7 @@
 
 .choiceInput:focus-visible + .choiceGlyph,
 .choiceInput:focus-visible ~ .choiceText {
-  outline: 2px solid var(--color-accent, #2563eb);
+  outline: 2px solid var(--color-accent-strong, #1d4ed8);
   outline-offset: 2px;
 }
 
@@ -245,7 +245,7 @@
   position: absolute;
   top: var(--space-2);
   right: var(--space-2);
-  color: var(--color-accent, #2563eb);
+  color: var(--color-accent-strong, #1d4ed8);
 }
 
 /* --- Candados --- */
@@ -476,7 +476,7 @@
 }
 
 .readyIcon {
-  color: var(--color-accent, #2563eb);
+  color: var(--color-accent-strong, #1d4ed8);
 }
 
 .readyTitle {

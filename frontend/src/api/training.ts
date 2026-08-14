@@ -18,6 +18,8 @@ export interface TrainingSession {
   readonly detail: string;
   readonly status: SessionStatus;
   readonly notes?: string;
+  readonly workoutType?: string;
+  readonly bodyView: 'FRONT' | 'BACK';
 }
 
 /** One day of the training week; `rest` is true when there are no sessions. */
@@ -96,4 +98,28 @@ export function getMuscleMap(
   return client.request<MuscleWorkedMap>(
     `/api/v1/training/sessions/${encodeURIComponent(sessionId)}/muscle-map`,
   );
+}
+
+export interface WorkoutItem {
+  readonly exerciseId: string;
+  readonly exerciseName: string;
+  readonly order: number;
+  readonly sets: number;
+  readonly repScheme: 'RANGE' | 'AMRAP' | 'TIME_HOLD';
+  readonly repsMin?: number;
+  readonly repsMax?: number;
+  readonly durationSecondsMin?: number;
+  readonly durationSecondsMax?: number;
+  readonly restSeconds: number;
+  readonly rir: number;
+}
+
+export interface Workout {
+  readonly workoutType: string;
+  readonly items: WorkoutItem[];
+}
+
+/** Fetches the real exercise prescription for one strength workout template. */
+export function getWorkout(type: string, client: ApiClient = apiClient): Promise<Workout> {
+  return client.request<Workout>(`/api/v1/training/workouts/${encodeURIComponent(type)}`);
 }

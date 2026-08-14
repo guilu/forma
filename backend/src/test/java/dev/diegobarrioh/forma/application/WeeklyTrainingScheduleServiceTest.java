@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.diegobarrioh.forma.application.WeeklyTrainingSchedule.TrainingDay;
 import dev.diegobarrioh.forma.application.WeeklyTrainingSchedule.TrainingEntry;
+import dev.diegobarrioh.forma.domain.BodyView;
 import dev.diegobarrioh.forma.domain.SessionStatus;
 import java.time.DayOfWeek;
 import java.util.HashMap;
@@ -53,6 +54,8 @@ class WeeklyTrainingScheduleServiceTest {
         .anySatisfy(
             entry -> {
               assertThat(entry.kind()).isEqualTo("RUNNING");
+              assertThat(entry.workoutType()).isNull();
+              assertThat(entry.bodyView()).isEqualTo(BodyView.FRONT);
               assertThat(entry.id()).isEqualTo("SATURDAY:RUNNING");
               assertThat(entry.title()).isEqualTo("Tirada larga");
               // Week 1 long run under the FOR-153 real plan is 5.0 km.
@@ -63,7 +66,11 @@ class WeeklyTrainingScheduleServiceTest {
             entry -> {
               assertThat(entry.kind()).isEqualTo("STRENGTH");
               assertThat(entry.id()).isEqualTo("TUESDAY:STRENGTH");
+              assertThat(entry.workoutType()).isEqualTo("PUSH");
+              assertThat(entry.bodyView()).isEqualTo(BodyView.FRONT);
             });
+    assertThat(days.get(DayOfWeek.THURSDAY).entries())
+        .anySatisfy(entry -> assertThat(entry.bodyView()).isEqualTo(BodyView.BACK));
   }
 
   @Test

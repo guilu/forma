@@ -281,6 +281,11 @@
 
 /* Checked toggle styled as the mockup's filled green "done" square. */
 .checkToggle {
+  /* Icon.tsx's `check` path, verbatim, with the `<Icon>` stroke settings
+     (width 1.75, round caps and joins). The stroke is opaque white only
+     because a mask reads alpha — the visible colour is painted underneath. */
+  --check-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 12l5 5 11-11'/%3E%3C/svg%3E");
+
   appearance: none;
   -webkit-appearance: none;
   position: relative;
@@ -302,18 +307,29 @@
   border-color: var(--color-accent);
 }
 
-/* Check glyph drawn with a rotated border (no icon dependency inside the
-   native control). Only shown when checked. */
+/*
+ * Check glyph, only shown when checked.
+ *
+ * <p>A native control takes no children, so the mark cannot be an `<Icon>`
+ * element here — but it does not have to be a *different drawing*. This is the
+ * exact `d` of `Icon`'s `check` (`M4 12l5 5 11-11`) with its stroke settings,
+ * carried in as a mask so the shopping list stops shipping a second,
+ * rotated-border checkmark alongside the nine `<Icon name="check">` the rest of
+ * the app renders.
+ *
+ * <p>A mask rather than `background-image` (the data-URI shape `select` uses in
+ * global.css) because the glyph's colour is `--color-accent-contrast`, which is
+ * a different value per theme: a background image cannot take a custom
+ * property, so baking the colour in would need this rule twice. Masking paints
+ * the token through the shape and keeps one rule.
+ */
 .checkToggle:checked::after {
   content: '';
   position: absolute;
-  top: 8px;
-  left: 12px;
-  width: 7px;
-  height: 12px;
-  border: solid var(--color-accent-contrast);
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
+  inset: 0;
+  background-color: var(--color-accent-contrast);
+  -webkit-mask: var(--check-glyph) center / 20px 20px no-repeat;
+  mask: var(--check-glyph) center / 20px 20px no-repeat;
 }
 
 .checkToggle:disabled {

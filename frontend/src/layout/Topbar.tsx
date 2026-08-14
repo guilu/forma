@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Brand } from '../components/Brand';
 import { Icon } from '../components/Icon';
+import { ThemeToggleIcon } from '../components/ThemeToggleIcon';
 import { useTheme } from '../theme/ThemeContext';
 import { useAuth } from '../auth/AuthContext';
 import styles from './Topbar.module.css';
@@ -57,7 +58,13 @@ export function Topbar() {
       aria-label={isDark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
       onClick={() => setMode(isDark ? 'light' : 'dark')}
     >
-      <Icon name={isDark ? 'sun' : 'moon'} />
+      {/*
+       * Not `<Icon name={isDark ? 'sun' : 'moon'}>`: `Icon` swaps one `<path d>`
+       * for another, so the glyph cut between the two states. This is the same
+       * two drawings built out of persistent elements, which lets CSS morph the
+       * sun into the crescent — the treatment the burger below already gets.
+       */}
+      <ThemeToggleIcon icon={isDark ? 'sun' : 'moon'} />
     </button>
   );
 

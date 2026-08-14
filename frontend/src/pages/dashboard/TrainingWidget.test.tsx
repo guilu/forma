@@ -11,7 +11,7 @@ const trainingMock = vi.mocked(getTrainingWeek);
 function renderWidget() {
   return render(
     <MemoryRouter>
-      <TrainingWidget />
+      <TrainingWidget date={new Date('2026-08-04T12:00:00Z')} />
     </MemoryRouter>,
   );
 }
@@ -25,6 +25,7 @@ const week: TrainingWeek = {
         {
           id: 'MONDAY:RUNNING',
           kind: 'RUNNING',
+          bodyView: 'FRONT',
           title: 'Running - Intervalos',
           detail: '5 km',
           status: 'COMPLETED',
@@ -38,6 +39,7 @@ const week: TrainingWeek = {
         {
           id: 'TUESDAY:STRENGTH',
           kind: 'STRENGTH',
+          bodyView: 'FRONT',
           title: 'Fuerza - Tren superior',
           detail: '45 min',
           status: 'PLANNED',
@@ -60,7 +62,7 @@ describe('TrainingWidget', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Cargando tu semana de entrenamiento');
   });
 
-  it('shows the next planned session and the completed/total tally', async () => {
+  it("shows today's session and the completed/total tally", async () => {
     trainingMock.mockResolvedValue(week);
 
     renderWidget();

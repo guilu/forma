@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Badge } from '../components/Badge';
 import { BodyFigure } from '../components/BodyFigure';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
-import { EmptyState } from '../components/EmptyState';
 import { NoPlanEmptyState } from '../components/NoPlanEmptyState';
 import { ErrorState } from '../components/ErrorState';
 import { Icon, type IconName } from '../components/Icon';
@@ -16,7 +15,8 @@ import { ProgressRing } from '../components/ProgressRing';
 import { StatusPill } from '../components/StatusPill';
 import { WidgetLoading } from '../components/WidgetLoading';
 import { ApiRequestError } from '../api/client';
-import { getStreak, getWeeklyHistory, type Streak, type WeeklyHistory } from '../api/progress';
+import { getStreak, type Streak } from '../api/progress';
+import { getProfile } from '../api/profile';
 import {
   getMuscleMap,
   getTrainingWeek,
@@ -27,7 +27,7 @@ import {
   type TrainingWeek,
 } from '../api/training';
 import { groupMusclesForDisplay, type MuscleGroupDisplay } from './trainingMuscleLabels';
-import { formatShortDate } from './dateLabel';
+import { formatShortDate, formatWeekday } from './dateLabel';
 import styles from './TrainingPage.module.css';
 
 /**
@@ -53,15 +53,9 @@ import styles from './TrainingPage.module.css';
  *       …/sessions/{id}/muscle-map}) and is wired into the strength session
  *       detail below, normalized for display by {@code trainingMuscleLabels}
  *       (spec FOR-53: the frontend, not the backend, owns that
- *       normalization). The weekly-history bars and "RACHA ACTUAL" (this
- *       comment's own prior gap note) are now wired by FOR-143 to the FOR-139
- *       {@code GET …/progress/streak} / {@code GET …/progress/weekly-history}
- *       endpoints ({@link StreakCard}, {@link WeeklyHistoryCard} below) — both
- *       are a real **nutrition meal-log** consistency signal, not a training
- *       one (no per-date training-completion history exists to back a
- *       training streak or per-week training bar; spec FOR-139: "do NOT
- *       fabricate per-date training completion" — surfaced here exactly as
- *       the backend documents it, per ADR-001).
+ *       normalization). "RACHA ACTUAL" is wired by FOR-143 to the FOR-139
+ *       {@code GET …/progress/streak} endpoint. It is a real nutrition
+ *       meal-log consistency signal, not a fabricated training streak.
  *   <li>Weekly summary counts (planned vs. completed sessions) are *not* the
  *       FOR-28 {@code WeeklyTrainingSummary} — that calculation is
  *       application-layer only and is not exposed over HTTP. This page tallies
@@ -77,6 +71,8 @@ type State =
   | { readonly status: 'loading' }
   | { readonly status: 'error' }
   | { readonly status: 'ready'; readonly week: TrainingWeek };
+
+type AnatomySex = 'male' | 'female';
 
 interface DetailTarget {
   readonly dayOfWeek: string;
@@ -110,7 +106,13 @@ const MARK_ERROR = 'No se pudo actualizar la sesión. Inténtalo de nuevo.';
  * taken from here.
  */
 const PLACEHOLDER = {
-  today: { durationMin: 55, focus: 'Pecho, Hombros, Tríceps', exercisesDone: 4, exercisesTotal: 6 },
+  /*
+   * `today` is gone: its fixed duration, muscle focus and "4 / 6 ejercicios"
+   * were printed under every session regardless of kind, so a running day
+   * announced a chest-and-triceps focus and an exercise count it does not
+   * have. The card now shows the session's own `detail`, the real muscle map
+   * for strength (see SessionFocus), and a session tally on the ring.
+   */
   stats: {
     volume: '12.450',
     volumeDelta: '↑8% vs semana anterior',
@@ -119,14 +121,6 @@ const PLACEHOLDER = {
     calories: '2.120',
     caloriesDelta: '↑12% vs semana anterior',
   },
-  muscleGroups: [
-    { label: 'Pecho', quality: 'Excelente' },
-    { label: 'Espalda', quality: 'Bueno' },
-    { label: 'Hombros', quality: 'Excelente' },
-    { label: 'Brazos', quality: 'Bueno' },
-    { label: 'Piernas', quality: 'Bueno' },
-    { label: 'Core', quality: 'Excelente' },
-  ],
 } as const;
 
 /** JS `Date#getDay()` (0 = Sunday) indexed to the backend's `dayOfWeek` names. */
@@ -144,8 +138,44 @@ function todayDayOfWeek(): string {
   return JS_DAY_TO_ENUM[new Date().getDay()];
 }
 
-function formatToday(): string {
-  return formatShortDate(new Date());
+/**
+ * The week the arrows walk, in the order the API composes it.
+ *
+ * <p>Monday-to-Sunday and nothing beyond: `GET /training/week` returns the
+ * *current* week and accepts no date parameter (`docs/api/training-week.md` —
+ * "no dates, no week navigation"). Stepping past either end would have no data
+ * to show, so the controls stop there instead of promising a week the backend
+ * cannot answer for.
+ */
+const WEEK_ORDER = [
+  'MONDAY',
+  'TUESDAY',
+  'WEDNESDAY',
+  'THURSDAY',
+  'FRIDAY',
+  'SATURDAY',
+  'SUNDAY',
+] as const;
+
+function weekIndexOf(dayOfWeek: string): number {
+  const index = WEEK_ORDER.indexOf(dayOfWeek as (typeof WEEK_ORDER)[number]);
+  return index === -1 ? 0 : index;
+}
+
+/** The real calendar date of a day in the composed week, relative to today. */
+function dateOfWeekday(dayOfWeek: string): Date {
+  const date = new Date();
+  date.setDate(date.getDate() + (weekIndexOf(dayOfWeek) - weekIndexOf(todayDayOfWeek())));
+  return date;
+}
+
+/**
+ * "Fuerza · Empuje" -> "Empuje" for the calendar day cards, where the kind is
+ * already on the badge right above the title. The today card keeps the full
+ * title: it has one session and no grid column to fit it into.
+ */
+function stripKindPrefix(title: string): string {
+  return title.replace(/^(?:Fuerza|Carrera)\s*·\s*/i, '');
 }
 
 function tally(sessions: readonly TrainingSession[]): { completed: number; planned: number } {
@@ -157,10 +187,13 @@ function tally(sessions: readonly TrainingSession[]): { completed: number; plann
 
 export function TrainingPage() {
   const notify = useNotify();
+  const navigate = useNavigate();
   const [state, setState] = useState<State>({ status: 'loading' });
+  const [anatomySex, setAnatomySex] = useState<AnatomySex>('male');
   const [actionError, setActionError] = useState<string | undefined>(undefined);
   const [pendingId, setPendingId] = useState<string | undefined>(undefined);
   const [detailTarget, setDetailTarget] = useState<DetailTarget | undefined>(undefined);
+  const [selectedDay, setSelectedDay] = useState<string>(() => todayDayOfWeek());
 
   const load = useCallback(async () => {
     try {
@@ -174,6 +207,20 @@ export function TrainingPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    let active = true;
+    getProfile()
+      .then((profile) => {
+        if (active) setAnatomySex(profile.sex === 'FEMALE' ? 'female' : 'male');
+      })
+      .catch(() => {
+        // The existing male presentation remains the safe fallback when the profile is unavailable.
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function mark(sessionId: string, status: SessionStatus) {
     setActionError(undefined);
@@ -200,6 +247,9 @@ export function TrainingPage() {
     }
   }
 
+  const selectedIndex = weekIndexOf(selectedDay);
+  const selectedDate = dateOfWeekday(selectedDay);
+
   return (
     <div className={styles.wrapper}>
       <header className={styles.header}>
@@ -207,17 +257,36 @@ export function TrainingPage() {
           <h1 className={styles.title}>Entrenamiento</h1>
           <p className={styles.subtitle}>Sigue tu plan y mejora cada día.</p>
         </div>
-        {/* Date navigator — visual only: the composed week has no dates / week
-            navigation (docs/api/training-week.md), so the arrows are inert
-            decorative affordances and the label is today's real date. */}
+        {/* Date navigator. Bounded by the composed week: `GET /training/week`
+            returns the current week and takes no date, so the arrows walk
+            Monday-to-Sunday and stop there rather than asking for a week the
+            API cannot answer for (docs/api/training-week.md). */}
         <div className={styles.dateNav}>
-          <span className={styles.dateArrow} aria-hidden="true">
+          <Icon name="calendar" size={16} className={styles.dateIcon} />
+          <span className={styles.dateLabel}>
+            <span className={styles.dateWeekday} data-testid="date-weekday">
+              {formatWeekday(selectedDate)},
+            </span>{' '}
+            {formatShortDate(selectedDate)}
+          </span>
+          <button
+            type="button"
+            className={styles.dateArrow}
+            aria-label="Día anterior"
+            disabled={selectedIndex === 0}
+            onClick={() => setSelectedDay(WEEK_ORDER[selectedIndex - 1])}
+          >
             <Icon name="chevron" size={16} className={styles.dateArrowPrev} />
-          </span>
-          <span className={styles.dateLabel}>{formatToday()}</span>
-          <span className={styles.dateArrow} aria-hidden="true">
+          </button>
+          <button
+            type="button"
+            className={styles.dateArrow}
+            aria-label="Día siguiente"
+            disabled={selectedIndex === WEEK_ORDER.length - 1}
+            onClick={() => setSelectedDay(WEEK_ORDER[selectedIndex + 1])}
+          >
             <Icon name="chevron" size={16} />
-          </span>
+          </button>
         </div>
       </header>
 
@@ -227,7 +296,16 @@ export function TrainingPage() {
         </p>
       )}
 
-      {renderContent(state, mark, pendingId, setDetailTarget, load)}
+      {renderContent(
+        state,
+        mark,
+        pendingId,
+        setDetailTarget,
+        (session) => navigate(`/app/training/${encodeURIComponent(session.id)}`),
+        load,
+        selectedDay,
+        anatomySex,
+      )}
 
       {detailTarget && (
         <SessionDetailModal
@@ -246,7 +324,10 @@ function renderContent(
   mark: (id: string, status: SessionStatus) => void,
   pendingId: string | undefined,
   openDetail: (target: DetailTarget) => void,
+  openTraining: (session: TrainingSession) => void,
   reload: () => void,
+  selectedDay: string,
+  anatomySex: AnatomySex,
 ) {
   if (state.status === 'loading') {
     return <LoadingState message="Cargando tu semana…" />;
@@ -266,21 +347,33 @@ function renderContent(
     return <NoPlanEmptyState />;
   }
 
-  const today = state.week.days.find((day) => day.dayOfWeek === todayDayOfWeek());
+  const selected = state.week.days.find((day) => day.dayOfWeek === selectedDay);
 
   return (
     <div className={styles.layout}>
-      <div className={styles.main}>
-        <TodaySessionCard day={today} mark={mark} pendingId={pendingId} openDetail={openDetail} />
-        <WeeklyCalendar days={state.week.days} openDetail={openDetail} />
-        <StatsRow days={state.week.days} />
-        <MuscleGroupsSection />
+      <div className={styles.todayArea}>
+        <TodaySessionCard
+          day={selected}
+          dayOfWeek={selectedDay}
+          mark={mark}
+          pendingId={pendingId}
+          openDetail={openDetail}
+          openTraining={openTraining}
+          anatomySex={anatomySex}
+        />
       </div>
-      <div className={styles.side}>
+      <div className={styles.summaryArea}>
         <WeeklySummary days={state.week.days} />
+      </div>
+      <div className={styles.calendarArea}>
+        <WeeklyCalendar days={state.week.days} openDetail={openDetail} anatomySex={anatomySex} />
+      </div>
+      <div className={styles.tabletPair}>
         <WeeklyDistribution days={state.week.days} />
+        <StatsRow days={state.week.days} />
+      </div>
+      <div className={styles.streakArea}>
         <StreakCard />
-        <WeeklyHistoryCard />
       </div>
     </div>
   );
@@ -288,36 +381,54 @@ function renderContent(
 
 function TodaySessionCard({
   day,
+  dayOfWeek,
   mark,
   pendingId,
   openDetail,
+  openTraining,
+  anatomySex,
 }: {
   readonly day: TrainingDay | undefined;
+  readonly dayOfWeek: string;
   readonly mark: (id: string, status: SessionStatus) => void;
   readonly pendingId: string | undefined;
   readonly openDetail: (target: DetailTarget) => void;
+  readonly openTraining: (session: TrainingSession) => void;
+  readonly anatomySex: AnatomySex;
 }) {
+  // "Entrenamiento de hoy" only while the card really is showing today; once
+  // the arrows move it, the heading has to say which day is on screen.
+  const isToday = dayOfWeek === todayDayOfWeek();
+  const title = isToday
+    ? 'Entrenamiento de hoy'
+    : `Entrenamiento del ${(DAY_LABELS[dayOfWeek] ?? dayOfWeek).toLocaleLowerCase('es-ES')}`;
+  const when = isToday ? 'hoy' : 'ese día';
+
   if (!day) {
     return (
-      <Card title="Entrenamiento de hoy" headingLevel={2}>
-        <p className={styles.message}>No hay datos de hoy en el plan de esta semana.</p>
+      <Card title={title} headingLevel={2} className={styles.todayCard}>
+        <p className={styles.message}>No hay datos de {when} en el plan de esta semana.</p>
       </Card>
     );
   }
 
   if (day.rest) {
     return (
-      <Card title="Entrenamiento de hoy" headingLevel={2}>
-        <p className={styles.rest}>Hoy es día de descanso.</p>
+      <Card title={title} headingLevel={2} className={styles.todayCard}>
+        <p className={styles.rest}>
+          {isToday ? 'Hoy es día de descanso.' : 'Ese día es de descanso.'}
+        </p>
       </Card>
     );
   }
 
   const { completed, planned } = tally(day.sessions);
   const percent = planned > 0 ? Math.round((completed / planned) * 100) : 0;
+  const visualSession =
+    day.sessions.find((session) => session.kind === 'STRENGTH') ?? day.sessions[0];
 
   return (
-    <Card title="Entrenamiento de hoy" headingLevel={2}>
+    <Card title={title} headingLevel={2} className={styles.todayCard}>
       <div className={styles.todayLayout}>
         <ul className={styles.todaySessions}>
           {day.sessions.map((session) => (
@@ -326,24 +437,49 @@ function TodaySessionCard({
                 <p className={styles.todaySessionTitle}>{session.title}</p>
                 <StatusPill kind="training" value={session.status} />
               </div>
-              {/* Placeholder estimated duration + focus (see PLACEHOLDER). */}
-              <p className={styles.sessionDetail}>
-                Duración estimada: {PLACEHOLDER.today.durationMin} min
-              </p>
-              <p className={styles.sessionDetail}>Enfoque: {PLACEHOLDER.today.focus}</p>
+              {/* Only what the session really carries. A fixed duration and a
+                  fixed muscle focus used to print under every session, which
+                  is how a *run* came to announce a chest-and-triceps focus —
+                  neither field exists anywhere in the training API. The focus
+                  of a strength session is derived below from its real
+                  FOR-136 muscle map. */}
               <p className={styles.sessionDetail}>{session.detail}</p>
+              {session.kind === 'STRENGTH' && <SessionFocus sessionId={session.id} />}
               <div className={styles.actions}>
-                {session.status !== 'COMPLETED' && (
+                {session.kind === 'STRENGTH' ? (
+                  <Button type="button" onClick={() => openTraining(session)}>
+                    <Icon name="arrowRight" size={17} />
+                    {session.status === 'COMPLETED' ? 'Ver entrenamiento' : 'Iniciar entrenamiento'}
+                  </Button>
+                ) : session.status === 'COMPLETED' ? (
+                  /* A run has no per-exercise screen to open, so its action
+                     marks completion in place — and undoes it, or a mistaken
+                     tap would be permanent. Back to PLANNED, not SKIPPED:
+                     undoing means "this did not happen yet", and SKIPPED is a
+                     deliberate different statement. */
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    aria-label="Desmarcar la carrera como completada"
+                    disabled={pendingId === session.id}
+                    loading={pendingId === session.id}
+                    onClick={() => mark(session.id, 'PLANNED')}
+                  >
+                    <Icon name="checkCircle" size={17} />
+                    Completada
+                  </Button>
+                ) : (
                   <Button
                     type="button"
                     disabled={pendingId === session.id}
                     loading={pendingId === session.id}
                     onClick={() => mark(session.id, 'COMPLETED')}
                   >
-                    Iniciar entrenamiento
+                    <Icon name="check" size={17} />
+                    Completar carrera
                   </Button>
                 )}
-                {session.status !== 'SKIPPED' && (
+                {session.status === 'PLANNED' && (
                   <Button
                     type="button"
                     variant="secondary"
@@ -355,9 +491,10 @@ function TodaySessionCard({
                 )}
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="secondary"
                   onClick={() => openDetail({ dayOfWeek: day.dayOfWeek, session })}
                 >
+                  <Icon name="menu" size={17} />
                   Ver detalle
                 </Button>
               </div>
@@ -373,18 +510,27 @@ function TodaySessionCard({
               value={completed}
               max={Math.max(planned, 1)}
               label={`${completed} de ${planned} sesiones completadas hoy`}
-              size={110}
+              size={128}
             >
               <span className={styles.ringPercent}>{percent}%</span>
             </ProgressRing>
+            <p className={styles.ringStatus}>{percent === 100 ? 'Completado' : 'En progreso'}</p>
+            {/* The ring counts sessions, which is what the week payload
+                actually carries. It used to be captioned "4 / 6 ejercicios"
+                from a constant — a figure that was wrong for every day and
+                meaningless for a run. */}
             <p className={styles.ringCaption}>
-              {PLACEHOLDER.today.exercisesDone} / {PLACEHOLDER.today.exercisesTotal} ejercicios
-              completados
+              {completed} / {planned} {planned === 1 ? 'sesión' : 'sesiones'}
             </p>
           </div>
           <div className={styles.todayFigures}>
-            <BodyFigure view="front" variant="strength" active size={132} />
-            <BodyFigure view="back" variant="strength" size={132} />
+            <BodyFigure
+              view={visualSession.bodyView.toLowerCase() as 'front' | 'back'}
+              variant={visualSession.kind === 'RUNNING' ? 'running' : 'strength'}
+              sex={anatomySex}
+              active={visualSession.status === 'COMPLETED'}
+              size={150}
+            />
           </div>
         </div>
       </div>
@@ -392,14 +538,75 @@ function TodaySessionCard({
   );
 }
 
+/**
+ * The muscle focus of a strength session, derived from its real FOR-136
+ * muscle map rather than the fixed string this card used to print.
+ *
+ * <p>Renders nothing at all while loading, on failure, or when the session has
+ * no muscle data: this is a one-line supporting detail on a card whose useful
+ * parts (title, status, actions) do not depend on it, so a spinner or an error
+ * row here would cost more attention than the line is worth. The full heatmap,
+ * with its own loading and error states, lives in the session detail.
+ */
+function SessionFocus({ sessionId }: { readonly sessionId: string }) {
+  const [muscles, setMuscles] = useState<readonly MuscleGroupDisplay[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setMuscles([]);
+    getMuscleMap(sessionId)
+      .then((map) => {
+        if (!cancelled) setMuscles(groupMusclesForDisplay(map.muscles));
+      })
+      .catch(() => {
+        if (!cancelled) setMuscles([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId]);
+
+  if (muscles.length === 0) return null;
+
+  return (
+    <p className={styles.sessionDetail}>
+      Enfoque: {muscles.map((muscle) => muscle.label).join(', ')}
+    </p>
+  );
+}
+
 function WeeklyCalendar({
   days,
   openDetail,
+  anatomySex,
 }: {
   readonly days: readonly TrainingDay[];
   readonly openDetail: (target: DetailTarget) => void;
+  readonly anatomySex: AnatomySex;
 }) {
   const todayEnum = todayDayOfWeek();
+  const todayRef = useRef<HTMLLIElement>(null);
+
+  useEffect(() => {
+    const centerToday = () => {
+      const today = todayRef.current;
+      const calendar = today?.parentElement;
+
+      if (!today || !calendar || calendar.scrollWidth <= calendar.clientWidth) return;
+
+      today.scrollIntoView({ behavior: 'instant', inline: 'center', block: 'nearest' });
+    };
+
+    const frame = requestAnimationFrame(centerToday);
+    const calendar = todayRef.current?.parentElement;
+    const images = [...(calendar?.querySelectorAll('img') ?? [])];
+    images.forEach((image) => image.addEventListener('load', centerToday, { once: true }));
+
+    return () => {
+      cancelAnimationFrame(frame);
+      images.forEach((image) => image.removeEventListener('load', centerToday));
+    };
+  }, []);
 
   return (
     <Card title="Calendario semanal" headingLevel={2}>
@@ -407,6 +614,8 @@ function WeeklyCalendar({
         {days.map((day) => (
           <li
             key={day.dayOfWeek}
+            ref={day.dayOfWeek === todayEnum ? todayRef : undefined}
+            aria-current={day.dayOfWeek === todayEnum ? 'date' : undefined}
             className={[styles.calendarDay, day.dayOfWeek === todayEnum ? styles.calendarToday : '']
               .filter(Boolean)
               .join(' ')}
@@ -428,16 +637,30 @@ function WeeklyCalendar({
                       className={styles.calendarSessionButton}
                       onClick={() => openDetail({ dayOfWeek: day.dayOfWeek, session })}
                     >
-                      <Badge tone={session.kind === 'RUNNING' ? 'accent' : 'neutral'}>
+                      <Badge tone={session.kind === 'RUNNING' ? 'accent' : 'violet'}>
                         {KIND_LABELS[session.kind]}
                       </Badge>
-                      <span className={styles.calendarSessionTitle}>{session.title}</span>
+                      <span className={styles.calendarSessionTitle}>
+                        {stripKindPrefix(session.title)}
+                      </span>
                       <BodyFigure
+                        view={session.bodyView.toLowerCase() as 'front' | 'back'}
+                        sex={anatomySex}
                         variant={session.kind === 'RUNNING' ? 'running' : 'strength'}
                         active={session.status === 'COMPLETED'}
-                        size={72}
+                        size={64}
                       />
                       <StatusPill kind="training" value={session.status} />
+                      <span
+                        className={styles.calendarSessionProgress}
+                        role="progressbar"
+                        aria-label={`Progreso de ${session.title}`}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={session.status === 'COMPLETED' ? 100 : 0}
+                      >
+                        <span style={{ width: session.status === 'COMPLETED' ? '100%' : '0%' }} />
+                      </span>
                     </button>
                   </li>
                 ))}
@@ -446,18 +669,51 @@ function WeeklyCalendar({
           </li>
         ))}
       </ul>
-      <ul className={styles.calendarLegend} aria-hidden="true">
+      <div className={styles.calendarTimeline} role="img" aria-label="Progreso semanal">
+        {days.map((day) => {
+          const completed =
+            !day.rest && day.sessions.some((session) => session.status === 'COMPLETED');
+          return (
+            <span
+              key={day.dayOfWeek}
+              className={[
+                styles.calendarTimelineDot,
+                completed ? styles.calendarTimelineDone : '',
+                day.dayOfWeek === todayEnum ? styles.calendarTimelineToday : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+            />
+          );
+        })}
+      </div>
+      {/* Two axes in one legend, as the mockup has it: the timeline's statuses
+          and the badge/figure colour that tells the two session kinds apart.
+          "Pendiente" stays even though the mockup's fully-completed week never
+          shows it — the grid does render that state. */}
+      <ul className={styles.calendarLegend} aria-label="Leyenda del calendario">
         <li>
-          <span className={`${styles.legendDot} ${styles.legendDone}`} /> Completado
+          <span className={`${styles.legendDot} ${styles.legendDone}`} aria-hidden="true" />{' '}
+          Completado
         </li>
         <li>
-          <span className={`${styles.legendDot} ${styles.legendToday}`} /> Hoy
+          <span className={`${styles.legendDot} ${styles.legendToday}`} aria-hidden="true" /> Hoy
         </li>
         <li>
-          <span className={`${styles.legendDot} ${styles.legendPending}`} /> Pendiente
+          <span className={`${styles.legendDot} ${styles.legendPending}`} aria-hidden="true" />{' '}
+          Pendiente
         </li>
         <li>
-          <span className={`${styles.legendDot} ${styles.legendRest}`} /> Descanso
+          <span className={`${styles.legendDot} ${styles.legendStrength}`} aria-hidden="true" />{' '}
+          Fuerza
+        </li>
+        <li>
+          <span className={`${styles.legendDot} ${styles.legendRunning}`} aria-hidden="true" />{' '}
+          Carrera
+        </li>
+        <li>
+          <span className={`${styles.legendDot} ${styles.legendRest}`} aria-hidden="true" />{' '}
+          Descanso
         </li>
       </ul>
     </Card>
@@ -474,35 +730,61 @@ function WeeklySummary({ days }: { readonly days: readonly TrainingDay[] }) {
   const runningTally = tally(sessions.filter((s) => s.kind === 'RUNNING'));
   const strengthTally = tally(sessions.filter((s) => s.kind === 'STRENGTH'));
 
-  const rows: { label: string; icon: IconName; t: { completed: number; planned: number } }[] = [
-    { label: 'Sesiones totales', icon: 'measurements', t: total },
-    { label: 'Carrera', icon: 'activity', t: runningTally },
-    { label: 'Fuerza', icon: 'training', t: strengthTally },
+  const rows: {
+    label: string;
+    caption: string;
+    icon: IconName;
+    t: { completed: number; planned: number };
+  }[] = [
+    { label: 'Sesiones totales', caption: 'Sesiones completadas', icon: 'calendar', t: total },
+    // The row's own heading already names the kind, so the caption only says
+    // what is being counted rather than repeating it.
+    { label: 'Carreras', caption: 'Completadas', icon: 'activity', t: runningTally },
+    { label: 'Fuerza', caption: 'Completadas', icon: 'training', t: strengthTally },
   ];
 
   return (
-    <Card title="Resumen semanal" headingLevel={2} className={styles.summary}>
+    <Card
+      title="Resumen semanal"
+      headingLevel={2}
+      action={<Icon name="activity" className={styles.summaryTitleIcon} size={24} />}
+      className={styles.summary}
+    >
       <ul className={styles.summaryList}>
         {rows.map((row) => (
-          <li key={row.label} className={styles.summaryRow}>
-            <MetricCard
-              label={row.label}
-              icon={row.icon}
-              value={`${row.t.completed}/${row.t.planned}`}
-            />
-            <ProgressRing
-              value={row.t.completed}
-              max={Math.max(row.t.planned, 1)}
-              label={`${row.label}: ${row.t.completed} de ${row.t.planned}`}
-              size={60}
+          <li key={row.label} className={styles.summaryRow} aria-label={row.label}>
+            {/* Violet marks the strength row here the same way it marks the
+                strength badge in the calendar and the muscle tags on the
+                detail screen. */}
+            <span
+              className={styles.summaryIcon}
+              data-kind={row.icon === 'training' ? 'strength' : 'default'}
+              aria-hidden="true"
             >
-              <span className={styles.summaryRingText}>{summaryPercent(row.t)}%</span>
-            </ProgressRing>
+              <Icon name={row.icon} size={28} />
+            </span>
+            <div className={styles.summaryContent}>
+              <h3 className={styles.summaryLabel}>{row.label}</h3>
+              <p className={styles.summaryValue}>{`${row.t.completed} / ${row.t.planned}`}</p>
+              <p className={styles.summaryCaption}>{row.caption}</p>
+            </div>
+            <div className={styles.summaryProgress}>
+              <ProgressRing
+                value={row.t.completed}
+                max={Math.max(row.t.planned, 1)}
+                label={`${row.label}: ${row.t.completed} de ${row.t.planned}`}
+                size={72}
+              >
+                <span className={styles.summaryRingText}>{summaryPercent(row.t)}%</span>
+              </ProgressRing>
+            </div>
           </li>
         ))}
       </ul>
       <Link className={styles.summaryLink} to="/app/progress">
-        Ver estadísticas completas
+        <Icon name="progress" size={18} />
+        <span>Ver estadísticas completas</span>
+        <Icon name="arrowRight" size={17} />
       </Link>
     </Card>
   );
@@ -526,7 +808,7 @@ function WeeklyDistribution({ days }: { readonly days: readonly TrainingDay[] })
   const runningDeg = totalParts > 0 ? (running / totalParts) * 360 : 0;
 
   const ringStyle = {
-    background: `conic-gradient(var(--color-warning) 0deg ${strengthDeg}deg, var(--color-accent) ${strengthDeg}deg ${
+    background: `conic-gradient(var(--color-warning-graphic) 0deg ${strengthDeg}deg, var(--color-accent) ${strengthDeg}deg ${
       strengthDeg + runningDeg
     }deg, var(--color-border) ${strengthDeg + runningDeg}deg 360deg)`,
   };
@@ -631,40 +913,6 @@ function StatsRow({ days }: { readonly days: readonly TrainingDay[] }) {
   );
 }
 
-/**
- * "Grupos musculares trabajados esta semana" (FOR-164 mockup). Placeholder
- * quality labels + figures for now (the FOR-136 muscle map is per-session; a
- * real weekly aggregate would need a fetch per strength session — deferred).
- * Swap {@link BodyFigure} for the real asset pack later.
- */
-function MuscleGroupsSection() {
-  return (
-    <Card title="Grupos musculares trabajados esta semana" headingLevel={2}>
-      <div className={styles.muscleGroups}>
-        <ul className={styles.muscleGroupGrid}>
-          {PLACEHOLDER.muscleGroups.map((group) => (
-            <li key={group.label} className={styles.muscleGroup}>
-              <span className={styles.muscleGroupName}>{group.label}</span>
-              <BodyFigure variant="strength" active size={84} />
-              <span className={styles.muscleGroupQuality}>{group.quality}</span>
-            </li>
-          ))}
-        </ul>
-        <div className={styles.encourage}>
-          <span className={styles.encourageIcon} aria-hidden="true">
-            🏆
-          </span>
-          <p className={styles.encourageTitle}>¡Sigue así!</p>
-          <p className={styles.encourageText}>Vas por buen camino para alcanzar tu objetivo.</p>
-          <Link className={styles.encourageLink} to="/app/progress">
-            Ver progreso
-          </Link>
-        </div>
-      </div>
-    </Card>
-  );
-}
-
 type StreakState =
   | { readonly status: 'loading' }
   | { readonly status: 'error' }
@@ -731,87 +979,6 @@ function StreakCard() {
           </p>
         </div>
       )}
-    </Card>
-  );
-}
-
-type WeeklyHistoryState =
-  | { readonly status: 'loading' }
-  | { readonly status: 'error' }
-  | { readonly status: 'ready'; readonly history: WeeklyHistory };
-
-const WEEKLY_HISTORY_ERROR = 'No se pudo cargar el historial semanal. Inténtalo de nuevo.';
-
-function formatWeekLabel(weekStart: string): string {
-  return new Date(`${weekStart}T00:00:00`).toLocaleDateString('es-ES', {
-    day: 'numeric',
-    month: 'short',
-  });
-}
-
-/**
- * Weekly-history bars widget (FOR-143, mockup docs/3-entrenamiento.png),
- * wired to the FOR-139 {@code GET /api/v1/progress/weekly-history} endpoint.
- * Fetches independently, same rationale as {@link StreakCard}. Renders one
- * bar per week exactly as returned — including all-zero weeks, which stay
- * visible bars, never hidden (spec FOR-139: "still present in the series,
- * never omitted-as-error"). Only a genuinely empty series (defensive; the
- * backend documents it never happens) falls back to {@link EmptyState}.
- */
-function WeeklyHistoryCard() {
-  const [state, setState] = useState<WeeklyHistoryState>({ status: 'loading' });
-  const [reloadToken, setReloadToken] = useState(0);
-
-  useEffect(() => {
-    let active = true;
-    setState({ status: 'loading' });
-    getWeeklyHistory()
-      .then((history) => {
-        if (active) {
-          setState({ status: 'ready', history });
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setState({ status: 'error' });
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, [reloadToken]);
-
-  return (
-    <Card title="Historial semanal" headingLevel={2}>
-      <p className={styles.widgetCaption}>Días con registro de nutrición por semana.</p>
-      {state.status === 'loading' && <WidgetLoading label="Cargando historial semanal…" rows={3} />}
-      {state.status === 'error' && (
-        <ErrorState message={WEEKLY_HISTORY_ERROR} onRetry={() => setReloadToken((n) => n + 1)} />
-      )}
-      {state.status === 'ready' &&
-        (state.history.weeks.length === 0 ? (
-          <EmptyState variant="filtered" title="Todavía no hay historial semanal." />
-        ) : (
-          <ul className={styles.historyBars} aria-label="Historial semanal de constancia">
-            {state.history.weeks.map((week) => {
-              const ratio = week.planned > 0 ? week.completed / week.planned : 0;
-              return (
-                <li key={week.weekStart} className={styles.historyBarItem}>
-                  <span className={styles.historyBarTrack}>
-                    <span
-                      className={styles.historyBarFill}
-                      style={{ height: `${Math.round(ratio * 100)}%` }}
-                    />
-                  </span>
-                  <span className={styles.historyBarLabel}>{formatWeekLabel(week.weekStart)}</span>
-                  <span className={styles.srOnly}>
-                    {week.completed} de {week.planned} días
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        ))}
     </Card>
   );
 }

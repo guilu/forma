@@ -21,3 +21,17 @@ export function capitalize(text: string): string {
 export function formatShortDate(date: Date): string {
   return capitalize(SHORT_DATE.format(date));
 }
+
+const WEEKDAY = new Intl.DateTimeFormat('es-ES', { weekday: 'long' });
+
+/**
+ * The weekday on its own — "Domingo", not "Domingo, 9 ago 2026".
+ *
+ * <p>Separate from {@link formatShortDate} rather than a longer format string
+ * for the reason above: a header that wants "Domingo, 9 ago 2026" on a desktop
+ * still has to be able to drop the weekday on a phone, and it can only do that
+ * if the weekday is its own element.
+ */
+export function formatWeekday(date: Date): string {
+  return capitalize(WEEKDAY.format(date));
+}

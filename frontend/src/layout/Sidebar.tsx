@@ -26,7 +26,13 @@ import styles from './Sidebar.module.css';
  * absent, and the navigation must not grow an error banner because a secondary
  * card could not load.
  */
-export function Sidebar() {
+export function Sidebar({
+  expanded = false,
+  onExpandedChange,
+}: {
+  readonly expanded?: boolean;
+  readonly onExpandedChange?: (expanded: boolean) => void;
+}) {
   const { status, connections } = useIntegrations();
   const withings =
     status === 'ready' ? connections.find((c) => c.providerId === 'WITHINGS') : undefined;
@@ -35,6 +41,7 @@ export function Sidebar() {
     <NavLink
       key={item.path}
       to={item.path}
+      aria-label={item.label}
       end={item.path === '/app'}
       className={({ isActive }) =>
         [styles.link, isActive ? styles.active : ''].filter(Boolean).join(' ')
@@ -46,7 +53,16 @@ export function Sidebar() {
   );
 
   return (
-    <aside className={styles.sidebar}>
+    <aside className={styles.sidebar} data-expanded={expanded}>
+      <button
+        type="button"
+        className={styles.tabletToggle}
+        aria-label={expanded ? 'Contraer navegación' : 'Expandir navegación'}
+        aria-expanded={expanded}
+        onClick={() => onExpandedChange?.(!expanded)}
+      >
+        <Icon name="menu" />
+      </button>
       {/*
        * FOR-185: every entry is a product section now. "Ajustes" used to be
        * pinned apart at the bottom via a `settings` grouping flag; it moved to

@@ -1,20 +1,18 @@
 import styles from './BodyFigure.module.css';
+import maleFront from '../assets/anatomy/hombre-front.png';
+import maleBack from '../assets/anatomy/hombre-back.png';
+import femaleFront from '../assets/anatomy/mujer-front.png';
+import femaleBack from '../assets/anatomy/mujer-back.png';
 
 /**
- * Placeholder body silhouette (FOR-164 training mockup
- * `docs/3-entrenamiento-dash.png`). The mockup renders anatomical front/back
- * figures with per-muscle highlighting; a dedicated asset pack for those is
- * being produced separately and will replace this component's internals later.
- *
- * <p>Until then this draws a simple schematic silhouette so the layout reads
- * correctly, with an optional `active` accent tint to stand in for
- * "worked/highlighted". It is intentionally minimal and clearly a placeholder
- * (see the `data-placeholder` marker) — NOT real anatomy and NOT driven by the
- * FOR-136 muscle-map data yet. Decorative by default (`aria-hidden`): callers
- * provide the real label/heatmap text alongside.
+ * Body illustration used by training cards. Strength sessions use the supplied
+ * male/female front/back anatomical assets, ready for a future muscle-highlight
+ * SVG overlay. Running and rest retain the compact schematic SVG because they
+ * do not represent a muscle-side view. Decorative by default (`aria-hidden`).
  */
 interface BodyFigureProps {
   readonly view?: 'front' | 'back';
+  readonly sex?: 'male' | 'female';
   readonly variant?: 'strength' | 'running' | 'rest';
   readonly active?: boolean;
   readonly size?: number;
@@ -23,12 +21,38 @@ interface BodyFigureProps {
 
 export function BodyFigure({
   view = 'front',
+  sex = 'male',
   variant = 'strength',
   active = false,
   size = 96,
   label,
 }: BodyFigureProps) {
   const decorative = label === undefined;
+  if (variant === 'strength') {
+    const source =
+      sex === 'female'
+        ? view === 'back'
+          ? femaleBack
+          : femaleFront
+        : view === 'back'
+          ? maleBack
+          : maleFront;
+
+    return (
+      <img
+        className={styles.anatomy}
+        src={source}
+        width={(size * 360) / 776}
+        height={size}
+        alt={label ?? ''}
+        aria-hidden={decorative ? true : undefined}
+        data-testid="anatomy-figure"
+        data-view={view}
+        data-sex={sex}
+      />
+    );
+  }
+
   return (
     <svg
       className={[styles.figure, active ? styles.active : ''].filter(Boolean).join(' ')}
@@ -38,6 +62,10 @@ export function BodyFigure({
       data-placeholder="body-figure"
       data-view={view}
       data-variant={variant}
+      // Exposed as an attribute, not just the class, so a consumer can restyle
+      // the highlighted figure for its own context without reaching for a CSS
+      // module class it cannot name.
+      data-active={active}
       role={decorative ? undefined : 'img'}
       aria-hidden={decorative ? true : undefined}
       aria-label={label}

@@ -1,0 +1,509 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+/*
+ * Type scale. The mockups run this screen a step below the app's body size --
+ * it is a dense data view (nine exercises, four set rows each), and at 16px the
+ * set tables stopped fitting their column without wrapping. Sizes are set on
+ * the containers so the values inside inherit them.
+ */
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: fit-content;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+.sessionMetrics {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  align-self: flex-end;
+  overflow: hidden;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+.sessionMetrics > div {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  min-width: 8rem;
+  padding: var(--space-3) var(--space-4);
+}
+.sessionMetrics > div + div {
+  border-left: 1px solid var(--color-border);
+}
+.sessionMetrics span {
+  grid-column: 1 / -1;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.sessionMetrics strong {
+  font-family: var(--font-heading);
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+}
+.sessionMetrics > div:first-child strong {
+  color: var(--color-accent-strong);
+}
+.sessionMetrics .restTime {
+  color: var(--color-warning);
+}
+.sessionMetrics button {
+  padding: 0.2rem 0.45rem;
+  color: var(--color-text-muted);
+  background: var(--color-surface-muted);
+  border: 0;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+}
+.date {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+}
+.backIcon {
+  transform: rotate(180deg);
+}
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(17rem, 0.85fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+.main,
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+}
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-5);
+  align-items: center;
+  background:
+    radial-gradient(
+      circle at 75% 50%,
+      color-mix(in srgb, var(--color-accent) 8%, transparent),
+      transparent 35%
+    ),
+    var(--color-surface);
+}
+.heroCopy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+.titleRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.kindBadge {
+  padding: 2px var(--space-2);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.titleRow h1 {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  line-height: 1.15;
+}
+.description {
+  max-width: 34rem;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+}
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  width: 100%;
+  margin: var(--space-2) 0 0;
+}
+.metrics > div {
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.metrics dt {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+.metrics dd {
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+.exercises {
+  padding: var(--space-5);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+.sectionHeader,
+.exerciseActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.sectionHeader h2 {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+.sectionStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  color: var(--color-accent-strong);
+  font-size: var(--font-size-xs);
+}
+.sectionStatus > span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+/* The unfilled half of the legend: same tick, muted, so it reads as the
+   "not yet" state of the Estado column rather than a second success. */
+.sectionStatusPending {
+  color: var(--color-text-muted);
+}
+.exerciseList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+  padding: 0;
+  list-style: none;
+}
+.exerciseCard {
+  display: grid;
+  grid-template-columns: auto minmax(11rem, 0.8fr) minmax(18rem, 1.2fr);
+  gap: var(--space-3);
+  align-items: start;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.exerciseOrder {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  color: var(--color-accent-strong);
+  background: color-mix(in srgb, var(--color-accent) 15%, transparent);
+  border-radius: 50%;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+}
+.exerciseIdentity {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+.exerciseIdentity > svg {
+  color: var(--color-accent-strong);
+}
+.exerciseIdentity h3 {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+.exerciseIdentity span,
+.exerciseIdentity small {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+/* The exercise's category line. Violet is this screen's tag hue -- the same
+   one the muscle chips and the second donut slice carry. */
+.exerciseTag {
+  color: var(--color-violet-strong);
+  font-weight: 600;
+}
+.exerciseRest {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.setTable {
+  min-width: 0;
+  font-size: var(--font-size-xs);
+}
+.setHeader,
+.setRow {
+  display: grid;
+  grid-template-columns: 0.6fr 0.8fr 1.4fr 0.6fr;
+  gap: var(--space-2);
+  align-items: center;
+  min-height: 28px;
+  padding: 0 var(--space-2);
+}
+.setHeader {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+}
+.setRow {
+  border-top: 1px solid var(--color-border);
+}
+.setRowDone {
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+}
+.setRow input {
+  width: 100%;
+  min-width: 0;
+  padding: 0.35rem 0.45rem;
+  color: var(--color-text);
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+.setRow input:focus-visible {
+  outline: 2px solid var(--color-accent-strong);
+  outline-offset: 1px;
+}
+/*
+ * Icon-only in the mockup: a tick that is grey while the set is open and green
+ * once it is logged. The accessible name still says which set it toggles (see
+ * the aria-label in the TSX), so dropping the "Done" text costs nothing but the
+ * column width the set tables needed back.
+ */
+.doneButton {
+  display: inline-grid;
+  min-width: 1.75rem;
+  min-height: 1.75rem;
+  place-items: center;
+  justify-self: end;
+  color: var(--color-text-muted);
+  background: none;
+  border: 0;
+  border-radius: 50%;
+}
+.doneButton[data-done='true'] {
+  color: var(--color-accent-strong);
+}
+.exerciseActions {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+.side > section {
+  min-width: 0;
+}
+.progressCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  text-align: center;
+}
+.progressCard > header {
+  align-self: stretch;
+}
+.progressPercent {
+  font-family: var(--font-heading);
+  font-size: 1.4rem;
+}
+.progressMessage {
+  color: var(--color-accent-strong);
+  font-size: var(--font-size-sm);
+}
+.progressCard > span {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+.progressCard > button {
+  width: 100%;
+  margin-top: var(--space-2);
+}
+.muscleTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  list-style: none;
+}
+.muscleChart {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: center;
+}
+.muscleDonut {
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  mask: radial-gradient(circle, transparent 48%, #000 50%);
+}
+.muscleChart ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* Swatch, label, then the percentage pinned right — the `1fr` on the label is
+   what keeps the numbers in a column however long the muscle names get. */
+.muscleChart li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+}
+/* 8px, not the 10px the weekly screen used: at this type size a 10px dot
+   out-weighed the label it belongs to. */
+.muscleDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.tip {
+  background: color-mix(in srgb, var(--color-accent) 7%, var(--color-surface));
+}
+.tip h2 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--color-accent-strong);
+  font-size: var(--font-size-xs);
+}
+.tip p {
+  margin: var(--space-3) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+}
+.actionError {
+  position: sticky;
+  bottom: var(--space-4);
+  margin: 0;
+  padding: var(--space-3);
+  color: var(--color-danger);
+  background: var(--color-surface);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-md);
+}
+@media (max-width: 1050px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+  .side {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .tip {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 720px) {
+  .sessionMetrics {
+    align-self: stretch;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .sessionMetrics > div {
+    min-width: 0;
+    padding: var(--space-2);
+  }
+  .hero {
+    grid-template-columns: 1fr;
+  }
+  .hero > svg {
+    justify-self: center;
+  }
+  .metrics {
+    grid-template-columns: 1fr;
+  }
+  .exerciseCard {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .setTable {
+    grid-column: 1 / -1;
+  }
+  .side {
+    grid-template-columns: 1fr;
+  }
+  .tip {
+    grid-column: auto;
+  }
+}
+@media (max-width: 480px) {
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .date {
+    width: 100%;
+    justify-content: center;
+  }
+  .sessionMetrics {
+    grid-template-columns: 1fr;
+  }
+  .sessionMetrics > div {
+    grid-template-columns: 1fr auto;
+  }
+  .sessionMetrics > div + div {
+    border-top: 1px solid var(--color-border);
+    border-left: 0;
+  }
+  .titleRow h1 {
+    font-size: 1.55rem;
+  }
+  .exercises {
+    padding: var(--space-3);
+  }
+  .exerciseCard {
+    padding: var(--space-3);
+  }
+  .exerciseActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .setHeader,
+  .setRow {
+    grid-template-columns: 0.5fr 0.6fr 1.3fr 0.5fr;
+    font-size: var(--font-size-xs);
+  }
+}

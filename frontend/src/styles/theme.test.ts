@@ -1,4 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import foodFormCss from '../pages/admin/FoodForm.module.css?raw';
+import planGeneratorCss from '../pages/generator/PlanGenerator.module.css?raw';
+import nutritionCss from '../pages/NutritionPage.module.css?raw';
+import nutritionPageSource from '../pages/NutritionPage.tsx?raw';
+import trainingDetailSource from '../pages/TrainingDetailPage.tsx?raw';
+import trainingCss from '../pages/TrainingPage.module.css?raw';
+import trainingPageSource from '../pages/TrainingPage.tsx?raw';
 import themeCss from './theme.css?raw';
 
 /**
@@ -61,7 +68,7 @@ describe('theme.css design tokens (FOR-163 reconciliation)', () => {
       ['--color-border', '#30363d', 'surface-stroke'],
       ['--color-text', '#dfe2eb', 'on-surface / on-background'],
       ['--color-text-muted', '#8b949e', 'text-dimmed'],
-      ['--color-accent', '#4cdf97', 'primary'],
+      ['--color-accent', '#63e662', 'primary'],
       ['--color-accent-contrast', '#003920', 'on-primary'],
       ['--color-warning', '#ffab70', 'warning-amber'],
       ['--color-danger', '#ff5757', 'error-pulse'],
@@ -90,27 +97,18 @@ describe('theme.css design tokens (FOR-163 reconciliation)', () => {
       expect(tokenValue(light, token)).toBeTruthy();
     });
 
-    // FOR-185 replaced FOR-163's derived light accent (#006d42, the template's
-    // `inverse-primary`) with a brighter brand-chosen green. The guard is kept
-    // but re-pointed, so a future silent drift is still caught.
-    it('pins the light accent to the brand green and its readable ink', () => {
-      // FOR-189: brightened to the brand owner's green so light mode reads like
-      // dark. Deliberately not asserted equal to the dark accent (#4cdf97) —
-      // they are a nudge apart, and the value was given as-is.
-      expect(tokenValue(light, '--color-accent')).toBe('#3ce78b');
-      // NOT #ffffff, which would be ~1.5:1 on that green. #0f1a13 (= light
-      // --color-text) is ~11:1 there, and ~10 components paint text or icons on
-      // an accent fill.
+    it('pins the light accent to the reference green and its readable ink', () => {
+      expect(tokenValue(light, '--color-accent')).toBe('#63e662');
       expect(tokenValue(light, '--color-accent-contrast')).toBe('#0f1a13');
     });
 
     it('splits the text-safe accent out from the fill accent (FOR-185)', () => {
-      // The brand green is a fill colour: ~1.5:1 on the light page background,
+      // The selected green is a fill colour: ~1.38:1 on the light page background,
       // far below the AA 4.5:1 bar. Accent-coloured *text* uses the darkened
-      // counterpart instead (~4.75:1). Dark needs no split — its accent is
-      // already ~10.8:1 on its own background — but declares the token anyway
+      // counterpart instead (~4.99:1). Dark needs no split — its accent is
+      // already has strong contrast on its own background — but declares the token anyway
       // so component CSS can name the text role unconditionally.
-      expect(tokenValue(light, '--color-accent-strong')).toBe('#2e7d32');
+      expect(tokenValue(light, '--color-accent-strong')).toBe('#3e7810');
       expect(tokenValue(dark, '--color-accent-strong')).toBe(tokenValue(dark, '--color-accent'));
       expect(tokenValue(light, '--color-accent-strong')).not.toBe(
         tokenValue(light, '--color-accent'),
@@ -120,17 +118,37 @@ describe('theme.css design tokens (FOR-163 reconciliation)', () => {
     it('keeps the CTA gradient and its ink identical in both themes (FOR-185)', () => {
       // The brand owner wants one bright ramp everywhere, so light does not
       // derive a darker gradient from its own endpoints. The ink must travel
-      // with it: white on #4cdf97 is ~1.71:1, the dark ink is ~10.8:1.
+      // with it: white on #63e662 is low contrast, while the dark ink remains readable.
       expect(tokenValue(light, '--gradient-accent')).toBe(tokenValue(dark, '--gradient-accent'));
       expect(tokenValue(light, '--color-on-gradient')).toBe(
         tokenValue(dark, '--color-on-gradient'),
       );
     });
 
-    it('keeps the light warning accessible (AA) after the amber hue reconciliation', () => {
-      // Pre-existing #b7791f only reached ~3.38:1 on the light bg (fails AA);
-      // reconciling to the template's amber hue also fixes that regression.
-      expect(tokenValue(light, '--color-warning')).toBe('#8f4d13');
+    it('keeps warning text accessible (AA) beside the exact reference graphic colour', () => {
+      // Exact #f19c2b is reserved for marks; #9a5700 reaches ~5.21:1 on the light bg.
+      expect(tokenValue(light, '--color-warning')).toBe('#9a5700');
+    });
+
+    it('maps the reference palette to light-theme semantic roles', () => {
+      expect(tokenValue(light, '--color-accent')).toBe('#63e662');
+      expect(tokenValue(light, '--color-info')).toBe('#53adf3');
+      expect(tokenValue(light, '--color-warning-graphic')).toBe('#f19c2b');
+      expect(tokenValue(light, '--color-danger-graphic')).toBe('#ec5c51');
+    });
+
+    it('pairs bright reference fills with text-safe light-theme variants', () => {
+      expect(tokenValue(light, '--color-accent-strong')).toBe('#3e7810');
+      expect(tokenValue(light, '--color-info-strong')).toBe('#1f71ae');
+      expect(tokenValue(light, '--color-warning')).toBe('#9a5700');
+      expect(tokenValue(light, '--color-danger')).toBe('#b63b33');
+    });
+
+    it('keeps the remaining light-only reference colours out of the dark theme', () => {
+      // Accent is intentionally shared by both themes; blue/orange/red remain light-only.
+      for (const referenceColour of ['#53adf3', '#f19c2b', '#ec5c51']) {
+        expect(dark).not.toContain(referenceColour);
+      }
     });
   });
 
@@ -172,12 +190,87 @@ describe('theme.css design tokens (FOR-163 reconciliation)', () => {
       expect(tokenValue(dark, '--font-size-lg')).toBe('1.125rem'); // template body-lg: 18px (already matched)
       expect(tokenValue(dark, '--font-size-xl')).toBe('1.5rem'); // template headline-lg-mobile: 24px (already matched)
     });
+
+    /*
+     * Regression guard. `--font-size-xs` was consumed by thirteen rules across
+     * six modules (the training detail set tables and session metrics, the plan
+     * generator, the meal form, the calorie ring) but never declared anywhere.
+     * `font-size: var(--font-size-xs)` with no fallback is invalid at computed-
+     * value time, so every one of those micro-labels silently inherited 1rem
+     * and rendered at 16px instead of the ~12px the mockups show. Declaring it
+     * is what actually fixes the "fonts look too big" report.
+     */
+    it('declares --font-size-xs, the micro-label step its consumers already reference', () => {
+      expect(tokenValue(dark, '--font-size-xs')).toBe('0.75rem'); // template label-sm: 12px
+    });
+  });
+
+  /*
+   * The mockups' fourth data hue. The donut/legend palette in the training
+   * screens cycles accent -> info -> warning-graphic -> secondary, and
+   * `--color-secondary` is a lime that reads as a second green next to the
+   * accent; the mockups paint that fourth slice violet instead. Same
+   * fill/text split every other hue in this file uses: one exact reference
+   * value for graphical marks (3:1 bar) and a per-theme darkened/lightened
+   * counterpart that clears AA for text (4.5:1).
+   */
+  describe('violet data hue for the training legends and muscle tags', () => {
+    it('shares one reference violet for graphical marks across both themes', () => {
+      expect(tokenValue(dark, '--color-violet')).toBe('#8b5cf6');
+      expect(tokenValue(light, '--color-violet')).toBe('#8b5cf6');
+    });
+
+    it('re-derives the text-safe counterpart per theme', () => {
+      // ~7.4:1 on the dark page background.
+      expect(tokenValue(dark, '--color-violet-strong')).toBe('#a78bfa');
+      // ~7.5:1 on --color-bg (#f4f7f5); the reference violet is only ~4.2:1.
+      expect(tokenValue(light, '--color-violet-strong')).toBe('#6d28d9');
+    });
   });
 
   describe('no CDN dependency leaks into the token layer', () => {
     it('never references fonts.googleapis.com or a CDN url()', () => {
       expect(themeCss).not.toMatch(/fonts\.googleapis\.com/);
       expect(themeCss).not.toMatch(/@import\s+url\(/);
+    });
+  });
+
+  describe('semantic colour consumers preserve the light palette roles', () => {
+    it('uses the accessible accent for nutrition labels rather than the fill colour', () => {
+      expect(nutritionCss).toMatch(/\.mealsCount\s*{[^}]*color:\s*var\(--color-accent-strong\)/s);
+      expect(nutritionCss).toMatch(/\.mealType\s*{[^}]*color:\s*var\(--color-accent-strong\)/s);
+    });
+
+    it('uses text-safe accent values for generator labels and focus outlines', () => {
+      expect(planGeneratorCss).not.toMatch(
+        /(?:^|\n)\s*color:\s*var\(--color-accent(?:,\s*#[0-9a-f]+)?\)/i,
+      );
+      expect(planGeneratorCss).not.toMatch(
+        /outline:[^;]*var\(--color-accent(?:,\s*#[0-9a-f]+)?\)/i,
+      );
+      expect(foodFormCss).toMatch(/outline:[^;]*var\(--color-accent-strong\)/i);
+    });
+
+    /*
+     * The muscle donut and its legend are one chart drawn twice — a
+     * conic-gradient for the ring, a swatch per legend row — so the two palettes
+     * have to stay the same list in the same order or the legend lies about
+     * which slice is which.
+     */
+    it('draws the muscle donut and its legend from one shared palette', () => {
+      expect(trainingDetailSource).toContain("'var(--color-accent)'");
+      expect(trainingDetailSource).toContain("'var(--color-violet)'");
+      expect(trainingDetailSource).toContain("'var(--color-warning-graphic)'");
+      // A single palette constant, consumed by both the ring and the legend.
+      expect(trainingDetailSource).toMatch(/MUSCLE_SLICE_COLORS/);
+    });
+
+    it('keeps fat series and training dots on the orange graphic role', () => {
+      expect(nutritionPageSource).toContain(
+        "label: 'Grasas', color: 'var(--color-warning-graphic)'",
+      );
+      expect(trainingPageSource).toContain('conic-gradient(var(--color-warning-graphic)');
+      expect(trainingCss).not.toMatch(/background-color:\s*var\(--color-warning\)/);
     });
   });
 

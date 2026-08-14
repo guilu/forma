@@ -13,6 +13,7 @@ import { expectGlassSurface, expectNoHorizontalOverflow, expectSinglePageScrolle
 const PHONE = { width: 375, height: 720 };
 const NARROW = { width: 574, height: 720 };
 const TABLET = { width: 1180, height: 820 };
+const IPAD_LANDSCAPE = { width: 1194, height: 702 };
 const DESKTOP = { width: 1280, height: 900 };
 /** Near the top of the mid-width band. */
 const LAPTOP = { width: 1440, height: 900 };
@@ -56,6 +57,181 @@ for (const viewport of [PHONE, NARROW, TABLET, DESKTOP]) {
   });
 }
 
+for (const viewport of [PHONE, DESKTOP]) {
+  test.describe(`training detail at ${viewport.width}px`, () => {
+    test.use({ viewport });
+
+    test('keeps the workout prescription inside the main viewport', async ({ page }) => {
+      const session = {
+        id: 'SUNDAY:STRENGTH',
+        kind: 'STRENGTH',
+        bodyView: 'FRONT',
+        title: 'Fuerza · Pierna y core',
+        detail: '2 ejercicios',
+        status: 'COMPLETED',
+        workoutType: 'LEGS',
+      };
+      await page.route('**/api/v1/training/week', (route) =>
+        route.fulfill({
+          contentType: 'application/json',
+          body: JSON.stringify({
+            days: [{ dayOfWeek: 'SUNDAY', rest: false, sessions: [session] }],
+          }),
+        }),
+      );
+      await page.route('**/api/v1/training/workouts/LEGS', (route) =>
+        route.fulfill({
+          contentType: 'application/json',
+          body: JSON.stringify({
+            workoutType: 'LEGS',
+            items: [
+              {
+                exerciseId: 'goblet-squat',
+                exerciseName: 'Sentadilla goblet',
+                order: 1,
+                sets: 4,
+                repScheme: 'RANGE',
+                repsMin: 10,
+                repsMax: 15,
+                restSeconds: 90,
+                rir: 2,
+              },
+              {
+                exerciseId: 'dead-bug',
+                exerciseName: 'Dead bug',
+                order: 2,
+                sets: 3,
+                repScheme: 'RANGE',
+                repsMin: 10,
+                repsMax: 15,
+                restSeconds: 45,
+                rir: 2,
+              },
+            ],
+          }),
+        }),
+      );
+      await page.route('**/api/v1/training/sessions/SUNDAY%3ASTRENGTH/muscle-map', (route) =>
+        route.fulfill({
+          contentType: 'application/json',
+          body: JSON.stringify({
+            sessionId: session.id,
+            muscles: [
+              { muscle: 'cuádriceps', load: 'HIGH' },
+              { muscle: 'glúteos', load: 'MEDIUM' },
+              { muscle: 'core', load: 'LOW' },
+            ],
+          }),
+        }),
+      );
+
+      await gotoApp(page, '/app/training/SUNDAY%3ASTRENGTH');
+
+      await expect(page.getByRole('heading', { name: 'Pierna y core', level: 1 })).toBeVisible();
+      await expectNoHorizontalOverflow(page);
+      await expectSinglePageScroller(page);
+    });
+  });
+}
+
+test.describe('training on iPad landscape', () => {
+  test.use({ viewport: IPAD_LANDSCAPE });
+
+  test('uses the tablet navigation and purpose-built vertical training flow', async ({ page }) => {
+    const dayNames = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
+    await page.route('**/api/v1/training/week', (route) =>
+      route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          days: dayNames.map((dayOfWeek, index) => ({
+            dayOfWeek,
+            rest: index === 4,
+            sessions:
+              index === 4
+                ? []
+                : [
+                    {
+                      id: `${dayOfWeek}:STRENGTH`,
+                      kind: 'STRENGTH',
+                      bodyView: dayOfWeek === 'THURSDAY' ? 'BACK' : 'FRONT',
+                      title: `Fuerza · Sesión ${index + 1}`,
+                      detail: '5 ejercicios',
+                      status: index < 3 ? 'COMPLETED' : 'PLANNED',
+                      workoutType: 'PUSH',
+                    },
+                  ],
+          })),
+        }),
+      }),
+    );
+    await gotoApp(page, '/app/training');
+
+    const sidebar = page.getByRole('complementary');
+    const expand = page.getByRole('button', { name: 'Expandir navegación' });
+    await expect(sidebar).toHaveCSS('width', '72px');
+    await expand.click();
+    await expect(sidebar).toHaveCSS('width', '252px');
+    await page.getByRole('button', { name: 'Contraer navegación' }).click();
+    await expect(sidebar).toHaveCSS('width', '72px');
+
+    const today = page.getByRole('heading', { name: 'Entrenamiento de hoy' }).locator('..');
+    const summary = page.getByRole('heading', { name: 'Resumen semanal' }).locator('..');
+    const calendar = page.getByRole('heading', { name: 'Calendario semanal' }).locator('..');
+    const todayBox = await today.boundingBox();
+    const summaryBox = await summary.boundingBox();
+    const calendarBox = await calendar.boundingBox();
+    expect(todayBox).not.toBeNull();
+    expect(summaryBox).not.toBeNull();
+    expect(calendarBox).not.toBeNull();
+    expect(summaryBox!.y).toBeGreaterThan(todayBox!.y + todayBox!.height - 2);
+    expect(calendarBox!.y).toBeGreaterThan(summaryBox!.y + summaryBox!.height - 2);
+
+    const summaryRows = page.getByRole('listitem', {
+      name: /Sesiones totales|Carreras|Fuerza/,
+    });
+    const rowBoxes = await summaryRows.evaluateAll((rows) =>
+      rows.slice(0, 3).map((row) => row.getBoundingClientRect().toJSON()),
+    );
+    expect(rowBoxes).toHaveLength(3);
+    expect(
+      Math.max(...rowBoxes.map((box) => box.y)) - Math.min(...rowBoxes.map((box) => box.y)),
+    ).toBeLessThan(3);
+
+    const calendarScroller = page.getByRole('list', {
+      name: 'Calendario semanal de entrenamiento',
+    });
+    await expect
+      .poll(() =>
+        calendarScroller.evaluate((element) => ({
+          clientWidth: element.clientWidth,
+          scrollWidth: element.scrollWidth,
+          snap: getComputedStyle(element).scrollSnapType,
+        })),
+      )
+      .toMatchObject({ snap: 'x mandatory' });
+    const scrollSize = await calendarScroller.evaluate((element) => ({
+      clientWidth: element.clientWidth,
+      scrollWidth: element.scrollWidth,
+    }));
+    expect(scrollSize.scrollWidth).toBeGreaterThan(scrollSize.clientWidth);
+    const currentDay = calendarScroller.locator('li[aria-current="date"]');
+    const centers = await Promise.all([
+      calendarScroller.evaluate((element) => {
+        const box = element.getBoundingClientRect();
+        return box.left + box.width / 2;
+      }),
+      currentDay.evaluate((element) => {
+        const box = element.getBoundingClientRect();
+        return box.left + box.width / 2;
+      }),
+    ]);
+    expect(Math.abs(centers[0] - centers[1])).toBeLessThan(100);
+
+    await expectNoHorizontalOverflow(page);
+    await expectSinglePageScroller(page);
+  });
+});
+
 test.describe('dashboard grid', () => {
   test.use({ viewport: NARROW });
 
@@ -78,16 +254,47 @@ test.describe('dashboard grid', () => {
 
     // Everything that is not one of those tiles still spans the single column.
     const others = await page
-      .locator('main section')
-      .evaluateAll((cards) =>
-        cards
-          .filter((card) => !card.parentElement?.className.includes('body'))
-          .map((card) => Math.round(card.getBoundingClientRect().left)),
-      );
+      .locator('main [class*="todayGrid"] > section')
+      .evaluateAll((cards) => cards.map((card) => Math.round(card.getBoundingClientRect().left)));
     expect(
       new Set(others).size,
       `Widgets start at ${new Set(others).size} different x positions`,
     ).toBe(1);
+  });
+
+  test('places the combined nutrition card before water with donut and macros side by side', async ({
+    page,
+  }) => {
+    await gotoApp(page, '/app');
+
+    const nutrition = widget(page, 'Nutrición');
+    const water = page
+      .getByRole('heading', { name: 'Agua', exact: true })
+      .locator('xpath=ancestor::section[1]');
+    const [nutritionTop, waterTop] = await Promise.all([
+      nutrition.evaluate((card) => Math.round(card.getBoundingClientRect().top)),
+      water.evaluate((card) => Math.round(card.getBoundingClientRect().top)),
+    ]);
+    expect(nutritionTop).toBeLessThan(waterTop);
+
+    const nutritionPrecedesWaterInDom = await nutrition.evaluate((card) => {
+      const waterHeading = [...document.querySelectorAll('h3')].find(
+        (heading) => heading.textContent?.trim() === 'Agua',
+      );
+      const waterCard = waterHeading?.closest('section');
+      return Boolean(
+        waterCard && card.compareDocumentPosition(waterCard) & Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+    });
+    expect(nutritionPrecedesWaterInDom).toBe(true);
+
+    const ringLeft = await nutrition
+      .getByRole('img', { name: /kcal consumidas/ })
+      .evaluate((node) => Math.round(node.getBoundingClientRect().left));
+    const macrosLeft = await nutrition
+      .getByRole('progressbar', { name: /Proteínas/ })
+      .evaluate((node) => Math.round(node.getBoundingClientRect().left));
+    expect(macrosLeft).toBeGreaterThan(ringLeft);
   });
 });
 
@@ -128,38 +335,42 @@ async function rowCards(
 test.describe('dashboard rows', () => {
   test.use({ viewport: WIDE });
 
-  for (const row of ['metrics', 'rowFour', 'rowThree']) {
-    test(`gives every card in the ${row} row the same height`, async ({ page }) => {
+  for (const row of ['todayGrid', 'rowThree']) {
+    test(`gives cards sharing a ${row} grid row the same height`, async ({ page }) => {
       await gotoApp(page, '/app');
 
-      const heights = (await rowCards(page, row)).map((card) => card.height);
-
-      expect(heights.length, `No cards found in the ${row} row`).toBeGreaterThan(1);
-      expect(
-        new Set(heights).size,
-        `Cards in the ${row} row have differing heights: ${heights.join(', ')}`,
-      ).toBe(1);
+      const cards = await rowCards(page, row);
+      const rows = new Map<number, typeof cards>();
+      for (const card of cards) rows.set(card.top, [...(rows.get(card.top) ?? []), card]);
+      expect(cards.length, `No cards found in the ${row}`).toBeGreaterThan(1);
+      for (const [top, entries] of rows) {
+        if (entries.length < 2) continue;
+        const heights = entries.map((card) => card.height);
+        expect(
+          new Set(heights).size,
+          `Cards at y=${top} in ${row} differ: ${heights.join(', ')}`,
+        ).toBe(1);
+      }
     });
   }
 });
 
 /**
- * On a tablet in landscape the six metric tiles across a single row left each
+ * On a tablet in landscape the metric tiles across a single row left each
  * one about 180px wide — too narrow for a headline value and its caption. The
  * band below the desktop layout (1101–1600px) wraps every row at three columns
  * instead.
  */
 // Both ends of the band: the tablet that prompted it and a laptop near the top
-// edge, where six tracks were still breaking "2120 kcal" across two lines.
+// edge, where narrow tracks were still breaking headline figures across lines.
 for (const viewport of [TABLET, LAPTOP]) {
   test.describe(`dashboard grid at ${viewport.width}px`, () => {
     test.use({ viewport });
 
-    // Cards per row, then rows: metrics is six tiles as 3 + 3, and the two
-    // four-widget rows become 3 + 1.
+    // The unified today grid uses three tracks; its body group, water, main
+    // three-card row and final trend occupy four explicit rows.
     for (const [row, columns, rows] of [
-      ['metrics', 3, 2],
-      ['rowFour', 3, 2],
+      ['todayGrid', 3, 4],
       // Two x positions, not three: Evolución took the column the retired
       // "Tu progreso" card left behind, so it starts at track 1 and spans two.
       ['rowThree', 2, 2],
@@ -185,7 +396,9 @@ for (const viewport of [TABLET, LAPTOP]) {
 
 /** The widget card whose section heading is `title`. */
 function widget(page: Page, title: string) {
-  return page.locator('main section').filter({ has: page.getByRole('heading', { name: title }) });
+  return page
+    .getByRole('heading', { name: title, exact: true })
+    .locator('xpath=ancestor::section[1]');
 }
 
 test.describe('dashboard widget internals', () => {
@@ -414,22 +627,19 @@ test.describe('chart colours', () => {
     });
   }
 
-  test('ramps the completed arc of a progress donut instead of filling it flat', async ({
-    page,
-  }) => {
+  test('paints the shared calorie progress donut with a filled arc and track', async ({ page }) => {
     await gotoApp(page, '/app');
 
-    const ring = page.getByRole('img', { name: /Calorías consumidas/ });
+    const ring = page.getByRole('img', { name: /kcal consumidas/ });
     const background = await ring.evaluate((el) => getComputedStyle(el).backgroundImage);
 
     expect(background, 'The donut is not painted with a conic gradient').toContain('conic');
-    // Two ramp stops for the filled arc plus the track colour: a flat fill would
-    // resolve to one colour before the track.
+    // The shared nutrition donut has one progress colour and one track colour.
     const stops = background.match(/rgba?\([^)]+\)/g) ?? [];
     expect(
       new Set(stops).size,
-      `Expected a ramp plus a track, got ${stops.join(', ')}`,
-    ).toBeGreaterThanOrEqual(3);
+      `Expected a filled arc plus a track, got ${stops.join(', ')}`,
+    ).toBeGreaterThanOrEqual(2);
   });
 });
 
@@ -543,52 +753,47 @@ test.describe('glass chrome', () => {
   });
 });
 
-test.describe('landing hero CTAs', () => {
+test.describe('landing hero CTA', () => {
   test.use({ viewport: PHONE });
 
   /**
-   * Stacked on a phone, a CTA stretched edge to edge stops reading as a button
-   * and starts reading as a form field or a banner. The pair is capped and
-   * centred instead, so the gutters make them look like the tappable targets
-   * they are.
+   * On a phone, a CTA stretched edge to edge stops reading as a button and
+   * starts reading as a form field or a banner. It is capped and centred
+   * instead, so the gutters make it look like the tappable target it is.
+   *
+   * <p>The hero used to carry two CTAs and this checked they shared a width and
+   * a left edge. "Ver Demo" is gone — it promised a demo and only scrolled to
+   * the product section — so the pair assertions became the centring check
+   * below, which is what they were really protecting.
    */
-  test('do not span the full width of the phone', async ({ page }) => {
+  test('does not span the full width of the phone', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
-    // El primer CTA lleva al generador de plan desde que existe el embudo: es lo que
-    // se le ofrece a alguien que aún no tiene cuenta.
-    const ctas = page
-      .getByRole('link', { name: 'Crea tu plan gratis' })
-      .or(page.getByRole('link', { name: 'Ver Demo' }));
-    const boxes = await ctas.evaluateAll((links) =>
-      links.map((link) => {
-        const rect = link.getBoundingClientRect();
-        // One client rect per line the label occupies: a narrower button that
-        // wraps its label onto two lines is not the fix we want.
-        const range = document.createRange();
-        range.selectNodeContents(link);
-        const lines = new Set([...range.getClientRects()].map((line) => Math.round(line.top))).size;
-        return { name: link.textContent?.trim() ?? '', width: rect.width, left: rect.left, lines };
-      }),
-    );
+    // El CTA lleva al generador de plan desde que existe el embudo: es lo que se
+    // le ofrece a alguien que aún no tiene cuenta.
+    const cta = page.getByRole('link', { name: 'Crea tu plan gratis' });
+    await expect(cta).toBeVisible();
 
-    expect(boxes.length, 'The hero CTAs were not found').toBe(2);
+    const box = await cta.evaluate((link) => {
+      const rect = link.getBoundingClientRect();
+      // One client rect per line the label occupies: a narrower button that
+      // wraps its label onto two lines is not the fix we want.
+      const range = document.createRange();
+      range.selectNodeContents(link);
+      const lines = new Set([...range.getClientRects()].map((line) => Math.round(line.top))).size;
+      return { width: rect.width, centre: rect.left + rect.width / 2, lines };
+    });
 
-    const maxWidth = PHONE.width * 0.75;
-    for (const box of boxes) {
-      expect(
-        box.width,
-        `"${box.name}" is ${Math.round(box.width)}px wide in a ${PHONE.width}px viewport`,
-      ).toBeLessThanOrEqual(maxWidth);
-      expect(box.lines, `"${box.name}" wraps onto ${box.lines} lines`).toBe(1);
-    }
-
-    // Same width and same left edge: one centred column, not two ragged boxes.
-    const widths = boxes.map((box) => Math.round(box.width));
-    expect(new Set(widths).size, `The CTAs have differing widths: ${widths.join(', ')}`).toBe(1);
-    const lefts = boxes.map((box) => Math.round(box.left));
-    expect(new Set(lefts).size, `The CTAs start at different x: ${lefts.join(', ')}`).toBe(1);
+    expect(
+      box.width,
+      `The hero CTA is ${Math.round(box.width)}px wide in a ${PHONE.width}px viewport`,
+    ).toBeLessThanOrEqual(PHONE.width * 0.75);
+    expect(box.lines, `The hero CTA wraps onto ${box.lines} lines`).toBe(1);
+    expect(
+      Math.abs(box.centre - PHONE.width / 2),
+      `The hero CTA is centred at ${Math.round(box.centre)}px, not ${PHONE.width / 2}px`,
+    ).toBeLessThanOrEqual(1);
   });
 });
 

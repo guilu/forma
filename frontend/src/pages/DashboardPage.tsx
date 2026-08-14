@@ -2,10 +2,9 @@ import { useEffect, useState } from 'react';
 import { Icon } from '../components/Icon';
 import { WaterTracker } from '../components/WaterTracker';
 import { BodyWidget, type BodyState } from './dashboard/BodyWidget';
-import { CaloriesWidget } from './dashboard/CaloriesWidget';
 import { TrainingWidget } from './dashboard/TrainingWidget';
 import { NutritionWidget } from './dashboard/NutritionWidget';
-import { MacrosWidget } from './dashboard/MacrosWidget';
+import { NutritionSummaryWidget } from './dashboard/NutritionSummaryWidget';
 import { TrendWidget } from './dashboard/TrendWidget';
 import { EvolutionWidget } from './dashboard/EvolutionWidget';
 import { ShoppingWidget } from './dashboard/ShoppingWidget';
@@ -13,6 +12,9 @@ import { TipWidget } from './dashboard/TipWidget';
 import { PlanBanner } from './dashboard/PlanBanner';
 import { WidgetSection } from './dashboard/WidgetSection';
 import { getProfile } from '../api/profile';
+import { getDayConsumption, getNutritionDay } from '../api/nutrition';
+import type { TodayConsumptionState, TodayMenuState } from './dashboard/todayNutrition';
+import { localIsoDate } from './localIsoDate';
 import { listBodyMeasurements, type BodyMeasurement } from '../api/bodyMeasurements';
 import { formatShortDate } from './dateLabel';
 import styles from './DashboardPage.module.css';
@@ -20,22 +22,50 @@ import styles from './DashboardPage.module.css';
 /**
  * Dashboard page (FOR-19, rebuilt to the FOR-164 mockup
  * `docs/1-dashboard-1-medicion.png`). The daily entry point, composed from
- * self-fetching widgets so one failing widget never breaks the others (spec
- * `specs/FOR-51/spec.md`). No domain calculations happen here or in the widgets
- * (ADR-006) — every widget renders API values as returned.
+ * independently-failing data regions so one source never breaks the others. The
+ * the nutrition views intentionally share one date-based read here; otherwise
+ * each could render a different moment after a meal is logged.
  *
  * <p>Layout mirrors the mockup: a metrics row (body-composition tiles +
- * calories + hydration), a second row (next training / today's menu / macros /
+ * hydration), a second row (today's training / today's menu / nutrition summary /
  * 30-day trend), and a third row (first-summary / shopping preview / tip + plan
- * banner).
- *
- * <p>The header date navigator arrows are visual-only: no read model here takes
- * a date parameter (every widget exposes "today"/"this week" only), so the
- * arrows are inert decorative affordances and the label is today's date, per
- * `specs/FOR-51/ui.md`. Hydration and per-meal calories are placeholder
- * template data — see {@link WaterTracker} / {@link NutritionWidget}.
+ * banner). Nutrition and hydration render persisted daily read models; no
+ * placeholder consumption figures remain.
  */
 export function DashboardPage() {
+  const [today] = useState(() => new Date());
+  const todayIso = localIsoDate(today);
+  const [consumption, setConsumption] = useState<TodayConsumptionState>({ status: 'loading' });
+  const [menu, setMenu] = useState<TodayMenuState>({ status: 'loading' });
+  useEffect(() => {
+    let active = true;
+    getDayConsumption(todayIso)
+      .then((current) => {
+        if (!active) return;
+        setConsumption({ status: 'ready', consumption: current });
+        if (!current.dayType) {
+          setMenu({ status: 'empty' });
+          return;
+        }
+        getNutritionDay(current.dayType.toLowerCase())
+          .then((day) => {
+            if (active)
+              setMenu(day.meals.length > 0 ? { status: 'ready', day } : { status: 'empty' });
+          })
+          .catch(() => {
+            if (active) setMenu({ status: 'error' });
+          });
+      })
+      .catch(() => {
+        if (active) {
+          setConsumption({ status: 'error' });
+          setMenu({ status: 'error' });
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [todayIso]);
   // Greeting name comes from the profile (FOR-169): on an empty first-run there
   // is no saved profile, so the greeting stays generic ("Hola 👋") rather than
   // leaking a seeded persona. A failed/absent profile also falls back to generic.
@@ -127,19 +157,18 @@ export function DashboardPage() {
       </header>
 
       <WidgetSection id="metrics-row-title" title="Resumen de hoy" titleHidden surface={false}>
-        <div className={styles.metrics}>
+        <div className={styles.todayGrid}>
           <BodyWidget state={body} />
-          <CaloriesWidget />
-          <WaterTracker />
+          <NutritionSummaryWidget state={consumption} />
+          <WaterTracker date={todayIso} />
+          <TrainingWidget date={today} />
+          <NutritionWidget
+            menu={menu}
+            consumption={consumption.status === 'ready' ? consumption.consumption : undefined}
+          />
+          <TrendWidget />
         </div>
       </WidgetSection>
-
-      <div className={styles.rowFour}>
-        <TrainingWidget />
-        <NutritionWidget />
-        <MacrosWidget />
-        <TrendWidget />
-      </div>
 
       <div className={styles.rowThree}>
         {/* Evolución takes two tracks: it inherited the width the retired
