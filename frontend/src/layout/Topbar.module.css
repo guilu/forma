@@ -243,21 +243,27 @@
  * the same card background, neutral border and muted-to-full-contrast label as
  * the theme toggle beside it and the two read as one pair.
  *
- * `composes` rather than `<ButtonLink variant="surface">` because the overrides
- * below are the point: the bar is a 40px row, not the 44px touch row a
- * page-level button uses, and the label is bar chrome (label type, weight 500)
- * rather than a button's 700. `composes` guarantees the base rules are ordered
- * before these; a `className` on `ButtonLink` would be an equal-specificity
- * class whose winner depends on bundle order.
+ * Only the bar's own measurements: the surface, border and hover come from
+ * `<ButtonLink variant="surface">` in Topbar.tsx.
+ *
+ * This used to `composes: button surface`, and every declaration below was
+ * silently dropped — `composes` adds `.button` alongside this class rather than
+ * ranking this one above it, both sit at (0,1,0), and `.button` lands later in
+ * the bundle. The action rendered at the button's own 44px/700 instead of the
+ * bar's 40px/500: ten pixels taller than the theme toggle it pairs with.
+ *
+ * Doubling the selector is what makes these win outright, and a composing class
+ * cannot be doubled — `composes` is only valid on a simple selector — so the
+ * base treatment has to arrive from the component instead. That is the general
+ * rule here: component for the treatment, doubled local class for the
+ * overrides, never `composes` when a declaration has to beat the base.
  */
-.loginLink {
-  composes: button surface from '../components/Button.module.css';
+.loginLink.loginLink {
   min-height: 40px;
   padding: 0 var(--space-5);
   font-size: var(--font-size-label-md);
   font-weight: 500;
   letter-spacing: var(--letter-spacing-label-md);
-  text-decoration: none;
 }
 
 /*

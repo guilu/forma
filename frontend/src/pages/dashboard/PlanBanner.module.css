@@ -29,24 +29,21 @@
 }
 
 /*
- * `Button`'s flat accent, composed rather than restated: the banner's action is
- * strong but is not the dashboard's primary action, which is exactly what
- * `accent` means.
+ * Only the banner's own measurements: the accent fill comes from
+ * `<ButtonLink variant="accent">`.
  *
- * `composes` rather than `<ButtonLink variant="accent">` because of the
- * overrides below — the banner is a compact strip, so the action runs at the
- * banner's own padding rather than a page button's. `composes` guarantees the
- * base rules are ordered first; a `className` would be an equal-specificity
- * class whose winner depends on bundle order.
+ * Doubled selector, not `composes`. `composes` puts `.button` alongside this
+ * class at the same (0,1,0) specificity, so which one wins depends on where
+ * each module lands in the bundle — it happened to work here and did not in the
+ * topbar. Doubling makes it win outright.
  */
-.cta {
-  composes: button accent from '../../components/Button.module.css';
+.cta.cta {
   padding: var(--space-2) var(--space-4);
   min-height: 0;
   font-weight: 600;
   white-space: nowrap;
 }
 
-.cta:hover {
+.cta.cta:hover {
   background-color: color-mix(in srgb, var(--color-accent) 88%, black);
 }

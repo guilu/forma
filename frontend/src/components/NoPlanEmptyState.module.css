@@ -1,9 +1,0 @@
-/*
- * El mismo botón que la portada, en tamaño de página: se compone del primario de Button en vez de
- * repintarlo, para que el enlace que crea un plan se vea igual esté donde esté.
- */
-.cta {
-  composes: button primary from './Button.module.css';
-  text-decoration: none;
-  text-align: center;
-}

@@ -1017,6 +1017,26 @@ test.describe('the public bar login action', () => {
     await expect(visibleLogins(page)).toHaveCount(1);
   });
 
+  /**
+   * The whole point of the login action wearing `surface` is that it pairs with
+   * the theme toggle beside it, so the pairing is what gets asserted rather than
+   * a hardcoded 40. It regressed once already: the bar's own measurements were
+   * being dropped and the action rendered ten pixels taller than the toggle.
+   */
+  test('matches the height of the theme toggle it sits beside', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    await page.goto('/');
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+
+    const login = await visibleLogins(page).boundingBox();
+    const toggle = await page.getByRole('button', { name: /Cambiar a tema/ }).boundingBox();
+
+    expect(
+      login!.height,
+      `login ${login!.height}px vs theme toggle ${toggle!.height}px`,
+    ).toBeCloseTo(toggle!.height, 0);
+  });
+
   test('lays out exactly one copy on a phone, inside the menu', async ({ page }) => {
     await page.setViewportSize(PHONE);
     await page.goto('/');

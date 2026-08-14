@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Brand } from '../components/Brand';
+import { ButtonLink } from '../components/ButtonLink';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
 import { ThemeToggleIcon } from '../components/ThemeToggleIcon';
@@ -77,9 +78,9 @@ export function Topbar() {
    * accessibility tree, so nothing is announced twice.
    */
   const loginLink = (placement: string) => (
-    <Link className={[styles.loginLink, placement].join(' ')} to="/login">
+    <ButtonLink variant="surface" className={[styles.loginLink, placement].join(' ')} to="/login">
       Iniciar Sesión
-    </Link>
+    </ButtonLink>
   );
 
   return (

@@ -118,7 +118,12 @@ const detailsWith = (
  */
 const storeLink = (product: StoreProduct, storeLabel: (id: string | undefined) => string) =>
   product.url ? (
-    <a className={styles.linkPill} href={product.url} target="_blank" rel="noopener noreferrer">
+    <a
+      className={[styles.linkPillBase, styles.linkPillSize].join(' ')}
+      href={product.url}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
       <Icon name="share" size={14} />
       {`Ver en ${storeLabel(product.store)}`}
     </a>

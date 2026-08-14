@@ -185,7 +185,7 @@
  * the gutters keep it looking tappable. Released at the row breakpoint below,
  * where it sizes to its content.
  */
-.heroActions .ctaPrimary {
+.heroActions .ctaPrimary.ctaPrimary {
   width: min(100%, 15rem);
   /* The cap sizes the box now, so the wide inline padding of the row layout
      would only eat into the label and wrap it onto a second line. */
@@ -193,20 +193,17 @@
 }
 
 /*
- * Template `.primary-button-gradient` on the landing's anchor CTAs. These are
- * real navigations (`/registro`, `/app`), so they are `<a>`/`<Link>` and
- * cannot be `<button>` — but they must look and behave exactly like the app's
- * primary button, so the treatment is composed from that one source rather
- * than re-declared here. `composes` pulls in the gradient, the ink, the
- * `background-origin` fix, the hover lift, the press affordance and the
- * reduced-motion handling; only the landing's larger sizing is overridden
- * below.
+ * The landing's display-size CTAs: real navigations (`/plan`, `/app`,
+ * `/login`), so they are `<ButtonLink>` — a link that wears the app's primary
+ * button rather than a `<button>` that navigates.
  *
- * The `:disabled` guards in those composed rules simply never match an
- * anchor, so the hover and press states apply as intended.
+ * Doubled selector, not `composes`. `composes` puts `.button` alongside this
+ * class at the same (0,1,0) specificity, so whether the display sizing below
+ * survived came down to where each module landed in the bundle. It happened to
+ * work here and did not in the topbar, where the same arrangement silently
+ * dropped every override. Doubling makes these win outright.
  */
-.ctaPrimary {
-  composes: button primary from '../components/Button.module.css';
+.ctaPrimary.ctaPrimary {
   padding: var(--space-4) var(--space-8);
   border-radius: var(--radius-lg);
   font-family: var(--font-heading);
@@ -214,12 +211,12 @@
   text-align: center;
 }
 
-.ctaBlock {
+.ctaBlock.ctaBlock {
   width: 100%;
 }
 
 /* The closing CTA keeps the display size while sharing the primary radius. */
-.ctaPill {
+.ctaPill.ctaPill {
   border-radius: var(--radius-lg);
   padding: var(--space-5) var(--space-8);
   font-size: var(--font-size-headline-lg);
@@ -316,7 +313,10 @@
   gap: var(--space-4);
 }
 
-.loginSubmit {
+/* Doubled: this class is handed to a shared control whose own rule declares
+   the same properties at the same (0,1,0) specificity. Without it, the winner
+   is whichever module lands later in the bundle. */
+.loginSubmit.loginSubmit {
   width: 100%;
   min-height: 56px;
   border-radius: var(--radius-lg);
@@ -767,7 +767,7 @@
 
   /* With the row's own gutters there is no full-bleed to avoid: let the label
      size itself. */
-  .heroActions .ctaPrimary {
+  .heroActions .ctaPrimary.ctaPrimary {
     width: auto;
     padding-inline: var(--space-8);
   }

@@ -41,13 +41,13 @@
 }
 
 /*
- * This widget's accent wash is where `Button`'s `soft` variant came from: an
- * action that belongs to the card without outweighing the plan data above it.
- * Composed from that one source now, with only the widget's own compact
- * measurements and placement left here.
+ * Only the widget's own measurements and placement: the accent wash comes from
+ * `<ButtonLink variant="soft">` — this widget is where that variant came from.
+ *
+ * Doubled selector rather than `composes`, so these beat the shared button's
+ * own padding and min-height regardless of bundle order. See PlanBanner.
  */
-.cta {
-  composes: button soft from '../../components/Button.module.css';
+.cta.cta {
   align-self: flex-start;
   padding: var(--space-2) var(--space-4);
   min-height: 0;

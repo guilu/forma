@@ -134,12 +134,38 @@ whenever the control navigates: a `<button>` that calls `navigate()` throws away
 middle-click, open-in-new-tab and the browser's own link handling, and a screen
 reader announces it as an action rather than a destination.
 
-If the page also needs to *resize* the button, use
-`composes: button <variant> from '…/Button.module.css'` in its own CSS module
-instead. `composes` guarantees the base rules are ordered before the overrides;
-a `className` is an equal-specificity class whose winner depends on bundle
-order. The same applies to an external `<a href>`, which cannot be a
-`ButtonLink` at all.
+### Overriding a shared control (read this before you do it)
+
+Any class a page hands to `Button`, `IconButton`, `Chip` or `ButtonLink` sits at
+the **same (0,1,0) specificity** as the component's own rule. When both declare
+the same property, the winner is whichever module lands later in the bundle —
+which is not something to leave to chance.
+
+**Double the selector.** That is the whole rule:
+
+```css
+/* Doubled: beats the shared control's own rule regardless of bundle order. */
+.cta.cta {
+  min-height: 0;
+  padding: var(--space-2) var(--space-4);
+}
+```
+
+**`composes` does not solve this**, despite looking like it should. It adds
+`.button` *alongside* the composing class instead of ranking that class above
+it, so the tie remains — the topbar's login action did this and silently lost
+every override, rendering ten pixels taller than the toggle it pairs with,
+while the identical arrangement elsewhere happened to win. `composes` is also
+only valid on a simple selector, so a composing class cannot be doubled.
+
+Use `composes` only where nothing needs to beat the base — typically an external
+`<a href>`, which cannot be a `ButtonLink`. Put its overrides in a second,
+doubled class applied alongside (see `.linkPillBase` / `.linkPillSize` in
+`pages/admin/panel.module.css`).
+
+Layout regressions of this kind are invisible to jsdom: it resolves neither the
+cascade across modules nor media queries. The guards live in
+`e2e/layout.spec.ts`.
 
 ### `IconButton` — actions with no label
 

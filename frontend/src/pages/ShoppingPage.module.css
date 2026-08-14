@@ -305,7 +305,10 @@
 /* Full-width footer CTA (visual only). */
 /* `Button`'s flat accent, stretched to the card width — the footer affordance
    spans the list it closes. */
-.fullListButton {
+/* Doubled: this class is handed to a shared control whose own rule declares
+   the same properties at the same (0,1,0) specificity. Without it, the winner
+   is whichever module lands later in the bundle. */
+.fullListButton.fullListButton {
   width: 100%;
   margin-top: var(--space-2);
 }

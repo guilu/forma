@@ -69,7 +69,10 @@
 
 /* Surface, size and hover come from `IconButton` (ghost, sm). All that is left
    here is where it sits in the toast's row. */
-.dismiss {
+/* Doubled: this class is handed to a shared control whose own rule declares
+   the same properties at the same (0,1,0) specificity. Without it, the winner
+   is whichever module lands later in the bundle. */
+.dismiss.dismiss {
   flex-shrink: 0;
   align-self: flex-start;
 }

@@ -2,6 +2,7 @@ import { useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { Button } from '../components/Button';
+import { ButtonLink } from '../components/ButtonLink';
 import { Icon, type IconName } from '../components/Icon';
 import { TextField } from '../components/FormField';
 import styles from './LandingPage.module.css';
@@ -102,9 +103,9 @@ export function LandingPage() {
               <div className={styles.heroActions}>
                 {/* El embudo: cuatro pasos, sin cuenta y sin tarjeta. Pedir registro antes de
                     enseñar nada es lo que hace que nadie empiece. */}
-                <Link className={styles.ctaPrimary} to="/plan">
+                <ButtonLink className={styles.ctaPrimary} to="/plan">
                   Crea tu plan gratis
-                </Link>
+                </ButtonLink>
               </div>
               <div className={styles.socialProof}>
                 <div className={styles.avatars} aria-hidden="true">
@@ -202,12 +203,12 @@ export function LandingPage() {
             <p className={styles.sectionLead}>
               Únete a la élite. Empieza tu transformación hoy mismo con 14 días de prueba gratuita.
             </p>
-            <Link
+            <ButtonLink
               className={[styles.ctaPrimary, styles.ctaPill].join(' ')}
               to={auth.status === 'authenticated' ? '/app' : '/register'}
             >
               {auth.status === 'authenticated' ? 'Ir a la aplicación' : 'Unirme a FORMA'}
-            </Link>
+            </ButtonLink>
           </div>
         </section>
       </main>
@@ -266,9 +267,9 @@ function AccessCard() {
     return (
       <AccessShell title="Tu espacio está preparado" subtitle="Sesión activa">
         <p className={styles.account}>{auth.user?.email}</p>
-        <Link className={[styles.ctaPrimary, styles.ctaBlock].join(' ')} to="/app">
+        <ButtonLink className={[styles.ctaPrimary, styles.ctaBlock].join(' ')} to="/app">
           Ir a la aplicación
-        </Link>
+        </ButtonLink>
       </AccessShell>
     );
   }
@@ -278,9 +279,9 @@ function AccessCard() {
       <AccessShell title="Accede a FORMA" subtitle="Acceso personal">
         <p role="status">No pudimos comprobar tu sesión.</p>
         <p className={styles.muted}>Puedes iniciar sesión igualmente desde la página de acceso.</p>
-        <Link className={[styles.ctaPrimary, styles.ctaBlock].join(' ')} to="/login">
+        <ButtonLink className={[styles.ctaPrimary, styles.ctaBlock].join(' ')} to="/login">
           Ir a iniciar sesión
-        </Link>
+        </ButtonLink>
       </AccessShell>
     );
   }

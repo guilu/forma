@@ -313,7 +313,10 @@
  * makes it a *set* control rather than a generic one: it is round, it is small
  * enough to sit inside the set row, and it lands at the end of its grid cell.
  */
-.doneButton {
+/* Doubled: this class is handed to a shared control whose own rule declares
+   the same properties at the same (0,1,0) specificity. Without it, the winner
+   is whichever module lands later in the bundle. */
+.doneButton.doneButton {
   min-width: 1.75rem;
   min-height: 1.75rem;
   justify-self: end;
