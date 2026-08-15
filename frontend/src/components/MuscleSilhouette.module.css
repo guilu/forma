@@ -1,0 +1,67 @@
+/*
+ * Ported from the reference page in `docs/forma_muscle_overlays/index.html`.
+ *
+ * The size is set by whatever the caller gives this box — width, height or a
+ * grid cell — and the aspect ratio keeps the body from stretching. Every layer
+ * inside is absolutely positioned to the same rectangle, so the masks land
+ * exactly on the silhouette at any size without a single hardcoded dimension.
+ */
+.bodyMap {
+  position: relative;
+  /*
+   * Set per asset by the component: the anatomical sheets are tall and narrow
+   * while the running and rest bodies are nearly square, and forcing one ratio
+   * on all of them ran the runner off the bottom of its card.
+   */
+  aspect-ratio: var(--silhouette-ratio, 854 / 1840);
+  flex: 0 0 auto;
+}
+
+.silhouette {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  /*
+   * `fill`, not `contain`: the mask layers below stretch to this same box, so
+   * letterboxing the bitmap inside it would slide the muscles off the body.
+   * The box already carries the art's aspect ratio, so nothing is distorted.
+   */
+  object-fit: fill;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/*
+ * The muscle is a block of accent colour revealed through the SVG. Painting the
+ * SVG directly would lock the highlight to the fill it was authored with; this
+ * way the colour is a token and follows the theme.
+ */
+.muscle {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-color: var(--color-accent);
+  -webkit-mask-image: var(--muscle-mask);
+  mask-image: var(--muscle-mask);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  /* Matches the silhouette's `object-fit: fill` — same box, same scaling. */
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+}
+
+/*
+ * Two emphasis levels, straight from the reference page. The gap between them
+ * has to be wide enough to read at card size, which is why the secondary sits
+ * near a third rather than at a polite two-thirds.
+ */
+.muscle[data-role='primary'] {
+  opacity: 0.92;
+}
+
+.muscle[data-role='secondary'] {
+  opacity: 0.38;
+}

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Badge } from '../components/Badge';
 import { BodyFigure } from '../components/BodyFigure';
+import { MuscleSilhouette } from '../components/MuscleSilhouette';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { NoPlanEmptyState } from '../components/NoPlanEmptyState';
@@ -22,12 +23,15 @@ import {
   getMuscleMap,
   getTrainingWeek,
   updateSessionStatus,
+  type MuscleWorked,
   type SessionStatus,
   type TrainingDay,
   type TrainingSession,
   type TrainingWeek,
 } from '../api/training';
 import { groupMusclesForDisplay, type MuscleGroupDisplay } from './trainingMuscleLabels';
+import { overlayFromMuscleMap } from './trainingMuscleOverlay';
+import { useSessionMuscles } from './useSessionMuscles';
 import { formatShortDate, formatWeekday } from './dateLabel';
 import styles from './TrainingPage.module.css';
 
@@ -416,9 +420,19 @@ function TodaySessionCard({
   if (day.rest) {
     return (
       <Card title={title} headingLevel={2} className={styles.todayCard}>
-        <p className={styles.rest}>
-          {isToday ? 'Hoy es día de descanso.' : 'Ese día es de descanso.'}
-        </p>
+        {/* The rest day gets a body too. It used to be a bare sentence in an
+            otherwise empty card, which read as a page that had failed to load
+            rather than as a day with nothing planned. */}
+        <div className={styles.todayLayout}>
+          <p className={styles.rest}>
+            {isToday ? 'Hoy es día de descanso.' : 'Ese día es de descanso.'}
+          </p>
+          <div className={styles.todayVisual}>
+            <div className={styles.todayFigures}>
+              <MuscleSilhouette className={styles.todayFigure} sex={anatomySex} variant="rest" />
+            </div>
+          </div>
+        </div>
       </Card>
     );
   }
@@ -524,19 +538,76 @@ function TodaySessionCard({
               {completed} / {planned} {planned === 1 ? 'sesión' : 'sesiones'}
             </p>
           </div>
-          <div className={styles.todayFigures}>
-            <BodyFigure
-              view={visualSession.bodyView.toLowerCase() as 'front' | 'back'}
-              variant={visualSession.kind === 'RUNNING' ? 'running' : 'strength'}
-              sex={anatomySex}
-              active={visualSession.status === 'COMPLETED'}
-              size={150}
-            />
-          </div>
+          <TodayFigures session={visualSession} sex={anatomySex} />
         </div>
       </div>
     </Card>
   );
+}
+
+/**
+ * The body illustration on today's card.
+ *
+ * <p>A strength session shows **both sheets**, front and back, because the
+ * muscles it works do not respect the split: a pull day hits the lats and the
+ * triceps on the back sheet and the biceps on the front one, and drawing only
+ * the session's own `bodyView` would hide half of what it trains. The two
+ * silhouettes share one overlay, and each renders the codes it can draw.
+ *
+ * <p>Running and rest have their own single whole-body art, so they show one
+ * figure and no muscles — there is no muscle map behind them to show.
+ */
+function TodayFigures({
+  session,
+  sex,
+}: {
+  readonly session: TrainingSession;
+  readonly sex: AnatomySex;
+}) {
+  const isStrength = session.kind === 'STRENGTH';
+  // Only strength sessions have a muscle map; asking for a run's is a wasted
+  // round trip that always answers empty.
+  const muscles = useSessionMuscles(isStrength ? session.id : undefined);
+  const overlay = overlayFromMuscleMap(muscles);
+  const worked = Object.keys(overlay).length > 0;
+
+  if (!isStrength) {
+    return (
+      <div className={styles.todayFigures}>
+        <MuscleSilhouette
+          className={styles.todayFigure}
+          sex={sex}
+          variant={session.kind === 'RUNNING' ? 'running' : 'rest'}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.todayFigures}>
+      {/*
+       * Labelled once for the pair rather than twice: to a screen reader this
+       * is one illustration of one session, and announcing a front and a back
+       * image separately would describe the layout instead of the content.
+       * Without a muscle map there is nothing to announce at all, so it falls
+       * back to being decorative.
+       */}
+      <div
+        className={styles.todayFigurePair}
+        role={worked ? 'img' : undefined}
+        aria-label={worked ? muscleSummary(muscles) : undefined}
+      >
+        <MuscleSilhouette className={styles.todayFigure} sex={sex} view="front" muscles={overlay} />
+        <MuscleSilhouette className={styles.todayFigure} sex={sex} view="back" muscles={overlay} />
+      </div>
+    </div>
+  );
+}
+
+/** "Músculos trabajados: Pecho, Tríceps, Hombro" — the same names the focus line prints. */
+function muscleSummary(muscles: readonly MuscleWorked[]): string {
+  const labels = groupMusclesForDisplay(muscles).map((muscle) => muscle.label);
+  return `Músculos trabajados: ${labels.join(', ')}`;
 }
 
 /**
@@ -550,22 +621,8 @@ function TodaySessionCard({
  * with its own loading and error states, lives in the session detail.
  */
 function SessionFocus({ sessionId }: { readonly sessionId: string }) {
-  const [muscles, setMuscles] = useState<readonly MuscleGroupDisplay[]>([]);
-
-  useEffect(() => {
-    let cancelled = false;
-    setMuscles([]);
-    getMuscleMap(sessionId)
-      .then((map) => {
-        if (!cancelled) setMuscles(groupMusclesForDisplay(map.muscles));
-      })
-      .catch(() => {
-        if (!cancelled) setMuscles([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [sessionId]);
+  // Shared with the silhouette overlay on this same card — see useSessionMuscles.
+  const muscles = groupMusclesForDisplay(useSessionMuscles(sessionId));
 
   if (muscles.length === 0) return null;
 

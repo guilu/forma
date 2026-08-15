@@ -408,6 +408,24 @@
   gap: var(--space-5);
 }
 
+/*
+ * Fills the two-row area on desktop (see the `min-width: 1200px` block); on a
+ * single row it is content-sized as before, since the area is not stretched.
+ * The column + `flex: 1` is what passes that height down to the content —
+ * `Card` renders a plain block, so without it the card grew and its inside
+ * stayed at text height, leaving the gap this was meant to close.
+ */
+.todayArea > .todayCard {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.todayArea > .todayCard > .todayLayout {
+  flex: 1;
+  min-height: 0;
+}
+
 .todayCard {
   position: relative;
   overflow: hidden;
@@ -477,9 +495,52 @@
   color: var(--color-accent-strong);
 }
 
+/*
+ * The figures are the card's tall element, so they are what earns it the second
+ * grid row on desktop (see `.todayArea` below). They stretch to whatever height
+ * the card ends up with rather than carrying a fixed size: the silhouettes keep
+ * their own aspect ratio, so a taller card simply draws a bigger body.
+ */
 .todayFigures {
   display: flex;
-  gap: var(--space-2);
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: 9rem;
+}
+
+/*
+ * Front and back, side by side. `min-height: 0` matters in a stretched flex
+ * item: without it the pair would size to the images' intrinsic height and push
+ * the card taller instead of filling it.
+ */
+.todayFigurePair {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  width: 100%;
+  height: 100%;
+}
+
+/*
+ * Height-driven, not width-driven. Each silhouette carries `aspect-ratio`, so
+ * giving it the row's full height lets it work out its own width and the pair
+ * grows with the card. `width: auto` overrides the intrinsic sizing an image
+ * box would otherwise take.
+ */
+/*
+ * Sized by width, not height. Each silhouette carries its own `aspect-ratio`,
+ * so handing it a share of the row is enough for it to work out its height;
+ * `max-height` then keeps a wide card from growing the figure past the space
+ * the row actually has. Doing it the other way round — `height: 100%` and
+ * `width: auto` — collapsed them to 12px: the muscle layers are absolutely
+ * positioned, so the box has no intrinsic width for the ratio to scale from.
+ */
+.todayFigure {
+  flex: 1 1 0;
+  min-width: 0;
+  max-height: 100%;
 }
 
 /* ── Weekly calendar (FOR-164) ──────────────────────────────────────── */
@@ -660,6 +721,49 @@
 @media (max-width: 720px) {
   .statsRow {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /*
+   * Phone shape for today's card: the session leads across the full width —
+   * title, status, focus and the actions — and underneath it the ring and the
+   * body share a row. Stacking all four instead put the silhouette so far down
+   * that it needed a scroll to reach, and left it at thumbnail size.
+   *
+   * `display: contents` on the visual column promotes the ring and the figures
+   * into this grid, so they can take a cell each without another wrapper.
+   */
+  .todayArea .todayLayout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      'session session'
+      'ring figure';
+    align-items: start;
+  }
+
+  .todayArea .todaySessions {
+    grid-area: session;
+  }
+
+  .todayArea .todayVisual {
+    display: contents;
+  }
+
+  .todayArea .todayRing {
+    grid-area: ring;
+    /* Centred in its half rather than pinned left, so it sits under the actions
+       it reports on. */
+    justify-self: center;
+  }
+
+  .todayArea .todayFigures {
+    grid-area: figure;
+    width: 100%;
+  }
+
+  /* The rest day has no session list, so its body takes the whole width. */
+  .todayArea .todayLayout > .rest {
+    grid-area: session;
   }
 }
 
@@ -883,19 +987,48 @@
     align-items: start;
   }
 
+  /*
+   * Today's card spans the two rows the right-hand column needs for the weekly
+   * summary and the distribution chart. It used to sit on one row and end
+   * wherever its text ended, leaving a tall empty gap underneath it while the
+   * column beside it ran on — and it is the card carrying the body
+   * illustration, so the spare height is exactly what the silhouettes want.
+   *
+   * `align-self: stretch` is needed because `.layout` sets `align-items: start`
+   * for the other cards, which would otherwise leave this one at its content
+   * height and put the gap back.
+   */
   .todayArea {
     grid-column: 1;
-    grid-row: 1;
+    grid-row: 1 / span 2;
+    align-self: stretch;
+  }
+
+  /*
+   * With the card now two rows tall, the visual column takes the height that
+   * the session list does not: the ring keeps its size at the top and the
+   * silhouettes take the rest, which is the whole point of the taller card.
+   * Scoped to `.todayArea` so the weekly calendar's own figures are untouched.
+   */
+  .todayArea .todayVisual {
+    align-self: stretch;
+    flex-direction: column;
+    /*
+     * `0 1` so the session list keeps its natural width and this column takes
+     * what is left: growing it instead squeezed the title onto two lines and
+     * stacked the actions one per row.
+     */
+    flex: 0 1 24rem;
+    min-width: 14rem;
+  }
+
+  .todayArea .todayFigures {
+    width: 100%;
   }
 
   .summaryArea {
     grid-column: 2;
     grid-row: 1;
-  }
-
-  .calendarArea {
-    grid-column: 1;
-    grid-row: 2;
   }
 
   .tabletPair {
@@ -907,13 +1040,19 @@
     grid-row: 2;
   }
 
-  .tabletPair > :last-child {
+  .calendarArea {
     grid-column: 1;
     grid-row: 3;
   }
-  .streakArea {
+
+  .tabletPair > :last-child {
     grid-column: 2;
     grid-row: 3;
+  }
+
+  .streakArea {
+    grid-column: 1;
+    grid-row: 4;
   }
 }
 

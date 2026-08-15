@@ -147,8 +147,15 @@ describe('TrainingPage', () => {
     expect(
       within(todayCard).getByRole('button', { name: 'Iniciar entrenamiento' }),
     ).toBeInTheDocument();
-    expect(within(todayCard).getByTestId('anatomy-figure')).toHaveAttribute('data-view', 'back');
-    expect(within(todayCard).getByTestId('anatomy-figure')).toHaveAttribute('data-sex', 'male');
+    // Both sheets, not just the session's own `bodyView`: the muscles a session
+    // works do not respect the split (a pull day hits the lats and the biceps),
+    // so showing one side would hide half of what it trains.
+    expect(
+      within(todayCard)
+        .getAllByRole('presentation', { hidden: true })
+        .filter((element) => element.hasAttribute('data-silhouette'))
+        .map((element) => element.getAttribute('data-silhouette')),
+    ).toEqual(['male/front', 'male/back']);
   });
 
   it('uses the female anatomy asset when the persisted profile is female', async () => {
@@ -160,8 +167,12 @@ describe('TrainingPage', () => {
     const todayCard = (
       await screen.findByRole('heading', { name: 'Entrenamiento de hoy' })
     ).closest('section') as HTMLElement;
-    expect(within(todayCard).getByTestId('anatomy-figure')).toHaveAttribute('data-sex', 'female');
-    expect(within(todayCard).getByTestId('anatomy-figure')).toHaveAttribute('data-view', 'back');
+    expect(
+      within(todayCard)
+        .getAllByRole('presentation', { hidden: true })
+        .filter((element) => element.hasAttribute('data-silhouette'))
+        .map((element) => element.getAttribute('data-silhouette')),
+    ).toEqual(['female/front', 'female/back']);
   });
 
   it('does not render the temporary muscle-groups or weekly-history cards', async () => {
