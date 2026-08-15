@@ -23,25 +23,10 @@
 }
 
 /* ui-guidelines: 44px minimum touch target. */
+/* `Button` (accent) owns the treatment; the search field's row needs it to keep
+   its width against the growing input. */
 .searchButton {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
   flex-shrink: 0;
-  min-height: 44px;
-  padding: 0 var(--space-4);
-  font: inherit;
-  font-weight: 600;
-  color: var(--color-accent-contrast);
-  background-color: var(--color-accent);
-  border: 0;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-}
-
-.searchButton:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .results {
@@ -85,22 +70,11 @@
 }
 
 /* ui-guidelines: 44px minimum touch target. */
+/* `Button` (soft) owns the treatment; the suggestion row keeps it from being
+   squeezed by the product name beside it. */
 .pick {
   flex-shrink: 0;
-  min-height: 44px;
-  padding: 0 var(--space-4);
-  font: inherit;
   font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: var(--color-accent-strong);
-  background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-}
-
-.pick:hover {
-  background-color: color-mix(in srgb, var(--color-accent) 22%, transparent);
 }
 
 .empty {
@@ -120,16 +94,4 @@
 .actions {
   display: flex;
   justify-content: flex-end;
-}
-
-.cancel {
-  min-height: 44px;
-  padding: 0 var(--space-4);
-  font: inherit;
-  font-weight: 600;
-  color: var(--color-text);
-  background: none;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  cursor: pointer;
 }

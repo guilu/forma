@@ -10,16 +10,6 @@
   gap: var(--space-4);
 }
 
-/*
- * The empty state's way out: an anchor (it navigates) wearing the app's primary
- * button treatment, composed from the one source rather than restated here —
- * same approach as the landing page's CTAs.
- */
-.cta {
-  composes: button primary from '../../components/Button.module.css';
-  text-decoration: none;
-}
-
 /* Loading / error / empty span the whole body block instead of one tile. */
 .full {
   grid-column: 1 / -1;

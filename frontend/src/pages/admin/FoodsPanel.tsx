@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Card } from '../../components/Card';
 import { Icon } from '../../components/Icon';
+import { IconButton } from '../../components/IconButton';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
@@ -200,28 +201,26 @@ export function FoodsPanel({ creating, onCreateClose }: FoodsPanelProps) {
             }}
             extraActions={(food) => (
               <>
-                <button
-                  type="button"
-                  className={styles.rowAction}
-                  aria-label={`Raciones de ${food.name}`}
+                <IconButton
+                  variant="surface"
+                  label={`Raciones de ${food.name}`}
                   onClick={() => {
                     catalog.setActionError(undefined);
                     setPortioning(food);
                   }}
                 >
                   <Icon name="measurements" size={18} />
-                </button>
-                <button
-                  type="button"
-                  className={styles.rowAction}
-                  aria-label={`Importar ${food.name} de Mercadona`}
+                </IconButton>
+                <IconButton
+                  variant="surface"
+                  label={`Importar ${food.name} de Mercadona`}
                   onClick={() => {
                     catalog.setActionError(undefined);
                     setImportingFor(food);
                   }}
                 >
                   <Icon name="shopping" size={18} />
-                </button>
+                </IconButton>
               </>
             )}
           />

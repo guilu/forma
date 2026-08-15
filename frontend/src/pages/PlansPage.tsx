@@ -7,6 +7,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
 import { Icon } from '../components/Icon';
+import { IconButton } from '../components/IconButton';
 import { LoadingState } from '../components/LoadingState';
 import { Modal } from '../components/Modal';
 import { useNotify } from '../components/NotificationProvider';
@@ -177,14 +178,15 @@ export function PlansPage() {
                         Archivar
                       </Button>
                     )}
-                    <button
-                      type="button"
-                      className={styles.remove}
-                      aria-label={`Eliminar ${plan.name}`}
+                    <IconButton
+                      variant="ghost"
+                      tone="danger"
+                      size="sm"
+                      label={`Eliminar ${plan.name}`}
                       onClick={() => setDeleting(plan)}
                     >
                       <Icon name="trash" size={16} />
-                    </button>
+                    </IconButton>
                   </div>
                 </div>
               </Card>

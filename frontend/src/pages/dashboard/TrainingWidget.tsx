@@ -1,5 +1,5 @@
+import { ButtonLink } from '../../components/ButtonLink';
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
 import { Icon } from '../../components/Icon';
@@ -120,9 +120,9 @@ function renderContent(state: State, date: Date) {
         </span>
         <ProgressBar value={completed} max={total} label="Sesiones completadas esta semana" />
       </div>
-      <Link className={styles.cta} to="/app/training">
+      <ButtonLink variant="soft" className={styles.cta} to="/app/training">
         Ver plan completo
-      </Link>
+      </ButtonLink>
     </div>
   );
 }

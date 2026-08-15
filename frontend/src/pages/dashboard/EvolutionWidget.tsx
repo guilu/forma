@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Chip } from '../../components/Chip';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
 import { LineChart, type ChartPoint } from '../../components/LineChart';
@@ -161,15 +162,14 @@ function renderContent(
       {ranges.length > 1 && (
         <div className={styles.ranges} role="group" aria-label="Rango del gráfico">
           {ranges.map((range) => (
-            <button
+            <Chip
               key={range.key}
-              type="button"
-              className={range.key === active.key ? styles.rangeActive : styles.range}
-              aria-pressed={range.key === active.key}
+              size="sm"
+              selected={range.key === active.key}
               onClick={() => onRangeChange(range.key)}
             >
               {range.label}
-            </button>
+            </Chip>
           ))}
         </div>
       )}

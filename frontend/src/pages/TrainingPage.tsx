@@ -14,6 +14,7 @@ import { useNotify } from '../components/NotificationProvider';
 import { ProgressRing } from '../components/ProgressRing';
 import { StatusPill } from '../components/StatusPill';
 import { WidgetLoading } from '../components/WidgetLoading';
+import { IconButton } from '../components/IconButton';
 import { ApiRequestError } from '../api/client';
 import { getStreak, type Streak } from '../api/progress';
 import { getProfile } from '../api/profile';
@@ -269,24 +270,24 @@ export function TrainingPage() {
             </span>{' '}
             {formatShortDate(selectedDate)}
           </span>
-          <button
-            type="button"
-            className={styles.dateArrow}
-            aria-label="Día anterior"
+          <IconButton
+            variant="ghost"
+            size="sm"
+            label="Día anterior"
             disabled={selectedIndex === 0}
             onClick={() => setSelectedDay(WEEK_ORDER[selectedIndex - 1])}
           >
             <Icon name="chevron" size={16} className={styles.dateArrowPrev} />
-          </button>
-          <button
-            type="button"
-            className={styles.dateArrow}
-            aria-label="Día siguiente"
+          </IconButton>
+          <IconButton
+            variant="ghost"
+            size="sm"
+            label="Día siguiente"
             disabled={selectedIndex === WEEK_ORDER.length - 1}
             onClick={() => setSelectedDay(WEEK_ORDER[selectedIndex + 1])}
           >
             <Icon name="chevron" size={16} />
-          </button>
+          </IconButton>
         </div>
       </header>
 

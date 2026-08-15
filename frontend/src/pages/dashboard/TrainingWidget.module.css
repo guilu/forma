@@ -40,19 +40,18 @@
   color: var(--color-text-muted);
 }
 
-.cta {
+/*
+ * Only the widget's own measurements and placement: the accent wash comes from
+ * `<ButtonLink variant="soft">` — this widget is where that variant came from.
+ *
+ * Doubled selector rather than `composes`, so these beat the shared button's
+ * own padding and min-height regardless of bundle order. See PlanBanner.
+ */
+.cta.cta {
   align-self: flex-start;
   padding: var(--space-2) var(--space-4);
+  min-height: 0;
   font-weight: 600;
-  color: var(--color-accent-strong);
-  background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
-  border-radius: var(--radius-md);
-}
-
-.cta:hover {
-  background-color: color-mix(in srgb, var(--color-accent) 22%, transparent);
-  border-color: var(--color-accent);
 }
 
 .completion {

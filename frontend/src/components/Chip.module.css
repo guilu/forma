@@ -1,0 +1,84 @@
+/*
+ * Ported from the shopping category tabs, which were the most developed of the
+ * three hand-drawn copies. Unselected is a neutral outline; selected is the
+ * flat accent fill. Deliberately the same fill as `Button.accent` — the app
+ * already used it to mean "this is the chosen one" in its segmented selectors,
+ * and splitting the two now would make a chosen chip mean something different
+ * depending on the page it is on.
+ */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font: inherit;
+  font-weight: 600;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.1s ease;
+}
+
+.chip:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.chip:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/*
+ * `md` is a page-level filter row, so it takes the mobile-priority 44px touch
+ * target. `sm` is for a group living inside a card (the evolution chart's
+ * ranges, the measurements range picker), where a 44px row would take more of
+ * the card than the chart it filters.
+ */
+.md {
+  padding: var(--space-2) var(--space-4);
+  min-height: 44px;
+  border-radius: var(--radius-md);
+}
+
+.sm {
+  padding: var(--space-1) var(--space-3);
+  min-height: 32px;
+  font-size: var(--font-size-sm);
+  border-radius: var(--radius-sm);
+}
+
+.unselected {
+  color: var(--color-text-muted);
+  background: none;
+  border-color: var(--color-border);
+}
+
+/*
+ * Hover tints toward the accent rather than filling with it: a hovered chip
+ * must stay clearly distinct from the selected one, or the group appears to
+ * have two selections while the pointer is inside it.
+ */
+.unselected:hover:not(:disabled) {
+  color: var(--color-accent-strong);
+  border-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
+  background-color: color-mix(in srgb, var(--color-accent) 8%, transparent);
+}
+
+.selected {
+  color: var(--color-accent-contrast);
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chip {
+    transition: none;
+  }
+
+  .chip:active:not(:disabled) {
+    transform: none;
+  }
+}

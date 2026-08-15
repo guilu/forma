@@ -10,6 +10,9 @@
   border-radius: var(--radius-md);
   /* Comfortable touch target on mobile (ui-guidelines mobile priority #2). */
   min-height: 44px;
+  /* For `ButtonLink` and the `composes:` callers: an underline under a filled
+     button reads as a mistake, and every caller was stripping it by hand. */
+  text-decoration: none;
   transition:
     transform 0.1s ease,
     box-shadow 0.15s ease;
@@ -99,6 +102,51 @@
   border-color: var(--color-accent);
 }
 
+/*
+ * Tinted accent wash, ported from the dashboard widgets (`TrainingWidget`,
+ * `BodyWidget`, `PlanBanner`), which had each drawn it by hand. It is the rung
+ * between `.accent` and `.secondary`: still unmistakably the accent colour, but
+ * as a wash rather than a fill, so an action sitting inside a card does not
+ * outweigh the data the card is there to show.
+ *
+ * Both the wash and the border are `color-mix` against `transparent` rather
+ * than fixed tints, so the same rule lands correctly on the light and dark
+ * card surfaces without a second declaration.
+ */
+.soft {
+  color: var(--color-accent-strong);
+  background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.soft:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-accent) 22%, transparent);
+  border-color: var(--color-accent);
+}
+
+/*
+ * The card-surfaced control: same treatment as `IconButton.surface`, so a
+ * labelled action sitting beside icon buttons (the topbar's "Iniciar sesión"
+ * next to the theme toggle) reads as one pair rather than as a quiet toggle
+ * beside a loud CTA.
+ *
+ * Distinct from `.secondary`, which is transparent: this one has its own
+ * surface, so it holds up against a page background as well as against a card.
+ */
+.surface {
+  color: var(--color-text-muted);
+  background-color: var(--color-card);
+  border-color: var(--color-border);
+  transition: color 0.2s ease;
+}
+
+.surface:hover:not(:disabled) {
+  color: var(--color-text);
+}
+
 .secondary {
   color: var(--color-text);
   background-color: transparent;
@@ -148,6 +196,41 @@
   .destructive:active:not(:disabled) {
     transform: none;
   }
+}
+
+/*
+ * TONE. `default` adds nothing — each variant already carries its own colour.
+ * `danger` swaps the accent ramp for the danger one on the quiet variants, so a
+ * row's "Eliminar" reads as destructive without being dressed as the loud
+ * confirm button `.destructive` is for.
+ *
+ * `.primary`, `.accent` and `.destructive` are left alone: their fills are the
+ * statement, and re-tinting them would produce a second, competing danger
+ * button with no rule about which to use when.
+ */
+.soft.danger {
+  color: var(--color-danger);
+  background-color: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  border-color: color-mix(in srgb, var(--color-danger) 30%, transparent);
+}
+
+.soft.danger:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-danger) 18%, transparent);
+  border-color: var(--color-danger);
+}
+
+.surface.danger,
+.secondary.danger,
+.ghost.danger {
+  color: var(--color-danger);
+}
+
+.surface.danger:hover:not(:disabled),
+.secondary.danger:hover:not(:disabled),
+.ghost.danger:hover:not(:disabled) {
+  color: var(--color-danger);
+  background-color: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  border-color: color-mix(in srgb, var(--color-danger) 30%, transparent);
 }
 
 .spinner {

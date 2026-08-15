@@ -18,23 +18,15 @@
   gap: var(--space-2);
 }
 
-.shapeButton,
-.shapeActive {
+/*
+ * The two halves of the meal-shape picker. Everything but the split is `Chip`'s
+ * now — including the selected treatment, which used to be drawn here against
+ * `--color-accent-surface` and `--color-text-primary`. Neither token exists in
+ * theme.css, so the rule fell through to its hardcoded fallback and painted the
+ * chosen option BLUE (`rgba(37, 99, 235, 0.1)`) in a green app.
+ */
+.shapeButton {
   flex: 1;
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--color-text-secondary);
-  font: inherit;
-  cursor: pointer;
-}
-
-.shapeActive {
-  border-color: var(--color-accent, #2563eb);
-  background: var(--color-accent-surface, rgba(37, 99, 235, 0.1));
-  color: var(--color-text-primary);
-  font-weight: 600;
 }
 
 .row {

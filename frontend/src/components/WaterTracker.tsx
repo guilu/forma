@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Card, type HeadingLevel } from './Card';
+import { IconButton } from './IconButton';
 import {
   getHydration,
   logWaterIntake,
@@ -105,24 +106,24 @@ export function WaterTracker({ headingLevel, date }: WaterTrackerProps = {}) {
       headingLevel={headingLevel}
       action={
         <div className={styles.actions}>
-          <button
-            type="button"
+          <IconButton
+            size="sm"
             className={styles.action}
-            aria-label="Añadir vaso (250 ml)"
+            label="Añadir vaso (250 ml)"
             disabled={pending}
             onClick={() => add(250)}
           >
             +
-          </button>
-          <button
-            type="button"
+          </IconButton>
+          <IconButton
+            size="sm"
             className={styles.action}
-            aria-label="Quitar vaso (250 ml)"
+            label="Quitar vaso (250 ml)"
             disabled={pending || progress.totalMl <= 0}
             onClick={remove}
           >
             −
-          </button>
+          </IconButton>
         </div>
       }
     >

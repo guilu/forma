@@ -5,6 +5,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ErrorState } from '../../components/ErrorState';
 import { LoadingState } from '../../components/LoadingState';
 import { Icon } from '../../components/Icon';
+import { IconButton } from '../../components/IconButton';
 import { Modal } from '../../components/Modal';
 import { SelectField } from '../../components/FormField';
 import { useNotify } from '../../components/NotificationProvider';
@@ -117,7 +118,12 @@ const detailsWith = (
  */
 const storeLink = (product: StoreProduct, storeLabel: (id: string | undefined) => string) =>
   product.url ? (
-    <a className={styles.linkPill} href={product.url} target="_blank" rel="noopener noreferrer">
+    <a
+      className={[styles.linkPillBase, styles.linkPillSize].join(' ')}
+      href={product.url}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
       <Icon name="share" size={14} />
       {`Ver en ${storeLabel(product.store)}`}
     </a>
@@ -354,15 +360,14 @@ export function StorePanel({ creating, onCreateClose }: StorePanelProps) {
               // Only what a shop can be asked about: a hand-typed row has no
               // source behind it, so the action is absent rather than disabled.
               product.externalId ? (
-                <button
-                  type="button"
-                  className={styles.rowAction}
-                  aria-label={`Refrescar ${product.name}`}
+                <IconButton
+                  variant="surface"
+                  label={`Refrescar ${product.name}`}
                   disabled={refreshing === product.id}
                   onClick={() => refresh(product)}
                 >
                   <Icon name="refresh" size={18} />
-                </button>
+                </IconButton>
               ) : null
             }
             label="Productos"

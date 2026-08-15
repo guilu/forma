@@ -1,0 +1,145 @@
+/*
+ * The square icon control, consolidated from the six sizes and three surfaces
+ * the pages had each drawn by hand (28/32/34/36/40/44px; card, accent wash and
+ * borderless).
+ *
+ * Size and surface are separate axes on purpose: a table row and the topbar
+ * want the same card treatment at different sizes, and the same 32px square
+ * appears both bordered (the water tracker) and borderless (the date arrows).
+ * Folding them into one list of names would have needed a name per pair.
+ */
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+  border: 1px solid transparent;
+  line-height: 1;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    transform 0.1s ease;
+}
+
+/* Same press affordance as `Button`, for the same reason: every active control
+ * in the templates acknowledges the pointer. */
+.iconButton:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.iconButton:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/*
+ * SIZES. `md` (40px) is the topbar row. `sm` (32px) is for dense contexts —
+ * table rows, quantity steppers — where the 44px touch target would break the
+ * line height; the mobile-priority target applies to the page's own actions,
+ * which is what `lg` is for.
+ *
+ * `min-*` rather than `width`/`height` so a control that must sit in a fixed
+ * grid cell can still be stretched by its caller's layout.
+ */
+.sm {
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: var(--radius-sm);
+}
+
+.md {
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: var(--radius-md);
+}
+
+.lg {
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: var(--radius-md);
+}
+
+/*
+ * SURFACES. Each is the resting state only — the tone rules below own the
+ * colour, so a danger control keeps its surface and changes only its glyph.
+ */
+.surface {
+  background-color: var(--color-card);
+  border-color: var(--color-border);
+}
+
+/* The same accent wash as `Button.soft`, for a row action that is the point of
+   its row (edit a catalog entry, open a product) rather than incidental. */
+.soft {
+  background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
+}
+
+.soft:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-accent) 22%, transparent);
+  border-color: var(--color-accent);
+}
+
+.ghost {
+  background: none;
+  border-color: transparent;
+}
+
+.ghost:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-text) 6%, transparent);
+}
+
+/*
+ * TONES.
+ *
+ * Muted at rest so a row of these does not compete with the content they act
+ * on, resolving to full contrast on hover. On `soft` the glyph is already the
+ * accent colour at rest, since that surface exists to make the action visible.
+ */
+.default {
+  color: var(--color-text-muted);
+}
+
+.default:hover:not(:disabled) {
+  color: var(--color-text);
+}
+
+.soft.default,
+.soft.default:hover:not(:disabled) {
+  color: var(--color-accent-strong);
+}
+
+/*
+ * Destructive row actions stay muted at rest — a delete icon shouting from a
+ * resting table row is noise — and take the danger colour on hover, at the
+ * moment the pointer is actually over them.
+ */
+.danger {
+  color: var(--color-text-muted);
+}
+
+.danger:hover:not(:disabled) {
+  color: var(--color-danger);
+}
+
+.surface.danger:hover:not(:disabled),
+.soft.danger:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-danger) 40%, transparent);
+  background-color: color-mix(in srgb, var(--color-danger) 8%, var(--color-card));
+}
+
+.ghost.danger:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-danger) 8%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .iconButton {
+    transition: none;
+  }
+
+  .iconButton:active:not(:disabled) {
+    transform: none;
+  }
+}

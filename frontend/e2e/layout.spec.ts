@@ -137,6 +137,22 @@ for (const viewport of [PHONE, DESKTOP]) {
 test.describe('training on iPad landscape', () => {
   test.use({ viewport: IPAD_LANDSCAPE });
 
+  /**
+   * The calendar centres *today*, and which day that is comes from the machine
+   * clock (`todayDayOfWeek()` in TrainingPage). Left alone, the centring
+   * assertion below only holds Monday to Friday: a scroller cannot centre an
+   * item it has no room to scroll past, so on a Saturday the last-but-one day
+   * settles wherever the scroll maximum leaves it — 237px off centre — and the
+   * suite went red on the weekend without a line of app code changing.
+   *
+   * `setFixedTime` rather than `clock.install`: this only needs `Date` to read
+   * mid-week, and installing the full fake clock would also freeze the timers
+   * the smooth scroll runs on.
+   */
+  test.beforeEach(async ({ page }) => {
+    await page.clock.setFixedTime(new Date('2026-08-12T12:00:00'));
+  });
+
   test('uses the tablet navigation and purpose-built vertical training flow', async ({ page }) => {
     const dayNames = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
     await page.route('**/api/v1/training/week', (route) =>
@@ -917,6 +933,14 @@ test.describe('page headers on a phone', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 800 });
+    /*
+     * The two header tests below find the date by matching `/\bago/i` — the
+     * abbreviation for *agosto*. That only works while the machine clock says
+     * August: on 1 September the locator stops matching anything and both tests
+     * fail on a timeout, having nothing to do with the layout they check.
+     * Pinning the date keeps them measuring what they are about.
+     */
+    await page.clock.setFixedTime(new Date('2026-08-12T12:00:00'));
   });
 
   test('the admin catalog puts its add action beside the title', async ({ page }) => {
@@ -971,5 +995,81 @@ test.describe('page headers on a phone', () => {
 
     expect(overlap, `The date sits on its own row (overlap ${overlap}px)`).toBeGreaterThan(0);
     expect(secondStartsAfter, 'The date is not to the right of the title').toBe(true);
+  });
+});
+
+/**
+ * The public bar renders its login action twice — once for the desktop bar and
+ * once inside the mobile disclosure sheet — and hides the copy that does not
+ * belong at the current width. That only works while the hiding rule outranks
+ * whatever `display` the shared button treatment brings with it.
+ *
+ * <p>It stopped working once `.loginLink` began composing `button` from
+ * `Button.module.css`: that rule sets `display: inline-flex` at the same
+ * (0,1,0) specificity and lands later in the bundle, so both copies rendered at
+ * every width. jsdom cannot catch this — it resolves neither the cascade across
+ * modules nor the media query — which is exactly why the check lives here.
+ */
+test.describe('the public bar login action', () => {
+  /**
+   * The bar only wears its public face when nobody is signed in, and the shared
+   * `stubApi` answers `/auth/me` with a session — so this overrides that one
+   * route with a 401. Registered after `stubApi` in the outer `beforeEach`, and
+   * Playwright tries the most recently added route first.
+   */
+  test.beforeEach(async ({ page }) => {
+    await page.route('**/api/v1/auth/me', (route) =>
+      route.fulfill({ status: 401, contentType: 'application/json', body: '{}' }),
+    );
+  });
+
+  /**
+   * Counts the copies actually laid out, not the ones in the DOM: both are
+   * always rendered and the one that does not belong at this width is hidden
+   * with `display: none`, so a DOM count would pass no matter what the cascade
+   * resolved to — which is the very thing this is here to check.
+   */
+  function visibleLogins(page: Page) {
+    return page.getByRole('link', { name: 'Iniciar Sesión' }).filter({ visible: true });
+  }
+
+  test('lays out exactly one copy on a desktop bar', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    await page.goto('/');
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+
+    await expect(visibleLogins(page)).toHaveCount(1);
+  });
+
+  /**
+   * The whole point of the login action wearing `surface` is that it pairs with
+   * the theme toggle beside it, so the pairing is what gets asserted rather than
+   * a hardcoded 40. It regressed once already: the bar's own measurements were
+   * being dropped and the action rendered ten pixels taller than the toggle.
+   */
+  test('matches the height of the theme toggle it sits beside', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    await page.goto('/');
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+
+    const login = await visibleLogins(page).boundingBox();
+    const toggle = await page.getByRole('button', { name: /Cambiar a tema/ }).boundingBox();
+
+    expect(
+      login!.height,
+      `login ${login!.height}px vs theme toggle ${toggle!.height}px`,
+    ).toBeCloseTo(toggle!.height, 0);
+  });
+
+  test('lays out exactly one copy on a phone, inside the menu', async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await page.goto('/');
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+
+    // Closed sheet: the bar carries only the theme toggle and the hamburger.
+    await expect(visibleLogins(page)).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Abrir menú' }).click();
+    await expect(visibleLogins(page)).toHaveCount(1);
   });
 });

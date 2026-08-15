@@ -75,33 +75,3 @@
   gap: var(--space-3);
   justify-content: flex-end;
 }
-
-.submit {
-  padding: var(--space-3) var(--space-5);
-  font-weight: 600;
-  color: var(--color-accent-contrast);
-  background-color: var(--color-accent);
-  border: none;
-  border-radius: var(--radius-md);
-  min-height: 44px;
-}
-
-.submit:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
-.cancel {
-  padding: var(--space-3) var(--space-5);
-  font-weight: 600;
-  color: var(--color-text);
-  background-color: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  min-height: 44px;
-}
-
-.cancel:disabled {
-  opacity: 0.6;
-  cursor: default;
-}

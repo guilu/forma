@@ -26,23 +26,27 @@
 /* Link out to the product page, shaped like the accent pill the open row already
    uses for its footnote so the two read as one row of annotations.
    ui-guidelines: 44px minimum touch target. */
-.linkPill {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
+/*
+ * The shop link-out. A real `<a href>` to somebody else's site, so it cannot be
+ * a `ButtonLink` and has to pull the accent wash in with `composes`.
+ *
+ * Split in two on purpose. `composes` is only valid on a simple selector, and a
+ * simple selector sits at the same (0,1,0) as the `.button` it composes — so
+ * declarations that must beat the base cannot live in the composing rule, which
+ * is exactly how the topbar's login action silently lost all of its overrides.
+ * `.linkPillBase` brings the treatment; `.linkPillSize` is doubled and wins
+ * outright. Both are applied together in StorePanel.tsx.
+ */
+.linkPillBase {
+  composes: button soft from '../../components/Button.module.css';
+}
+
+.linkPillSize.linkPillSize {
   min-height: 44px;
   padding: 0 var(--space-3);
   font-size: var(--font-size-sm);
   font-weight: 600;
-  color: var(--color-accent-strong);
-  text-decoration: none;
-  background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
   border-radius: 999px;
-}
-
-.linkPill:hover {
-  background-color: color-mix(in srgb, var(--color-accent) 22%, transparent);
 }
 
 /* Row-level action a panel adds to the table's own edit/delete pair — importing
@@ -50,29 +54,6 @@
    icon buttons: neither of these is the row's main action, and neither is
    destructive, so it should not borrow the colour of one that is.
    ui-guidelines: 44px minimum touch target. */
-.rowAction {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 44px;
-  min-height: 36px;
-  padding: 0 var(--space-2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background-color: var(--color-card);
-  color: var(--color-text-muted);
-  cursor: pointer;
-}
-
-.rowAction:hover:not(:disabled) {
-  color: var(--color-text);
-}
-
-.rowAction:disabled {
-  opacity: 0.5;
-  cursor: progress;
-}
-
 /* A category reads as its glyph and its name together, in the column that is
    about the category — not in front of the row's own name, where it looked like
    the row's icon. */

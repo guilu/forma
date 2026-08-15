@@ -525,17 +525,6 @@
   justify-content: center;
 }
 
-.readyCta {
-  display: inline-flex;
-  align-items: center;
-  padding: var(--space-3) var(--space-5);
-  border-radius: var(--radius-md);
-  background: var(--color-accent, #2563eb);
-  color: #fff;
-  font-weight: 600;
-  text-decoration: none;
-}
-
 @media (max-width: 899px) {
   .step2col {
     grid-template-columns: 1fr;

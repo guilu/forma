@@ -76,31 +76,6 @@
   margin-top: auto;
 }
 
-/* Real buttons since FOR-188 (they used to be inert `<span>`s), so they need the
-   browser defaults stripped back to the tab treatment. */
-.range,
-.rangeActive {
-  padding: var(--space-1) var(--space-3);
-  font: inherit;
-  font-size: var(--font-size-sm);
-  border: 0;
-  border-radius: var(--radius-sm);
-  white-space: nowrap;
-  background: none;
-  color: var(--color-text-muted);
-  cursor: pointer;
-}
-
-.range:hover {
-  color: var(--color-text);
-  background-color: var(--color-surface-variant);
-}
-
-.rangeActive {
-  color: var(--color-accent-contrast);
-  background-color: var(--color-accent);
-}
-
 .srOnly {
   position: absolute;
   width: 1px;

@@ -41,6 +41,5 @@ test.describe('playground', () => {
 
     await stubApi(page);
     await page.goto(process.env.PLAYGROUND_PATH ?? '/app');
-    await page.pause();
   });
 });

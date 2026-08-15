@@ -31,7 +31,13 @@
   gap: var(--space-1);
 }
 
-.tabletToggle {
+/*
+ * Doubled selector, same reason as the topbar's hamburger: this class is handed
+ * to `IconButton`, whose `display: inline-flex` sits at the same (0,1,0)
+ * specificity in another module, so whether the toggle is on screen would
+ * otherwise depend on bundle order.
+ */
+.tabletToggle.tabletToggle {
   display: none;
 }
 
@@ -147,16 +153,14 @@
     transition: width 180ms ease;
   }
 
-  .tabletToggle {
-    display: grid;
+  /* Surface, border and hover come from `IconButton` (surface, md). Only the
+     tablet rail's slightly larger square is set here. Doubled to match the base
+     rule — see the note there. */
+  .tabletToggle.tabletToggle {
+    display: inline-flex;
     flex: 0 0 auto;
     width: 46px;
     height: 46px;
-    place-items: center;
-    color: var(--color-text-muted);
-    background: var(--color-card);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
   }
 
   .link {
