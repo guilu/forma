@@ -88,7 +88,13 @@ export function LandingPage() {
                     the newline into a single space, which reads ambiguously
                     next to a self-closing sibling (sonar typescript:S6772) and
                     would make the label an anonymous flex item. */}
-                <span>Nueva Versión 4.0 Disponible</span>
+                {/* Una capacidad real del producto, no un número de versión: el
+                    badge decía "Nueva Versión 4.0 Disponible" con APP_VERSION en
+                    0.0.1, y un anuncio que el propio producto desmiente vale
+                    menos que nada. La lista de la compra sí existe —catálogo,
+                    precios y pasillos de Mercadona— y es lo que de verdad
+                    distingue a FORMA de otra app de entrenos. */}
+                <span>Lista de la compra de Mercadona</span>
               </p>
               <h1 id="landing-title" className={styles.title}>
                 Entrena. Nutre.
