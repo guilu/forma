@@ -137,6 +137,22 @@ for (const viewport of [PHONE, DESKTOP]) {
 test.describe('training on iPad landscape', () => {
   test.use({ viewport: IPAD_LANDSCAPE });
 
+  /**
+   * The calendar centres *today*, and which day that is comes from the machine
+   * clock (`todayDayOfWeek()` in TrainingPage). Left alone, the centring
+   * assertion below only holds Monday to Friday: a scroller cannot centre an
+   * item it has no room to scroll past, so on a Saturday the last-but-one day
+   * settles wherever the scroll maximum leaves it — 237px off centre — and the
+   * suite went red on the weekend without a line of app code changing.
+   *
+   * `setFixedTime` rather than `clock.install`: this only needs `Date` to read
+   * mid-week, and installing the full fake clock would also freeze the timers
+   * the smooth scroll runs on.
+   */
+  test.beforeEach(async ({ page }) => {
+    await page.clock.setFixedTime(new Date('2026-08-12T12:00:00'));
+  });
+
   test('uses the tablet navigation and purpose-built vertical training flow', async ({ page }) => {
     const dayNames = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
     await page.route('**/api/v1/training/week', (route) =>
@@ -917,6 +933,14 @@ test.describe('page headers on a phone', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 800 });
+    /*
+     * The two header tests below find the date by matching `/\bago/i` — the
+     * abbreviation for *agosto*. That only works while the machine clock says
+     * August: on 1 September the locator stops matching anything and both tests
+     * fail on a timeout, having nothing to do with the layout they check.
+     * Pinning the date keeps them measuring what they are about.
+     */
+    await page.clock.setFixedTime(new Date('2026-08-12T12:00:00'));
   });
 
   test('the admin catalog puts its add action beside the title', async ({ page }) => {
