@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "codes": [
+    "ABS",
+    "ADDUCTORS",
+    "BICEPS",
+    "CALVES",
+    "DELTOID_FRONT",
+    "DELTOID_REAR",
+    "FOREARM_BACK",
+    "FOREARM_FRONT",
+    "GLUTES",
+    "HAMSTRINGS",
+    "LATS",
+    "LOWER_BACK",
+    "LOWER_LEG_FRONT",
+    "OBLIQUES",
+    "PECTORAL",
+    "QUADRICEPS",
+    "SOLEUS",
+    "TRAPEZIUS",
+    "TRICEPS",
+    "UPPER_BACK"
+  ],
+  "assets": {
+    "male_front": {
+      "sex": "male",
+      "view": "front",
+      "width": 854,
+      "height": 1840,
+      "muscles": [
+        "ABS",
+        "ADDUCTORS",
+        "BICEPS",
+        "DELTOID_FRONT",
+        "FOREARM_FRONT",
+        "LOWER_LEG_FRONT",
+        "OBLIQUES",
+        "PECTORAL",
+        "QUADRICEPS"
+      ]
+    },
+    "male_back": {
+      "sex": "male",
+      "view": "back",
+      "width": 854,
+      "height": 1842,
+      "muscles": [
+        "CALVES",
+        "DELTOID_REAR",
+        "FOREARM_BACK",
+        "GLUTES",
+        "HAMSTRINGS",
+        "LATS",
+        "LOWER_BACK",
+        "SOLEUS",
+        "TRAPEZIUS",
+        "TRICEPS",
+        "UPPER_BACK"
+      ]
+    },
+    "female_front": {
+      "sex": "female",
+      "view": "front",
+      "width": 854,
+      "height": 1842,
+      "muscles": [
+        "ABS",
+        "ADDUCTORS",
+        "BICEPS",
+        "DELTOID_FRONT",
+        "FOREARM_FRONT",
+        "LOWER_LEG_FRONT",
+        "OBLIQUES",
+        "PECTORAL",
+        "QUADRICEPS"
+      ]
+    },
+    "female_back": {
+      "sex": "female",
+      "view": "back",
+      "width": 854,
+      "height": 1842,
+      "muscles": [
+        "CALVES",
+        "DELTOID_REAR",
+        "FOREARM_BACK",
+        "GLUTES",
+        "HAMSTRINGS",
+        "LATS",
+        "LOWER_BACK",
+        "SOLEUS",
+        "TRAPEZIUS",
+        "TRICEPS",
+        "UPPER_BACK"
+      ]
+    }
+  }
+}
