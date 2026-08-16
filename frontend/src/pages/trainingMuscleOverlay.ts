@@ -35,6 +35,7 @@ export type MuscleCode =
   | 'OBLIQUES'
   | 'PECTORAL'
   | 'QUADRICEPS'
+  | 'SERRATUS'
   | 'SOLEUS'
   | 'TRAPEZIUS'
   | 'TRICEPS'
@@ -61,6 +62,7 @@ export const MUSCLE_CODES_BY_VIEW: Readonly<Record<BodyView, readonly MuscleCode
     'OBLIQUES',
     'PECTORAL',
     'QUADRICEPS',
+    'SERRATUS',
   ],
   back: [
     'CALVES',
@@ -110,6 +112,7 @@ const LABEL_TO_CODES: ReadonlyMap<string, readonly MuscleCode[]> = new Map([
   ['isquiotibiales', ['HAMSTRINGS']],
   ['pecho', ['PECTORAL']],
   ['romboides', ['UPPER_BACK']],
+  ['serrato anterior', ['SERRATUS']],
   ['trapecio', ['TRAPEZIUS']],
   ['tríceps', ['TRICEPS']],
 ]);
