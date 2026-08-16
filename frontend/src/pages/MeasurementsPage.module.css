@@ -31,6 +31,16 @@
   flex-shrink: 0;
 }
 
+/* Sync + register, in that order: the quiet icon-only action never takes the
+   place the page's main action holds on every other screen. Both keep their
+   width whatever the title does. */
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
 .title {
   font-size: var(--font-size-xl);
 }

@@ -16,6 +16,7 @@ import { MetricCard } from '../components/MetricCard';
 import { Modal } from '../components/Modal';
 import { StatusPill } from '../components/StatusPill';
 import { useMediaQuery } from '../hooks/useMediaQuery';
+import { WithingsSyncButton } from '../integrations/WithingsSyncButton';
 import { narrowingRanges, pointsInRange, type RangeOption } from './chartRanges';
 import { useNotify } from '../components/NotificationProvider';
 import { ApiRequestError } from '../api/client';
@@ -171,16 +172,24 @@ export function MeasurementsPage() {
           <h1 className={styles.title}>Mediciones</h1>
           <p className={styles.subtitle}>Controla tu composición corporal y evolución.</p>
         </div>
-        {/* Hidden while the page is empty: the empty state offers the same
-            action, next to the sentence that explains why the page is blank.
-            Two identical buttons on an otherwise bare screen read as a mistake.
-            It stays up here for every other state, including the error one,
-            where the empty state is not rendered at all. */}
-        {state.status !== 'empty' && (
-          <Button type="button" onClick={() => setFormOpen(true)}>
-            {narrow ? '+ Medición' : '+ Registrar medición'}
-          </Button>
-        )}
+        <div className={styles.headerActions}>
+          {/* Withings feeds most of these measurements, so its manual sync sits
+              where the data is instead of only in Ajustes. It renders itself
+              away when the provider is not connected, and it survives the empty
+              state below — with nothing listed, pulling from Withings is
+              precisely the useful move. */}
+          <WithingsSyncButton />
+          {/* Hidden while the page is empty: the empty state offers the same
+              action, next to the sentence that explains why the page is blank.
+              Two identical buttons on an otherwise bare screen read as a mistake.
+              It stays up here for every other state, including the error one,
+              where the empty state is not rendered at all. */}
+          {state.status !== 'empty' && (
+            <Button type="button" onClick={() => setFormOpen(true)}>
+              {narrow ? '+ Medición' : '+ Registrar medición'}
+            </Button>
+          )}
+        </div>
       </header>
 
       {renderContent(state, activeTab, setActiveTab, () => setFormOpen(true), load)}

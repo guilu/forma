@@ -3,6 +3,7 @@ import { NAV_ITEMS } from '../app/navigation';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
 import { useIntegrations } from '../integrations/IntegrationsContext';
+import { WithingsSyncButton } from '../integrations/WithingsSyncButton';
 import styles from './Sidebar.module.css';
 
 /**
@@ -72,23 +73,35 @@ export function Sidebar({
         {NAV_ITEMS.map(renderLink)}
       </nav>
       {withings && (
-        <Link className={styles.integration} to="/app/settings">
-          <span className={styles.integrationHeader}>
-            <span className={styles.integrationLabel}>WITHINGS</span>
-            <span
-              className={[
-                styles.integrationDot,
-                withings.status === 'CONNECTED' ? '' : styles.integrationDotOff,
-              ]
-                .filter(Boolean)
-                .join(' ')}
-              aria-hidden="true"
-            />
-          </span>
-          <span className={styles.integrationStatus}>
-            {withings.status === 'CONNECTED' ? 'Conectado' : 'No conectado'}
-          </span>
-        </Link>
+        /*
+         * The card is a wrapper, not a link: the sync button lives inside it,
+         * and a button nested in an anchor is neither valid markup nor operable
+         * as both. The link keeps the whole status readout as its target.
+         */
+        <div className={styles.integration}>
+          <Link className={styles.integrationLink} to="/app/settings">
+            <span className={styles.integrationHeader}>
+              <span className={styles.integrationLabel}>WITHINGS</span>
+              <span
+                className={[
+                  styles.integrationDot,
+                  withings.status === 'CONNECTED' ? '' : styles.integrationDotOff,
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                aria-hidden="true"
+              />
+            </span>
+            <span className={styles.integrationStatus}>
+              {withings.status === 'CONNECTED' ? 'Conectado' : 'No conectado'}
+            </span>
+          </Link>
+          {/* Renders itself away unless the provider is connected — see
+              {@link WithingsSyncButton}. */}
+          <div className={styles.integrationActions}>
+            <WithingsSyncButton size="sm" />
+          </div>
+        </div>
       )}
     </aside>
   );

@@ -57,6 +57,28 @@
   padding: var(--space-4);
 }
 
+/* The status readout is the link; the card around it also holds the sync
+   button, so the anchor stops being the card itself. */
+.integrationLink {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Bottom-right, under the status line: an action in a status card, not a
+   second headline. */
+.integrationActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-2);
+}
+
+/* Collapses to nothing when the sync button renders itself away (not
+   connected), so a disconnected card keeps its original height. */
+.integrationActions:empty {
+  display: none;
+}
+
 .integrationHeader {
   display: flex;
   align-items: center;
