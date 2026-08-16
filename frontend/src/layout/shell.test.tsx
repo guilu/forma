@@ -158,6 +158,37 @@ describe('application shell', () => {
     await waitFor(() => expect(syncMock).toHaveBeenCalledWith('WITHINGS'));
   });
 
+  /*
+   * One row of three: sync, the readout, the state dot — all centred against
+   * each other. The card used to stack them (label and dot on a line, status
+   * under it, button on a third row), which spent three rows of sidebar height
+   * on two words.
+   */
+  it('lays the card out as sync, readout and dot in one row', async () => {
+    integrationsMock.mockResolvedValue([
+      {
+        providerId: 'WITHINGS',
+        providerName: 'Withings',
+        description: 'Sincroniza automáticamente tus datos.',
+        status: 'CONNECTED',
+      },
+    ]);
+
+    renderSidebar();
+
+    const sync = await screen.findByRole('button', { name: 'Sincronizar Withings' });
+    const card = sync.closest(`.${styles.integration}`) as HTMLElement;
+    const columns = Array.from(card.children);
+
+    expect(columns).toHaveLength(3);
+    expect(columns[0]).toBe(sync);
+    // The middle column carries both lines of copy, so it is the link target.
+    expect(columns[1]).toHaveTextContent('WITHINGS');
+    expect(columns[1]).toHaveTextContent('Conectado');
+    expect(columns[1].tagName).toBe('A');
+    expect(columns[2].className.split(' ')).toContain(styles.integrationDot);
+  });
+
   it('offers no sync while Withings is disconnected', async () => {
     integrationsMock.mockResolvedValue([
       {

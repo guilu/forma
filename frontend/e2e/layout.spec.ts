@@ -1073,3 +1073,80 @@ test.describe('the public bar login action', () => {
     await expect(visibleLogins(page)).toHaveCount(1);
   });
 });
+
+/**
+ * The sidebar's Withings card. Its state dot is the at-a-glance signal, and the
+ * jsdom suite cannot see it: that suite runs no cascade, and this regressed on
+ * source order alone — the "off" rule was declared before the accent one, so a
+ * disconnected card kept glowing green while the copy underneath read
+ * "No conectado".
+ */
+test.describe('the sidebar integration card', () => {
+  const dotColors = (page: Page) =>
+    page.locator('aside [data-connected]').evaluate((el) => {
+      const computed = getComputedStyle(el);
+      return { background: computed.backgroundColor, shadow: computed.boxShadow };
+    });
+
+  test('paints the dot green while connected', async ({ page }) => {
+    await page.route('**/api/v1/integrations', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          providers: [
+            {
+              provider: 'WITHINGS',
+              status: 'CONNECTED',
+              connectedAt: '2026-08-01T10:00:00Z',
+              lastSyncAt: null,
+              lastSyncOutcome: null,
+            },
+          ],
+        }),
+      });
+    });
+    await page.setViewportSize(DESKTOP);
+    await gotoApp(page, '/app');
+
+    // Resolved through a probe rather than read off the token: the custom
+    // property holds whatever the theme author wrote (a hex), while a computed
+    // `background-color` is always `rgb(…)` — comparing the two compares
+    // notations, not colours.
+    const accent = await page.evaluate(() => {
+      const probe = document.createElement('div');
+      probe.style.color = 'var(--color-accent)';
+      document.body.appendChild(probe);
+      const resolved = getComputedStyle(probe).color;
+      probe.remove();
+      return resolved;
+    });
+    const { background } = await dotColors(page);
+
+    // Both notations the engine may compute for the token's own value.
+    expect(background.replace(/\s/g, '')).toBe(accent.replace(/\s/g, ''));
+  });
+
+  // The e2e fixture reports Withings disconnected (see `stubApi.ts`).
+  test('mutes the dot, glow included, while disconnected', async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    await gotoApp(page, '/app');
+
+    // Resolved through a probe rather than read off the token: the custom
+    // property holds whatever the theme author wrote (a hex), while a computed
+    // `background-color` is always `rgb(…)` — comparing the two compares
+    // notations, not colours.
+    const accent = await page.evaluate(() => {
+      const probe = document.createElement('div');
+      probe.style.color = 'var(--color-accent)';
+      document.body.appendChild(probe);
+      const resolved = getComputedStyle(probe).color;
+      probe.remove();
+      return resolved;
+    });
+    const { background, shadow } = await dotColors(page);
+
+    expect(background.replace(/\s/g, '')).not.toBe(accent.replace(/\s/g, ''));
+    expect(shadow, `a muted dot haloed in accent still reads lit (${shadow})`).toBe('none');
+  });
+});

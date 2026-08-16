@@ -49,42 +49,35 @@
  * (see theme.css FOR-163 notes) -- the closest existing token to the
  * template's `surface-container-high`.
  */
+/*
+ * One row of three columns — sync, readout, state dot — centred against each
+ * other. It used to stack them over three lines (label + dot, status under it,
+ * button under that), which spent three rows of sidebar height on two words.
+ * The dot keeps the far edge, where a status light is looked for.
+ */
 .integration {
   margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
   background-color: var(--color-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  padding: var(--space-4);
+  padding: var(--space-3);
 }
 
 /* The status readout is the link; the card around it also holds the sync
-   button, so the anchor stops being the card itself. */
+   button, so the anchor stops being the card itself. It takes the middle
+   column's slack so the dot stays pinned to the right edge — `min-width` beats
+   a flex item's content-based automatic minimum, which would otherwise refuse
+   to shrink and push the dot out of the card. */
 .integrationLink {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
   color: inherit;
   text-decoration: none;
-}
-
-/* Bottom-right, under the status line: an action in a status card, not a
-   second headline. */
-.integrationActions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: var(--space-2);
-}
-
-/* Collapses to nothing when the sync button renders itself away (not
-   connected), so a disconnected card keeps its original height. */
-.integrationActions:empty {
-  display: none;
-}
-
-.integrationHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-bottom: var(--space-2);
 }
 
 /* Same uppercase/bold/letter-spaced/muted treatment as Card.module.css's
@@ -97,18 +90,24 @@
   color: var(--color-text-muted);
 }
 
-/* Muted when the provider is not connected: the dot is the at-a-glance signal,
-   so it must not stay "live" green next to "No conectado". */
-.integrationDotOff {
-  background-color: var(--color-text-muted);
-}
-
 .integrationDot {
   width: 8px;
   height: 8px;
+  flex-shrink: 0;
   border-radius: 50%;
   background-color: var(--color-accent);
   box-shadow: 0 0 8px var(--color-accent);
+}
+
+/* Muted when the provider is not connected: the dot is the at-a-glance signal,
+   so it must not stay "live" green next to "No conectado".
+   It sits *after* `.integrationDot` because both are single-class selectors:
+   declared before it, the accent fill won on source order and a disconnected
+   card kept glowing green — which is the one thing this class exists to stop.
+   The glow goes with the fill; a muted dot still haloed in accent reads lit. */
+.integrationDotOff {
+  background-color: var(--color-text-muted);
+  box-shadow: none;
 }
 
 .integrationStatus {

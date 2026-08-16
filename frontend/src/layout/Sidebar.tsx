@@ -79,28 +79,28 @@ export function Sidebar({
          * as both. The link keeps the whole status readout as its target.
          */
         <div className={styles.integration}>
+          {/* Renders itself away unless the provider is connected — see
+              {@link WithingsSyncButton}. The row then starts at the readout. */}
+          <WithingsSyncButton size="sm" />
           <Link className={styles.integrationLink} to="/app/settings">
-            <span className={styles.integrationHeader}>
-              <span className={styles.integrationLabel}>WITHINGS</span>
-              <span
-                className={[
-                  styles.integrationDot,
-                  withings.status === 'CONNECTED' ? '' : styles.integrationDotOff,
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-                aria-hidden="true"
-              />
-            </span>
+            <span className={styles.integrationLabel}>WITHINGS</span>
             <span className={styles.integrationStatus}>
               {withings.status === 'CONNECTED' ? 'Conectado' : 'No conectado'}
             </span>
           </Link>
-          {/* Renders itself away unless the provider is connected — see
-              {@link WithingsSyncButton}. */}
-          <div className={styles.integrationActions}>
-            <WithingsSyncButton size="sm" />
-          </div>
+          <span
+            className={[
+              styles.integrationDot,
+              withings.status === 'CONNECTED' ? '' : styles.integrationDotOff,
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            // Exposes which state the dot is painting so a browser test can
+            // read the colour it actually resolves to (the jsdom suite runs no
+            // cascade at all). Decorative, like the dot itself.
+            data-connected={withings.status === 'CONNECTED'}
+            aria-hidden="true"
+          />
         </div>
       )}
     </aside>
