@@ -148,7 +148,7 @@ function Toast({
         className={styles.dismiss}
         onClick={() => onDismiss(id)}
       >
-        <Icon name="cross" size={16} />
+        <Icon name="close" size={16} />
       </IconButton>
     </div>
   );

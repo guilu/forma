@@ -104,7 +104,7 @@ export function Modal({ title, onClose, children }: ModalProps) {
             {title}
           </h2>
           <IconButton label="Cerrar" variant="ghost" size="sm" onClick={onClose}>
-            <Icon name="cross" size={18} />
+            <Icon name="close" size={18} />
           </IconButton>
         </header>
         {children}

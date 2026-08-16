@@ -92,6 +92,24 @@ describe('NotificationProvider / useNotify (FOR-63)', () => {
     expect(screen.queryByText(/No se pudo guardar\./)).not.toBeInTheDocument();
   });
 
+  /* The dismiss control drew `cross` — the medical cross of the health-provider
+     icons, i.e. a plus sign. A "+" on a toast reads as "add", not "dismiss". */
+  it('dismisses with an X, not the medical cross', async () => {
+    const user = userEvent.setup();
+    render(
+      <NotificationProvider>
+        <NotifyConsumer />
+      </NotificationProvider>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'error' }));
+
+    const icon = screen
+      .getByRole('button', { name: /Descartar notificación/ })
+      .querySelector('svg');
+    expect(icon).toHaveAttribute('data-icon', 'close');
+  });
+
   it('auto-dismisses a success toast after a timeout', () => {
     vi.useFakeTimers();
     render(
