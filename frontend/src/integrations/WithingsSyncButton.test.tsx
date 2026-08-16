@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { IntegrationsProvider } from './IntegrationsContext';
 import { WithingsSyncButton } from './WithingsSyncButton';
 import { NotificationProvider } from '../components/NotificationProvider';
+import iconButtonStyles from '../components/IconButton.module.css';
 import { ApiRequestError } from '../api/client';
 import { listIntegrations, syncIntegration, type IntegrationConnection } from '../api/integrations';
 
@@ -74,6 +75,43 @@ describe('WithingsSyncButton', () => {
 
     const button = await screen.findByRole('button', { name: 'Sincronizar Withings' });
     expect(button).toHaveAttribute('title', 'Sincronizar Withings');
+    expect(button.querySelector('svg')).toHaveAttribute('data-icon', 'refresh');
+  });
+
+  /*
+   * It is the app's icon-only square primitive, not a `Button` with a glyph
+   * where its label goes: the first draft was a `secondary` Button padded down
+   * by hand, which is exactly the per-caller re-declaration IconButton exists
+   * to end. Sizes are asserted against the real compiled class names — jsdom
+   * performs no layout, so the wiring is what is checkable here.
+   */
+  it('is an IconButton at the page-action size', async () => {
+    listMock.mockResolvedValue([CONNECTED]);
+
+    renderButton();
+
+    const button = await screen.findByRole('button', { name: 'Sincronizar Withings' });
+    const classes = button.className.split(' ');
+    expect(classes).toContain(iconButtonStyles.iconButton);
+    // `lg` is 44px — the same height as the register action beside it.
+    expect(classes).toContain(iconButtonStyles.lg);
+    expect(classes).toContain(iconButtonStyles.surface);
+  });
+
+  /** The sidebar's status card is dense: the 44px page-action square is too tall for it. */
+  it('takes the dense square in its compact form', async () => {
+    listMock.mockResolvedValue([CONNECTED]);
+
+    render(
+      <NotificationProvider>
+        <IntegrationsProvider>
+          <WithingsSyncButton size="sm" />
+        </IntegrationsProvider>
+      </NotificationProvider>,
+    );
+
+    const button = await screen.findByRole('button', { name: 'Sincronizar Withings' });
+    expect(button.className.split(' ')).toContain(iconButtonStyles.sm);
   });
 
   it('syncs and re-reads the connection list on click', async () => {
