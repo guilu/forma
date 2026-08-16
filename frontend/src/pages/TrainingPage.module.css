@@ -529,12 +529,21 @@
  * the card ends up with rather than carrying a fixed size: the silhouettes keep
  * their own aspect ratio, so a taller card simply draws a bigger body.
  */
+/*
+ * The figures get a *definite* height, and that is what makes them behave: each
+ * silhouette carries an aspect ratio, so given a height it works out its own
+ * width. Sized by width instead — a share of the row — the ratio pushed the
+ * height back out and the card grew to 143% of an iPad's viewport.
+ *
+ * `clamp` rather than a flat `vh`: a short window should not shrink the body to
+ * a stamp, and a tall one should not turn the card into a poster.
+ */
 .todayFigures {
   display: flex;
   flex: 1;
   align-items: center;
   justify-content: center;
-  min-height: 9rem;
+  height: clamp(9rem, 26vh, 20rem);
 }
 
 /*
@@ -565,10 +574,16 @@
  * `width: auto` — collapsed them to 12px: the muscle layers are absolutely
  * positioned, so the box has no intrinsic width for the ratio to scale from.
  */
+/*
+ * Height-driven: the row's height is definite (above), so `width: auto` lets
+ * the aspect ratio do the rest. `flex: 0 1 auto` keeps the pair from being
+ * stretched to fill the row — they size themselves and sit centred.
+ */
 .todayFigure {
-  flex: 1 1 0;
-  min-width: 0;
-  max-height: 100%;
+  flex: 0 1 auto;
+  height: 100%;
+  width: auto;
+  max-width: 100%;
 }
 
 /* ── Weekly calendar (FOR-164) ──────────────────────────────────────── */
@@ -1025,10 +1040,22 @@
     gap: var(--space-5);
   }
 
+  /*
+   * The middle row takes whatever the two-row card has spare, and the figures
+   * take that row: `1fr` is what turns the card's extra height into a bigger
+   * body instead of empty space under it. `min-height: 0` lets the row shrink
+   * below the images' intrinsic size, which a grid row otherwise refuses to do.
+   */
+  .todayArea .todayLayout {
+    grid-template-rows: auto 1fr auto;
+  }
+
+  .todayArea .todayVisual {
+    min-height: 0;
+  }
+
   .todayArea .todayFigures {
     width: 100%;
-    /* Fills the row the stretched card hands down, rather than the 9rem floor
-       the base rule sets for a content-sized card. */
     height: 100%;
   }
 
