@@ -581,17 +581,11 @@ function TodaySessionCard({
 function SessionSummary({ session }: { readonly session: TrainingSession }) {
   return (
     <>
+      {/* No status badge: the ring right below already reports the day as
+          completed or in progress, and the weekly calendar badges every
+          session. A pill beside the title repeated that in a third place. */}
       <div className={styles.todaySessionHeader}>
         <p className={styles.todaySessionTitle}>{session.title}</p>
-        {/*
-         * Only the finished state earns a badge here. "Planificado" is what
-         * every session is by default, so printing it says nothing the card
-         * does not already say — while "Completado" is the one thing worth
-         * spotting at a glance. The other states stay legible elsewhere: the
-         * ring reports the day's progress, and the weekly calendar badges
-         * every session.
-         */}
-        {session.status === 'COMPLETED' && <StatusPill kind="training" value={session.status} />}
       </div>
       <div className={styles.sessionBody}>
         {/* Only what the session really carries. A fixed duration and a fixed
