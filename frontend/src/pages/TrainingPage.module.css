@@ -409,25 +409,65 @@
 
 /* ── Today card (FOR-164) ────────────────────────────────────────────── */
 /*
- * Three rows: what the session is, then how it is going and what it works, then
- * what you can do about it. The actions used to sit beside the title, which put
- * a column of buttons between the text and the body illustration.
+ * Two columns, and the split is by *kind of thing* rather than by source: the
+ * words on the left, the body and its actions on the right. The title spans
+ * both because it names the whole card, and the ring sits under the text it
+ * summarises.
+ *
+ *   head   head        <- phone; on a tablet the title shares its row
+ *   body   figure
+ *   ring   actions
  */
 .todayLayout {
   display: grid;
+  /*
+   * Not an even split: the right column carries the silhouettes and the two
+   * actions, and at half a phone's width the buttons wrapped one per line.
+   */
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  /*
+   * The actions take a row of their own on a phone. Sharing the right column
+   * with the silhouettes left them about 186px for a pair that needs ~248 with
+   * their icons, so they wrapped one per line — taller *and* uglier than simply
+   * letting them span. The body keeps the two rows beside the text, which is
+   * what makes it big enough to read at this width.
+   */
   grid-template-areas:
-    'session'
-    'visual'
-    'actions';
-  gap: var(--space-5);
+    'head head'
+    'body figure'
+    'ring figure'
+    'actions actions';
+  grid-template-rows: auto auto 1fr auto;
+  align-items: start;
+  gap: var(--space-3) var(--space-4);
 }
 
+.todayLayout > .todaySessionHeader {
+  grid-area: head;
+}
+
+.todayLayout > .sessionBody {
+  grid-area: body;
+}
+
+.todayLayout > .todayRing {
+  grid-area: ring;
+}
+
+.todayLayout > .todayFigures {
+  grid-area: figure;
+}
+
+/* The rare multi-session day keeps a real list and simply stacks: the
+   two-column split assumes one session's worth of text. */
 .todayLayout > .todaySessions {
-  grid-area: session;
+  grid-area: head / head / body / body;
 }
 
-.todayLayout > .todayVisual {
-  grid-area: visual;
+.sessionBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
 /* Right-aligned, and wrapping to their own line before they ever squash. */
@@ -435,14 +475,29 @@
   grid-area: actions;
   display: flex;
   flex-direction: column;
+  justify-content: flex-end;
   gap: var(--space-3);
+  height: 100%;
 }
 
 .todayActionGroup {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
+  align-items: flex-end;
   gap: var(--space-2);
+}
+
+/*
+ * Narrower buttons on a phone, where the pair shares a column with the
+ * silhouettes: at the default padding "Detalle" and "Entrenar" need about
+ * 208px and the column offers 186, so they wrapped one per line and pushed the
+ * card taller. The labels are short enough to carry less air around them.
+ */
+@media (max-width: 480px) {
+  .todayActionGroup > * {
+    padding-inline: var(--space-3);
+  }
 }
 
 /*
@@ -487,17 +542,11 @@
   line-height: 1.2;
 }
 
-.todayVisual {
-  display: flex;
-  align-items: center;
-  gap: var(--space-5);
-  flex-wrap: wrap;
-}
-
 .todayRing {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: var(--space-2);
 }
 
@@ -692,11 +741,6 @@
 }
 
 @media (max-width: 560px) {
-  .todayVisual {
-    width: 100%;
-    justify-content: space-around;
-  }
-
   .calendarGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -764,24 +808,6 @@
 @media (max-width: 720px) {
   .statsRow {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  /*
-   * On a phone the card's three rows already stack the way they should — the
-   * session, then the ring and the body, then the actions — so all this adds is
-   * the split inside the middle row: the ring on the left, the silhouettes on
-   * the right, rather than one above the other with the body left at thumbnail
-   * size below the fold.
-   */
-  .todayArea .todayVisual {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: center;
-    gap: var(--space-4);
-  }
-
-  .todayArea .todayFigures {
-    width: 100%;
   }
 }
 
@@ -1023,40 +1049,27 @@
   }
 
   /*
-   * With the card now two rows tall, the visual column takes the height that
-   * the session list does not: the ring keeps its size at the top and the
-   * silhouettes take the rest, which is the whole point of the taller card.
-   * Scoped to `.todayArea` so the weekly calendar's own figures are untouched.
-   */
-  /*
-   * The middle row is the ring and the body, side by side: the ring keeps its
-   * own size on the left and the silhouettes take the rest, which is what the
-   * two-row card exists to give them.
-   */
-  .todayArea .todayVisual {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: center;
-    gap: var(--space-5);
-  }
-
-  /*
-   * The middle row takes whatever the two-row card has spare, and the figures
-   * take that row: `1fr` is what turns the card's extra height into a bigger
-   * body instead of empty space under it. `min-height: 0` lets the row shrink
-   * below the images' intrinsic size, which a grid row otherwise refuses to do.
+   * The desktop card keeps the text across the top and pairs the ring with the
+   * silhouettes underneath, because here it is two grid rows tall and has the
+   * height to give them. The tablet arrangement — title beside the body — would
+   * waste that height on a column of empty space next to three lines of text.
    */
   .todayArea .todayLayout {
-    grid-template-rows: auto 1fr auto;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      'head head'
+      'body body'
+      'ring figure'
+      'actions actions';
+    grid-template-rows: auto auto 1fr auto;
   }
 
-  .todayArea .todayVisual {
-    min-height: 0;
-  }
-
+  /* Fills the row the two-row card hands down, rather than the viewport-based
+     floor the narrower layouts use. */
   .todayArea .todayFigures {
     width: 100%;
     height: 100%;
+    min-height: 0;
   }
 
   .summaryArea {
@@ -1086,6 +1099,36 @@
   .streakArea {
     grid-column: 1;
     grid-row: 4;
+  }
+}
+
+/*
+ * From tablet up the card is wide enough for the title to share its row with
+ * the silhouettes, which pulls the whole written column into the left half and
+ * lets the body start at the top of the card rather than below the heading.
+ */
+@media (min-width: 721px) {
+  .todayLayout {
+    /*
+     * The body runs the height of the card and the actions tuck under it, with
+     * the ring taking the space the text leaves on the left. Giving the figure
+     * only the two text rows kept it at its floor height while the ring's row
+     * — the tallest of the three — sat beside empty space.
+     */
+    grid-template-areas:
+      'head figure'
+      'body figure'
+      'ring figure'
+      'ring actions';
+    grid-template-rows: auto auto 1fr auto;
+    align-items: stretch;
+  }
+
+  .todayLayout > .todayFigures {
+    /* Floor, not a fixed size: it fills the two rows the text occupies, and
+       never falls below a legible body on a short window. */
+    height: 100%;
+    min-height: clamp(9rem, 26vh, 20rem);
   }
 }
 
@@ -1164,11 +1207,6 @@
   .todaySessionTitle {
     font-size: 1.6rem;
     white-space: nowrap;
-  }
-
-  .todayVisual {
-    flex-wrap: nowrap;
-    flex-shrink: 0;
   }
 
   .actions {

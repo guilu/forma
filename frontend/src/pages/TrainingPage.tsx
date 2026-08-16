@@ -437,66 +437,58 @@ function TodaySessionCard({
     );
   }
 
-  const { completed, planned } = tally(day.sessions);
+  const sessions = day.sessions;
+  const { completed, planned } = tally(sessions);
   const percent = planned > 0 ? Math.round((completed / planned) * 100) : 0;
-  const visualSession =
-    day.sessions.find((session) => session.kind === 'STRENGTH') ?? day.sessions[0];
+  const visualSession = sessions.find((session) => session.kind === 'STRENGTH') ?? sessions[0];
 
   return (
     <Card title={title} headingLevel={2} className={styles.todayCard}>
       <div className={styles.todayLayout}>
-        <ul className={styles.todaySessions}>
-          {day.sessions.map((session) => (
-            <li key={session.id} className={styles.todaySession}>
-              <div className={styles.todaySessionHeader}>
-                <p className={styles.todaySessionTitle}>{session.title}</p>
-                {/*
-                 * Only the finished state earns a badge here. "Planificado" is
-                 * what every session is by default, so printing it says nothing
-                 * the card does not already say — while "Completado" is the one
-                 * thing worth spotting at a glance. The other states stay
-                 * legible elsewhere: the ring underneath reports the day's
-                 * progress, and the weekly calendar badges every session.
-                 */}
-                {session.status === 'COMPLETED' && (
-                  <StatusPill kind="training" value={session.status} />
-                )}
-              </div>
-              {/* Only what the session really carries. A fixed duration and a
-                  fixed muscle focus used to print under every session, which
-                  is how a *run* came to announce a chest-and-triceps focus —
-                  neither field exists anywhere in the training API. The focus
-                  of a strength session is derived below from its real
-                  FOR-136 muscle map. */}
-              <p className={styles.sessionDetail}>{session.detail}</p>
-              {session.kind === 'STRENGTH' && <SessionFocus sessionId={session.id} />}
-            </li>
-          ))}
-        </ul>
+        {/*
+         * One session renders flat, several render as a list.
+         *
+         * The card's layout puts the title, the body text, the ring and the
+         * figures in separate grid cells, and a `<ul><li>` around them would
+         * have to be dissolved with `display: contents` to let them out — which
+         * is exactly the thing that drops list semantics in some screen
+         * readers. A day almost always carries one session, so that case gets
+         * the plain markup the grid needs, and the rare multi-session day keeps
+         * a real list and stacks instead.
+         */}
+        {sessions.length === 1 ? (
+          <SessionSummary session={sessions[0]} />
+        ) : (
+          <ul className={styles.todaySessions}>
+            {sessions.map((session) => (
+              <li key={session.id} className={styles.todaySession}>
+                <SessionSummary session={session} />
+              </li>
+            ))}
+          </ul>
+        )}
 
-        <div className={styles.todayVisual}>
-          <div className={styles.todayRing}>
-            {/* Ring shows today's real session completion; the "N/M ejercicios"
+        <div className={styles.todayRing}>
+          {/* Ring shows today's real session completion; the "N/M ejercicios"
                 figure below it is placeholder (per-exercise data isn't backed). */}
-            <ProgressRing
-              value={completed}
-              max={Math.max(planned, 1)}
-              label={`${completed} de ${planned} sesiones completadas hoy`}
-              size={128}
-            >
-              <span className={styles.ringPercent}>{percent}%</span>
-            </ProgressRing>
-            <p className={styles.ringStatus}>{percent === 100 ? 'Completado' : 'En progreso'}</p>
-            {/* The ring counts sessions, which is what the week payload
+          <ProgressRing
+            value={completed}
+            max={Math.max(planned, 1)}
+            label={`${completed} de ${planned} sesiones completadas hoy`}
+            size={128}
+          >
+            <span className={styles.ringPercent}>{percent}%</span>
+          </ProgressRing>
+          <p className={styles.ringStatus}>{percent === 100 ? 'Completado' : 'En progreso'}</p>
+          {/* The ring counts sessions, which is what the week payload
                 actually carries. It used to be captioned "4 / 6 ejercicios"
                 from a constant — a figure that was wrong for every day and
                 meaningless for a run. */}
-            <p className={styles.ringCaption}>
-              {completed} / {planned} {planned === 1 ? 'sesión' : 'sesiones'}
-            </p>
-          </div>
-          <TodayFigures session={visualSession} sex={anatomySex} />
+          <p className={styles.ringCaption}>
+            {completed} / {planned} {planned === 1 ? 'sesión' : 'sesiones'}
+          </p>
         </div>
+        <TodayFigures session={visualSession} sex={anatomySex} />
 
         {/*
          * The actions close the card, under the ring and the body rather than
@@ -510,7 +502,7 @@ function TodaySessionCard({
          * pair belongs to.
          */}
         <div className={styles.todayActions}>
-          {day.sessions.map((session) => (
+          {sessions.map((session) => (
             <div
               key={session.id}
               className={styles.todayActionGroup}
@@ -576,6 +568,41 @@ function TodaySessionCard({
         </div>
       </div>
     </Card>
+  );
+}
+
+/**
+ * The written half of a session: its title and status, then what it carries.
+ *
+ * <p>Two sibling elements rather than one wrapper, because the card's grid
+ * places them in different cells — the title spans the full width on a phone
+ * while the body text shares a row with the silhouettes.
+ */
+function SessionSummary({ session }: { readonly session: TrainingSession }) {
+  return (
+    <>
+      <div className={styles.todaySessionHeader}>
+        <p className={styles.todaySessionTitle}>{session.title}</p>
+        {/*
+         * Only the finished state earns a badge here. "Planificado" is what
+         * every session is by default, so printing it says nothing the card
+         * does not already say — while "Completado" is the one thing worth
+         * spotting at a glance. The other states stay legible elsewhere: the
+         * ring reports the day's progress, and the weekly calendar badges
+         * every session.
+         */}
+        {session.status === 'COMPLETED' && <StatusPill kind="training" value={session.status} />}
+      </div>
+      <div className={styles.sessionBody}>
+        {/* Only what the session really carries. A fixed duration and a fixed
+            muscle focus used to print under every session, which is how a *run*
+            came to announce a chest-and-triceps focus — neither field exists
+            anywhere in the training API. The focus of a strength session is
+            derived from its real FOR-136 muscle map. */}
+        <p className={styles.sessionDetail}>{session.detail}</p>
+        {session.kind === 'STRENGTH' && <SessionFocus sessionId={session.id} />}
+      </div>
+    </>
   );
 }
 
