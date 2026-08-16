@@ -460,59 +460,6 @@ function TodaySessionCard({
                   FOR-136 muscle map. */}
               <p className={styles.sessionDetail}>{session.detail}</p>
               {session.kind === 'STRENGTH' && <SessionFocus sessionId={session.id} />}
-              <div className={styles.actions}>
-                {session.kind === 'STRENGTH' ? (
-                  <Button type="button" onClick={() => openTraining(session)}>
-                    <Icon name="arrowRight" size={17} />
-                    {session.status === 'COMPLETED' ? 'Ver entrenamiento' : 'Iniciar entrenamiento'}
-                  </Button>
-                ) : session.status === 'COMPLETED' ? (
-                  /* A run has no per-exercise screen to open, so its action
-                     marks completion in place — and undoes it, or a mistaken
-                     tap would be permanent. Back to PLANNED, not SKIPPED:
-                     undoing means "this did not happen yet", and SKIPPED is a
-                     deliberate different statement. */
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    aria-label="Desmarcar la carrera como completada"
-                    disabled={pendingId === session.id}
-                    loading={pendingId === session.id}
-                    onClick={() => mark(session.id, 'PLANNED')}
-                  >
-                    <Icon name="checkCircle" size={17} />
-                    Completada
-                  </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    disabled={pendingId === session.id}
-                    loading={pendingId === session.id}
-                    onClick={() => mark(session.id, 'COMPLETED')}
-                  >
-                    <Icon name="check" size={17} />
-                    Completar carrera
-                  </Button>
-                )}
-                {session.status === 'PLANNED' && (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    disabled={pendingId === session.id}
-                    onClick={() => mark(session.id, 'SKIPPED')}
-                  >
-                    Saltar
-                  </Button>
-                )}
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => openDetail({ dayOfWeek: day.dayOfWeek, session })}
-                >
-                  <Icon name="menu" size={17} />
-                  Ver detalle
-                </Button>
-              </div>
             </li>
           ))}
         </ul>
@@ -539,6 +486,83 @@ function TodaySessionCard({
             </p>
           </div>
           <TodayFigures session={visualSession} sex={anatomySex} />
+        </div>
+
+        {/*
+         * The actions close the card, under the ring and the body rather than
+         * beside the title: they are what you do *after* reading the session,
+         * and on a phone a column of buttons between the text and the figures
+         * pushed the body off the screen.
+         *
+         * One group per session, each labelled with its own title. A day
+         * normally carries one, but when it carries two ("Detalle" and
+         * "Entrenar" twice over) the group is what says which session each
+         * pair belongs to.
+         */}
+        <div className={styles.todayActions}>
+          {day.sessions.map((session) => (
+            <div
+              key={session.id}
+              className={styles.todayActionGroup}
+              role="group"
+              aria-label={session.title}
+            >
+              {/* Ordered by weight, left to right, so the main action is the
+                  one nearest the thumb on a phone and last in reading order on
+                  a desktop: skip, then detail, then the session itself. */}
+              {session.status === 'PLANNED' && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={pendingId === session.id}
+                  onClick={() => mark(session.id, 'SKIPPED')}
+                >
+                  Saltar
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => openDetail({ dayOfWeek: day.dayOfWeek, session })}
+              >
+                <Icon name="menu" size={17} />
+                Detalle
+              </Button>
+              {session.kind === 'STRENGTH' ? (
+                <Button type="button" onClick={() => openTraining(session)}>
+                  <Icon name="arrowRight" size={17} />
+                  Entrenar
+                </Button>
+              ) : session.status === 'COMPLETED' ? (
+                /* A run has no per-exercise screen to open, so its action marks
+                   completion in place — and undoes it, or a mistaken tap would
+                   be permanent. Back to PLANNED, not SKIPPED: undoing means
+                   "this did not happen yet", and SKIPPED is a deliberate
+                   different statement. */
+                <Button
+                  type="button"
+                  variant="secondary"
+                  aria-label="Desmarcar la carrera como completada"
+                  disabled={pendingId === session.id}
+                  loading={pendingId === session.id}
+                  onClick={() => mark(session.id, 'PLANNED')}
+                >
+                  <Icon name="checkCircle" size={17} />
+                  Completada
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  disabled={pendingId === session.id}
+                  loading={pendingId === session.id}
+                  onClick={() => mark(session.id, 'COMPLETED')}
+                >
+                  <Icon name="check" size={17} />
+                  Completar carrera
+                </Button>
+              )}
+            </div>
+          ))}
         </div>
       </div>
     </Card>
