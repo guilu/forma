@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Badge } from '../components/Badge';
-import { BodyFigure } from '../components/BodyFigure';
 import { MuscleSilhouette, type AnatomySex } from '../components/MuscleSilhouette';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
@@ -743,13 +742,27 @@ function WeeklyCalendar({
               .filter(Boolean)
               .join(' ')}
           >
-            <h3 className={styles.calendarDayTitle}>
-              {DAY_LABELS[day.dayOfWeek] ?? day.dayOfWeek}
-            </h3>
+            <div className={styles.calendarDayHead}>
+              <h3 className={styles.calendarDayTitle}>
+                {DAY_LABELS[day.dayOfWeek] ?? day.dayOfWeek}
+              </h3>
+              {!day.rest && (
+                <span
+                  className={styles.calendarDayStatus}
+                  data-status={dayStatus(day)}
+                  role="img"
+                  aria-label={SESSION_STATUS_LABELS[dayStatus(day)]}
+                />
+              )}
+            </div>
             {day.rest ? (
               <div className={styles.calendarRest}>
-                <Badge tone="neutral">Descanso</Badge>
-                <BodyFigure variant="rest" size={72} />
+                <MuscleSilhouette
+                  className={styles.calendarFigure}
+                  sex={anatomySex}
+                  variant="rest"
+                />
+                <span className={styles.calendarSessionTitle}>Descanso</span>
               </div>
             ) : (
               <ul className={styles.calendarSessions}>
@@ -758,31 +771,22 @@ function WeeklyCalendar({
                     <button
                       type="button"
                       className={styles.calendarSessionButton}
+                      /*
+                       * Names what the card no longer writes down. The kind badge
+                       * and the status pill left the card for the silhouette and
+                       * the corner dot, both of which are decorative — so without
+                       * this the button would announce just "Tirada larga" and a
+                       * screen reader would lose the two facts the redesign moved
+                       * into colour and shape.
+                       */
+                      aria-label={`${KIND_LABELS[session.kind]} · ${stripKindPrefix(
+                        session.title,
+                      )}. ${SESSION_STATUS_LABELS[session.status]}`}
                       onClick={() => openDetail({ dayOfWeek: day.dayOfWeek, session })}
                     >
-                      <Badge tone={session.kind === 'RUNNING' ? 'accent' : 'violet'}>
-                        {KIND_LABELS[session.kind]}
-                      </Badge>
+                      <CalendarFigure session={session} sex={anatomySex} />
                       <span className={styles.calendarSessionTitle}>
                         {stripKindPrefix(session.title)}
-                      </span>
-                      <BodyFigure
-                        view={session.bodyView.toLowerCase() as 'front' | 'back'}
-                        sex={anatomySex}
-                        variant={session.kind === 'RUNNING' ? 'running' : 'strength'}
-                        active={session.status === 'COMPLETED'}
-                        size={64}
-                      />
-                      <StatusPill kind="training" value={session.status} />
-                      <span
-                        className={styles.calendarSessionProgress}
-                        role="progressbar"
-                        aria-label={`Progreso de ${session.title}`}
-                        aria-valuemin={0}
-                        aria-valuemax={100}
-                        aria-valuenow={session.status === 'COMPLETED' ? 100 : 0}
-                      >
-                        <span style={{ width: session.status === 'COMPLETED' ? '100%' : '0%' }} />
                       </span>
                     </button>
                   </li>
@@ -810,36 +814,90 @@ function WeeklyCalendar({
           );
         })}
       </div>
-      {/* Two axes in one legend, as the mockup has it: the timeline's statuses
-          and the badge/figure colour that tells the two session kinds apart.
-          "Pendiente" stays even though the mockup's fully-completed week never
-          shows it — the grid does render that state. */}
+      {/* One axis only: what happened to the session. The kind (running vs
+          strength) left the legend when it left the cards — the silhouette
+          already says it, and a colour key for something never drawn in that
+          colour is noise. "Hoy" went too: the highlighted card is the label. */}
       <ul className={styles.calendarLegend} aria-label="Leyenda del calendario">
         <li>
           <span className={`${styles.legendDot} ${styles.legendDone}`} aria-hidden="true" />{' '}
           Completado
         </li>
         <li>
-          <span className={`${styles.legendDot} ${styles.legendToday}`} aria-hidden="true" /> Hoy
-        </li>
-        <li>
           <span className={`${styles.legendDot} ${styles.legendPending}`} aria-hidden="true" />{' '}
           Pendiente
         </li>
         <li>
-          <span className={`${styles.legendDot} ${styles.legendStrength}`} aria-hidden="true" />{' '}
-          Fuerza
-        </li>
-        <li>
-          <span className={`${styles.legendDot} ${styles.legendRunning}`} aria-hidden="true" />{' '}
-          Carrera
-        </li>
-        <li>
-          <span className={`${styles.legendDot} ${styles.legendRest}`} aria-hidden="true" />{' '}
-          Descanso
+          <span className={`${styles.legendDot} ${styles.legendSkipped}`} aria-hidden="true" />{' '}
+          Saltado
         </li>
       </ul>
     </Card>
+  );
+}
+
+const SESSION_STATUS_LABELS: Record<SessionStatus, string> = {
+  PLANNED: 'Pendiente',
+  COMPLETED: 'Completado',
+  SKIPPED: 'Saltado',
+};
+
+/**
+ * The single status the day's dot shows.
+ *
+ * <p>A day usually holds one session, but it can hold two since sessions can be
+ * moved onto the same day — so the dot has to say something about a set, not
+ * just read one status off. Completed only when every session is: a day with
+ * one done and one still to do is not a done day. Skipped only when nothing is
+ * left pending, so the amber never hides outstanding work.
+ */
+function dayStatus(day: TrainingDay): SessionStatus {
+  const sessions = day.sessions;
+  if (sessions.length > 0 && sessions.every((session) => session.status === 'COMPLETED')) {
+    return 'COMPLETED';
+  }
+  if (
+    sessions.some((session) => session.status === 'SKIPPED') &&
+    !sessions.some((session) => session.status === 'PLANNED')
+  ) {
+    return 'SKIPPED';
+  }
+  return 'PLANNED';
+}
+
+/**
+ * The body drawn on a calendar card: one silhouette, always front for strength.
+ *
+ * <p>Only the front sheet, unlike the today card's front/back pair — at this
+ * size two bodies would each get half the width and neither would read. The
+ * cost is honest and worth naming: a pull day's lats and rear delts live on the
+ * back sheet, so this card lights the biceps and leaves the rest dark. The
+ * detail view is where the full pair is.
+ *
+ * <p>Running and rest carry their own whole-body art with the worked muscles
+ * already drawn into the asset, so they need no overlay and no request.
+ */
+function CalendarFigure({
+  session,
+  sex,
+}: {
+  readonly session: TrainingSession;
+  readonly sex: AnatomySex;
+}) {
+  const isStrength = session.kind === 'STRENGTH';
+  const muscles = useSessionMuscles(isStrength ? session.id : undefined);
+
+  if (!isStrength) {
+    return <MuscleSilhouette className={styles.calendarFigure} sex={sex} variant="running" />;
+  }
+
+  return (
+    <MuscleSilhouette
+      className={styles.calendarFigure}
+      sex={sex}
+      view="front"
+      muscles={overlayFromMuscleMap(muscles)}
+    />
   );
 }
 

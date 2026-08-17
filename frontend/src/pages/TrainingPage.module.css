@@ -257,6 +257,20 @@
   border-radius: var(--radius-md);
 }
 
+/*
+ * Row 1 of the card. The day name is centred on the card, not on the space the
+ * dot leaves it, so the dot is taken out of the flow and pinned to the corner —
+ * otherwise the seven weekday labels would sit at seven slightly different
+ * offsets depending on whether their day carries a dot.
+ */
+.calendarDayHead {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 1rem;
+}
+
 .calendarDayTitle {
   margin: 0;
   font-size: 0.68rem;
@@ -264,6 +278,25 @@
   letter-spacing: 0.02em;
   color: var(--color-text-muted);
   text-transform: uppercase;
+  text-align: center;
+}
+
+.calendarDayStatus {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-text-muted);
+}
+
+.calendarDayStatus[data-status='COMPLETED'] {
+  background: var(--color-accent);
+}
+
+.calendarDayStatus[data-status='SKIPPED'] {
+  background: var(--color-warning-graphic);
 }
 
 .calendarSessions {
@@ -284,11 +317,13 @@
 .calendarSessionButton {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-1);
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
   width: 100%;
+  height: 100%;
   padding: var(--space-2);
-  text-align: left;
+  text-align: center;
   color: inherit;
   background: none;
   border: 0;
@@ -300,6 +335,17 @@
   font-size: 0.75rem;
   font-weight: 600;
   line-height: 1.25;
+  text-align: center;
+}
+
+/*
+ * Sized by width so the seven cards agree: the silhouette carries its own
+ * aspect ratio, and pinning the height instead would make the running body —
+ * far wider than the anatomical sheets — pick a different width from its
+ * neighbours and break the row.
+ */
+.calendarFigure {
+  width: min(4.5rem, 100%);
 }
 
 /* Right-column widget stack (Resumen semanal, Racha actual, Historial
@@ -677,44 +723,20 @@
   background: color-mix(in srgb, var(--color-accent) 7%, var(--color-surface));
 }
 
+/* Same three-row shape as a session card, so the rest day lines up with its
+   neighbours instead of floating at its own height. */
 .calendarRest {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-2);
+  flex: 1;
+  padding: var(--space-1) 0;
 }
 
 .calendarSessionButton {
-  align-items: center;
   padding: var(--space-1) 0;
-  text-align: center;
-}
-
-.calendarSessionButton [data-tone],
-.calendarRest [data-tone] {
-  padding: 0.16rem 0.5rem;
-  font-size: 0.68rem;
-  line-height: 1.15;
-}
-
-.calendarSessionButton > [data-tone]:last-child {
-  margin-top: auto;
-}
-
-.calendarSessionProgress {
-  width: 100%;
-  height: 4px;
-  margin-top: auto;
-  overflow: hidden;
-  background: var(--color-border);
-  border-radius: 999px;
-}
-
-.calendarSessionProgress > span {
-  display: block;
-  height: 100%;
-  background: var(--color-accent);
-  border-radius: inherit;
 }
 
 .calendarLegend {
@@ -801,37 +823,15 @@
   background-color: var(--color-accent);
 }
 
-.legendToday {
-  background-color: var(--color-info);
-}
-
 .legendPending {
-  background-color: var(--color-border);
+  background-color: var(--color-text-muted);
 }
 
-/*
- * Violet marks a completed *strength session* in the calendar grid — and only
- * there. The same figure stands in for a muscle group further down the page,
- * where the hue would mean nothing, so this is scoped to the day card rather
- * than living on the BodyFigure primitive.
- */
-.calendarSessionButton [data-variant='strength'][data-active='true'] {
-  fill: var(--color-violet);
-}
-
-/* The two session kinds, matching the badge and figure colours in the grid
-   above: violet is strength everywhere in this feature, green is running. */
-.legendStrength {
-  background-color: var(--color-violet);
-}
-
-.legendRunning {
-  background-color: var(--color-accent);
-}
-
-.legendRest {
-  background-color: transparent;
-  border: 1px solid var(--color-border);
+/* Amber, not red: skipping a session is a fact about the week, not a failure
+   (ui-guidelines.md "no guilt language"). Same token StatusPill gives SKIPPED,
+   so the dot and the pill can never drift apart. */
+.legendSkipped {
+  background-color: var(--color-warning-graphic);
 }
 
 /* ── Stats row (FOR-164) ────────────────────────────────────────────── */
