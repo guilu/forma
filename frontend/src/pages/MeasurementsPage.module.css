@@ -99,6 +99,18 @@
   flex-wrap: wrap;
 }
 
+/*
+ * Sized by width, not height: the silhouette carries its own `aspect-ratio`, so
+ * a width is all it needs to work out the rest — and it is the safe half to
+ * constrain, since pinning the height and then capping the width at a narrow
+ * card would squash the body (the bitmap inside is `object-fit: fill`).
+ * 4.875rem is the width the front sheet (854x1840) needs to stand as tall as
+ * the 168px figure this replaced.
+ */
+.distributionFigure {
+  width: min(4.875rem, 100%);
+}
+
 .distributionLegend {
   list-style: none;
   margin: 0;

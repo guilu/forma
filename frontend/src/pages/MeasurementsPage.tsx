@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { BodyMuscleMap } from '../components/BodyMuscleMap';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { ChartContainer } from '../components/ChartContainer';
@@ -14,7 +13,9 @@ import { LoadingState } from '../components/LoadingState';
 import { MeasurementForm } from '../components/MeasurementForm';
 import { MetricCard } from '../components/MetricCard';
 import { Modal } from '../components/Modal';
+import { MuscleSilhouette } from '../components/MuscleSilhouette';
 import { StatusPill } from '../components/StatusPill';
+import { useAnatomySex } from '../hooks/useAnatomySex';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { WithingsSyncButton } from '../integrations/WithingsSyncButton';
 import { narrowingRanges, pointsInRange, type RangeOption } from './chartRanges';
@@ -355,11 +356,15 @@ function MeasurementsDashboard({ measurements, activeTab, setActiveTab, reload }
  * (no such fields on the API — see {@link PLACEHOLDER}), which is why the design
  * gives those two greys and keeps colour for the two real values.
  *
- * <p>FOR-188 replaced the schematic {@link BodyFigure} with the real asset
- * ({@link BodyMuscleMap}). The tint is baked into that asset, so the figure is
- * still not driven by per-muscle data.
+ * <p>FOR-188 replaced the schematic {@link BodyFigure} with a real asset; the
+ * figure is now the anatomy pack's front silhouette ({@link MuscleSilhouette}),
+ * drawn for the profile's sex like the training page's. No `muscles` map is
+ * passed: this card breaks weight down by tissue, not by worked muscle, so the
+ * body stays untinted rather than implying data the composition legend does not
+ * carry.
  */
 function BodyDistributionCard({ latest }: { readonly latest: BodyMeasurement }) {
+  const anatomySex = useAnatomySex();
   const rows = [
     {
       key: 'muscle',
@@ -398,7 +403,12 @@ function BodyDistributionCard({ latest }: { readonly latest: BodyMeasurement }) 
   return (
     <Card title="Distribución corporal" headingLevel={2}>
       <div className={styles.distribution}>
-        <BodyMuscleMap size={168} label="Composición corporal" />
+        <MuscleSilhouette
+          className={styles.distributionFigure}
+          sex={anatomySex}
+          view="front"
+          label="Composición corporal"
+        />
         <ul className={styles.distributionLegend}>
           {rows.map((row) => (
             <li key={row.key} className={styles.distributionItem}>

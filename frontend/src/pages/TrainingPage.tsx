@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Badge } from '../components/Badge';
 import { BodyFigure } from '../components/BodyFigure';
-import { MuscleSilhouette } from '../components/MuscleSilhouette';
+import { MuscleSilhouette, type AnatomySex } from '../components/MuscleSilhouette';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { NoPlanEmptyState } from '../components/NoPlanEmptyState';
@@ -12,13 +12,13 @@ import { LoadingState } from '../components/LoadingState';
 import { MetricCard } from '../components/MetricCard';
 import { Modal } from '../components/Modal';
 import { useNotify } from '../components/NotificationProvider';
+import { useAnatomySex } from '../hooks/useAnatomySex';
 import { ProgressRing } from '../components/ProgressRing';
 import { StatusPill } from '../components/StatusPill';
 import { WidgetLoading } from '../components/WidgetLoading';
 import { IconButton } from '../components/IconButton';
 import { ApiRequestError } from '../api/client';
 import { getStreak, type Streak } from '../api/progress';
-import { getProfile } from '../api/profile';
 import {
   getMuscleMap,
   getTrainingWeek,
@@ -76,8 +76,6 @@ type State =
   | { readonly status: 'loading' }
   | { readonly status: 'error' }
   | { readonly status: 'ready'; readonly week: TrainingWeek };
-
-type AnatomySex = 'male' | 'female';
 
 interface DetailTarget {
   readonly dayOfWeek: string;
@@ -194,7 +192,7 @@ export function TrainingPage() {
   const notify = useNotify();
   const navigate = useNavigate();
   const [state, setState] = useState<State>({ status: 'loading' });
-  const [anatomySex, setAnatomySex] = useState<AnatomySex>('male');
+  const anatomySex = useAnatomySex();
   const [actionError, setActionError] = useState<string | undefined>(undefined);
   const [pendingId, setPendingId] = useState<string | undefined>(undefined);
   const [detailTarget, setDetailTarget] = useState<DetailTarget | undefined>(undefined);
@@ -212,20 +210,6 @@ export function TrainingPage() {
   useEffect(() => {
     void load();
   }, [load]);
-
-  useEffect(() => {
-    let active = true;
-    getProfile()
-      .then((profile) => {
-        if (active) setAnatomySex(profile.sex === 'FEMALE' ? 'female' : 'male');
-      })
-      .catch(() => {
-        // The existing male presentation remains the safe fallback when the profile is unavailable.
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
 
   async function mark(sessionId: string, status: SessionStatus) {
     setActionError(undefined);

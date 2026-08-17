@@ -12,6 +12,7 @@ import {
 import { NotificationProvider } from '../components/NotificationProvider';
 import { IntegrationsProvider } from '../integrations/IntegrationsContext';
 import { listIntegrations, type IntegrationConnection } from '../api/integrations';
+import { getProfile } from '../api/profile';
 
 // The page reads via listBodyMeasurements and the manual entry form (reused
 // as-is) writes via createBodyMeasurement — both go through the shared API
@@ -41,10 +42,15 @@ function renderPage() {
   );
 }
 
+// The body-distribution figure follows the profile's sex (male/female
+// silhouette), so the page now reads the profile too.
+vi.mock('../api/profile', () => ({ getProfile: vi.fn() }));
+
 const listMock = vi.mocked(listBodyMeasurements);
 const createMock = vi.mocked(createBodyMeasurement);
 const deleteMock = vi.mocked(deleteBodyMeasurement);
 const integrationsMock = vi.mocked(listIntegrations);
+const getProfileMock = vi.mocked(getProfile);
 
 const WITHINGS_CONNECTED: IntegrationConnection = {
   providerId: 'WITHINGS',
@@ -135,6 +141,8 @@ describe('MeasurementsPage', () => {
     deleteMock.mockReset();
     integrationsMock.mockReset();
     integrationsMock.mockResolvedValue([]);
+    getProfileMock.mockReset();
+    getProfileMock.mockResolvedValue({ sex: 'MALE' } as never);
   });
 
   it('shows a loading state while the initial fetch is in flight', () => {
@@ -230,12 +238,21 @@ describe('MeasurementsPage', () => {
     expect(
       within(distribution).getByRole('link', { name: 'Ver análisis detallado' }),
     ).toHaveAttribute('href', '/app/progress');
-    // The schematic SVG placeholder is replaced by the real anatomical figure
-    // (FOR-188): an asset now exists, so the card stops drawing a stand-in.
+    // The figure is the anatomy pack's front silhouette, same asset the
+    // training page draws, and it follows the profile's sex — male here.
     expect(within(distribution).getByRole('img', { name: 'Composición corporal' })).toHaveAttribute(
-      'src',
-      '/body/muscle-map-front.png',
+      'data-silhouette',
+      'male/front',
     );
+  });
+
+  it('draws the female front silhouette when the profile says FEMALE', async () => {
+    listMock.mockResolvedValue(SINGLE);
+    getProfileMock.mockResolvedValue({ sex: 'FEMALE' } as never);
+    renderPage();
+
+    const figure = await screen.findByRole('img', { name: 'Composición corporal' });
+    await waitFor(() => expect(figure).toHaveAttribute('data-silhouette', 'female/front'));
   });
 
   // The Resumen/Evolución/Historial tab bar is CSS-hidden at the jsdom desktop
