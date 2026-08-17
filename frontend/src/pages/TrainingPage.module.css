@@ -1127,13 +1127,22 @@
     grid-row: 3;
   }
 
-  .tabletPair > :last-child {
+  /*
+   * The streak sits beside the calendar and the four stat tiles run the full
+   * width underneath, rather than the other way round. Stacked in the 1fr
+   * column the tiles had ~200px each for a label like "SESIONES COMPLETADAS"
+   * and a number with a unit, so the labels clipped; across the whole width
+   * they get roughly double that and the row reads as one set of figures. The
+   * streak is the card that genuinely fits a narrow column — one number, one
+   * line of text.
+   */
+  .streakArea {
     grid-column: 2;
     grid-row: 3;
   }
 
-  .streakArea {
-    grid-column: 1;
+  .tabletPair > :last-child {
+    grid-column: 1 / -1;
     grid-row: 4;
   }
 }
