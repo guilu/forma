@@ -318,7 +318,16 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: space-between;
+  /*
+   * Not `space-between`: that pins the body to the top of the card and drops
+   * all the slack between it and the title, and the slack differs per card
+   * because the three sheets have very different proportions — the rest body is
+   * wider than it is tall while the anatomical sheet is twice as tall as it is
+   * wide, so at a shared width they come out at wildly different heights and
+   * the row of bodies stepped up and down. The auto margins on the figure below
+   * split that slack evenly above and under it instead.
+   */
+  justify-content: flex-start;
   gap: var(--space-2);
   width: 100%;
   height: 100%;
@@ -346,6 +355,12 @@
  */
 .calendarFigure {
   width: min(4.5rem, 100%);
+  /*
+   * Centres the body in whatever room the day name and the title leave it: a
+   * flex column hands its free space to an item's auto margins, so an equal
+   * share lands above and below, and the title still ends up at the bottom.
+   */
+  margin-block: auto;
 }
 
 /* Right-column widget stack (Resumen semanal, Racha actual, Historial
@@ -769,7 +784,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: var(--space-2);
   flex: 1;
   padding: var(--space-1) 0;
