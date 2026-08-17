@@ -76,7 +76,7 @@ public class WeeklyTrainingSummaryService {
         .filter(session -> session.weekNumber() == WeeklyTrainingScheduleService.PLAN_WEEK)
         .collect(
             Collectors.toMap(
-                session -> WeeklyTrainingScheduleService.sessionId(session.dayOfWeek(), "RUNNING"),
+                session -> WeeklyTrainingScheduleService.runningSessionKey(session.sessionType()),
                 dev.diegobarrioh.forma.domain.RunningPlanSession::targetDistanceKm));
   }
 

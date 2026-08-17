@@ -46,12 +46,20 @@ class AdherenceServiceTest {
       Clock.fixed(Instant.parse("2026-07-15T12:00:00Z"), ZoneOffset.UTC);
   private static final LocalDate TODAY = LocalDate.of(2026, 7, 15);
 
+  /** The Monday of {@link #TODAY}'s week — the week stored statuses are scoped to (V60). */
+  private static final LocalDate WEEK_START = LocalDate.of(2026, 7, 13);
+
   private static final UUID USER_ID = UUID.randomUUID();
 
-  private final FakeStatusRepository statusRepository = new FakeStatusRepository();
+  private final FakeTrainingSessionStatusRepository statusRepository =
+      new FakeTrainingSessionStatusRepository();
   private final WeeklyTrainingScheduleService scheduleService =
       new WeeklyTrainingScheduleService(
-          new RunningPlanService(), new WorkoutTemplateService(), statusRepository, () -> USER_ID);
+          new RunningPlanService(),
+          new WorkoutTemplateService(),
+          statusRepository,
+          () -> USER_ID,
+          FIXED_CLOCK);
   private final FakeMealLogRepository mealLogRepository = new FakeMealLogRepository();
   private final FakeBodyMeasurementRepository bodyMeasurementRepository =
       new FakeBodyMeasurementRepository();
@@ -79,8 +87,10 @@ class AdherenceServiceTest {
     // status is the *current* per-weekday snapshot (FOR-27 has no per-date history), so it is
     // projected onto every occurrence of that weekday in the window (documented in
     // AdherenceService).
-    statusRepository.upsert(USER_ID, "SATURDAY:RUNNING", SessionStatus.COMPLETED, null);
-    statusRepository.upsert(USER_ID, "TUESDAY:STRENGTH", SessionStatus.COMPLETED, null);
+    statusRepository.upsertStatus(
+        USER_ID, WEEK_START, "RUNNING:LONG_RUN", SessionStatus.COMPLETED, null, null);
+    statusRepository.upsertStatus(
+        USER_ID, WEEK_START, "STRENGTH:PUSH", SessionStatus.COMPLETED, null, null);
 
     Adherence adherence = service.compute(7);
 
@@ -205,11 +215,13 @@ class AdherenceServiceTest {
   @Test
   void aDifferentAuthenticatedUserGetsRealTrainingAndMeasurementsFromTheirOwnDataOnly() {
     // Seed USER_ID's data -- must NOT leak into the other user's numbers.
-    statusRepository.upsert(USER_ID, "SATURDAY:RUNNING", SessionStatus.COMPLETED, null);
+    statusRepository.upsertStatus(
+        USER_ID, WEEK_START, "RUNNING:LONG_RUN", SessionStatus.COMPLETED, null, null);
     measure(bodyMeasurementRepository, USER_ID, Instant.parse("2026-07-13T08:00:00Z"));
 
     UUID otherUserId = UUID.randomUUID();
-    statusRepository.upsert(otherUserId, "TUESDAY:STRENGTH", SessionStatus.COMPLETED, null);
+    statusRepository.upsertStatus(
+        otherUserId, WEEK_START, "STRENGTH:PUSH", SessionStatus.COMPLETED, null, null);
     measure(bodyMeasurementRepository, otherUserId, Instant.parse("2026-07-11T08:00:00Z"));
     log(mealLogRepository, otherUserId, LocalDate.of(2026, 7, 11));
 
@@ -218,7 +230,8 @@ class AdherenceServiceTest {
             new RunningPlanService(),
             new WorkoutTemplateService(),
             statusRepository,
-            () -> otherUserId);
+            () -> otherUserId,
+            FIXED_CLOCK);
     AdherenceService otherUserService =
         new AdherenceService(
             otherScheduleService,
@@ -244,10 +257,12 @@ class AdherenceServiceTest {
    */
   @Test
   void theOriginalUsersTrainingAndMeasurementsAreUnaffectedByAnotherUsersData() {
-    statusRepository.upsert(USER_ID, "SATURDAY:RUNNING", SessionStatus.COMPLETED, null);
+    statusRepository.upsertStatus(
+        USER_ID, WEEK_START, "RUNNING:LONG_RUN", SessionStatus.COMPLETED, null, null);
     measure(bodyMeasurementRepository, USER_ID, Instant.parse("2026-07-13T08:00:00Z"));
     UUID otherUserId = UUID.randomUUID();
-    statusRepository.upsert(otherUserId, "TUESDAY:STRENGTH", SessionStatus.COMPLETED, null);
+    statusRepository.upsertStatus(
+        otherUserId, WEEK_START, "STRENGTH:PUSH", SessionStatus.COMPLETED, null, null);
     measure(bodyMeasurementRepository, otherUserId, Instant.parse("2026-07-12T08:00:00Z"));
 
     Adherence adherence = service.compute(7);
@@ -278,26 +293,6 @@ class AdherenceServiceTest {
         userId,
         new BodyMeasurement(
             measuredAt, MeasurementSource.MANUAL, 80.0, null, null, null, null, null));
-  }
-
-  /**
-   * In-memory {@link TrainingSessionStatusRepository}, scoped per {@code userId} (mirroring the
-   * real repo post migration V31 — the composite {@code (user_id, session_id)} primary key).
-   */
-  private static final class FakeStatusRepository implements TrainingSessionStatusRepository {
-    private final Map<UUID, Map<String, StoredSessionStatus>> stored = new HashMap<>();
-
-    @Override
-    public Map<String, StoredSessionStatus> findAllByUser(UUID userId) {
-      return stored.getOrDefault(userId, Map.of());
-    }
-
-    @Override
-    public void upsert(UUID userId, String sessionId, SessionStatus status, String notes) {
-      stored
-          .computeIfAbsent(userId, k -> new HashMap<>())
-          .put(sessionId, new StoredSessionStatus(sessionId, status, notes));
-    }
   }
 
   /** In-memory {@link MealLogRepository}, matching {@code MealLogServiceTest}'s fake shape. */

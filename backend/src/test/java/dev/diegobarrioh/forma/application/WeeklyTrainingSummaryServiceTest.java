@@ -6,9 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import dev.diegobarrioh.forma.domain.SessionStatus;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -21,13 +19,29 @@ class WeeklyTrainingSummaryServiceTest {
 
   private static final UUID USER_ID = UUID.randomUUID();
 
-  private final FakeStatusRepository statusRepository = new FakeStatusRepository();
+  private final FakeTrainingSessionStatusRepository statusRepository =
+      new FakeTrainingSessionStatusRepository();
   private final RunningPlanService runningPlanService = new RunningPlanService();
   private final WeeklyTrainingScheduleService scheduleService =
       new WeeklyTrainingScheduleService(
-          runningPlanService, new WorkoutTemplateService(), statusRepository, () -> USER_ID);
+          runningPlanService,
+          new WorkoutTemplateService(),
+          statusRepository,
+          () -> USER_ID,
+          java.time.Clock.systemUTC());
   private final WeeklyTrainingSummaryService service =
       new WeeklyTrainingSummaryService(scheduleService, runningPlanService);
+
+  /** Marks a session done in whatever week the schedule service currently considers current. */
+  private void complete(String sessionKey) {
+    statusRepository.upsertStatus(
+        USER_ID,
+        scheduleService.currentWeekStart(),
+        sessionKey,
+        SessionStatus.COMPLETED,
+        null,
+        null);
+  }
 
   @Test
   void countsPlannedSessionsAndSumsPlannedDistanceWhenNothingCompleted() {
@@ -45,7 +59,7 @@ class WeeklyTrainingSummaryServiceTest {
 
   @Test
   void countsCompletedRunningAndItsDistance() {
-    statusRepository.upsert(USER_ID, "SATURDAY:RUNNING", SessionStatus.COMPLETED, null);
+    complete("RUNNING:LONG_RUN");
 
     WeeklyTrainingSummary summary = service.currentSummary();
 
@@ -56,7 +70,7 @@ class WeeklyTrainingSummaryServiceTest {
 
   @Test
   void countsCompletedStrength() {
-    statusRepository.upsert(USER_ID, "TUESDAY:STRENGTH", SessionStatus.COMPLETED, null);
+    complete("STRENGTH:PUSH");
 
     assertThat(service.currentSummary().completedStrengthSessions()).isEqualTo(1);
   }
@@ -74,20 +88,5 @@ class WeeklyTrainingSummaryServiceTest {
     assertThat(summary.plannedRunningSessions()).isZero();
     assertThat(summary.plannedStrengthSessions()).isZero();
     assertThat(summary.message()).isEqualTo("No hay entrenamientos planificados esta semana.");
-  }
-
-  /** In-memory {@link TrainingSessionStatusRepository} for unit tests. */
-  static final class FakeStatusRepository implements TrainingSessionStatusRepository {
-    private final Map<String, StoredSessionStatus> stored = new HashMap<>();
-
-    @Override
-    public Map<String, StoredSessionStatus> findAllByUser(UUID userId) {
-      return stored;
-    }
-
-    @Override
-    public void upsert(UUID userId, String sessionId, SessionStatus status, String notes) {
-      stored.put(sessionId, new StoredSessionStatus(sessionId, status, notes));
-    }
   }
 }

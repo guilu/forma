@@ -7,6 +7,7 @@ import { NotificationProvider } from '../components/NotificationProvider';
 import {
   getMuscleMap,
   getTrainingWeek,
+  rescheduleSession,
   updateSessionStatus,
   type TrainingWeek,
 } from '../api/training';
@@ -34,6 +35,7 @@ vi.mock('../api/training', () => ({
   getTrainingWeek: vi.fn(),
   updateSessionStatus: vi.fn(),
   getMuscleMap: vi.fn(),
+  rescheduleSession: vi.fn(),
 }));
 
 // FOR-143: streak + weekly-history widgets fetch independently of the week
@@ -48,6 +50,7 @@ vi.mock('../api/progress', () => ({
 vi.mock('../api/profile', () => ({ getProfile: vi.fn() }));
 
 const getWeekMock = vi.mocked(getTrainingWeek);
+const rescheduleMock = vi.mocked(rescheduleSession);
 const updateMock = vi.mocked(updateSessionStatus);
 const getMuscleMapMock = vi.mocked(getMuscleMap);
 const getStreakMock = vi.mocked(getStreak);
@@ -259,6 +262,38 @@ describe('TrainingPage', () => {
     expect(screen.getByRole('dialog', { name: /Lunes · Fuerza/ })).toBeInTheDocument();
     // Documented gap: no exercise-level breakdown is available from the API.
     expect(screen.getByText(/no está disponible todavía/)).toBeInTheDocument();
+  });
+
+  it('moves a session to another day from its detail', async () => {
+    getWeekMock.mockResolvedValue(week);
+    rescheduleMock.mockResolvedValue({ days: [] });
+    const user = userEvent.setup();
+
+    renderPage();
+    await screen.findByRole('heading', { name: 'Calendario semanal' });
+    await user.click(screen.getByRole('button', { name: 'Detalle' }));
+
+    const dialog = await screen.findByRole('dialog', { name: /Lunes · Fuerza/ });
+    await user.selectOptions(within(dialog).getByLabelText('Mover a otro día'), 'WEDNESDAY');
+
+    expect(rescheduleMock).toHaveBeenCalledWith('MONDAY:STRENGTH', 'WEDNESDAY');
+    // The week is refetched so the calendar redraws on the session's new day.
+    await waitFor(() => expect(getWeekMock).toHaveBeenCalledTimes(2));
+  });
+
+  it('reports a failed move without losing the session detail', async () => {
+    getWeekMock.mockResolvedValue(week);
+    rescheduleMock.mockRejectedValue(new Error('network'));
+    const user = userEvent.setup();
+
+    renderPage();
+    await screen.findByRole('heading', { name: 'Calendario semanal' });
+    await user.click(screen.getByRole('button', { name: 'Detalle' }));
+
+    const dialog = await screen.findByRole('dialog', { name: /Lunes · Fuerza/ });
+    await user.selectOptions(within(dialog).getByLabelText('Mover a otro día'), 'WEDNESDAY');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/No se pudo mover/i);
   });
 
   it('loads and renders the FOR-136 muscle map for a strength session, grouped and normalized', async () => {

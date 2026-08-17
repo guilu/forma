@@ -63,6 +63,39 @@ export function updateSessionStatus(
   );
 }
 
+/** A day of the training week, as the backend names them. */
+export type DayOfWeek =
+  | 'MONDAY'
+  | 'TUESDAY'
+  | 'WEDNESDAY'
+  | 'THURSDAY'
+  | 'FRIDAY'
+  | 'SATURDAY'
+  | 'SUNDAY';
+
+/**
+ * Moves a session to another day of the current week, or back to its planned
+ * day when `day` is null.
+ *
+ * <p>Answers with the whole redrawn week rather than the moved session: the
+ * move changes which day every other session shares it with, so the caller
+ * would have to refetch the week anyway.
+ */
+export function rescheduleSession(
+  sessionId: string,
+  day: DayOfWeek | null,
+  client: ApiClient = apiClient,
+): Promise<TrainingWeek> {
+  return client.request<TrainingWeek>(
+    `/api/v1/training/sessions/${encodeURIComponent(sessionId)}/schedule`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ day }),
+    },
+  );
+}
+
 /**
  * Load level a muscle receives within a strength session (FOR-136), derived
  * server-side from how many of the session's exercises hit it.

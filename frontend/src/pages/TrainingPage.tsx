@@ -22,7 +22,9 @@ import { getStreak, type Streak } from '../api/progress';
 import {
   getMuscleMap,
   getTrainingWeek,
+  rescheduleSession,
   updateSessionStatus,
+  type DayOfWeek,
   type MuscleWorked,
   type SessionStatus,
   type TrainingDay,
@@ -98,6 +100,7 @@ const KIND_LABELS: Record<TrainingSession['kind'], string> = {
 };
 
 const MARK_ERROR = 'No se pudo actualizar la sesión. Inténtalo de nuevo.';
+const MOVE_ERROR = 'No se pudo mover la sesión. Inténtalo de nuevo.';
 
 /**
  * FOR-164 hybrid placeholders (`docs/3-entrenamiento-dash.png`). None of these
@@ -236,6 +239,28 @@ export function TrainingPage() {
     }
   }
 
+  /**
+   * Moves a session to another day of this week. The week is refetched rather
+   * than patched in place: the move changes which day every other session
+   * shares it with, so the calendar has to redraw anyway. The detail closes
+   * because the session it was showing is no longer on the day it was opened
+   * from.
+   */
+  async function move(sessionId: string, day: DayOfWeek) {
+    setActionError(undefined);
+    setPendingId(sessionId);
+    try {
+      await rescheduleSession(sessionId, day);
+      await load();
+      setDetailTarget(undefined);
+      notify.success(`Sesión movida a ${DAY_LABELS[day].toLocaleLowerCase('es-ES')}.`);
+    } catch (error) {
+      setActionError(error instanceof ApiRequestError ? error.message : MOVE_ERROR);
+    } finally {
+      setPendingId(undefined);
+    }
+  }
+
   const selectedIndex = weekIndexOf(selectedDay);
   const selectedDate = dateOfWeekday(selectedDay);
 
@@ -300,6 +325,7 @@ export function TrainingPage() {
         <SessionDetailModal
           target={detailTarget}
           onClose={() => setDetailTarget(undefined)}
+          move={move}
           mark={mark}
           pending={pendingId === detailTarget.session.id}
         />
@@ -1084,11 +1110,13 @@ function SessionDetailModal({
   target,
   onClose,
   mark,
+  move,
   pending,
 }: {
   readonly target: DetailTarget;
   readonly onClose: () => void;
   readonly mark: (id: string, status: SessionStatus) => void;
+  readonly move: (id: string, day: DayOfWeek) => void;
   readonly pending: boolean;
 }) {
   const { dayOfWeek, session } = target;
@@ -1111,6 +1139,25 @@ function SessionDetailModal({
             <MuscleMapSection sessionId={session.id} />
           </>
         )}
+        {/* Moving one session is the whole primitive: swapping two days is two
+            moves and reordering the week is several, so there is no rule here
+            for a session pushed past Sunday — the user decides where each one
+            lands. The override lasts this week only. */}
+        <label className={styles.moveField}>
+          <span className={styles.moveLabel}>Mover a otro día</span>
+          <select
+            className={styles.moveSelect}
+            value={dayOfWeek}
+            disabled={pending}
+            onChange={(event) => move(session.id, event.target.value as DayOfWeek)}
+          >
+            {WEEK_ORDER.map((day) => (
+              <option key={day} value={day}>
+                {DAY_LABELS[day] ?? day}
+              </option>
+            ))}
+          </select>
+        </label>
         <div className={styles.actions}>
           {session.status !== 'COMPLETED' && (
             <Button

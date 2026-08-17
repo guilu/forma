@@ -2,14 +2,13 @@ package dev.diegobarrioh.forma.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.diegobarrioh.forma.application.FakeTrainingSessionStatusRepository;
 import dev.diegobarrioh.forma.application.RunningPlanService;
-import dev.diegobarrioh.forma.application.TrainingSessionStatusRepository;
 import dev.diegobarrioh.forma.application.WeeklyTrainingSchedule;
 import dev.diegobarrioh.forma.application.WeeklyTrainingScheduleService;
 import dev.diegobarrioh.forma.application.WorkoutTemplateService;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
@@ -59,8 +58,9 @@ class NutritionDayTypeResolverTest {
         new WeeklyTrainingScheduleService(
             new RunningPlanService(),
             new WorkoutTemplateService(),
-            new FakeStatusRepository(),
-            () -> UUID.randomUUID());
+            new FakeTrainingSessionStatusRepository(),
+            () -> UUID.randomUUID(),
+            java.time.Clock.systemUTC());
     Map<DayOfWeek, WeeklyTrainingSchedule.TrainingDay> byDay =
         scheduleService.currentWeek().days().stream()
             .collect(
@@ -87,28 +87,6 @@ class NutritionDayTypeResolverTest {
   void runningAndStrengthDaysNeverOverlapUnderTheMvpPolicy() {
     for (DayOfWeek day : WeeklyTrainingDayPolicy.runningDays()) {
       assertThat(WeeklyTrainingDayPolicy.strengthDays()).doesNotContainKey(day);
-    }
-  }
-
-  /**
-   * In-memory {@link TrainingSessionStatusRepository}, matching {@code
-   * WeeklyTrainingScheduleServiceTest}.
-   */
-  private static final class FakeStatusRepository implements TrainingSessionStatusRepository {
-    private final Map<String, dev.diegobarrioh.forma.application.StoredSessionStatus> stored =
-        new HashMap<>();
-
-    @Override
-    public Map<String, dev.diegobarrioh.forma.application.StoredSessionStatus> findAllByUser(
-        UUID userId) {
-      return stored;
-    }
-
-    @Override
-    public void upsert(UUID userId, String sessionId, SessionStatus status, String notes) {
-      stored.put(
-          sessionId,
-          new dev.diegobarrioh.forma.application.StoredSessionStatus(sessionId, status, notes));
     }
   }
 }
