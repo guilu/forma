@@ -4,13 +4,22 @@
   gap: var(--space-5);
 }
 
-/* Title and date share a row at every width (FOR-193), like the dashboard's.
-   It used to wrap on a phone, putting the date on its own line and pushing the
-   week below it further down. */
+/*
+ * Two columns that wrap, exactly like the dashboard's header.
+ *
+ * FOR-193 pinned the title and the date to one row at every width, to stop the
+ * date dropping to its own line and pushing the week down. On a 375px phone
+ * that row cannot hold both: the title needs 176px and the date navigator 210px
+ * inside 343px, so the promise was kept by letting the title run *under* the
+ * navigator instead of moving it. An overlapping title is worse than a second
+ * row, and the dashboard — the header this one was modelled on — has always
+ * wrapped at that width rather than overlap.
+ */
 .header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: var(--space-3);
 }
 
@@ -18,9 +27,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  /* A flex item's automatic minimum size is its content, so without this the
-     subtitle refuses to wrap and pushes the date off the row. */
-  min-width: 0;
 }
 
 .title {
@@ -34,7 +40,6 @@
 
 .dateNav {
   display: flex;
-  flex-shrink: 0;
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-3);

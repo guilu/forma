@@ -983,7 +983,16 @@ test.describe('page headers on a phone', () => {
     expect(Math.abs(date!.x - title!.x), 'The date is not aligned with the title').toBeLessThan(4);
   });
 
-  test('training puts its date beside the title', async ({ page }) => {
+  /**
+   * Training's date wraps under the title on a phone, like the dashboard's.
+   *
+   * <p>This test used to assert the opposite — FOR-193 pinned the two to one row at every width so
+   * the date could not drop down and push the week further below the fold. That row does not exist
+   * at 375px: the title needs 176px and the navigator 210px inside 343px, so what the rule actually
+   * bought was a title running *underneath* the navigator. Overlapping is the worse of the two, and
+   * the dashboard this header was modelled on wraps here rather than overlap.
+   */
+  test('training wraps its date under the title rather than overlapping it', async ({ page }) => {
     await page.goto('/app/training');
 
     const title = await page.getByRole('heading', { level: 1 }).boundingBox();
@@ -991,10 +1000,18 @@ test.describe('page headers on a phone', () => {
     // header used to render and the compact "2 ago 2026" it renders now — so the
     // test fails on the layout it is about rather than timing out on a locator.
     const date = await page.getByText(/\bago/i).first().boundingBox();
-    const { overlap, secondStartsAfter } = await sharesARowWith(title!, date!);
+    const { overlap } = await sharesARowWith(title!, date!);
 
-    expect(overlap, `The date sits on its own row (overlap ${overlap}px)`).toBeGreaterThan(0);
-    expect(secondStartsAfter, 'The date is not to the right of the title').toBe(true);
+    expect(overlap, 'The date still shares the row with the title').toBeLessThanOrEqual(0);
+    expect(date!.y, 'The date is not below the title').toBeGreaterThanOrEqual(title!.y);
+    /*
+     * Same column as the title, not pushed off to its own corner. The tolerance is wider than
+     * nutrition's 4px because that date is bare text while this one sits inside a bordered
+     * navigator: its box starts level with the title, and the text is inset by the border, the
+     * padding and the calendar glyph in front of it.
+     */
+    expect(date!.x - title!.x, 'The date is not in the title column').toBeLessThan(56);
+    expect(date!.x - title!.x, 'The date is left of the title column').toBeGreaterThanOrEqual(0);
   });
 });
 
