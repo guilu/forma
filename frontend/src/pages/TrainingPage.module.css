@@ -495,6 +495,46 @@
  *   body   figure
  *   ring   actions
  */
+/*
+ * The rest day has its own layout instead of borrowing `.todayLayout`.
+ * That grid is built for a session — head / body / ring / figure / actions —
+ * and a rest day fills two of those five cells, so the silhouette was landing
+ * in the narrow `figure` column while the empty ring and action rows held the
+ * card open underneath it. Hence a thumbnail marooned at the top of a very
+ * tall card.
+ *
+ * Here the sentence takes the top and the body gets everything left, centred
+ * on both axes.
+ */
+.todayRestLayout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  height: 100%;
+  min-width: 0;
+}
+
+.todayRestFigure {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  /* Without this the flex item refuses to shrink below its content and the
+     figure pushes the card taller instead of settling inside it. */
+  min-height: 0;
+  padding: var(--space-3) 0;
+}
+
+/*
+ * Sized by height alone, never by both: the silhouette carries its own
+ * `aspect-ratio` and the bitmap inside it is `object-fit: fill`, so pinning a
+ * width as well would stretch the body rather than letterbox it. The clamp is
+ * what makes it big on a desktop card and still sane on a phone.
+ */
+.todayRestBody {
+  height: clamp(9rem, 44vh, 32rem);
+}
+
 .todayLayout {
   display: grid;
   /*

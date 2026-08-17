@@ -432,14 +432,12 @@ function TodaySessionCard({
         {/* The rest day gets a body too. It used to be a bare sentence in an
             otherwise empty card, which read as a page that had failed to load
             rather than as a day with nothing planned. */}
-        <div className={styles.todayLayout}>
+        <div className={styles.todayRestLayout}>
           <p className={styles.rest}>
             {isToday ? 'Hoy es día de descanso.' : 'Ese día es de descanso.'}
           </p>
-          <div className={styles.todayVisual}>
-            <div className={styles.todayFigures}>
-              <MuscleSilhouette className={styles.todayFigure} sex={anatomySex} variant="rest" />
-            </div>
+          <div className={styles.todayRestFigure}>
+            <MuscleSilhouette className={styles.todayRestBody} sex={anatomySex} variant="rest" />
           </div>
         </div>
       </Card>
