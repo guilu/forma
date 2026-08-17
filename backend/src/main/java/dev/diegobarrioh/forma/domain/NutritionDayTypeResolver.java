@@ -9,9 +9,11 @@ import java.time.LocalDate;
  * it: the FOR-26 training calendar and the FOR-102/FOR-128 nutrition consumption target read the
  * exact same {@code DayOfWeek} -&gt; day-kind policy, so they can never drift apart.
  *
- * <p>Pure and deterministic (ADR-001): no persistence, no new date-to-day-type schedule. This is
- * the documented MVP resolver (spec FOR-128 Open Questions) until a real, user-configurable
- * calendar schedule replaces it — tracked under FOR-102, explicitly out of scope here.
+ * <p>Pure and deterministic (ADR-001): no persistence, no new date-to-day-type schedule. That
+ * purity is also this resolver's limit — it classifies by weekday alone, so it cannot know that a
+ * session was moved within the week (V60). {@code ScheduledNutritionDayTypeService} layers those
+ * overrides on top and delegates here for any date outside the composed week, which keeps this the
+ * single source of the underlying policy rather than a second one.
  */
 public final class NutritionDayTypeResolver {
 
