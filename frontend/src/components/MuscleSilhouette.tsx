@@ -64,8 +64,8 @@ function silhouetteUrl(sex: AnatomySex, sheet: string): string | undefined {
 /**
  * Pixel size of each silhouette, so the box can carry that art's own aspect
  * ratio. They are not interchangeable — the anatomical sheets are tall and
- * narrow (854x1840) while the running and rest bodies are almost square — so a
- * single hardcoded ratio stretched the runner past the bottom of its card.
+ * narrow (854x1840) while the running and rest bodies are wider — so a single
+ * hardcoded ratio stretched the runner past the bottom of its card.
  *
  * <p>Measured from the files themselves; the pack's `muscle-map.json` only
  * documents the two anatomical sheets. Mask alignment depends on the front and
@@ -74,7 +74,7 @@ function silhouetteUrl(sex: AnatomySex, sheet: string): string | undefined {
 const SILHOUETTE_SIZE: Readonly<Record<string, readonly [number, number]>> = {
   'male/front': [854, 1840],
   'male/back': [854, 1842],
-  'male/run': [1109, 1419],
+  'male/run': [996, 1579],
   'male/rest': [1109, 1419],
   'female/front': [854, 1842],
   'female/back': [854, 1842],
