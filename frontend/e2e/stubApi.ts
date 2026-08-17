@@ -105,6 +105,137 @@ const NUTRITION_CONSUMPTION = {
   ],
 };
 
+/*
+ * A week with something on most days, so the playground has an app to walk
+ * through and the layout checks measure a card with real content in it. It used
+ * to be `{ days: [] }`, which renders the "no plan at all" empty state on every
+ * training screen.
+ *
+ * Session ids follow the backend's `DAY:KIND` shape, which is what the muscle
+ * map below is keyed on.
+ */
+const TRAINING_WEEK = {
+  days: [
+    {
+      dayOfWeek: 'MONDAY',
+      rest: false,
+      sessions: [
+        {
+          id: 'MONDAY:RUNNING',
+          kind: 'RUNNING',
+          bodyView: 'FRONT',
+          title: 'Carrera · Rodaje suave',
+          detail: '5.0 km',
+          status: 'COMPLETED',
+        },
+      ],
+    },
+    {
+      dayOfWeek: 'TUESDAY',
+      rest: false,
+      sessions: [
+        {
+          id: 'TUESDAY:STRENGTH',
+          kind: 'STRENGTH',
+          bodyView: 'FRONT',
+          title: 'Fuerza · Empuje',
+          detail: '5 ejercicios',
+          status: 'COMPLETED',
+          workoutType: 'PUSH',
+        },
+      ],
+    },
+    {
+      dayOfWeek: 'WEDNESDAY',
+      rest: false,
+      sessions: [
+        {
+          id: 'WEDNESDAY:RUNNING',
+          kind: 'RUNNING',
+          bodyView: 'FRONT',
+          title: 'Carrera · Series',
+          detail: '6 x 400 m',
+          status: 'PLANNED',
+        },
+      ],
+    },
+    {
+      dayOfWeek: 'THURSDAY',
+      rest: false,
+      sessions: [
+        {
+          id: 'THURSDAY:STRENGTH',
+          kind: 'STRENGTH',
+          bodyView: 'BACK',
+          title: 'Fuerza · Tirón',
+          detail: '5 ejercicios',
+          status: 'PLANNED',
+          workoutType: 'PULL',
+        },
+      ],
+    },
+    { dayOfWeek: 'FRIDAY', rest: true, sessions: [] },
+    {
+      dayOfWeek: 'SATURDAY',
+      rest: false,
+      sessions: [
+        {
+          id: 'SATURDAY:RUNNING',
+          kind: 'RUNNING',
+          bodyView: 'FRONT',
+          title: 'Carrera · Tirada larga',
+          detail: '12.0 km',
+          status: 'PLANNED',
+        },
+      ],
+    },
+    {
+      dayOfWeek: 'SUNDAY',
+      rest: false,
+      sessions: [
+        {
+          id: 'SUNDAY:STRENGTH',
+          kind: 'STRENGTH',
+          bodyView: 'FRONT',
+          title: 'Fuerza · Pierna y core',
+          detail: '5 ejercicios',
+          status: 'PLANNED',
+          workoutType: 'LEGS',
+        },
+      ],
+    },
+  ],
+};
+
+/*
+ * Worked muscles per strength session, in the catalog's own vocabulary
+ * (lowercase, accented Spanish) — the shape the real endpoint answers with.
+ * Running and rest days have no entry: their map is legitimately empty.
+ */
+const MUSCLE_MAPS: Record<string, readonly { muscle: string; load: string }[]> = {
+  'TUESDAY:STRENGTH': [
+    { muscle: 'pecho', load: 'HIGH' },
+    { muscle: 'tríceps', load: 'HIGH' },
+    { muscle: 'hombro anterior', load: 'MEDIUM' },
+    { muscle: 'core', load: 'LOW' },
+  ],
+  'THURSDAY:STRENGTH': [
+    { muscle: 'dorsal', load: 'HIGH' },
+    { muscle: 'bíceps', load: 'HIGH' },
+    { muscle: 'romboides', load: 'MEDIUM' },
+    { muscle: 'deltoides posterior', load: 'MEDIUM' },
+    { muscle: 'trapecio', load: 'LOW' },
+  ],
+  'SUNDAY:STRENGTH': [
+    { muscle: 'cuádriceps', load: 'HIGH' },
+    { muscle: 'glúteo', load: 'HIGH' },
+    { muscle: 'isquiotibiales', load: 'HIGH' },
+    { muscle: 'gemelos', load: 'MEDIUM' },
+    { muscle: 'core', load: 'MEDIUM' },
+    { muscle: 'abdomen', load: 'LOW' },
+  ],
+};
+
 /** Endpoint path → response body. Matched exactly on the pathname. */
 const FIXTURES: ReadonlyArray<readonly [string, unknown]> = [
   ['/api/v1/auth/me', { id: 'e2e-user', email: 'e2e@forma.test' }],
@@ -210,7 +341,7 @@ const FIXTURES: ReadonlyArray<readonly [string, unknown]> = [
       ],
     },
   ],
-  ['/api/v1/training/week', { days: [] }],
+  ['/api/v1/training/week', TRAINING_WEEK],
   [
     '/api/v1/shopping/list',
     {
@@ -233,6 +364,23 @@ export async function stubApi(page: Page): Promise<void> {
   await page.route('**/api/v1/**', async (route) => {
     const path = new URL(route.request().url()).pathname;
     const match = FIXTURES.find(([fixturePath]) => path === fixturePath);
+
+    /*
+     * The muscle map is per session, so it cannot be a fixed path: the id sits
+     * in the middle of the URL and arrives percent-encoded (`SUNDAY%3ASTRENGTH`).
+     * A session with no entry answers an empty list, which is exactly what the
+     * real endpoint does for a run.
+     */
+    const muscleMap = /\/training\/sessions\/([^/]+)\/muscle-map$/.exec(path);
+    if (muscleMap) {
+      const sessionId = decodeURIComponent(muscleMap[1]);
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ sessionId, muscles: MUSCLE_MAPS[sessionId] ?? [] }),
+      });
+      return;
+    }
 
     // An unstubbed endpoint answers 404 rather than `{}`: a widget handles a
     // failed request by rendering its error state, but an empty object is a

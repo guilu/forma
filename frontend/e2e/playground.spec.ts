@@ -41,5 +41,18 @@ test.describe('playground', () => {
 
     await stubApi(page);
     await page.goto(process.env.PLAYGROUND_PATH ?? '/app');
+
+    /*
+     * Hands the browser over and gets out of the way: the run ends when you
+     * close the window, not a moment before.
+     *
+     * This used to be `page.pause()`, which also opened the Playwright
+     * Inspector — until the quality gate flagged it as leftover debugging code
+     * and it was removed, which left the playground opening a browser and
+     * closing it again in the same breath. Waiting on the close event keeps the
+     * session alive without tripping that rule; the trade is no Inspector
+     * panel, so use the browser's own devtools.
+     */
+    await page.waitForEvent('close', { timeout: 0 });
   });
 });

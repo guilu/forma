@@ -144,11 +144,16 @@ describe('TrainingPage', () => {
 
     expect(within(todayCard).getByText('Fuerza · Empuje')).toBeInTheDocument();
     expect(within(todayCard).getByText('3 ejercicios')).toBeInTheDocument();
+    expect(within(todayCard).getByRole('button', { name: 'Entrenar' })).toBeInTheDocument();
+    // Both sheets, not just the session's own `bodyView`: the muscles a session
+    // works do not respect the split (a pull day hits the lats and the biceps),
+    // so showing one side would hide half of what it trains.
     expect(
-      within(todayCard).getByRole('button', { name: 'Iniciar entrenamiento' }),
-    ).toBeInTheDocument();
-    expect(within(todayCard).getByTestId('anatomy-figure')).toHaveAttribute('data-view', 'back');
-    expect(within(todayCard).getByTestId('anatomy-figure')).toHaveAttribute('data-sex', 'male');
+      within(todayCard)
+        .getAllByRole('presentation', { hidden: true })
+        .filter((element) => element.hasAttribute('data-silhouette'))
+        .map((element) => element.getAttribute('data-silhouette')),
+    ).toEqual(['male/front', 'male/back']);
   });
 
   it('uses the female anatomy asset when the persisted profile is female', async () => {
@@ -160,8 +165,12 @@ describe('TrainingPage', () => {
     const todayCard = (
       await screen.findByRole('heading', { name: 'Entrenamiento de hoy' })
     ).closest('section') as HTMLElement;
-    expect(within(todayCard).getByTestId('anatomy-figure')).toHaveAttribute('data-sex', 'female');
-    expect(within(todayCard).getByTestId('anatomy-figure')).toHaveAttribute('data-view', 'back');
+    expect(
+      within(todayCard)
+        .getAllByRole('presentation', { hidden: true })
+        .filter((element) => element.hasAttribute('data-silhouette'))
+        .map((element) => element.getAttribute('data-silhouette')),
+    ).toEqual(['female/front', 'female/back']);
   });
 
   it('does not render the temporary muscle-groups or weekly-history cards', async () => {
@@ -181,7 +190,7 @@ describe('TrainingPage', () => {
     const user = userEvent.setup();
 
     renderPage();
-    await user.click(await screen.findByRole('button', { name: 'Iniciar entrenamiento' }));
+    await user.click(await screen.findByRole('button', { name: 'Entrenar' }));
 
     expect(screen.getByTestId('location')).toHaveTextContent('/app/training/MONDAY%3ASTRENGTH');
     expect(updateMock).not.toHaveBeenCalled();
@@ -205,12 +214,10 @@ describe('TrainingPage', () => {
     const todayCard = (
       await screen.findByRole('heading', { name: 'Entrenamiento de hoy' })
     ).closest('section') as HTMLElement;
-    expect(
-      within(todayCard).getByRole('button', { name: 'Ver entrenamiento' }),
-    ).toBeInTheDocument();
+    expect(within(todayCard).getByRole('button', { name: 'Entrenar' })).toBeInTheDocument();
     expect(within(todayCard).queryByRole('button', { name: 'Saltar' })).not.toBeInTheDocument();
 
-    await userEvent.click(within(todayCard).getByRole('button', { name: 'Ver entrenamiento' }));
+    await userEvent.click(within(todayCard).getByRole('button', { name: 'Entrenar' }));
     expect(screen.getByTestId('location')).toHaveTextContent('/app/training/MONDAY%3ASTRENGTH');
   });
 
@@ -247,7 +254,7 @@ describe('TrainingPage', () => {
     renderPage();
     await screen.findByRole('heading', { name: 'Calendario semanal' });
 
-    await user.click(screen.getByRole('button', { name: 'Ver detalle' }));
+    await user.click(screen.getByRole('button', { name: 'Detalle' }));
 
     expect(screen.getByRole('dialog', { name: /Lunes · Fuerza/ })).toBeInTheDocument();
     // Documented gap: no exercise-level breakdown is available from the API.
@@ -269,7 +276,7 @@ describe('TrainingPage', () => {
     renderPage();
     await screen.findByRole('heading', { name: 'Calendario semanal' });
 
-    await user.click(screen.getByRole('button', { name: 'Ver detalle' }));
+    await user.click(screen.getByRole('button', { name: 'Detalle' }));
 
     expect(getMuscleMapMock).toHaveBeenCalledWith('MONDAY:STRENGTH');
     const dialog = await screen.findByRole('dialog', { name: /Lunes · Fuerza/ });
@@ -288,7 +295,7 @@ describe('TrainingPage', () => {
     renderPage();
     await screen.findByRole('heading', { name: 'Calendario semanal' });
 
-    await user.click(screen.getByRole('button', { name: 'Ver detalle' }));
+    await user.click(screen.getByRole('button', { name: 'Detalle' }));
 
     const dialog = await screen.findByRole('dialog', { name: /Lunes · Fuerza/ });
     expect(
@@ -673,7 +680,7 @@ describe('TrainingPage', () => {
     renderPage();
 
     expect(await screen.findByText('Hoy es día de descanso.')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Iniciar entrenamiento' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Entrenar' })).toBeNull();
   });
 
   // FOR-143: streak + weekly-history widgets, consuming the FOR-139 endpoints

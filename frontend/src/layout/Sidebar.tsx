@@ -3,6 +3,7 @@ import { NAV_ITEMS } from '../app/navigation';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
 import { useIntegrations } from '../integrations/IntegrationsContext';
+import { WithingsSyncButton } from '../integrations/WithingsSyncButton';
 import styles from './Sidebar.module.css';
 
 /**
@@ -72,23 +73,35 @@ export function Sidebar({
         {NAV_ITEMS.map(renderLink)}
       </nav>
       {withings && (
-        <Link className={styles.integration} to="/app/settings">
-          <span className={styles.integrationHeader}>
+        /*
+         * The card is a wrapper, not a link: the sync button lives inside it,
+         * and a button nested in an anchor is neither valid markup nor operable
+         * as both. The link keeps the whole status readout as its target.
+         */
+        <div className={styles.integration}>
+          {/* Renders itself away unless the provider is connected — see
+              {@link WithingsSyncButton}. The row then starts at the readout. */}
+          <WithingsSyncButton size="sm" />
+          <Link className={styles.integrationLink} to="/app/settings">
             <span className={styles.integrationLabel}>WITHINGS</span>
-            <span
-              className={[
-                styles.integrationDot,
-                withings.status === 'CONNECTED' ? '' : styles.integrationDotOff,
-              ]
-                .filter(Boolean)
-                .join(' ')}
-              aria-hidden="true"
-            />
-          </span>
-          <span className={styles.integrationStatus}>
-            {withings.status === 'CONNECTED' ? 'Conectado' : 'No conectado'}
-          </span>
-        </Link>
+            <span className={styles.integrationStatus}>
+              {withings.status === 'CONNECTED' ? 'Conectado' : 'No conectado'}
+            </span>
+          </Link>
+          <span
+            className={[
+              styles.integrationDot,
+              withings.status === 'CONNECTED' ? '' : styles.integrationDotOff,
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            // Exposes which state the dot is painting so a browser test can
+            // read the colour it actually resolves to (the jsdom suite runs no
+            // cascade at all). Decorative, like the dot itself.
+            data-connected={withings.status === 'CONNECTED'}
+            aria-hidden="true"
+          />
+        </div>
       )}
     </aside>
   );

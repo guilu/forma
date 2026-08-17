@@ -76,7 +76,7 @@ export function DesignSystemExamples() {
           <Icon name="edit" />
         </IconButton>
         <IconButton label="Cerrar" variant="ghost">
-          <Icon name="cross" />
+          <Icon name="close" />
         </IconButton>
         <IconButton label="Eliminar" variant="ghost" tone="danger">
           <Icon name="trash" />

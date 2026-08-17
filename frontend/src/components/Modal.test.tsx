@@ -30,6 +30,22 @@ function TriggeredModal() {
 }
 
 describe('Modal', () => {
+  /*
+   * The close control drew `cross` — the *medical* cross of the health-provider
+   * icons, which is a plus sign. On a dialog header a "+" reads as "add
+   * something", the opposite of what the button does.
+   */
+  it('closes with an X, not the medical cross', () => {
+    render(
+      <Modal title="Registrar medición" onClose={vi.fn()}>
+        <p>contenido</p>
+      </Modal>,
+    );
+
+    const icon = screen.getByRole('button', { name: 'Cerrar' }).querySelector('svg');
+    expect(icon).toHaveAttribute('data-icon', 'close');
+  });
+
   it('renders a labelled dialog with its content', () => {
     render(
       <Modal title="Registrar medición" onClose={vi.fn()}>

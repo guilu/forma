@@ -6,8 +6,9 @@ import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { MobileNav } from './MobileNav';
 import { ThemeProvider } from '../theme/ThemeContext';
-import { listIntegrations } from '../api/integrations';
+import { listIntegrations, syncIntegration } from '../api/integrations';
 import { IntegrationsProvider } from '../integrations/IntegrationsContext';
+import { NotificationProvider } from '../components/NotificationProvider';
 import styles from './Sidebar.module.css';
 
 // FOR-120: ThemeProvider reads/persists the theme preference through this
@@ -21,9 +22,11 @@ vi.mock('../api/profile', () => ({
   updateThemeMode: vi.fn().mockResolvedValue(undefined),
 }));
 // The sidebar's integration card reads the real connection state (FOR-57
-// endpoint), mocked here so these shell tests stay network-free.
-vi.mock('../api/integrations', () => ({ listIntegrations: vi.fn() }));
+// endpoint) and its sync button writes through the same module, mocked here so
+// these shell tests stay network-free.
+vi.mock('../api/integrations', () => ({ listIntegrations: vi.fn(), syncIntegration: vi.fn() }));
 const integrationsMock = vi.mocked(listIntegrations);
+const syncMock = vi.mocked(syncIntegration);
 
 const logoutMock = vi.fn();
 let authStatus: 'authenticated' | 'anonymous' = 'authenticated';
@@ -56,10 +59,29 @@ function renderTopbar() {
   );
 }
 
+/**
+ * The sidebar's integration card now holds a sync button, which reports through
+ * the shared toast region — so it is mounted here under the same providers the
+ * app shell gives it (`App.tsx`: NotificationProvider wraps everything;
+ * `AppShell.tsx` adds IntegrationsProvider).
+ */
+function renderSidebar(initialEntries?: readonly string[]) {
+  return render(
+    <MemoryRouter initialEntries={initialEntries ? [...initialEntries] : undefined}>
+      <NotificationProvider>
+        <IntegrationsProvider>
+          <Sidebar />
+        </IntegrationsProvider>
+      </NotificationProvider>
+    </MemoryRouter>,
+  );
+}
+
 describe('application shell', () => {
   beforeEach(() => {
     logoutMock.mockReset();
     integrationsMock.mockReset();
+    syncMock.mockReset();
     integrationsMock.mockResolvedValue([]);
     authStatus = 'authenticated';
     authRole = 'USER';
@@ -80,13 +102,7 @@ describe('application shell', () => {
       },
     ]);
 
-    render(
-      <MemoryRouter>
-        <IntegrationsProvider>
-          <Sidebar />
-        </IntegrationsProvider>
-      </MemoryRouter>,
-    );
+    renderSidebar();
 
     expect(await screen.findByText('WITHINGS')).toBeInTheDocument();
     expect(screen.getByText('Conectado')).toBeInTheDocument();
@@ -102,29 +118,98 @@ describe('application shell', () => {
       },
     ]);
 
-    render(
-      <MemoryRouter>
-        <IntegrationsProvider>
-          <Sidebar />
-        </IntegrationsProvider>
-      </MemoryRouter>,
-    );
+    renderSidebar();
 
     expect(await screen.findByText('No conectado')).toBeInTheDocument();
     expect(screen.queryByText('Conectado')).not.toBeInTheDocument();
+  });
+
+  /**
+   * The card already reports the connection; syncing it was a trip to Ajustes
+   * away. The control lives in the card itself now — small and icon-only, since
+   * the card is a status readout and not a toolbar.
+   */
+  it('offers a Withings sync inside the connected card', async () => {
+    integrationsMock.mockResolvedValue([
+      {
+        providerId: 'WITHINGS',
+        providerName: 'Withings',
+        description: 'Sincroniza automáticamente tus datos.',
+        status: 'CONNECTED',
+      },
+    ]);
+    syncMock.mockResolvedValue({
+      result: 'OK',
+      importedCount: 1,
+      lastSyncAt: '2026-08-16T09:00:00Z',
+      message: null,
+    });
+
+    renderSidebar();
+
+    const sync = await screen.findByRole('button', { name: 'Sincronizar Withings' });
+    expect(sync).toHaveAttribute('title', 'Sincronizar Withings');
+    // Inside the card, not loose in the aside — and not inside the link either:
+    // a button nested in an anchor is neither valid nor operable as both.
+    expect(sync.closest('a')).toBeNull();
+    expect(sync.closest(`.${styles.integration}`)).not.toBeNull();
+
+    await userEvent.click(sync);
+    await waitFor(() => expect(syncMock).toHaveBeenCalledWith('WITHINGS'));
+  });
+
+  /*
+   * One row of three: sync, the readout, the state dot — all centred against
+   * each other. The card used to stack them (label and dot on a line, status
+   * under it, button on a third row), which spent three rows of sidebar height
+   * on two words.
+   */
+  it('lays the card out as sync, readout and dot in one row', async () => {
+    integrationsMock.mockResolvedValue([
+      {
+        providerId: 'WITHINGS',
+        providerName: 'Withings',
+        description: 'Sincroniza automáticamente tus datos.',
+        status: 'CONNECTED',
+      },
+    ]);
+
+    renderSidebar();
+
+    const sync = await screen.findByRole('button', { name: 'Sincronizar Withings' });
+    const card = sync.closest(`.${styles.integration}`) as HTMLElement;
+    const columns = Array.from(card.children);
+
+    expect(columns).toHaveLength(3);
+    expect(columns[0]).toBe(sync);
+    // The middle column carries both lines of copy, so it is the link target.
+    expect(columns[1]).toHaveTextContent('WITHINGS');
+    expect(columns[1]).toHaveTextContent('Conectado');
+    expect(columns[1].tagName).toBe('A');
+    expect(columns[2].className.split(' ')).toContain(styles.integrationDot);
+  });
+
+  it('offers no sync while Withings is disconnected', async () => {
+    integrationsMock.mockResolvedValue([
+      {
+        providerId: 'WITHINGS',
+        providerName: 'Withings',
+        description: 'Sincroniza automáticamente tus datos.',
+        status: 'NOT_CONNECTED',
+      },
+    ]);
+
+    renderSidebar();
+
+    await screen.findByText('No conectado');
+    expect(screen.queryByRole('button', { name: 'Sincronizar Withings' })).not.toBeInTheDocument();
   });
 
   /** A status card that cannot read the status says nothing at all. */
   it('renders no integration card while the state is unknown', async () => {
     integrationsMock.mockRejectedValue(new Error('network'));
 
-    render(
-      <MemoryRouter>
-        <IntegrationsProvider>
-          <Sidebar />
-        </IntegrationsProvider>
-      </MemoryRouter>,
-    );
+    renderSidebar();
 
     await waitFor(() => expect(integrationsMock).toHaveBeenCalled());
     expect(screen.queryByText('WITHINGS')).not.toBeInTheDocument();
@@ -135,13 +220,7 @@ describe('application shell', () => {
   // assertable in jsdom, but the CSS Module class wiring that drives them is —
   // compare against the real compiled classnames instead of guessing hashes.
   it('applies the active CSS module class only to the link matching the current route', () => {
-    render(
-      <MemoryRouter initialEntries={['/app']}>
-        <IntegrationsProvider>
-          <Sidebar />
-        </IntegrationsProvider>
-      </MemoryRouter>,
-    );
+    renderSidebar(['/app']);
 
     const activeLink = screen.getByRole('link', { name: 'Dashboard' });
     const inactiveLink = screen.getByRole('link', { name: 'Mediciones' });
@@ -268,13 +347,7 @@ describe('application shell', () => {
   // `settings` grouping flag that pinned it to the bottom went with it — every
   // remaining entry is a product section.
   it('lists only product sections in the sidebar, with no settings entry', () => {
-    render(
-      <MemoryRouter>
-        <IntegrationsProvider>
-          <Sidebar />
-        </IntegrationsProvider>
-      </MemoryRouter>,
-    );
+    renderSidebar();
 
     const nav = screen.getByRole('navigation', { name: 'Navegación principal' });
     expect(within(nav).queryByRole('link', { name: 'Ajustes' })).not.toBeInTheDocument();

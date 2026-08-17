@@ -131,16 +131,24 @@
   gap: var(--space-4);
 }
 
+/*
+ * `--space-2` rather than `--space-1`: the three lines are a title, a count and
+ * a muscle list — three different kinds of information, not one paragraph — and
+ * at the tighter spacing they read as a single block.
+ */
 .todaySession {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-2);
 }
 
+/* The status sits at the far edge of the card, away from the title, so the
+   title has the whole row to run in before it wraps. */
 .todaySessionHeader {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  justify-content: space-between;
+  gap: var(--space-3);
 }
 
 .todaySessionTitle {
@@ -400,12 +408,114 @@
 }
 
 /* ── Today card (FOR-164) ────────────────────────────────────────────── */
+/*
+ * Two columns, and the split is by *kind of thing* rather than by source: the
+ * words on the left, the body and its actions on the right. The title spans
+ * both because it names the whole card, and the ring sits under the text it
+ * summarises.
+ *
+ *   head   head        <- phone; on a tablet the title shares its row
+ *   body   figure
+ *   ring   actions
+ */
 .todayLayout {
+  display: grid;
+  /*
+   * Not an even split: the right column carries the silhouettes and the two
+   * actions, and at half a phone's width the buttons wrapped one per line.
+   */
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  /*
+   * The actions take a row of their own on a phone. Sharing the right column
+   * with the silhouettes left them about 186px for a pair that needs ~248 with
+   * their icons, so they wrapped one per line — taller *and* uglier than simply
+   * letting them span. The body keeps the two rows beside the text, which is
+   * what makes it big enough to read at this width.
+   */
+  grid-template-areas:
+    'head head'
+    'body figure'
+    'ring figure'
+    'actions actions';
+  grid-template-rows: auto auto 1fr auto;
+  align-items: start;
+  gap: var(--space-3) var(--space-4);
+}
+
+.todayLayout > .todaySessionHeader {
+  grid-area: head;
+}
+
+.todayLayout > .sessionBody {
+  grid-area: body;
+}
+
+.todayLayout > .todayRing {
+  grid-area: ring;
+}
+
+.todayLayout > .todayFigures {
+  grid-area: figure;
+}
+
+/* The rare multi-session day keeps a real list and simply stacks: the
+   two-column split assumes one session's worth of text. */
+.todayLayout > .todaySessions {
+  grid-area: head / head / body / body;
+}
+
+.sessionBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* Right-aligned, and wrapping to their own line before they ever squash. */
+.todayActions {
+  grid-area: actions;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  height: 100%;
+}
+
+.todayActionGroup {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-5);
+  justify-content: flex-end;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+/*
+ * Narrower buttons on a phone, where the pair shares a column with the
+ * silhouettes: at the default padding "Detalle" and "Entrenar" need about
+ * 208px and the column offers 186, so they wrapped one per line and pushed the
+ * card taller. The labels are short enough to carry less air around them.
+ */
+@media (max-width: 480px) {
+  .todayActionGroup > * {
+    padding-inline: var(--space-3);
+  }
+}
+
+/*
+ * Fills the two-row area on desktop (see the `min-width: 1200px` block); on a
+ * single row it is content-sized as before, since the area is not stretched.
+ * The column + `flex: 1` is what passes that height down to the content —
+ * `Card` renders a plain block, so without it the card grew and its inside
+ * stayed at text height, leaving the gap this was meant to close.
+ */
+.todayArea > .todayCard {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.todayArea > .todayCard > .todayLayout {
+  flex: 1;
+  min-height: 0;
 }
 
 .todayCard {
@@ -425,15 +535,6 @@
   color: var(--color-accent-strong);
 }
 
-.todayLayout .todaySessions {
-  flex: 1;
-  min-width: 14rem;
-}
-
-.todaySessionHeader {
-  justify-content: flex-start;
-}
-
 .todaySessionTitle {
   font-family: var(--font-heading);
   font-size: 1.25rem;
@@ -441,17 +542,11 @@
   line-height: 1.2;
 }
 
-.todayVisual {
-  display: flex;
-  align-items: center;
-  gap: var(--space-5);
-  flex-wrap: wrap;
-}
-
 .todayRing {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: var(--space-2);
 }
 
@@ -477,9 +572,72 @@
   color: var(--color-accent-strong);
 }
 
+/*
+ * The figures are the card's tall element, so they are what earns it the second
+ * grid row on desktop (see `.todayArea` below). They stretch to whatever height
+ * the card ends up with rather than carrying a fixed size: the silhouettes keep
+ * their own aspect ratio, so a taller card simply draws a bigger body.
+ */
+/*
+ * The figures get a *definite* height, and that is what makes them behave: each
+ * silhouette carries an aspect ratio, so given a height it works out its own
+ * width. Sized by width instead — a share of the row — the ratio pushed the
+ * height back out and the card grew to 143% of an iPad's viewport.
+ *
+ * `clamp` rather than a flat `vh`: a short window should not shrink the body to
+ * a stamp, and a tall one should not turn the card into a poster.
+ */
 .todayFigures {
   display: flex;
-  gap: var(--space-2);
+  flex: 1;
+  align-items: stretch;
+  justify-content: center;
+  height: clamp(9rem, 26vh, 20rem);
+}
+
+/*
+ * Front and back, side by side. `min-height: 0` matters in a stretched flex
+ * item: without it the pair would size to the images' intrinsic height and push
+ * the card taller instead of filling it.
+ */
+/*
+ * `space-evenly` rather than `center`: two narrow bodies in a wide cell left a
+ * block of empty card between them and the text. Spreading them uses the width
+ * the pair cannot fill by growing.
+ */
+.todayFigurePair {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-evenly;
+  gap: var(--space-3);
+  width: 100%;
+  height: 100%;
+}
+
+/*
+ * Height-driven, not width-driven. Each silhouette carries `aspect-ratio`, so
+ * giving it the row's full height lets it work out its own width and the pair
+ * grows with the card. `width: auto` overrides the intrinsic sizing an image
+ * box would otherwise take.
+ */
+/*
+ * Sized by width, not height. Each silhouette carries its own `aspect-ratio`,
+ * so handing it a share of the row is enough for it to work out its height;
+ * `max-height` then keeps a wide card from growing the figure past the space
+ * the row actually has. Doing it the other way round — `height: 100%` and
+ * `width: auto` — collapsed them to 12px: the muscle layers are absolutely
+ * positioned, so the box has no intrinsic width for the ratio to scale from.
+ */
+/*
+ * Height-driven: the row's height is definite (above), so `width: auto` lets
+ * the aspect ratio do the rest. `flex: 0 1 auto` keeps the pair from being
+ * stretched to fill the row — they size themselves and sit centred.
+ */
+.todayFigure {
+  flex: 0 1 auto;
+  height: 100%;
+  width: auto;
+  max-width: 100%;
 }
 
 /* ── Weekly calendar (FOR-164) ──────────────────────────────────────── */
@@ -588,11 +746,6 @@
 }
 
 @media (max-width: 560px) {
-  .todayVisual {
-    width: 100%;
-    justify-content: space-around;
-  }
-
   .calendarGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -883,19 +1036,50 @@
     align-items: start;
   }
 
+  /*
+   * Today's card spans the two rows the right-hand column needs for the weekly
+   * summary and the distribution chart. It used to sit on one row and end
+   * wherever its text ended, leaving a tall empty gap underneath it while the
+   * column beside it ran on — and it is the card carrying the body
+   * illustration, so the spare height is exactly what the silhouettes want.
+   *
+   * `align-self: stretch` is needed because `.layout` sets `align-items: start`
+   * for the other cards, which would otherwise leave this one at its content
+   * height and put the gap back.
+   */
   .todayArea {
     grid-column: 1;
-    grid-row: 1;
+    grid-row: 1 / span 2;
+    align-self: stretch;
+  }
+
+  /*
+   * The desktop card keeps the text across the top and pairs the ring with the
+   * silhouettes underneath, because here it is two grid rows tall and has the
+   * height to give them. The tablet arrangement — title beside the body — would
+   * waste that height on a column of empty space next to three lines of text.
+   */
+  .todayArea .todayLayout {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      'head head'
+      'body body'
+      'ring figure'
+      'actions actions';
+    grid-template-rows: auto auto 1fr auto;
+  }
+
+  /* Fills the row the two-row card hands down, rather than the viewport-based
+     floor the narrower layouts use. */
+  .todayArea .todayFigures {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
   }
 
   .summaryArea {
     grid-column: 2;
     grid-row: 1;
-  }
-
-  .calendarArea {
-    grid-column: 1;
-    grid-row: 2;
   }
 
   .tabletPair {
@@ -907,13 +1091,54 @@
     grid-row: 2;
   }
 
-  .tabletPair > :last-child {
+  .calendarArea {
     grid-column: 1;
     grid-row: 3;
   }
-  .streakArea {
+
+  .tabletPair > :last-child {
     grid-column: 2;
     grid-row: 3;
+  }
+
+  .streakArea {
+    grid-column: 1;
+    grid-row: 4;
+  }
+}
+
+/*
+ * From tablet up the card is wide enough for the title to share its row with
+ * the silhouettes, which pulls the whole written column into the left half and
+ * lets the body start at the top of the card rather than below the heading.
+ */
+@media (min-width: 721px) {
+  .todayLayout {
+    /*
+     * The body runs the height of the card and the actions tuck under it, with
+     * the ring taking the space the text leaves on the left. Giving the figure
+     * only the two text rows kept it at its floor height while the ring's row
+     * — the tallest of the three — sat beside empty space.
+     */
+    grid-template-areas:
+      'head figure'
+      'body figure'
+      'ring figure'
+      'ring actions';
+    grid-template-rows: auto auto 1fr auto;
+    align-items: stretch;
+  }
+
+  .todayLayout > .todayFigures {
+    /*
+     * The floor is what actually sizes the body here, not the text beside it:
+     * the silhouettes are tall and narrow, so their width comes from their
+     * height, and the three rows of text on the left only came to ~240px —
+     * leaving the figures at 112px wide in a 600px cell. Raising the floor
+     * grows them in both directions and spends the empty half of the card.
+     */
+    height: 100%;
+    min-height: clamp(12rem, 38vh, 26rem);
   }
 }
 
@@ -992,11 +1217,6 @@
   .todaySessionTitle {
     font-size: 1.6rem;
     white-space: nowrap;
-  }
-
-  .todayVisual {
-    flex-wrap: nowrap;
-    flex-shrink: 0;
   }
 
   .actions {

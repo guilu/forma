@@ -1,0 +1,742 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Forma · Muscle Overlay Lab</title>
+    <style>
+      :root {
+        --bg: #0b0f12;
+        --panel: #151a20;
+        --panel2: #1c232b;
+        --border: #2b333d;
+        --text: #f4f7f9;
+        --muted: #96a2ad;
+        --accent: #58cc02;
+        --map-width: 320px;
+        --primary-opacity: 0.92;
+        --secondary-opacity: 0.38;
+      }
+      * {
+        box-sizing: border-box;
+        scrollbar-width: thin;
+        scrollbar-color: #63e662 transparent;
+      }
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background: var(--bg);
+        color: var(--text);
+        font-family: Inter, system-ui, sans-serif;
+      }
+      button,
+      input {
+        font: inherit;
+      }
+      .app {
+        min-height: 100vh;
+        display: grid;
+        grid-template-columns: 400px 1fr;
+      }
+      .sidebar {
+        padding: 20px;
+        background: var(--panel);
+        border-right: 1px solid var(--border);
+        overflow: auto;
+        height: 100vh;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+      .brand h1 {
+        margin: 0;
+        font-size: 18px;
+      }
+      .badge {
+        padding: 5px 8px;
+        border-radius: 999px;
+        color: var(--accent);
+        border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+        background: color-mix(in srgb, var(--accent) 12%, transparent);
+        font-size: 11px;
+        font-weight: 800;
+      }
+      .section {
+        margin-top: 18px;
+        padding-top: 18px;
+        border-top: 1px solid var(--border);
+      }
+      .section-title {
+        margin-bottom: 10px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .segmented {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 6px;
+        padding: 5px;
+        border-radius: 12px;
+        background: var(--panel2);
+        border: 1px solid var(--border);
+      }
+      .segmented.three {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      .segmented button {
+        border: 0;
+        border-radius: 8px;
+        padding: 8px 10px;
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+        font-weight: 800;
+      }
+      .segmented button.active {
+        color: #081008;
+        background: var(--accent);
+      }
+      .presets {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+      }
+      .chip,
+      .action {
+        border: 1px solid var(--border);
+        background: var(--panel2);
+        color: var(--text);
+        cursor: pointer;
+        font-weight: 800;
+      }
+      .chip {
+        padding: 7px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+      }
+      .muscle-list {
+        display: grid;
+        gap: 7px;
+        max-height: 25vh;
+        overflow: auto;
+        padding-right: 2px;
+      }
+      .muscle-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--panel2);
+      }
+      .muscle-row .name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 13px;
+        font-weight: 750;
+      }
+      .role-switch {
+        display: flex;
+        gap: 4px;
+      }
+      .role-switch button {
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border-radius: 7px;
+        border: 1px solid var(--border);
+        background: #11161b;
+        color: var(--muted);
+        cursor: pointer;
+        font-size: 11px;
+        font-weight: 900;
+      }
+      .role-switch button[data-role="primary"].active {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #071007;
+      }
+      .role-switch button[data-role="secondary"].active {
+        background: color-mix(in srgb, var(--accent) 45%, #111);
+        border-color: color-mix(in srgb, var(--accent) 70%, var(--border));
+        color: #fff;
+      }
+      .control {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        gap: 12px;
+        margin-top: 12px;
+      }
+      .control label {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 750;
+      }
+      .control output {
+        min-width: 56px;
+        text-align: right;
+        color: var(--text);
+        font-size: 12px;
+      }
+      input[type="range"] {
+        width: 150px;
+        accent-color: var(--accent);
+      }
+      input[type="color"] {
+        width: 44px;
+        height: 32px;
+        padding: 0;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: transparent;
+      }
+      .actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .action {
+        padding: 9px 10px;
+        border-radius: 10px;
+        font-size: 12px;
+      }
+      .stage {
+        min-width: 0;
+        padding: 28px;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        overflow: auto;
+      }
+      .viewer {
+        width: min(100%, 1100px);
+      }
+      .viewer-head {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 20px;
+        margin-bottom: 14px;
+      }
+      .viewer-head h2 {
+        margin: 0;
+        font-size: 20px;
+      }
+      .viewer-head p {
+        margin: 5px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .bodies {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+      }
+      .bodies.single {
+        grid-template-columns: minmax(280px, 1fr);
+      }
+      .body-card {
+        min-height: 520px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        padding: 26px;
+        border-radius: 18px;
+        border: 1px solid var(--border);
+        background: linear-gradient(180deg, #12171c, #0e1317);
+        overflow: hidden;
+      }
+      .body-card.hidden {
+        display: none;
+      }
+      .body-label {
+        position: absolute;
+        top: 14px;
+        left: 14px;
+        z-index: 10;
+        padding: 6px 9px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(10, 13, 16, 0.75);
+        font-size: 11px;
+        font-weight: 900;
+      }
+
+      /* El tamaño del mapa lo controla SOLO este contenedor */
+      .body-map {
+        position: relative;
+        width: min(100%, var(--map-width));
+        aspect-ratio: 854/1842;
+        flex: 0 0 auto;
+      }
+
+      /* La silueta ocupa el 100% del contenedor */
+      .silhouette {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: fill;
+        display: block;
+        z-index: 1;
+        user-select: none;
+        -webkit-user-drag: none;
+      }
+
+      /* Los overlays SVG ocupan exactamente el mismo rectángulo y escalan solos */
+      .muscle-mask {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 2;
+        pointer-events: none;
+        background: var(--accent);
+        -webkit-mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        -webkit-mask-size: 100% 100%;
+        mask-repeat: no-repeat;
+        mask-position: center;
+        mask-size: 100% 100%;
+      }
+      .muscle-mask.primary {
+        opacity: var(--primary-opacity);
+      }
+      .muscle-mask.secondary {
+        opacity: var(--secondary-opacity);
+      }
+
+      .note {
+        margin-top: 14px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--panel2);
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+      @media (max-width: 900px) {
+        .app {
+          grid-template-columns: 1fr;
+        }
+        .sidebar {
+          height: auto;
+          border-right: 0;
+          border-bottom: 1px solid var(--border);
+        }
+        .muscle-list {
+          max-height: none;
+        }
+      }
+      @media (max-width: 680px) {
+        .bodies {
+          grid-template-columns: 1fr;
+        }
+        .body-card {
+          min-height: 420px;
+        }
+        .viewer-head {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <h1>Forma · Muscle Overlay Lab</h1>
+          <span class="badge">DEV</span>
+        </div>
+
+        <div
+          class="section"
+          style="margin-top: 0; padding-top: 0; border-top: 0"
+        >
+          <div class="section-title">Perfil</div>
+          <div class="segmented" id="sexControl">
+            <button class="active" data-sex="male">Hombre</button>
+            <button data-sex="female">Mujer</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Vista</div>
+          <div class="segmented three" id="viewControl">
+            <button data-view="front">Frontal</button>
+            <button data-view="back">Posterior</button>
+            <button class="active" data-view="both">Ambas</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Presets</div>
+          <div class="presets">
+            <button class="chip" data-preset="shoulders">Hombros</button>
+            <button class="chip" data-preset="chest">Pecho</button>
+            <button class="chip" data-preset="back">Espalda</button>
+            <button class="chip" data-preset="arms">Brazos</button>
+            <button class="chip" data-preset="core">Core</button>
+            <button class="chip" data-preset="legs">Pierna</button>
+            <button class="chip" data-preset="full">Full body</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Tamaño del contenedor</div>
+          <div class="control">
+            <label for="mapWidth">Ancho</label>
+            <input
+              id="mapWidth"
+              type="range"
+              min="120"
+              max="600"
+              step="10"
+              value="320"
+            />
+          </div>
+          <div class="control">
+            <label></label><output id="mapWidthValue">320 px</output>
+          </div>
+          <div class="note">
+            Mueve el slider: solo cambia el tamaño del contenedor. La silueta
+            PNG y todos los overlays SVG se reescalan juntos.
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Músculos</div>
+          <div class="muscle-list" id="muscleList"></div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Apariencia</div>
+          <div class="control">
+            <label for="accent">Accent</label
+            ><input id="accent" type="color" value="#58cc02" />
+          </div>
+          <div class="control">
+            <label for="primaryOpacity">Principal</label
+            ><input
+              id="primaryOpacity"
+              type="range"
+              min=".15"
+              max="1"
+              step=".01"
+              value=".92"
+            />
+          </div>
+          <div class="control">
+            <label for="secondaryOpacity">Secundario</label
+            ><input
+              id="secondaryOpacity"
+              type="range"
+              min=".05"
+              max=".8"
+              step=".01"
+              value=".38"
+            />
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="actions">
+            <button class="action" id="clearAll">Limpiar</button>
+            <button class="action" id="randomize">Demo aleatoria</button>
+          </div>
+        </div>
+      </aside>
+
+      <main class="stage">
+        <div class="viewer">
+          <div class="viewer-head">
+            <div>
+              <h2 id="viewerTitle">Mapa muscular</h2>
+              <p>
+                Silueta y overlays ocupan siempre el 100% del mismo contenedor.
+              </p>
+            </div>
+          </div>
+
+          <div class="bodies" id="bodies">
+            <section class="body-card" id="frontCard">
+              <span class="body-label">FRONTAL</span>
+              <div class="body-map" id="frontMap"></div>
+            </section>
+
+            <section class="body-card" id="backCard">
+              <span class="body-label">POSTERIOR</span>
+              <div class="body-map" id="backMap"></div>
+            </section>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      const SILHOUETTES = {
+        male: {
+          front: "male/front/shilouette.png",
+          back: "male/back/shilouette.png",
+        },
+        female: {
+          front: "female/front/shilouette.png",
+          back: "female/back/shilouette.png",
+        },
+      };
+
+      const MUSCLES = [
+        ["DELTOID_FRONT", "Deltoides anterior", "front"],
+        ["DELTOID_REAR", "Deltoides posterior", "back"],
+        ["PECTORAL", "Pectoral", "front"],
+        ["BICEPS", "Bíceps", "front"],
+        ["TRICEPS", "Tríceps", "back"],
+        ["FOREARM_FRONT", "Antebrazo anterior", "front"],
+        ["FOREARM_BACK", "Antebrazo posterior", "back"],
+        ["ABS", "Abdominales", "front"],
+        ["OBLIQUES", "Oblicuos", "front"],
+        ["TRAPEZIUS", "Trapecio", "back"],
+        ["UPPER_BACK", "Espalda superior", "back"],
+        ["LATS", "Dorsales", "back"],
+        ["LOWER_BACK", "Lumbar", "back"],
+        ["GLUTES", "Glúteos", "back"],
+        ["HAMSTRINGS", "Isquiotibiales", "back"],
+        ["ADDUCTORS", "Aductores", "front"],
+        ["QUADRICEPS", "Cuádriceps", "front"],
+        ["CALVES", "Gemelos", "back"],
+        ["SOLEUS", "Sóleo", "back"],
+        ["LOWER_LEG_FRONT", "Pierna anterior", "front"],
+        ["SERRATUS", "Serrato anterior", "front"],
+      ];
+
+      const PRESETS = {
+        shoulders: {
+          DELTOID_FRONT: "primary",
+          DELTOID_REAR: "primary",
+          TRAPEZIUS: "secondary",
+          TRICEPS: "secondary",
+        },
+        chest: {
+          PECTORAL: "primary",
+          DELTOID_FRONT: "secondary",
+          SERRATUS: "secondary",
+          TRICEPS: "secondary",
+        },
+        back: {
+          LATS: "primary",
+          UPPER_BACK: "primary",
+          TRAPEZIUS: "secondary",
+          DELTOID_REAR: "secondary",
+          LOWER_BACK: "secondary",
+        },
+        arms: {
+          BICEPS: "primary",
+          TRICEPS: "primary",
+          FOREARM_FRONT: "secondary",
+          FOREARM_BACK: "secondary",
+          DELTOID_FRONT: "secondary",
+          DELTOID_REAR: "secondary",
+        },
+        core: { ABS: "primary", OBLIQUES: "primary", LOWER_BACK: "secondary" },
+        legs: {
+          QUADRICEPS: "primary",
+          HAMSTRINGS: "primary",
+          GLUTES: "primary",
+          CALVES: "secondary",
+          ADDUCTORS: "secondary",
+          SOLEUS: "secondary",
+          LOWER_LEG_FRONT: "secondary",
+        },
+        full: Object.fromEntries(
+          MUSCLES.map(([code], i) => [
+            code,
+            i % 4 === 0 ? "secondary" : "primary",
+          ]),
+        ),
+      };
+
+      const state = {
+        sex: "male",
+        view: "both",
+        muscles: { ...PRESETS.shoulders },
+      };
+
+      function muscleAssetPath(view, code) {
+        return `${state.sex}/${view}/${code}.svg`;
+      }
+
+      function renderBodyMap(view) {
+        const root = document.getElementById(
+          view === "front" ? "frontMap" : "backMap",
+        );
+        root.innerHTML = "";
+
+        const silhouette = document.createElement("img");
+        silhouette.className = "silhouette";
+        silhouette.src = SILHOUETTES[state.sex][view];
+        silhouette.alt = `${state.sex === "male" ? "Hombre" : "Mujer"} ${view === "front" ? "frontal" : "posterior"}`;
+        root.appendChild(silhouette);
+
+        for (const [code, , muscleView] of MUSCLES) {
+          if (muscleView !== view) continue;
+          const role = state.muscles[code];
+          if (!role) continue;
+
+          const overlay = document.createElement("div");
+          overlay.className = `muscle-mask ${role}`;
+          overlay.dataset.muscle = code;
+
+          const src = muscleAssetPath(view, code);
+          overlay.style.maskImage = `url("${src}")`;
+          overlay.style.webkitMaskImage = `url("${src}")`;
+
+          root.appendChild(overlay);
+        }
+      }
+
+      function buildMuscleList() {
+        const list = document.getElementById("muscleList");
+        list.innerHTML = "";
+
+        for (const [code, name] of MUSCLES) {
+          const row = document.createElement("div");
+          row.className = "muscle-row";
+          row.dataset.code = code;
+          row.innerHTML = `
+      <div class="name" title="${code}">${name}</div>
+      <div class="role-switch">
+        <button data-role="primary" title="Principal">P</button>
+        <button data-role="secondary" title="Secundario">S</button>
+      </div>`;
+
+          row.querySelectorAll("button").forEach((button) => {
+            button.addEventListener("click", () => {
+              const role = button.dataset.role;
+              if (state.muscles[code] === role) delete state.muscles[code];
+              else state.muscles[code] = role;
+              render();
+            });
+          });
+          list.appendChild(row);
+        }
+      }
+
+      function updateMuscleRows() {
+        document.querySelectorAll(".muscle-row").forEach((row) => {
+          const activeRole = state.muscles[row.dataset.code];
+          row.querySelectorAll("button").forEach((button) => {
+            button.classList.toggle(
+              "active",
+              button.dataset.role === activeRole,
+            );
+          });
+        });
+      }
+
+      function render() {
+        document.querySelectorAll("#sexControl button").forEach((button) => {
+          button.classList.toggle("active", button.dataset.sex === state.sex);
+        });
+        document.querySelectorAll("#viewControl button").forEach((button) => {
+          button.classList.toggle("active", button.dataset.view === state.view);
+        });
+
+        const frontCard = document.getElementById("frontCard");
+        const backCard = document.getElementById("backCard");
+        const bodies = document.getElementById("bodies");
+
+        frontCard.classList.toggle("hidden", state.view === "back");
+        backCard.classList.toggle("hidden", state.view === "front");
+        bodies.classList.toggle("single", state.view !== "both");
+
+        renderBodyMap("front");
+        renderBodyMap("back");
+        updateMuscleRows();
+
+        const count = Object.keys(state.muscles).length;
+        document.getElementById("viewerTitle").textContent = count
+          ? `Mapa muscular · ${count} grupos activos`
+          : "Mapa muscular";
+      }
+
+      document.querySelectorAll("#sexControl button").forEach((button) => {
+        button.addEventListener("click", () => {
+          state.sex = button.dataset.sex;
+          render();
+        });
+      });
+      document.querySelectorAll("#viewControl button").forEach((button) => {
+        button.addEventListener("click", () => {
+          state.view = button.dataset.view;
+          render();
+        });
+      });
+      document.querySelectorAll("[data-preset]").forEach((button) => {
+        button.addEventListener("click", () => {
+          state.muscles = { ...PRESETS[button.dataset.preset] };
+          render();
+        });
+      });
+
+      const mapWidth = document.getElementById("mapWidth");
+      const mapWidthValue = document.getElementById("mapWidthValue");
+      mapWidth.addEventListener("input", (e) => {
+        const width = e.target.value;
+        document.documentElement.style.setProperty("--map-width", `${width}px`);
+        mapWidthValue.textContent = `${width} px`;
+      });
+
+      document.getElementById("accent").addEventListener("input", (e) => {
+        document.documentElement.style.setProperty("--accent", e.target.value);
+      });
+      document
+        .getElementById("primaryOpacity")
+        .addEventListener("input", (e) => {
+          document.documentElement.style.setProperty(
+            "--primary-opacity",
+            e.target.value,
+          );
+        });
+      document
+        .getElementById("secondaryOpacity")
+        .addEventListener("input", (e) => {
+          document.documentElement.style.setProperty(
+            "--secondary-opacity",
+            e.target.value,
+          );
+        });
+      document.getElementById("clearAll").addEventListener("click", () => {
+        state.muscles = {};
+        render();
+      });
+      document.getElementById("randomize").addEventListener("click", () => {
+        state.muscles = {};
+        [...MUSCLES]
+          .sort(() => Math.random() - 0.5)
+          .slice(0, 6)
+          .forEach(([code]) => {
+            state.muscles[code] = Math.random() > 0.4 ? "primary" : "secondary";
+          });
+        render();
+      });
+
+      buildMuscleList();
+      render();
+    </script>
+  </body>
+</html>

@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { BodyMuscleMap } from '../components/BodyMuscleMap';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { ChartContainer } from '../components/ChartContainer';
@@ -14,8 +13,11 @@ import { LoadingState } from '../components/LoadingState';
 import { MeasurementForm } from '../components/MeasurementForm';
 import { MetricCard } from '../components/MetricCard';
 import { Modal } from '../components/Modal';
+import { MuscleSilhouette } from '../components/MuscleSilhouette';
 import { StatusPill } from '../components/StatusPill';
+import { useAnatomySex } from '../hooks/useAnatomySex';
 import { useMediaQuery } from '../hooks/useMediaQuery';
+import { WithingsSyncButton } from '../integrations/WithingsSyncButton';
 import { narrowingRanges, pointsInRange, type RangeOption } from './chartRanges';
 import { useNotify } from '../components/NotificationProvider';
 import { ApiRequestError } from '../api/client';
@@ -171,16 +173,24 @@ export function MeasurementsPage() {
           <h1 className={styles.title}>Mediciones</h1>
           <p className={styles.subtitle}>Controla tu composición corporal y evolución.</p>
         </div>
-        {/* Hidden while the page is empty: the empty state offers the same
-            action, next to the sentence that explains why the page is blank.
-            Two identical buttons on an otherwise bare screen read as a mistake.
-            It stays up here for every other state, including the error one,
-            where the empty state is not rendered at all. */}
-        {state.status !== 'empty' && (
-          <Button type="button" onClick={() => setFormOpen(true)}>
-            {narrow ? '+ Medición' : '+ Registrar medición'}
-          </Button>
-        )}
+        <div className={styles.headerActions}>
+          {/* Withings feeds most of these measurements, so its manual sync sits
+              where the data is instead of only in Ajustes. It renders itself
+              away when the provider is not connected, and it survives the empty
+              state below — with nothing listed, pulling from Withings is
+              precisely the useful move. */}
+          <WithingsSyncButton />
+          {/* Hidden while the page is empty: the empty state offers the same
+              action, next to the sentence that explains why the page is blank.
+              Two identical buttons on an otherwise bare screen read as a mistake.
+              It stays up here for every other state, including the error one,
+              where the empty state is not rendered at all. */}
+          {state.status !== 'empty' && (
+            <Button type="button" onClick={() => setFormOpen(true)}>
+              {narrow ? '+ Medición' : '+ Registrar medición'}
+            </Button>
+          )}
+        </div>
       </header>
 
       {renderContent(state, activeTab, setActiveTab, () => setFormOpen(true), load)}
@@ -346,11 +356,15 @@ function MeasurementsDashboard({ measurements, activeTab, setActiveTab, reload }
  * (no such fields on the API — see {@link PLACEHOLDER}), which is why the design
  * gives those two greys and keeps colour for the two real values.
  *
- * <p>FOR-188 replaced the schematic {@link BodyFigure} with the real asset
- * ({@link BodyMuscleMap}). The tint is baked into that asset, so the figure is
- * still not driven by per-muscle data.
+ * <p>FOR-188 replaced the schematic {@link BodyFigure} with a real asset; the
+ * figure is now the anatomy pack's front silhouette ({@link MuscleSilhouette}),
+ * drawn for the profile's sex like the training page's. No `muscles` map is
+ * passed: this card breaks weight down by tissue, not by worked muscle, so the
+ * body stays untinted rather than implying data the composition legend does not
+ * carry.
  */
 function BodyDistributionCard({ latest }: { readonly latest: BodyMeasurement }) {
+  const anatomySex = useAnatomySex();
   const rows = [
     {
       key: 'muscle',
@@ -389,7 +403,12 @@ function BodyDistributionCard({ latest }: { readonly latest: BodyMeasurement }) 
   return (
     <Card title="Distribución corporal" headingLevel={2}>
       <div className={styles.distribution}>
-        <BodyMuscleMap size={168} label="Composición corporal" />
+        <MuscleSilhouette
+          className={styles.distributionFigure}
+          sex={anatomySex}
+          view="front"
+          label="Composición corporal"
+        />
         <ul className={styles.distributionLegend}>
           {rows.map((row) => (
             <li key={row.key} className={styles.distributionItem}>

@@ -23,6 +23,7 @@ export type IconName =
   | 'calendar'
   | 'clock'
   | 'cross'
+  | 'close'
   | 'chevron'
   | 'search'
   | 'image'
@@ -69,6 +70,10 @@ const PATHS: Record<IconName, string> = {
   // Generic medical cross — used for health-data providers (e.g. Apple
   // Health, FOR-57). Not a brand logo.
   cross: 'M12 4v16M4 12h16',
+  // The dismiss X. Distinct from `cross` above, which is the medical symbol
+  // (a plus) and was standing in for this — a "+" on a close button reads as
+  // "add", the opposite of what the control does.
+  close: 'M6 6l12 12M18 6L6 18',
   // Right-pointing chevron — decorative affordance for navigable/entry-point
   // rows (e.g. Ajustes, FOR-58).
   chevron: 'M9 6l6 6-6 6',

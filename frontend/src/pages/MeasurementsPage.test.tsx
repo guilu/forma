@@ -10,6 +10,9 @@ import {
   type BodyMeasurement,
 } from '../api/bodyMeasurements';
 import { NotificationProvider } from '../components/NotificationProvider';
+import { IntegrationsProvider } from '../integrations/IntegrationsContext';
+import { listIntegrations, type IntegrationConnection } from '../api/integrations';
+import { getProfile } from '../api/profile';
 
 // The page reads via listBodyMeasurements and the manual entry form (reused
 // as-is) writes via createBodyMeasurement — both go through the shared API
@@ -20,18 +23,42 @@ vi.mock('../api/bodyMeasurements', () => ({
   deleteBodyMeasurement: vi.fn(),
 }));
 
+// The header's Withings sync button reads the shared connection store, so the
+// page now sits under an IntegrationsProvider exactly as the app shell mounts
+// it. Default: nothing connected, i.e. no sync button (see the header suite).
+vi.mock('../api/integrations', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../api/integrations')>();
+  return { ...actual, listIntegrations: vi.fn(), syncIntegration: vi.fn() };
+});
+
 /** Deleting a measurement reports through the shared toast region (FOR-123). */
 function renderPage() {
   return render(
     <NotificationProvider>
-      <MeasurementsPage />
+      <IntegrationsProvider>
+        <MeasurementsPage />
+      </IntegrationsProvider>
     </NotificationProvider>,
   );
 }
 
+// The body-distribution figure follows the profile's sex (male/female
+// silhouette), so the page now reads the profile too.
+vi.mock('../api/profile', () => ({ getProfile: vi.fn() }));
+
 const listMock = vi.mocked(listBodyMeasurements);
 const createMock = vi.mocked(createBodyMeasurement);
 const deleteMock = vi.mocked(deleteBodyMeasurement);
+const integrationsMock = vi.mocked(listIntegrations);
+const getProfileMock = vi.mocked(getProfile);
+
+const WITHINGS_CONNECTED: IntegrationConnection = {
+  providerId: 'WITHINGS',
+  providerName: 'Withings',
+  description: 'Sincroniza automáticamente tus datos.',
+  status: 'CONNECTED',
+  lastSyncAt: '2026-08-14T20:28:00Z',
+};
 
 const SINGLE: BodyMeasurement[] = [
   {
@@ -112,6 +139,10 @@ describe('MeasurementsPage', () => {
     listMock.mockReset();
     createMock.mockReset();
     deleteMock.mockReset();
+    integrationsMock.mockReset();
+    integrationsMock.mockResolvedValue([]);
+    getProfileMock.mockReset();
+    getProfileMock.mockResolvedValue({ sex: 'MALE' } as never);
   });
 
   it('shows a loading state while the initial fetch is in flight', () => {
@@ -207,12 +238,21 @@ describe('MeasurementsPage', () => {
     expect(
       within(distribution).getByRole('link', { name: 'Ver análisis detallado' }),
     ).toHaveAttribute('href', '/app/progress');
-    // The schematic SVG placeholder is replaced by the real anatomical figure
-    // (FOR-188): an asset now exists, so the card stops drawing a stand-in.
+    // The figure is the anatomy pack's front silhouette, same asset the
+    // training page draws, and it follows the profile's sex — male here.
     expect(within(distribution).getByRole('img', { name: 'Composición corporal' })).toHaveAttribute(
-      'src',
-      '/body/muscle-map-front.png',
+      'data-silhouette',
+      'male/front',
     );
+  });
+
+  it('draws the female front silhouette when the profile says FEMALE', async () => {
+    listMock.mockResolvedValue(SINGLE);
+    getProfileMock.mockResolvedValue({ sex: 'FEMALE' } as never);
+    renderPage();
+
+    const figure = await screen.findByRole('img', { name: 'Composición corporal' });
+    await waitFor(() => expect(figure).toHaveAttribute('data-silhouette', 'female/front'));
   });
 
   // The Resumen/Evolución/Historial tab bar is CSS-hidden at the jsdom desktop
@@ -423,6 +463,53 @@ describe('MeasurementsPage', () => {
 
       expect(
         await screen.findByRole('button', { name: '+ Registrar medición' }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  /**
+   * Withings is where most of these measurements come from, so the manual sync
+   * belongs on this screen and not only in Ajustes — pulling today's weigh-in
+   * should not cost a trip through the settings menu.
+   */
+  describe('the Withings sync action in the header', () => {
+    it('sits before the register action while Withings is connected', async () => {
+      listMock.mockResolvedValue(SINGLE);
+      integrationsMock.mockResolvedValue([WITHINGS_CONNECTED]);
+
+      renderPage();
+
+      const sync = await screen.findByRole('button', { name: 'Sincronizar Withings' });
+      const register = screen.getByRole('button', { name: '+ Registrar medición' });
+      expect(sync).toHaveAttribute('title', 'Sincronizar Withings');
+      // Same row, sync first: it is the quieter of the two and must not take
+      // the place the page's main action occupies on every other screen.
+      expect(sync.compareDocumentPosition(register)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+
+    it('is absent when Withings is not connected', async () => {
+      listMock.mockResolvedValue(SINGLE);
+      integrationsMock.mockResolvedValue([{ ...WITHINGS_CONNECTED, status: 'NOT_CONNECTED' }]);
+
+      renderPage();
+
+      await screen.findByRole('button', { name: '+ Registrar medición' });
+      expect(
+        screen.queryByRole('button', { name: 'Sincronizar Withings' }),
+      ).not.toBeInTheDocument();
+    });
+
+    /* The empty state hides the register action and offers its own; the sync
+       button has no such duplicate, and a page with no measurements is exactly
+       when pulling them from Withings is the useful thing to do. */
+    it('stays available on the empty page', async () => {
+      listMock.mockResolvedValue([]);
+      integrationsMock.mockResolvedValue([WITHINGS_CONNECTED]);
+
+      renderPage();
+
+      expect(
+        await screen.findByRole('button', { name: 'Sincronizar Withings' }),
       ).toBeInTheDocument();
     });
   });

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Badge } from '../components/Badge';
 import { BodyFigure } from '../components/BodyFigure';
+import { MuscleSilhouette, type AnatomySex } from '../components/MuscleSilhouette';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { NoPlanEmptyState } from '../components/NoPlanEmptyState';
@@ -11,23 +12,26 @@ import { LoadingState } from '../components/LoadingState';
 import { MetricCard } from '../components/MetricCard';
 import { Modal } from '../components/Modal';
 import { useNotify } from '../components/NotificationProvider';
+import { useAnatomySex } from '../hooks/useAnatomySex';
 import { ProgressRing } from '../components/ProgressRing';
 import { StatusPill } from '../components/StatusPill';
 import { WidgetLoading } from '../components/WidgetLoading';
 import { IconButton } from '../components/IconButton';
 import { ApiRequestError } from '../api/client';
 import { getStreak, type Streak } from '../api/progress';
-import { getProfile } from '../api/profile';
 import {
   getMuscleMap,
   getTrainingWeek,
   updateSessionStatus,
+  type MuscleWorked,
   type SessionStatus,
   type TrainingDay,
   type TrainingSession,
   type TrainingWeek,
 } from '../api/training';
 import { groupMusclesForDisplay, type MuscleGroupDisplay } from './trainingMuscleLabels';
+import { overlayFromMuscleMap } from './trainingMuscleOverlay';
+import { useSessionMuscles } from './useSessionMuscles';
 import { formatShortDate, formatWeekday } from './dateLabel';
 import styles from './TrainingPage.module.css';
 
@@ -72,8 +76,6 @@ type State =
   | { readonly status: 'loading' }
   | { readonly status: 'error' }
   | { readonly status: 'ready'; readonly week: TrainingWeek };
-
-type AnatomySex = 'male' | 'female';
 
 interface DetailTarget {
   readonly dayOfWeek: string;
@@ -190,7 +192,7 @@ export function TrainingPage() {
   const notify = useNotify();
   const navigate = useNavigate();
   const [state, setState] = useState<State>({ status: 'loading' });
-  const [anatomySex, setAnatomySex] = useState<AnatomySex>('male');
+  const anatomySex = useAnatomySex();
   const [actionError, setActionError] = useState<string | undefined>(undefined);
   const [pendingId, setPendingId] = useState<string | undefined>(undefined);
   const [detailTarget, setDetailTarget] = useState<DetailTarget | undefined>(undefined);
@@ -208,20 +210,6 @@ export function TrainingPage() {
   useEffect(() => {
     void load();
   }, [load]);
-
-  useEffect(() => {
-    let active = true;
-    getProfile()
-      .then((profile) => {
-        if (active) setAnatomySex(profile.sex === 'FEMALE' ? 'female' : 'male');
-      })
-      .catch(() => {
-        // The existing male presentation remains the safe fallback when the profile is unavailable.
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
 
   async function mark(sessionId: string, status: SessionStatus) {
     setActionError(undefined);
@@ -416,127 +404,249 @@ function TodaySessionCard({
   if (day.rest) {
     return (
       <Card title={title} headingLevel={2} className={styles.todayCard}>
-        <p className={styles.rest}>
-          {isToday ? 'Hoy es día de descanso.' : 'Ese día es de descanso.'}
-        </p>
+        {/* The rest day gets a body too. It used to be a bare sentence in an
+            otherwise empty card, which read as a page that had failed to load
+            rather than as a day with nothing planned. */}
+        <div className={styles.todayLayout}>
+          <p className={styles.rest}>
+            {isToday ? 'Hoy es día de descanso.' : 'Ese día es de descanso.'}
+          </p>
+          <div className={styles.todayVisual}>
+            <div className={styles.todayFigures}>
+              <MuscleSilhouette className={styles.todayFigure} sex={anatomySex} variant="rest" />
+            </div>
+          </div>
+        </div>
       </Card>
     );
   }
 
-  const { completed, planned } = tally(day.sessions);
+  const sessions = day.sessions;
+  const { completed, planned } = tally(sessions);
   const percent = planned > 0 ? Math.round((completed / planned) * 100) : 0;
-  const visualSession =
-    day.sessions.find((session) => session.kind === 'STRENGTH') ?? day.sessions[0];
+  const visualSession = sessions.find((session) => session.kind === 'STRENGTH') ?? sessions[0];
 
   return (
     <Card title={title} headingLevel={2} className={styles.todayCard}>
       <div className={styles.todayLayout}>
-        <ul className={styles.todaySessions}>
-          {day.sessions.map((session) => (
-            <li key={session.id} className={styles.todaySession}>
-              <div className={styles.todaySessionHeader}>
-                <p className={styles.todaySessionTitle}>{session.title}</p>
-                <StatusPill kind="training" value={session.status} />
-              </div>
-              {/* Only what the session really carries. A fixed duration and a
-                  fixed muscle focus used to print under every session, which
-                  is how a *run* came to announce a chest-and-triceps focus —
-                  neither field exists anywhere in the training API. The focus
-                  of a strength session is derived below from its real
-                  FOR-136 muscle map. */}
-              <p className={styles.sessionDetail}>{session.detail}</p>
-              {session.kind === 'STRENGTH' && <SessionFocus sessionId={session.id} />}
-              <div className={styles.actions}>
-                {session.kind === 'STRENGTH' ? (
-                  <Button type="button" onClick={() => openTraining(session)}>
-                    <Icon name="arrowRight" size={17} />
-                    {session.status === 'COMPLETED' ? 'Ver entrenamiento' : 'Iniciar entrenamiento'}
-                  </Button>
-                ) : session.status === 'COMPLETED' ? (
-                  /* A run has no per-exercise screen to open, so its action
-                     marks completion in place — and undoes it, or a mistaken
-                     tap would be permanent. Back to PLANNED, not SKIPPED:
-                     undoing means "this did not happen yet", and SKIPPED is a
-                     deliberate different statement. */
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    aria-label="Desmarcar la carrera como completada"
-                    disabled={pendingId === session.id}
-                    loading={pendingId === session.id}
-                    onClick={() => mark(session.id, 'PLANNED')}
-                  >
-                    <Icon name="checkCircle" size={17} />
-                    Completada
-                  </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    disabled={pendingId === session.id}
-                    loading={pendingId === session.id}
-                    onClick={() => mark(session.id, 'COMPLETED')}
-                  >
-                    <Icon name="check" size={17} />
-                    Completar carrera
-                  </Button>
-                )}
-                {session.status === 'PLANNED' && (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    disabled={pendingId === session.id}
-                    onClick={() => mark(session.id, 'SKIPPED')}
-                  >
-                    Saltar
-                  </Button>
-                )}
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => openDetail({ dayOfWeek: day.dayOfWeek, session })}
-                >
-                  <Icon name="menu" size={17} />
-                  Ver detalle
-                </Button>
-              </div>
-            </li>
-          ))}
-        </ul>
+        {/*
+         * One session renders flat, several render as a list.
+         *
+         * The card's layout puts the title, the body text, the ring and the
+         * figures in separate grid cells, and a `<ul><li>` around them would
+         * have to be dissolved with `display: contents` to let them out — which
+         * is exactly the thing that drops list semantics in some screen
+         * readers. A day almost always carries one session, so that case gets
+         * the plain markup the grid needs, and the rare multi-session day keeps
+         * a real list and stacks instead.
+         */}
+        {sessions.length === 1 ? (
+          <SessionSummary session={sessions[0]} />
+        ) : (
+          <ul className={styles.todaySessions}>
+            {sessions.map((session) => (
+              <li key={session.id} className={styles.todaySession}>
+                <SessionSummary session={session} />
+              </li>
+            ))}
+          </ul>
+        )}
 
-        <div className={styles.todayVisual}>
-          <div className={styles.todayRing}>
-            {/* Ring shows today's real session completion; the "N/M ejercicios"
+        <div className={styles.todayRing}>
+          {/* Ring shows today's real session completion; the "N/M ejercicios"
                 figure below it is placeholder (per-exercise data isn't backed). */}
-            <ProgressRing
-              value={completed}
-              max={Math.max(planned, 1)}
-              label={`${completed} de ${planned} sesiones completadas hoy`}
-              size={128}
-            >
-              <span className={styles.ringPercent}>{percent}%</span>
-            </ProgressRing>
-            <p className={styles.ringStatus}>{percent === 100 ? 'Completado' : 'En progreso'}</p>
-            {/* The ring counts sessions, which is what the week payload
+          <ProgressRing
+            value={completed}
+            max={Math.max(planned, 1)}
+            label={`${completed} de ${planned} sesiones completadas hoy`}
+            size={128}
+          >
+            <span className={styles.ringPercent}>{percent}%</span>
+          </ProgressRing>
+          <p className={styles.ringStatus}>{percent === 100 ? 'Completado' : 'En progreso'}</p>
+          {/* The ring counts sessions, which is what the week payload
                 actually carries. It used to be captioned "4 / 6 ejercicios"
                 from a constant — a figure that was wrong for every day and
                 meaningless for a run. */}
-            <p className={styles.ringCaption}>
-              {completed} / {planned} {planned === 1 ? 'sesión' : 'sesiones'}
-            </p>
-          </div>
-          <div className={styles.todayFigures}>
-            <BodyFigure
-              view={visualSession.bodyView.toLowerCase() as 'front' | 'back'}
-              variant={visualSession.kind === 'RUNNING' ? 'running' : 'strength'}
-              sex={anatomySex}
-              active={visualSession.status === 'COMPLETED'}
-              size={150}
-            />
-          </div>
+          <p className={styles.ringCaption}>
+            {completed} / {planned} {planned === 1 ? 'sesión' : 'sesiones'}
+          </p>
+        </div>
+        <TodayFigures session={visualSession} sex={anatomySex} />
+
+        {/*
+         * The actions close the card, under the ring and the body rather than
+         * beside the title: they are what you do *after* reading the session,
+         * and on a phone a column of buttons between the text and the figures
+         * pushed the body off the screen.
+         *
+         * One group per session, each labelled with its own title. A day
+         * normally carries one, but when it carries two ("Detalle" and
+         * "Entrenar" twice over) the group is what says which session each
+         * pair belongs to.
+         */}
+        <div className={styles.todayActions}>
+          {sessions.map((session) => (
+            <div
+              key={session.id}
+              className={styles.todayActionGroup}
+              role="group"
+              aria-label={session.title}
+            >
+              {/* Ordered by weight, left to right, so the main action is the
+                  one nearest the thumb on a phone and last in reading order on
+                  a desktop: skip, then detail, then the session itself. */}
+              {session.status === 'PLANNED' && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={pendingId === session.id}
+                  onClick={() => mark(session.id, 'SKIPPED')}
+                >
+                  Saltar
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => openDetail({ dayOfWeek: day.dayOfWeek, session })}
+              >
+                <Icon name="menu" size={17} />
+                Detalle
+              </Button>
+              {session.kind === 'STRENGTH' ? (
+                <Button type="button" onClick={() => openTraining(session)}>
+                  <Icon name="arrowRight" size={17} />
+                  Entrenar
+                </Button>
+              ) : session.status === 'COMPLETED' ? (
+                /* A run has no per-exercise screen to open, so its action marks
+                   completion in place — and undoes it, or a mistaken tap would
+                   be permanent. Back to PLANNED, not SKIPPED: undoing means
+                   "this did not happen yet", and SKIPPED is a deliberate
+                   different statement. */
+                <Button
+                  type="button"
+                  variant="secondary"
+                  aria-label="Desmarcar la carrera como completada"
+                  disabled={pendingId === session.id}
+                  loading={pendingId === session.id}
+                  onClick={() => mark(session.id, 'PLANNED')}
+                >
+                  <Icon name="checkCircle" size={17} />
+                  Completada
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  disabled={pendingId === session.id}
+                  loading={pendingId === session.id}
+                  onClick={() => mark(session.id, 'COMPLETED')}
+                >
+                  <Icon name="check" size={17} />
+                  Completar carrera
+                </Button>
+              )}
+            </div>
+          ))}
         </div>
       </div>
     </Card>
   );
+}
+
+/**
+ * The written half of a session: its title and status, then what it carries.
+ *
+ * <p>Two sibling elements rather than one wrapper, because the card's grid
+ * places them in different cells — the title spans the full width on a phone
+ * while the body text shares a row with the silhouettes.
+ */
+function SessionSummary({ session }: { readonly session: TrainingSession }) {
+  return (
+    <>
+      {/* No status badge: the ring right below already reports the day as
+          completed or in progress, and the weekly calendar badges every
+          session. A pill beside the title repeated that in a third place. */}
+      <div className={styles.todaySessionHeader}>
+        <p className={styles.todaySessionTitle}>{session.title}</p>
+      </div>
+      <div className={styles.sessionBody}>
+        {/* Only what the session really carries. A fixed duration and a fixed
+            muscle focus used to print under every session, which is how a *run*
+            came to announce a chest-and-triceps focus — neither field exists
+            anywhere in the training API. The focus of a strength session is
+            derived from its real FOR-136 muscle map. */}
+        <p className={styles.sessionDetail}>{session.detail}</p>
+        {session.kind === 'STRENGTH' && <SessionFocus sessionId={session.id} />}
+      </div>
+    </>
+  );
+}
+
+/**
+ * The body illustration on today's card.
+ *
+ * <p>A strength session shows **both sheets**, front and back, because the
+ * muscles it works do not respect the split: a pull day hits the lats and the
+ * triceps on the back sheet and the biceps on the front one, and drawing only
+ * the session's own `bodyView` would hide half of what it trains. The two
+ * silhouettes share one overlay, and each renders the codes it can draw.
+ *
+ * <p>Running and rest have their own single whole-body art, so they show one
+ * figure and no muscles — there is no muscle map behind them to show.
+ */
+function TodayFigures({
+  session,
+  sex,
+}: {
+  readonly session: TrainingSession;
+  readonly sex: AnatomySex;
+}) {
+  const isStrength = session.kind === 'STRENGTH';
+  // Only strength sessions have a muscle map; asking for a run's is a wasted
+  // round trip that always answers empty.
+  const muscles = useSessionMuscles(isStrength ? session.id : undefined);
+  const overlay = overlayFromMuscleMap(muscles);
+  const worked = Object.keys(overlay).length > 0;
+
+  if (!isStrength) {
+    return (
+      <div className={styles.todayFigures}>
+        <MuscleSilhouette
+          className={styles.todayFigure}
+          sex={sex}
+          variant={session.kind === 'RUNNING' ? 'running' : 'rest'}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.todayFigures}>
+      {/*
+       * Labelled once for the pair rather than twice: to a screen reader this
+       * is one illustration of one session, and announcing a front and a back
+       * image separately would describe the layout instead of the content.
+       * Without a muscle map there is nothing to announce at all, so it falls
+       * back to being decorative.
+       */}
+      <div
+        className={styles.todayFigurePair}
+        role={worked ? 'img' : undefined}
+        aria-label={worked ? muscleSummary(muscles) : undefined}
+      >
+        <MuscleSilhouette className={styles.todayFigure} sex={sex} view="front" muscles={overlay} />
+        <MuscleSilhouette className={styles.todayFigure} sex={sex} view="back" muscles={overlay} />
+      </div>
+    </div>
+  );
+}
+
+/** "Músculos trabajados: Pecho, Tríceps, Hombro" — the same names the focus line prints. */
+function muscleSummary(muscles: readonly MuscleWorked[]): string {
+  const labels = groupMusclesForDisplay(muscles).map((muscle) => muscle.label);
+  return `Músculos trabajados: ${labels.join(', ')}`;
 }
 
 /**
@@ -550,22 +660,8 @@ function TodaySessionCard({
  * with its own loading and error states, lives in the session detail.
  */
 function SessionFocus({ sessionId }: { readonly sessionId: string }) {
-  const [muscles, setMuscles] = useState<readonly MuscleGroupDisplay[]>([]);
-
-  useEffect(() => {
-    let cancelled = false;
-    setMuscles([]);
-    getMuscleMap(sessionId)
-      .then((map) => {
-        if (!cancelled) setMuscles(groupMusclesForDisplay(map.muscles));
-      })
-      .catch(() => {
-        if (!cancelled) setMuscles([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [sessionId]);
+  // Shared with the silhouette overlay on this same card — see useSessionMuscles.
+  const muscles = groupMusclesForDisplay(useSessionMuscles(sessionId));
 
   if (muscles.length === 0) return null;
 

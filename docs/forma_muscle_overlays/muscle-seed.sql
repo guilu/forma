@@ -1,0 +1,22 @@
+-- Catálogo inicial de grupos musculares para Forma
+INSERT INTO muscle (code, name, body_region, body_view) VALUES
+('DELTOID_FRONT','Deltoides anterior','SHOULDERS','FRONT'),
+('DELTOID_REAR','Deltoides posterior','SHOULDERS','BACK'),
+('PECTORAL','Pectoral','CHEST','FRONT'),
+('BICEPS','Bíceps','ARMS','FRONT'),
+('TRICEPS','Tríceps','ARMS','BACK'),
+('FOREARM_FRONT','Antebrazo anterior','ARMS','FRONT'),
+('FOREARM_BACK','Antebrazo posterior','ARMS','BACK'),
+('ABS','Abdominales','CORE','FRONT'),
+('OBLIQUES','Oblicuos','CORE','FRONT'),
+('TRAPEZIUS','Trapecio','BACK','BACK'),
+('UPPER_BACK','Espalda superior','BACK','BACK'),
+('LATS','Dorsales','BACK','BACK'),
+('LOWER_BACK','Lumbar','BACK','BACK'),
+('GLUTES','Glúteos','LEGS','BACK'),
+('HAMSTRINGS','Isquiotibiales','LEGS','BACK'),
+('ADDUCTORS','Aductores','LEGS','FRONT'),
+('QUADRICEPS','Cuádriceps','LEGS','FRONT'),
+('CALVES','Gemelos','LEGS','BACK'),
+('SOLEUS','Sóleo','LEGS','BACK'),
+('LOWER_LEG_FRONT','Pierna anterior','LEGS','FRONT');
