@@ -247,8 +247,11 @@ describe('TrainingPage', () => {
         .querySelector('[data-silhouette]')
         ?.getAttribute('data-silhouette'),
     ).toBe('male/front');
-    // Sunday is a rest day: shown, with no session controls for it.
-    const sundayHeading = screen.getByText('Domingo');
+    // Sunday is a rest day: shown, with no session controls for it. Queried by
+    // accessible name, not by text: the strip prints "DOM" and carries the whole
+    // word on the heading, so this also pins that the short label never reaches
+    // assistive tech.
+    const sundayHeading = screen.getByRole('heading', { name: 'Domingo', level: 3 });
     const sundayDay = sundayHeading.closest('li');
     expect(sundayDay).not.toBeNull();
     expect(sundayDay).toHaveTextContent('Descanso');

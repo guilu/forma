@@ -93,6 +93,30 @@ const DAY_LABELS: Record<string, string> = {
   SUNDAY: 'Domingo',
 };
 
+/**
+ * Day names for the seven-column week strip, where the full ones do not fit.
+ *
+ * <p>At 1280px each card is about 76px wide and carries a status dot pinned to
+ * its corner, which left "MIÉRCOLES" overlapping that dot by 13px and "DOMINGO"
+ * by 8. Shortening the label fixes it at every width, which shrinking the type
+ * would not: the full names come back the moment the window narrows or an
+ * eighth column appears.
+ *
+ * <p>Only the strip uses these. Everywhere with room — today's card, the detail
+ * dialog, the reschedule menu, the toast — keeps the whole word, and so does
+ * every screen reader, since the heading carries the full name as its
+ * accessible name.
+ */
+const DAY_LABELS_SHORT: Record<string, string> = {
+  MONDAY: 'Lun',
+  TUESDAY: 'Mar',
+  WEDNESDAY: 'Mié',
+  THURSDAY: 'Jue',
+  FRIDAY: 'Vie',
+  SATURDAY: 'Sáb',
+  SUNDAY: 'Dom',
+};
+
 const KIND_LABELS: Record<TrainingSession['kind'], string> = {
   RUNNING: 'Carrera',
   STRENGTH: 'Fuerza',
@@ -741,8 +765,14 @@ function WeeklyCalendar({
               .join(' ')}
           >
             <div className={styles.calendarDayHead}>
-              <h3 className={styles.calendarDayTitle}>
-                {DAY_LABELS[day.dayOfWeek] ?? day.dayOfWeek}
+              {/* Abbreviated on screen, whole word to assistive tech: "MIÉ" is
+                  a glance-able column header for someone reading the strip, and
+                  a worse label for someone hearing it one card at a time. */}
+              <h3
+                className={styles.calendarDayTitle}
+                aria-label={DAY_LABELS[day.dayOfWeek] ?? day.dayOfWeek}
+              >
+                {DAY_LABELS_SHORT[day.dayOfWeek] ?? day.dayOfWeek}
               </h3>
               {!day.rest && (
                 <span
