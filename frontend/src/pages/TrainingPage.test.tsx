@@ -572,6 +572,65 @@ describe('TrainingPage', () => {
   });
 
   /*
+   * A run is one session with exactly two states, pending or done, so the ring
+   * beside it could only ever read 0% or 100% — a progress dial for something
+   * that has no progress. The run card drops it and gives the figure the middle
+   * of the card, the way the rest day already does.
+   */
+  describe("today's completion ring", () => {
+    const runningToday: TrainingWeek = {
+      days: week.days.map((day) =>
+        day.dayOfWeek === 'MONDAY'
+          ? {
+              ...day,
+              sessions: [
+                {
+                  id: 'MONDAY:RUNNING',
+                  kind: 'RUNNING',
+                  bodyView: 'FRONT',
+                  title: 'Series',
+                  detail: '4.0 km',
+                  status: 'PLANNED',
+                },
+              ],
+            }
+          : day,
+      ),
+    };
+
+    it('is left off a running day', async () => {
+      getWeekMock.mockResolvedValue(runningToday);
+
+      renderPage();
+      const todayCard = (
+        await screen.findByRole('heading', { name: 'Entrenamiento de hoy' })
+      ).closest('section') as HTMLElement;
+
+      expect(within(todayCard).queryByText('0%')).not.toBeInTheDocument();
+      expect(within(todayCard).queryByText('En progreso')).not.toBeInTheDocument();
+      expect(within(todayCard).queryByText('0 / 1 sesión')).not.toBeInTheDocument();
+      // The run still says what it is and how it is closed.
+      expect(within(todayCard).getByText('Series')).toBeInTheDocument();
+      expect(
+        within(todayCard).getByRole('button', { name: 'Completar carrera' }),
+      ).toBeInTheDocument();
+    });
+
+    it('still reports session completion on a strength day', async () => {
+      getWeekMock.mockResolvedValue(week);
+
+      renderPage();
+      const todayCard = (
+        await screen.findByRole('heading', { name: 'Entrenamiento de hoy' })
+      ).closest('section') as HTMLElement;
+
+      expect(within(todayCard).getByText('0%')).toBeInTheDocument();
+      expect(within(todayCard).getByText('En progreso')).toBeInTheDocument();
+      expect(within(todayCard).getByText('0 / 1 sesión')).toBeInTheDocument();
+    });
+  });
+
+  /*
    * A run has no per-exercise screen to open, so its action marks completion
    * in place — and has to be undoable, or a mistaken tap is permanent.
    */
