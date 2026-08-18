@@ -7,6 +7,7 @@ import { NotificationProvider } from '../components/NotificationProvider';
 import {
   getMuscleMap,
   getTrainingWeek,
+  rescheduleSession,
   updateSessionStatus,
   type TrainingWeek,
 } from '../api/training';
@@ -34,6 +35,7 @@ vi.mock('../api/training', () => ({
   getTrainingWeek: vi.fn(),
   updateSessionStatus: vi.fn(),
   getMuscleMap: vi.fn(),
+  rescheduleSession: vi.fn(),
 }));
 
 // FOR-143: streak + weekly-history widgets fetch independently of the week
@@ -48,6 +50,7 @@ vi.mock('../api/progress', () => ({
 vi.mock('../api/profile', () => ({ getProfile: vi.fn() }));
 
 const getWeekMock = vi.mocked(getTrainingWeek);
+const rescheduleMock = vi.mocked(rescheduleSession);
 const updateMock = vi.mocked(updateSessionStatus);
 const getMuscleMapMock = vi.mocked(getMuscleMap);
 const getStreakMock = vi.mocked(getStreak);
@@ -234,12 +237,21 @@ describe('TrainingPage', () => {
     expect(screen.getByRole('heading', { name: 'Lunes', level: 3 })).toBeInTheDocument();
     const mondayDay = screen.getByRole('heading', { name: 'Lunes', level: 3 }).closest('li');
     expect(mondayDay).not.toBeNull();
-    expect(within(mondayDay as HTMLElement).getByTestId('anatomy-figure')).toHaveAttribute(
-      'data-view',
-      'back',
-    );
-    // Sunday is a rest day: shown, with no session controls for it.
-    const sundayHeading = screen.getByText('Domingo');
+    // Strength days draw the front sheet only, even for a pull session whose
+    // own bodyView is BACK: at card size a front/back pair would halve each
+    // body. The detail view is where both sheets are shown.
+    // Queried by attribute, not by role: the silhouette is decorative
+    // (`alt=""`), which makes it a presentation node rather than an image.
+    expect(
+      (mondayDay as HTMLElement)
+        .querySelector('[data-silhouette]')
+        ?.getAttribute('data-silhouette'),
+    ).toBe('male/front');
+    // Sunday is a rest day: shown, with no session controls for it. Queried by
+    // accessible name, not by text: the strip prints "DOM" and carries the whole
+    // word on the heading, so this also pins that the short label never reaches
+    // assistive tech.
+    const sundayHeading = screen.getByRole('heading', { name: 'Domingo', level: 3 });
     const sundayDay = sundayHeading.closest('li');
     expect(sundayDay).not.toBeNull();
     expect(sundayDay).toHaveTextContent('Descanso');
@@ -259,6 +271,38 @@ describe('TrainingPage', () => {
     expect(screen.getByRole('dialog', { name: /Lunes · Fuerza/ })).toBeInTheDocument();
     // Documented gap: no exercise-level breakdown is available from the API.
     expect(screen.getByText(/no está disponible todavía/)).toBeInTheDocument();
+  });
+
+  it('moves a session to another day from its detail', async () => {
+    getWeekMock.mockResolvedValue(week);
+    rescheduleMock.mockResolvedValue({ days: [] });
+    const user = userEvent.setup();
+
+    renderPage();
+    await screen.findByRole('heading', { name: 'Calendario semanal' });
+    await user.click(screen.getByRole('button', { name: 'Detalle' }));
+
+    const dialog = await screen.findByRole('dialog', { name: /Lunes · Fuerza/ });
+    await user.selectOptions(within(dialog).getByLabelText('Mover a otro día'), 'WEDNESDAY');
+
+    expect(rescheduleMock).toHaveBeenCalledWith('MONDAY:STRENGTH', 'WEDNESDAY');
+    // The week is refetched so the calendar redraws on the session's new day.
+    await waitFor(() => expect(getWeekMock).toHaveBeenCalledTimes(2));
+  });
+
+  it('reports a failed move without losing the session detail', async () => {
+    getWeekMock.mockResolvedValue(week);
+    rescheduleMock.mockRejectedValue(new Error('network'));
+    const user = userEvent.setup();
+
+    renderPage();
+    await screen.findByRole('heading', { name: 'Calendario semanal' });
+    await user.click(screen.getByRole('button', { name: 'Detalle' }));
+
+    const dialog = await screen.findByRole('dialog', { name: /Lunes · Fuerza/ });
+    await user.selectOptions(within(dialog).getByLabelText('Mover a otro día'), 'WEDNESDAY');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/No se pudo mover/i);
   });
 
   it('loads and renders the FOR-136 muscle map for a strength session, grouped and normalized', async () => {
@@ -440,16 +484,31 @@ describe('TrainingPage', () => {
     );
   });
 
-  it('names both session kinds in the calendar legend, not just the statuses', async () => {
+  it('keys the calendar legend to the three session statuses and nothing else', async () => {
     getWeekMock.mockResolvedValue(week);
     renderPage();
     await screen.findByRole('heading', { name: 'Calendario semanal' });
 
     const legend = screen.getByRole('list', { name: 'Leyenda del calendario' });
 
-    for (const entry of ['Completado', 'Hoy', 'Pendiente', 'Fuerza', 'Carrera', 'Descanso']) {
+    for (const entry of ['Completado', 'Pendiente', 'Saltado']) {
       expect(within(legend).getByText(entry)).toBeInTheDocument();
     }
+    // The kinds left the legend when the badges left the cards, and "Hoy" went
+    // with them: a colour key for something the grid never draws in that colour
+    // is noise, and the highlighted card is its own label.
+    for (const gone of ['Hoy', 'Fuerza', 'Carrera', 'Descanso']) {
+      expect(within(legend).queryByText(gone)).not.toBeInTheDocument();
+    }
+  });
+
+  it('shows each day status in the card corner', async () => {
+    getWeekMock.mockResolvedValue(week);
+    renderPage();
+    await screen.findByRole('heading', { name: 'Calendario semanal' });
+
+    const monday = screen.getByRole('heading', { name: 'Lunes', level: 3 }).closest('li');
+    expect(within(monday as HTMLElement).getByLabelText('Pendiente')).toBeInTheDocument();
   });
 
   /*

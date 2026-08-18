@@ -9,7 +9,6 @@ import dev.diegobarrioh.forma.domain.StrengthWorkoutItem;
 import dev.diegobarrioh.forma.domain.StrengthWorkoutTemplate;
 import dev.diegobarrioh.forma.domain.WeeklyTrainingDayPolicy;
 import dev.diegobarrioh.forma.domain.WorkoutType;
-import java.time.DayOfWeek;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,18 +20,19 @@ import org.springframework.stereotype.Service;
  * primaryMuscles} into a muscle -&gt; {@link MuscleLoad} map. Pure derivation — no new persistence,
  * no catalog extension (spec FOR-136 NFR).
  *
- * <p><b>Session id scheme (resolved Open Question, spec FOR-136):</b> the FOR-26 weekly-schedule
- * stable id ({@code "<DAY>:STRENGTH"}, e.g. {@code "MONDAY:STRENGTH"}), the same id the FOR-27
- * {@link TrainingSessionStatusService} already validates against and the id the frontend already
- * has from {@code GET /training/week}. Chosen over the workout-template id so the same id
+ * <p><b>Session id scheme (resolved Open Question, spec FOR-136; re-keyed by V60):</b> the FOR-26
+ * weekly-schedule stable id ({@code "STRENGTH:<TYPE>"}, e.g. {@code "STRENGTH:PUSH"}), the same id
+ * the FOR-27 {@link TrainingSessionStatusService} already validates against and the id the frontend
+ * already has from {@code GET /training/week}. Chosen over the workout-template id so the same id
  * consistently identifies "this week's session" across the training API, and so this service can
  * reuse {@link WeeklyTrainingScheduleService#currentWeek()} for id validation instead of
  * duplicating it.
  *
  * <p><b>No duplicated resolution logic (spec FOR-136 NFR):</b> the session id is validated against
  * the real {@link WeeklyTrainingScheduleService#currentWeek()} entries (exactly like {@link
- * TrainingSessionStatusService}), the day -&gt; {@link WorkoutType} mapping reuses the shared
- * {@link WeeklyTrainingDayPolicy} (FOR-128), the template lookup reuses {@link
+ * TrainingSessionStatusService}), the {@link WorkoutType} is read off the entry the schedule
+ * already resolved (rather than re-derived from the day, which stopped being the session's identity
+ * in V60 and can now be overridden by a reschedule), the template lookup reuses {@link
  * WorkoutTemplateService} (FOR-25), and each exercise lookup reuses {@link ExerciseCatalogService}
  * (FOR-24).
  *
@@ -72,7 +72,7 @@ public class MuscleWorkedMapService {
       for (TrainingEntry entry : day.entries()) {
         if (entry.id().equals(sessionId)) {
           return STRENGTH_KIND.equals(entry.kind())
-              ? aggregate(sessionId, day.dayOfWeek())
+              ? aggregate(sessionId, WorkoutType.valueOf(entry.workoutType()))
               : new MuscleWorkedMap(sessionId, List.of());
         }
       }
@@ -80,13 +80,12 @@ public class MuscleWorkedMapService {
     throw new NotFoundException("No existe la sesión de entrenamiento: " + sessionId);
   }
 
-  private MuscleWorkedMap aggregate(String sessionId, DayOfWeek day) {
-    WorkoutType type = WeeklyTrainingDayPolicy.strengthDays().get(day);
+  private MuscleWorkedMap aggregate(String sessionId, WorkoutType type) {
     StrengthWorkoutTemplate template =
         workoutTemplateService
             .findByType(type)
             .orElseThrow(
-                () -> new IllegalStateException("no workout template for strength day: " + day));
+                () -> new IllegalStateException("no workout template for strength type: " + type));
 
     // LinkedHashMap: deterministic output order (first-appearance across the template's items).
     Map<String, Integer> frequencyByMuscle = new LinkedHashMap<>();

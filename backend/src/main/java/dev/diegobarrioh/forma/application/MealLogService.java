@@ -6,7 +6,6 @@ import dev.diegobarrioh.forma.domain.MacroTargets;
 import dev.diegobarrioh.forma.domain.MealLog;
 import dev.diegobarrioh.forma.domain.MealLogEntry;
 import dev.diegobarrioh.forma.domain.NutritionDayType;
-import dev.diegobarrioh.forma.domain.NutritionDayTypeResolver;
 import dev.diegobarrioh.forma.domain.NutritionTotals;
 import dev.diegobarrioh.forma.domain.TargetComparison;
 import java.time.Clock;
@@ -32,8 +31,9 @@ import org.springframework.stereotype.Service;
  *
  * <p><b>Plan-target resolution (FOR-128, moved onto real plans by V53/V54).</b> {@link
  * #consumption} resolves {@code date} to a {@link NutritionDayType} via {@link
- * NutritionDayTypeResolver} (which itself reuses the shared training day-classification — no
- * duplicated policy, no circular dependency on any training service), asks {@link DayTargetSource}
+ * ScheduledNutritionDayTypeService} — the training actually planned that day, so a session moved
+ * within the week (V60) takes its consumption target with it, falling back to the shared
+ * day-classification policy for any date outside the composed week — asks {@link DayTargetSource}
  * what the caller's ACTIVE PLAN targets for that kind of day, and compares it to the day's consumed
  * totals via {@link TargetComparison#of}.
  *
@@ -59,6 +59,8 @@ public class MealLogService {
   private final PlannedMealOwnership plannedMeals;
   private final ServingLookup servings;
 
+  private final ScheduledNutritionDayTypeService dayTypes;
+
   public MealLogService(
       MealLogRepository repository,
       Clock clock,
@@ -66,7 +68,8 @@ public class MealLogService {
       FoodCatalogService foods,
       PlannedDaySource planDays,
       PlannedMealOwnership plannedMeals,
-      ServingLookup servings) {
+      ServingLookup servings,
+      ScheduledNutritionDayTypeService dayTypes) {
     this.repository = repository;
     this.clock = clock;
     this.currentUserProvider = currentUserProvider;
@@ -74,6 +77,7 @@ public class MealLogService {
     this.planDays = planDays;
     this.plannedMeals = plannedMeals;
     this.servings = servings;
+    this.dayTypes = dayTypes;
   }
 
   /**
@@ -177,7 +181,9 @@ public class MealLogService {
     NutritionTotals consumed = log.consumedTotals();
     KeyNutrientTotals keyNutrients = log.consumedKeyNutrients();
 
-    NutritionDayType dayType = NutritionDayTypeResolver.resolve(date);
+    // Follows the training actually planned that day, not the weekday: a session moved this week
+    // (V60) moves its consumption target with it, instead of the two views disagreeing in silence.
+    NutritionDayType dayType = dayTypes.resolve(date);
     // The target comes from the user's ACTIVE PLAN rather than from constants in the jar (V53/V54).
     // Same shape of answer as before — a target for this kind of day, or null — but it is now a
     // target somebody can edit, and null is now a real state (no plan yet) rather than a fail-safe.

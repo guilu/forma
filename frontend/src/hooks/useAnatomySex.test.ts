@@ -20,7 +20,7 @@ describe('useAnatomySex', () => {
     expect(result.current).toBe('male');
   });
 
-  it("switches to the female figure for a FEMALE profile", async () => {
+  it('switches to the female figure for a FEMALE profile', async () => {
     getProfileMock.mockResolvedValue({ sex: 'FEMALE' } as never);
 
     const { result } = renderHook(() => useAnatomySex());

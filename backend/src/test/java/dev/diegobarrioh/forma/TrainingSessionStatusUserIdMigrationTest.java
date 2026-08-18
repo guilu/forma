@@ -49,10 +49,12 @@ class TrainingSessionStatusUserIdMigrationTest {
               + " VALUES ('SATURDAY:RUNNING', 'COMPLETED', 'felt good')");
     }
 
-    // Now run V31.
+    // Now run V31. Pinned to 31 rather than migrating to latest: this test is about the state V31
+    // leaves behind, and V60 later drops this table wholesale to re-key it by week.
     Flyway.configure()
         .dataSource(url, "sa", "")
         .locations("classpath:db/migration")
+        .target("31")
         .load()
         .migrate();
 
@@ -75,9 +77,11 @@ class TrainingSessionStatusUserIdMigrationTest {
       throws Exception {
     String url = "jdbc:h2:mem:for145c_training_status_pk;MODE=PostgreSQL;DB_CLOSE_DELAY=-1";
 
+    // Pinned to 31 for the same reason as the test above: V60 re-keys this table by week.
     Flyway.configure()
         .dataSource(url, "sa", "")
         .locations("classpath:db/migration")
+        .target("31")
         .load()
         .migrate();
 

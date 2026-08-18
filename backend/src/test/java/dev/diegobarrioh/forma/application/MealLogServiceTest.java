@@ -81,6 +81,21 @@ class MealLogServiceTest {
                       "banana-md", "banana", "Mediano", new java.math.BigDecimal("120.0"), true, 0))
               : java.util.Optional.empty();
 
+  /**
+   * Nothing is moved in these tests, so this resolves day types exactly as the shared policy does —
+   * they are about logging and targets, not about rescheduling (see {@link
+   * ScheduledNutritionDayTypeServiceTest} for the moved-session cases).
+   */
+  private static final ScheduledNutritionDayTypeService DAY_TYPES =
+      new ScheduledNutritionDayTypeService(
+          new WeeklyTrainingScheduleService(
+              new RunningPlanService(),
+              new WorkoutTemplateService(),
+              new FakeTrainingSessionStatusRepository(),
+              () -> USER_ID,
+              FIXED_CLOCK),
+          FIXED_CLOCK);
+
   private final RecordingMealLogRepository repository = new RecordingMealLogRepository();
   private final MealLogService service =
       new MealLogService(
@@ -90,7 +105,8 @@ class MealLogServiceTest {
           SeededFoodCatalog.service(),
           PLAN_DAYS,
           OWNS_NOTHING,
-          SERVINGS);
+          SERVINGS,
+          DAY_TYPES);
 
   @Test
   void logsACatalogEntryResolvingFoodAndPortionsToMacrosViaTheCalculator() {
@@ -261,7 +277,8 @@ class MealLogServiceTest {
             SeededFoodCatalog.service(),
             (userId, type) -> java.util.Optional.empty(),
             OWNS_NOTHING,
-            SERVINGS);
+            SERVINGS,
+            DAY_TYPES);
     planless.log(LogMealCommand.free(TODAY, MealType.BREAKFAST, "A", 100, 10.0, 10.0, 10.0));
 
     DayConsumption consumption = planless.consumption(TODAY);
@@ -423,7 +440,8 @@ class MealLogServiceTest {
             SeededFoodCatalog.service(),
             PLAN_DAYS,
             (userId, mealId) -> userId.equals(USER_ID) && mealId.equals(plannedMealId),
-            SERVINGS);
+            SERVINGS,
+            DAY_TYPES);
     ownerService.log(
         new LogMealCommand(
             TODAY,

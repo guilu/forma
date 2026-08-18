@@ -26,7 +26,8 @@ public record WeeklyTrainingSchedule(List<TrainingDay> days) {
   /**
    * A single planned session shown in the calendar.
    *
-   * @param id stable session id (e.g. {@code "SATURDAY:RUNNING"}); used to mark completion (FOR-27)
+   * @param id stable session id naming what the session is, with no day in it (e.g. {@code
+   *     "RUNNING:LONG_RUN"}); used to mark completion (FOR-27) and to move it (V60)
    * @param kind {@code "RUNNING"} or {@code "STRENGTH"}
    * @param title short human-readable title (e.g. "Tirada larga", "Fuerza · Empuje")
    * @param detail secondary line (e.g. "10.0 km", "4 ejercicios")

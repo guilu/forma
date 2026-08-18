@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { DashboardPage } from './DashboardPage';
+import { NotificationProvider } from '../components/NotificationProvider';
 import { listBodyMeasurements, type BodyMeasurement } from '../api/bodyMeasurements';
 import { getTrainingWeek, type TrainingWeek } from '../api/training';
 import {
@@ -124,9 +125,13 @@ const shoppingList: ShoppingList = {
 };
 
 function renderDashboard() {
+  /* Mirrors App.tsx, which wraps every route in the provider: the menu widget's
+     meal checks report a failed write through it. */
   return render(
     <MemoryRouter>
-      <DashboardPage />
+      <NotificationProvider>
+        <DashboardPage />
+      </NotificationProvider>
     </MemoryRouter>,
   );
 }

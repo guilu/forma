@@ -11,6 +11,6 @@ import dev.diegobarrioh.forma.application.StoredSessionStatus;
 public record SessionStatusResponse(String id, String status, String notes) {
 
   public static SessionStatusResponse from(StoredSessionStatus stored) {
-    return new SessionStatusResponse(stored.sessionId(), stored.status().name(), stored.notes());
+    return new SessionStatusResponse(stored.sessionKey(), stored.status().name(), stored.notes());
   }
 }

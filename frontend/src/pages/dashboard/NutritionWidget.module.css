@@ -19,16 +19,75 @@
   gap: var(--space-3);
 }
 
-.mealIcon {
+/*
+ * The row's leading control, in the slot the decorative glyph used to hold.
+ * Same treatment as the nutrition page's own check so the two read as one
+ * control in two places: an outline while the meal is pending, filled accent
+ * once it is done.
+ */
+.check {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
   flex-shrink: 0;
-  color: var(--color-accent-strong);
-  background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
-  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.check:has(.checkInput:disabled) {
+  cursor: default;
+}
+
+/* The real control is still there, invisible but focusable: the keyboard and
+   the screen reader belong to it, and reimplementing them worse is the usual
+   way to shut someone out. */
+.checkInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.checkMark {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  color: transparent;
+}
+
+.checkInput:checked + .checkMark {
+  border-color: var(--color-accent);
+  background-color: var(--color-accent);
+  color: var(--color-accent-contrast, #fff);
+}
+
+.checkInput:focus-visible + .checkMark {
+  outline: 2px solid var(--color-accent-strong, var(--color-accent));
+  outline-offset: 2px;
+}
+
+.checkInput:disabled:not(:checked) + .checkMark {
+  opacity: 0.5;
+}
+
+/* Visible to whoever hears the page, not to whoever looks at it: the box
+   explains itself next to the meal it names. */
+.checkLabel {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .mealText {

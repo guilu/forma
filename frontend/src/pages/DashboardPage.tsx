@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
 import { WaterTracker } from '../components/WaterTracker';
@@ -38,6 +38,21 @@ export function DashboardPage() {
   const todayIso = localIsoDate(today);
   const [consumption, setConsumption] = useState<TodayConsumptionState>({ status: 'loading' });
   const [menu, setMenu] = useState<TodayMenuState>({ status: 'loading' });
+  /*
+   * Refetched, not patched in place: marking a meal changes the day's consumed
+   * totals, its per-meal states and the progress bar, and the server is the one
+   * that recomputes all three. Guessing them here would put the nutrition maths
+   * in the browser.
+   */
+  const reloadConsumption = useCallback(
+    () =>
+      getDayConsumption(todayIso).then((current) => {
+        setConsumption({ status: 'ready', consumption: current });
+        return current;
+      }),
+    [todayIso],
+  );
+
   useEffect(() => {
     let active = true;
     getDayConsumption(todayIso)
@@ -165,6 +180,8 @@ export function DashboardPage() {
           <TrainingWidget date={today} />
           <NutritionWidget
             menu={menu}
+            dateIso={todayIso}
+            onMealToggled={reloadConsumption}
             consumption={consumption.status === 'ready' ? consumption.consumption : undefined}
           />
           <TrendWidget />

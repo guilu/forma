@@ -260,15 +260,16 @@ class ClassCCrossUserIsolationEndToEndTest {
 
   /**
    * FOR-145c migration V31's core purpose: {@code training_session_status}'s primary key was
-   * rebuilt from a bare {@code session_id} (colliding across every account) to a composite {@code
-   * (user_id, session_id)}. Proven directly at the table level (deterministic, no real-clock
-   * dependency) rather than via the day-of-week-sensitive {@code /training/week} read model.
+   * rebuilt from a bare {@code session_id} (colliding across every account) to a composite keyed by
+   * owner — {@code (user_id, week_start, session_key)} since V60. Proven directly at the table
+   * level (deterministic, no real-clock dependency) rather than via the {@code /training/week} read
+   * model, whose contents depend on the day the suite runs.
    */
   @Test
   void userBsTrainingSessionStatusNeverReflectsOrOverwritesUserAsCompletion() throws Exception {
     mockMvc
         .perform(
-            patch("/api/v1/training/sessions/SATURDAY:RUNNING/status")
+            patch("/api/v1/training/sessions/RUNNING:LONG_RUN/status")
                 .with(AuthTestSupport.asUser(USER_A, EMAIL_A))
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -279,7 +280,7 @@ class ClassCCrossUserIsolationEndToEndTest {
     // the pre-V31 bare session_id PK this would have silently overwritten A's row.
     mockMvc
         .perform(
-            patch("/api/v1/training/sessions/SATURDAY:RUNNING/status")
+            patch("/api/v1/training/sessions/RUNNING:LONG_RUN/status")
                 .with(AuthTestSupport.asUser(USER_B, EMAIL_B))
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -288,16 +289,16 @@ class ClassCCrossUserIsolationEndToEndTest {
 
     String statusA =
         jdbcTemplate.queryForObject(
-            "SELECT status FROM training_session_status WHERE user_id = ? AND session_id = ?",
+            "SELECT status FROM training_session_status WHERE user_id = ? AND session_key = ?",
             String.class,
             USER_A,
-            "SATURDAY:RUNNING");
+            "RUNNING:LONG_RUN");
     String statusB =
         jdbcTemplate.queryForObject(
-            "SELECT status FROM training_session_status WHERE user_id = ? AND session_id = ?",
+            "SELECT status FROM training_session_status WHERE user_id = ? AND session_key = ?",
             String.class,
             USER_B,
-            "SATURDAY:RUNNING");
+            "RUNNING:LONG_RUN");
 
     // Two independent rows -- B's write never touched A's.
     assertThat(statusA).isEqualTo("COMPLETED");

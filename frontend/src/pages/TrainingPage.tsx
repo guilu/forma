@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Badge } from '../components/Badge';
-import { BodyFigure } from '../components/BodyFigure';
 import { MuscleSilhouette, type AnatomySex } from '../components/MuscleSilhouette';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
@@ -22,7 +21,9 @@ import { getStreak, type Streak } from '../api/progress';
 import {
   getMuscleMap,
   getTrainingWeek,
+  rescheduleSession,
   updateSessionStatus,
+  type DayOfWeek,
   type MuscleWorked,
   type SessionStatus,
   type TrainingDay,
@@ -92,12 +93,37 @@ const DAY_LABELS: Record<string, string> = {
   SUNDAY: 'Domingo',
 };
 
+/**
+ * Day names for the seven-column week strip, where the full ones do not fit.
+ *
+ * <p>At 1280px each card is about 76px wide and carries a status dot pinned to
+ * its corner, which left "MIÉRCOLES" overlapping that dot by 13px and "DOMINGO"
+ * by 8. Shortening the label fixes it at every width, which shrinking the type
+ * would not: the full names come back the moment the window narrows or an
+ * eighth column appears.
+ *
+ * <p>Only the strip uses these. Everywhere with room — today's card, the detail
+ * dialog, the reschedule menu, the toast — keeps the whole word, and so does
+ * every screen reader, since the heading carries the full name as its
+ * accessible name.
+ */
+const DAY_LABELS_SHORT: Record<string, string> = {
+  MONDAY: 'Lun',
+  TUESDAY: 'Mar',
+  WEDNESDAY: 'Mié',
+  THURSDAY: 'Jue',
+  FRIDAY: 'Vie',
+  SATURDAY: 'Sáb',
+  SUNDAY: 'Dom',
+};
+
 const KIND_LABELS: Record<TrainingSession['kind'], string> = {
   RUNNING: 'Carrera',
   STRENGTH: 'Fuerza',
 };
 
 const MARK_ERROR = 'No se pudo actualizar la sesión. Inténtalo de nuevo.';
+const MOVE_ERROR = 'No se pudo mover la sesión. Inténtalo de nuevo.';
 
 /**
  * FOR-164 hybrid placeholders (`docs/3-entrenamiento-dash.png`). None of these
@@ -236,6 +262,28 @@ export function TrainingPage() {
     }
   }
 
+  /**
+   * Moves a session to another day of this week. The week is refetched rather
+   * than patched in place: the move changes which day every other session
+   * shares it with, so the calendar has to redraw anyway. The detail closes
+   * because the session it was showing is no longer on the day it was opened
+   * from.
+   */
+  async function move(sessionId: string, day: DayOfWeek) {
+    setActionError(undefined);
+    setPendingId(sessionId);
+    try {
+      await rescheduleSession(sessionId, day);
+      await load();
+      setDetailTarget(undefined);
+      notify.success(`Sesión movida a ${DAY_LABELS[day].toLocaleLowerCase('es-ES')}.`);
+    } catch (error) {
+      setActionError(error instanceof ApiRequestError ? error.message : MOVE_ERROR);
+    } finally {
+      setPendingId(undefined);
+    }
+  }
+
   const selectedIndex = weekIndexOf(selectedDay);
   const selectedDate = dateOfWeekday(selectedDay);
 
@@ -300,6 +348,7 @@ export function TrainingPage() {
         <SessionDetailModal
           target={detailTarget}
           onClose={() => setDetailTarget(undefined)}
+          move={move}
           mark={mark}
           pending={pendingId === detailTarget.session.id}
         />
@@ -407,14 +456,12 @@ function TodaySessionCard({
         {/* The rest day gets a body too. It used to be a bare sentence in an
             otherwise empty card, which read as a page that had failed to load
             rather than as a day with nothing planned. */}
-        <div className={styles.todayLayout}>
+        <div className={styles.todayRestLayout}>
           <p className={styles.rest}>
             {isToday ? 'Hoy es día de descanso.' : 'Ese día es de descanso.'}
           </p>
-          <div className={styles.todayVisual}>
-            <div className={styles.todayFigures}>
-              <MuscleSilhouette className={styles.todayFigure} sex={anatomySex} variant="rest" />
-            </div>
+          <div className={styles.todayRestFigure}>
+            <MuscleSilhouette className={styles.todayRestBody} sex={anatomySex} variant="rest" />
           </div>
         </div>
       </Card>
@@ -717,13 +764,33 @@ function WeeklyCalendar({
               .filter(Boolean)
               .join(' ')}
           >
-            <h3 className={styles.calendarDayTitle}>
-              {DAY_LABELS[day.dayOfWeek] ?? day.dayOfWeek}
-            </h3>
+            <div className={styles.calendarDayHead}>
+              {/* Abbreviated on screen, whole word to assistive tech: "MIÉ" is
+                  a glance-able column header for someone reading the strip, and
+                  a worse label for someone hearing it one card at a time. */}
+              <h3
+                className={styles.calendarDayTitle}
+                aria-label={DAY_LABELS[day.dayOfWeek] ?? day.dayOfWeek}
+              >
+                {DAY_LABELS_SHORT[day.dayOfWeek] ?? day.dayOfWeek}
+              </h3>
+              {!day.rest && (
+                <span
+                  className={styles.calendarDayStatus}
+                  data-status={dayStatus(day)}
+                  role="img"
+                  aria-label={SESSION_STATUS_LABELS[dayStatus(day)]}
+                />
+              )}
+            </div>
             {day.rest ? (
               <div className={styles.calendarRest}>
-                <Badge tone="neutral">Descanso</Badge>
-                <BodyFigure variant="rest" size={72} />
+                <MuscleSilhouette
+                  className={styles.calendarFigure}
+                  sex={anatomySex}
+                  variant="rest"
+                />
+                <span className={styles.calendarSessionTitle}>Descanso</span>
               </div>
             ) : (
               <ul className={styles.calendarSessions}>
@@ -732,31 +799,22 @@ function WeeklyCalendar({
                     <button
                       type="button"
                       className={styles.calendarSessionButton}
+                      /*
+                       * Names what the card no longer writes down. The kind badge
+                       * and the status pill left the card for the silhouette and
+                       * the corner dot, both of which are decorative — so without
+                       * this the button would announce just "Tirada larga" and a
+                       * screen reader would lose the two facts the redesign moved
+                       * into colour and shape.
+                       */
+                      aria-label={`${KIND_LABELS[session.kind]} · ${stripKindPrefix(
+                        session.title,
+                      )}. ${SESSION_STATUS_LABELS[session.status]}`}
                       onClick={() => openDetail({ dayOfWeek: day.dayOfWeek, session })}
                     >
-                      <Badge tone={session.kind === 'RUNNING' ? 'accent' : 'violet'}>
-                        {KIND_LABELS[session.kind]}
-                      </Badge>
+                      <CalendarFigure session={session} sex={anatomySex} />
                       <span className={styles.calendarSessionTitle}>
                         {stripKindPrefix(session.title)}
-                      </span>
-                      <BodyFigure
-                        view={session.bodyView.toLowerCase() as 'front' | 'back'}
-                        sex={anatomySex}
-                        variant={session.kind === 'RUNNING' ? 'running' : 'strength'}
-                        active={session.status === 'COMPLETED'}
-                        size={64}
-                      />
-                      <StatusPill kind="training" value={session.status} />
-                      <span
-                        className={styles.calendarSessionProgress}
-                        role="progressbar"
-                        aria-label={`Progreso de ${session.title}`}
-                        aria-valuemin={0}
-                        aria-valuemax={100}
-                        aria-valuenow={session.status === 'COMPLETED' ? 100 : 0}
-                      >
-                        <span style={{ width: session.status === 'COMPLETED' ? '100%' : '0%' }} />
                       </span>
                     </button>
                   </li>
@@ -784,36 +842,90 @@ function WeeklyCalendar({
           );
         })}
       </div>
-      {/* Two axes in one legend, as the mockup has it: the timeline's statuses
-          and the badge/figure colour that tells the two session kinds apart.
-          "Pendiente" stays even though the mockup's fully-completed week never
-          shows it — the grid does render that state. */}
+      {/* One axis only: what happened to the session. The kind (running vs
+          strength) left the legend when it left the cards — the silhouette
+          already says it, and a colour key for something never drawn in that
+          colour is noise. "Hoy" went too: the highlighted card is the label. */}
       <ul className={styles.calendarLegend} aria-label="Leyenda del calendario">
         <li>
           <span className={`${styles.legendDot} ${styles.legendDone}`} aria-hidden="true" />{' '}
           Completado
         </li>
         <li>
-          <span className={`${styles.legendDot} ${styles.legendToday}`} aria-hidden="true" /> Hoy
-        </li>
-        <li>
           <span className={`${styles.legendDot} ${styles.legendPending}`} aria-hidden="true" />{' '}
           Pendiente
         </li>
         <li>
-          <span className={`${styles.legendDot} ${styles.legendStrength}`} aria-hidden="true" />{' '}
-          Fuerza
-        </li>
-        <li>
-          <span className={`${styles.legendDot} ${styles.legendRunning}`} aria-hidden="true" />{' '}
-          Carrera
-        </li>
-        <li>
-          <span className={`${styles.legendDot} ${styles.legendRest}`} aria-hidden="true" />{' '}
-          Descanso
+          <span className={`${styles.legendDot} ${styles.legendSkipped}`} aria-hidden="true" />{' '}
+          Saltado
         </li>
       </ul>
     </Card>
+  );
+}
+
+const SESSION_STATUS_LABELS: Record<SessionStatus, string> = {
+  PLANNED: 'Pendiente',
+  COMPLETED: 'Completado',
+  SKIPPED: 'Saltado',
+};
+
+/**
+ * The single status the day's dot shows.
+ *
+ * <p>A day usually holds one session, but it can hold two since sessions can be
+ * moved onto the same day — so the dot has to say something about a set, not
+ * just read one status off. Completed only when every session is: a day with
+ * one done and one still to do is not a done day. Skipped only when nothing is
+ * left pending, so the amber never hides outstanding work.
+ */
+function dayStatus(day: TrainingDay): SessionStatus {
+  const sessions = day.sessions;
+  if (sessions.length > 0 && sessions.every((session) => session.status === 'COMPLETED')) {
+    return 'COMPLETED';
+  }
+  if (
+    sessions.some((session) => session.status === 'SKIPPED') &&
+    !sessions.some((session) => session.status === 'PLANNED')
+  ) {
+    return 'SKIPPED';
+  }
+  return 'PLANNED';
+}
+
+/**
+ * The body drawn on a calendar card: one silhouette, always front for strength.
+ *
+ * <p>Only the front sheet, unlike the today card's front/back pair — at this
+ * size two bodies would each get half the width and neither would read. The
+ * cost is honest and worth naming: a pull day's lats and rear delts live on the
+ * back sheet, so this card lights the biceps and leaves the rest dark. The
+ * detail view is where the full pair is.
+ *
+ * <p>Running and rest carry their own whole-body art with the worked muscles
+ * already drawn into the asset, so they need no overlay and no request.
+ */
+function CalendarFigure({
+  session,
+  sex,
+}: {
+  readonly session: TrainingSession;
+  readonly sex: AnatomySex;
+}) {
+  const isStrength = session.kind === 'STRENGTH';
+  const muscles = useSessionMuscles(isStrength ? session.id : undefined);
+
+  if (!isStrength) {
+    return <MuscleSilhouette className={styles.calendarFigure} sex={sex} variant="running" />;
+  }
+
+  return (
+    <MuscleSilhouette
+      className={styles.calendarFigure}
+      sex={sex}
+      view="front"
+      muscles={overlayFromMuscleMap(muscles)}
+    />
   );
 }
 
@@ -1084,11 +1196,13 @@ function SessionDetailModal({
   target,
   onClose,
   mark,
+  move,
   pending,
 }: {
   readonly target: DetailTarget;
   readonly onClose: () => void;
   readonly mark: (id: string, status: SessionStatus) => void;
+  readonly move: (id: string, day: DayOfWeek) => void;
   readonly pending: boolean;
 }) {
   const { dayOfWeek, session } = target;
@@ -1111,6 +1225,25 @@ function SessionDetailModal({
             <MuscleMapSection sessionId={session.id} />
           </>
         )}
+        {/* Moving one session is the whole primitive: swapping two days is two
+            moves and reordering the week is several, so there is no rule here
+            for a session pushed past Sunday — the user decides where each one
+            lands. The override lasts this week only. */}
+        <label className={styles.moveField}>
+          <span className={styles.moveLabel}>Mover a otro día</span>
+          <select
+            className={styles.moveSelect}
+            value={dayOfWeek}
+            disabled={pending}
+            onChange={(event) => move(session.id, event.target.value as DayOfWeek)}
+          >
+            {WEEK_ORDER.map((day) => (
+              <option key={day} value={day}>
+                {DAY_LABELS[day] ?? day}
+              </option>
+            ))}
+          </select>
+        </label>
         <div className={styles.actions}>
           {session.status !== 'COMPLETED' && (
             <Button

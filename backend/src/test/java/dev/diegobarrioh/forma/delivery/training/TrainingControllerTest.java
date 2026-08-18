@@ -2,6 +2,7 @@ package dev.diegobarrioh.forma.delivery.training;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -14,6 +15,7 @@ import dev.diegobarrioh.forma.application.MuscleWorkedMapService;
 import dev.diegobarrioh.forma.application.NotFoundException;
 import dev.diegobarrioh.forma.application.PlanActivationService;
 import dev.diegobarrioh.forma.application.StoredSessionStatus;
+import dev.diegobarrioh.forma.application.TrainingSessionRescheduleService;
 import dev.diegobarrioh.forma.application.TrainingSessionStatusService;
 import dev.diegobarrioh.forma.application.WeeklyTrainingSchedule;
 import dev.diegobarrioh.forma.application.WeeklyTrainingSchedule.TrainingDay;
@@ -26,6 +28,7 @@ import dev.diegobarrioh.forma.domain.MuscleLoad;
 import dev.diegobarrioh.forma.domain.SessionStatus;
 import dev.diegobarrioh.forma.support.WebMvcAuthTestConfig;
 import java.time.DayOfWeek;
+import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,6 +52,7 @@ class TrainingControllerTest {
   @MockBean private WeeklyTrainingSummaryService summaryService;
   @MockBean private MuscleWorkedMapService muscleWorkedMapService;
   @MockBean private PlanActivationService planActivationService;
+  @MockBean private TrainingSessionRescheduleService rescheduleService;
 
   /** Default to an accepted plan so the week is served; individual tests override. */
   @org.junit.jupiter.api.BeforeEach
@@ -77,7 +81,7 @@ class TrainingControllerTest {
                     DayOfWeek.SATURDAY,
                     List.of(
                         new TrainingEntry(
-                            "SATURDAY:RUNNING",
+                            "RUNNING:LONG_RUN",
                             "RUNNING",
                             "Tirada larga",
                             "4.0 km",
@@ -86,7 +90,7 @@ class TrainingControllerTest {
                             null,
                             BodyView.FRONT),
                         new TrainingEntry(
-                            "SATURDAY:STRENGTH",
+                            "STRENGTH:PUSH",
                             "STRENGTH",
                             "Fuerza · Empuje",
                             "5 ejercicios",
@@ -100,7 +104,7 @@ class TrainingControllerTest {
     mockMvc
         .perform(get("/api/v1/training/week"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.days[0].sessions[0].id").value("SATURDAY:RUNNING"))
+        .andExpect(jsonPath("$.days[0].sessions[0].id").value("RUNNING:LONG_RUN"))
         .andExpect(jsonPath("$.days[0].sessions[0].status").value("PLANNED"))
         .andExpect(jsonPath("$.days[0].sessions[0].workoutType").doesNotExist())
         .andExpect(jsonPath("$.days[0].sessions[0].bodyView").value("FRONT"))
@@ -109,17 +113,80 @@ class TrainingControllerTest {
   }
 
   @Test
-  void marksSessionCompleted() throws Exception {
-    when(statusService.updateStatus(eq("SATURDAY:RUNNING"), eq(SessionStatus.COMPLETED), any()))
-        .thenReturn(new StoredSessionStatus("SATURDAY:RUNNING", SessionStatus.COMPLETED, "Hecho"));
+  void movesASessionToAnotherDayAndReturnsTheRedrawnWeek() throws Exception {
+    when(scheduleService.currentWeek())
+        .thenReturn(
+            new WeeklyTrainingSchedule(
+                List.of(
+                    new TrainingDay(
+                        DayOfWeek.MONDAY,
+                        List.of(
+                            new TrainingEntry(
+                                "STRENGTH:PUSH",
+                                "STRENGTH",
+                                "Fuerza · Empuje",
+                                "5 ejercicios",
+                                "PLANNED",
+                                null,
+                                "PUSH",
+                                BodyView.FRONT))))));
 
     mockMvc
         .perform(
-            patch("/api/v1/training/sessions/SATURDAY:RUNNING/status")
+            patch("/api/v1/training/sessions/STRENGTH:PUSH/schedule")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"day\":\"MONDAY\"}"))
+        .andExpect(status().isOk())
+        // The whole week comes back so the caller can redraw without a second request.
+        .andExpect(jsonPath("$.days[0].sessions[0].id").value("STRENGTH:PUSH"));
+
+    verify(rescheduleService).reschedule("STRENGTH:PUSH", DayOfWeek.MONDAY);
+  }
+
+  @Test
+  void aNullDayRestoresThePlannedDay() throws Exception {
+    when(scheduleService.currentWeek()).thenReturn(new WeeklyTrainingSchedule(List.of()));
+
+    mockMvc
+        .perform(
+            patch("/api/v1/training/sessions/STRENGTH:PUSH/schedule")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"day\":null}"))
+        .andExpect(status().isOk());
+
+    // Null is meaningful here, not missing: it clears the override.
+    verify(rescheduleService).reschedule("STRENGTH:PUSH", null);
+  }
+
+  @Test
+  void rejectsAnInvalidDayWithValidationError() throws Exception {
+    mockMvc
+        .perform(
+            patch("/api/v1/training/sessions/STRENGTH:PUSH/schedule")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"day\":\"LUNES\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+  }
+
+  @Test
+  void marksSessionCompleted() throws Exception {
+    when(statusService.updateStatus(eq("RUNNING:LONG_RUN"), eq(SessionStatus.COMPLETED), any()))
+        .thenReturn(
+            new StoredSessionStatus(
+                "RUNNING:LONG_RUN",
+                SessionStatus.COMPLETED,
+                null,
+                Instant.parse("2026-08-22T10:00:00Z"),
+                "Hecho"));
+
+    mockMvc
+        .perform(
+            patch("/api/v1/training/sessions/RUNNING:LONG_RUN/status")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"status\":\"COMPLETED\",\"notes\":\"Hecho\"}"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.id").value("SATURDAY:RUNNING"))
+        .andExpect(jsonPath("$.id").value("RUNNING:LONG_RUN"))
         .andExpect(jsonPath("$.status").value("COMPLETED"))
         .andExpect(jsonPath("$.notes").value("Hecho"));
   }
@@ -128,7 +195,7 @@ class TrainingControllerTest {
   void rejectsInvalidStatusWithValidationError() throws Exception {
     mockMvc
         .perform(
-            patch("/api/v1/training/sessions/SATURDAY:RUNNING/status")
+            patch("/api/v1/training/sessions/RUNNING:LONG_RUN/status")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"status\":\"DONE\"}"))
         .andExpect(status().isBadRequest())
@@ -192,19 +259,19 @@ class TrainingControllerTest {
 
   @Test
   void returnsTheMuscleMapForAStrengthSessionPerApiMd() throws Exception {
-    when(muscleWorkedMapService.resolve("TUESDAY:STRENGTH"))
+    when(muscleWorkedMapService.resolve("STRENGTH:PUSH"))
         .thenReturn(
             new MuscleWorkedMap(
-                "TUESDAY:STRENGTH",
+                "STRENGTH:PUSH",
                 List.of(
                     new MuscleWorked("pecho", MuscleLoad.HIGH),
                     new MuscleWorked("tríceps", MuscleLoad.HIGH),
                     new MuscleWorked("hombro", MuscleLoad.MEDIUM))));
 
     mockMvc
-        .perform(get("/api/v1/training/sessions/TUESDAY:STRENGTH/muscle-map"))
+        .perform(get("/api/v1/training/sessions/STRENGTH:PUSH/muscle-map"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.sessionId").value("TUESDAY:STRENGTH"))
+        .andExpect(jsonPath("$.sessionId").value("STRENGTH:PUSH"))
         .andExpect(jsonPath("$.muscles[0].muscle").value("pecho"))
         .andExpect(jsonPath("$.muscles[0].load").value("HIGH"))
         .andExpect(jsonPath("$.muscles[2].muscle").value("hombro"))
@@ -213,13 +280,13 @@ class TrainingControllerTest {
 
   @Test
   void aNonStrengthSessionReturns200WithAnEmptyMuscleMapNeverA404() throws Exception {
-    when(muscleWorkedMapService.resolve("SATURDAY:RUNNING"))
-        .thenReturn(new MuscleWorkedMap("SATURDAY:RUNNING", List.of()));
+    when(muscleWorkedMapService.resolve("RUNNING:LONG_RUN"))
+        .thenReturn(new MuscleWorkedMap("RUNNING:LONG_RUN", List.of()));
 
     mockMvc
-        .perform(get("/api/v1/training/sessions/SATURDAY:RUNNING/muscle-map"))
+        .perform(get("/api/v1/training/sessions/RUNNING:LONG_RUN/muscle-map"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.sessionId").value("SATURDAY:RUNNING"))
+        .andExpect(jsonPath("$.sessionId").value("RUNNING:LONG_RUN"))
         .andExpect(jsonPath("$.muscles").isEmpty());
   }
 

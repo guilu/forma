@@ -2,12 +2,14 @@ package dev.diegobarrioh.forma.delivery.training;
 
 import dev.diegobarrioh.forma.application.MuscleWorkedMapService;
 import dev.diegobarrioh.forma.application.PlanActivationService;
+import dev.diegobarrioh.forma.application.TrainingSessionRescheduleService;
 import dev.diegobarrioh.forma.application.TrainingSessionStatusService;
 import dev.diegobarrioh.forma.application.WeeklyTrainingScheduleService;
 import dev.diegobarrioh.forma.application.WeeklyTrainingSummaryService;
 import dev.diegobarrioh.forma.delivery.ApiPaths;
 import dev.diegobarrioh.forma.domain.SessionStatus;
 import jakarta.validation.Valid;
+import java.time.DayOfWeek;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -18,7 +20,8 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * Training REST endpoints (FOR-26/FOR-27/FOR-98/FOR-136) under {@link ApiPaths#V1}{@code
  * /training}: read the weekly calendar, read the weekly adherence summary, mark a session's
- * completion status, and read a strength session's worked-muscle map.
+ * completion status, move a session to another day of the week, and read a strength session's
+ * worked-muscle map.
  *
  * <p>Thin controller (ADR-001, ADR-005): it maps to/from delivery DTOs and delegates to the
  * application services. Validation and not-found failures are turned into the standard {@code
@@ -33,18 +36,21 @@ public class TrainingController {
   private final WeeklyTrainingSummaryService summaryService;
   private final MuscleWorkedMapService muscleWorkedMapService;
   private final PlanActivationService planActivationService;
+  private final TrainingSessionRescheduleService rescheduleService;
 
   public TrainingController(
       WeeklyTrainingScheduleService scheduleService,
       TrainingSessionStatusService statusService,
       WeeklyTrainingSummaryService summaryService,
       MuscleWorkedMapService muscleWorkedMapService,
-      PlanActivationService planActivationService) {
+      PlanActivationService planActivationService,
+      TrainingSessionRescheduleService rescheduleService) {
     this.scheduleService = scheduleService;
     this.statusService = statusService;
     this.summaryService = summaryService;
     this.muscleWorkedMapService = muscleWorkedMapService;
     this.planActivationService = planActivationService;
+    this.rescheduleService = rescheduleService;
   }
 
   /**
@@ -79,6 +85,21 @@ public class TrainingController {
       @PathVariable String id, @Valid @RequestBody UpdateSessionStatusRequest request) {
     return SessionStatusResponse.from(
         statusService.updateStatus(id, SessionStatus.valueOf(request.status()), request.notes()));
+  }
+
+  /**
+   * Moves a session to another day of the current week (V60), or back to its planned day when
+   * {@code day} is null. The move lasts this week only; next Monday the plan is on its policy days
+   * again.
+   */
+  @PatchMapping("/sessions/{id}/schedule")
+  public TrainingWeekResponse reschedule(
+      @PathVariable String id, @Valid @RequestBody RescheduleSessionRequest request) {
+    rescheduleService.reschedule(
+        id, request.day() == null ? null : DayOfWeek.valueOf(request.day()));
+    // The whole week comes back: moving one session changes which day every other session shares
+    // it with, and the caller would otherwise have to refetch to redraw the calendar anyway.
+    return TrainingWeekResponse.from(scheduleService.currentWeek());
   }
 
   /**
