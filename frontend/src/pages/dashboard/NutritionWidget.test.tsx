@@ -116,7 +116,9 @@ describe('NutritionWidget', () => {
     const user = userEvent.setup();
     renderWidget({ status: 'ready', day }, {
       ...consumption,
-      plannedMeals: [{ id: 'm1', state: 'EATEN' }],
+      plannedMeals: [
+        { id: 'm1', mealType: 'BREAKFAST', name: 'Desayuno', optional: false, state: 'EATEN' },
+      ],
     } as DayConsumption);
 
     const check = screen.getByRole('checkbox', { name: /Desmarcar Desayuno como hecha/ });
