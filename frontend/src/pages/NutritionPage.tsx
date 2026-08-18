@@ -13,8 +13,6 @@ import { WaterTracker } from '../components/WaterTracker';
 import {
   getDayConsumption,
   getNutritionDay,
-  logPlannedMealAsPlanned,
-  unmarkPlannedMeal,
   type DayConsumption,
   type NutritionDay,
   type NutritionMeal,
@@ -24,6 +22,7 @@ import { LogMealForm } from './nutrition/LogMealForm';
 import { ProgressBar } from './dashboard/ProgressBar';
 import { formatShortDate } from './dateLabel';
 import { localIsoDate } from './localIsoDate';
+import { usePlannedMealToggle } from './usePlannedMealToggle';
 import styles from './NutritionPage.module.css';
 
 /**
@@ -77,7 +76,6 @@ export function NutritionPage() {
   const [state, setState] = useState<State>({ status: 'loading' });
   const [consumption, setConsumption] = useState<DayConsumption | undefined>(undefined);
   const [logging, setLogging] = useState(false);
-  const [marking, setMarking] = useState<ReadonlySet<string>>(() => new Set());
 
   const reloadConsumption = useCallback(() => {
     return getDayConsumption(todayIso).then((day) => {
@@ -85,6 +83,8 @@ export function NutritionPage() {
       return day;
     });
   }, [todayIso]);
+
+  const { marking, toggle: toggleEaten } = usePlannedMealToggle(todayIso, reloadConsumption);
 
   /*
    * El plan se pide para el tipo de día que dice el servidor, así que las dos mitades hablan del
@@ -119,20 +119,6 @@ export function NutritionPage() {
       active = false;
     };
   }, [reloadConsumption, retryToken]);
-
-  const toggleEaten = (meal: NutritionMeal, eaten: boolean) => {
-    setMarking((current) => new Set(current).add(meal.id));
-    (eaten ? unmarkPlannedMeal(todayIso, meal.id) : logPlannedMealAsPlanned(todayIso, meal))
-      .then(reloadConsumption)
-      .catch(() => notify.error('No se pudo actualizar la comida. Inténtalo de nuevo.'))
-      .finally(() =>
-        setMarking((current) => {
-          const next = new Set(current);
-          next.delete(meal.id);
-          return next;
-        }),
-      );
-  };
 
   return (
     <div className={styles.wrapper}>
