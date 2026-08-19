@@ -276,15 +276,22 @@
 }
 
 /*
- * The silhouette is handed a box and fitted into it rather than sizing itself:
- * it takes the room the name and the title leave, and no more. A percentage
- * height here would resolve against the whole column and paint over its
- * neighbours.
+ * Sized by width, and by width alone.
+ *
+ * `MuscleSilhouette` carries the art's aspect ratio on its own box and paints
+ * the layers inside it with `object-fit: fill`, so the box has to be left free
+ * to derive one axis from the other. Giving it a width *and* letting flex set
+ * its height overrides the ratio and stretches the body — which is exactly what
+ * happened to the rest-day figure, whose art is far wider than the anatomical
+ * sheets and so distorted the most.
+ *
+ * `flex: 0 0 auto` keeps flex out of the height, and the auto block margins
+ * centre it in whatever the name and the title leave.
  */
 .compactFigure {
-  flex: 1 1 0;
-  min-height: 0;
+  flex: 0 0 auto;
   width: min(4.5rem, 100%);
+  margin-block: auto;
 }
 
 /* ── The expanded day ───────────────────────────────────────────────── */
@@ -337,9 +344,19 @@
   gap: var(--space-2);
 }
 
-/* Same reasoning as `.compactFigure`: a definite box, and the bodies fitted
-   inside it. This is the element that takes the column's slack, so it is the
-   one that must be allowed to shrink. */
+/*
+ * Height-driven, and that direction is the whole point.
+ *
+ * One axis has to come from the other or the aspect ratio is overridden and the
+ * body distorts. Here it must be the *height* that leads: this row gets what
+ * the title and the actions leave, which at 1024px is about 180px, and a body
+ * is taller than it is wide — so deriving the height from a share of the width
+ * asks for more room than the row has and the figure gets cut off at the knees.
+ * `stretch` hands each body the row's height and the ratio works out the width.
+ *
+ * The opposite choice is right for `.compactFigure`, where height is plentiful
+ * and width is the scarce axis.
+ */
 .expandedFigures {
   display: flex;
   flex: 1 1 0;
@@ -356,17 +373,20 @@
  */
 .expandedFigurePair {
   display: flex;
-  align-items: stretch;
+  align-items: center;
   justify-content: space-evenly;
   gap: var(--space-3);
   width: 100%;
   min-height: 0;
 }
 
+/* `flex: 0 1 auto` keeps flex from stretching the width it just derived; the
+   cap is what stops two sheets from overrunning a narrow column. */
 .expandedFigure {
-  flex: 1 1 0;
-  min-width: 0;
-  min-height: 0;
+  flex: 0 1 auto;
+  height: 100%;
+  width: auto;
+  max-width: 100%;
 }
 
 .expandedActions {
@@ -468,12 +488,18 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  min-width: 0;
   margin: 0;
   font-size: var(--font-size-xs);
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--color-text-muted);
+  /* Cut rather than spill: at tablet width the tiles are narrow enough that
+     "CARRERAS" ran out past its own border. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .statIcon {
@@ -616,6 +642,22 @@
   color: var(--color-text);
 }
 
+/*
+ * Between the desktop grid and the wrap, the five tiles share a narrower row
+ * and their labels start being cut ("SESIO…"). The words are short enough to
+ * fit; what does not fit is the air around them, so that is what goes.
+ */
+@media (max-width: 1200px) {
+  .statTile {
+    padding: var(--space-3);
+  }
+
+  .statLabel {
+    gap: var(--space-1);
+    letter-spacing: 0.02em;
+  }
+}
+
 /* ── Narrow windows ─────────────────────────────────────────────────── */
 /*
  * Below the tablet rail the seven columns stop being readable, so the strip
@@ -629,13 +671,37 @@
     flex-wrap: wrap;
   }
 
+  /*
+   * `order: -1` puts the open day first. Wrapped, it would otherwise sit in its
+   * calendar position — a phone would open on Monday and Tuesday and you would
+   * scroll past two days you have already done to reach today's.
+   */
   .weekDayExpanded {
     flex: 1 0 100%;
+    order: -1;
+  }
+
+  /*
+   * Above 901px the page is pinned to the window and this row takes the slack,
+   * so `height: 100%` on the bodies resolves against something. Here the column
+   * grows with its content and that slack is zero — the silhouette measured 0px
+   * and simply did not appear. A fixed height gives it back the axis it derives
+   * its width from.
+   */
+  .expandedFigures {
+    flex: 0 0 auto;
+    height: 13rem;
   }
 
   .weekDay {
     flex: 1 1 calc(25% - var(--space-2));
-    min-height: 8rem;
+    min-height: 9rem;
+  }
+
+  /* A wrapped column is much shorter than a full-height one, and the figure's
+     height comes from its width — so the width has to come down with it. */
+  .compactFigure {
+    width: min(3rem, 100%);
   }
 
   .weekStats {
