@@ -153,7 +153,7 @@ test.describe('training on iPad landscape', () => {
     await page.clock.setFixedTime(new Date('2026-08-12T12:00:00'));
   });
 
-  test('uses the tablet navigation and purpose-built vertical training flow', async ({ page }) => {
+  test('uses the tablet navigation and fits the week into one row', async ({ page }) => {
     const dayNames = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
     await page.route('**/api/v1/training/week', (route) =>
       route.fulfill({
@@ -190,58 +190,35 @@ test.describe('training on iPad landscape', () => {
     await page.getByRole('button', { name: 'Contraer navegación' }).click();
     await expect(sidebar).toHaveCSS('width', '72px');
 
-    const today = page.getByRole('heading', { name: 'Entrenamiento de hoy' }).locator('..');
-    const summary = page.getByRole('heading', { name: 'Resumen semanal' }).locator('..');
-    const calendar = page.getByRole('heading', { name: 'Calendario semanal' }).locator('..');
-    const todayBox = await today.boundingBox();
-    const summaryBox = await summary.boundingBox();
-    const calendarBox = await calendar.boundingBox();
-    expect(todayBox).not.toBeNull();
-    expect(summaryBox).not.toBeNull();
-    expect(calendarBox).not.toBeNull();
-    expect(summaryBox!.y).toBeGreaterThan(todayBox!.y + todayBox!.height - 2);
-    expect(calendarBox!.y).toBeGreaterThan(summaryBox!.y + summaryBox!.height - 2);
+    /*
+     * The week is one row now, not three stacked cards, so what this asserts
+     * changed with it: that the open day really is the wide column, that the
+     * counters sit under the whole strip, and that the row still fits without
+     * either scrollbar. The stacking order it used to pin — today above the
+     * summary above the calendar — described a layout that no longer exists.
+     */
+    const strip = page.getByRole('list', { name: 'Semana de entrenamiento' });
+    const stats = page.getByRole('region', { name: 'Resumen de la semana' });
 
-    const summaryRows = page.getByRole('listitem', {
-      name: /Sesiones totales|Carreras|Fuerza/,
-    });
-    const rowBoxes = await summaryRows.evaluateAll((rows) =>
-      rows.slice(0, 3).map((row) => row.getBoundingClientRect().toJSON()),
+    const columns = await strip.locator('> li').evaluateAll((items) =>
+      items.map((item) => {
+        const box = item.getBoundingClientRect();
+        return { width: Math.round(box.width), top: Math.round(box.top) };
+      }),
     );
-    expect(rowBoxes).toHaveLength(3);
-    expect(
-      Math.max(...rowBoxes.map((box) => box.y)) - Math.min(...rowBoxes.map((box) => box.y)),
-    ).toBeLessThan(3);
+    expect(columns).toHaveLength(7);
+    // One row: every column starts at the same height.
+    expect(new Set(columns.map((column) => column.top)).size).toBe(1);
 
-    const calendarScroller = page.getByRole('list', {
-      name: 'Calendario semanal de entrenamiento',
-    });
-    await expect
-      .poll(() =>
-        calendarScroller.evaluate((element) => ({
-          clientWidth: element.clientWidth,
-          scrollWidth: element.scrollWidth,
-          snap: getComputedStyle(element).scrollSnapType,
-        })),
-      )
-      .toMatchObject({ snap: 'x mandatory' });
-    const scrollSize = await calendarScroller.evaluate((element) => ({
-      clientWidth: element.clientWidth,
-      scrollWidth: element.scrollWidth,
-    }));
-    expect(scrollSize.scrollWidth).toBeGreaterThan(scrollSize.clientWidth);
-    const currentDay = calendarScroller.locator('li[aria-current="date"]');
-    const centers = await Promise.all([
-      calendarScroller.evaluate((element) => {
-        const box = element.getBoundingClientRect();
-        return box.left + box.width / 2;
-      }),
-      currentDay.evaluate((element) => {
-        const box = element.getBoundingClientRect();
-        return box.left + box.width / 2;
-      }),
-    ]);
-    expect(Math.abs(centers[0] - centers[1])).toBeLessThan(100);
+    // The open day is the widest by a clear margin, not by a pixel or two.
+    const widths = columns.map((column) => column.width).sort((a, b) => b - a);
+    expect(widths[0]).toBeGreaterThan(widths[1] * 1.8);
+
+    const stripBox = await strip.boundingBox();
+    const statsBox = await stats.boundingBox();
+    expect(stripBox).not.toBeNull();
+    expect(statsBox).not.toBeNull();
+    expect(statsBox!.y).toBeGreaterThan(stripBox!.y + stripBox!.height - 2);
 
     await expectNoHorizontalOverflow(page);
     await expectSinglePageScroller(page);
@@ -1233,8 +1210,16 @@ test.describe('the open day in the week strip', () => {
            * written, and this one shipped: on a phone the open day's silhouette
            * resolved to 0px and simply was not there. Fitting is only half the
            * claim; being drawn is the other half.
+           *
+           * Measured as a share of the room rather than in pixels: a short
+           * window leaves the row very little, and a body that is small because
+           * its row is small has not collapsed — it is doing the only thing it
+           * can. A fixed floor here failed a 768px-tall window for having a
+           * 64px body in 135px of space, which is a complaint about the window.
            */
-          expect(fit.tallest, 'the bodies collapsed to nothing').toBeGreaterThan(80);
+          expect(fit.tallest, 'the bodies collapsed to nothing').toBeGreaterThan(
+            fit.room.height * 0.3,
+          );
           // One pixel of slack for layout rounding, as elsewhere in this file.
           expect(fit.widest, 'the bodies run past their own column').toBeLessThanOrEqual(
             fit.room.width + 1,

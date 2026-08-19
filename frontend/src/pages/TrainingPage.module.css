@@ -523,20 +523,25 @@
  *
  * Measured across the grid this has to hold (pair width vs. row height):
  *
- *        1280×768   59px wide → 128 tall in 135  ·  1280×976  119 → 256 in 343
- *        1440×900  121px wide → 260 tall in 334  ·  1440×1200 186 → 401 in 402
- *        1725×768   59px wide → 128 tall in 135  ·  1725×976  156 → 336 in 402
+ *        1280×768   30px wide →  64 tall in 135  ·  1280×976  119 → 256 in 343
+ *        1440×900   91px wide → 196 tall in 334  ·  1440×1200 186 → 401 in 402
+ *        1725×768   30px wide →  64 tall in 135  ·  1725×976  126 → 272 in 402
  *
- * The 640px is the chrome the row does not get, and it is a *worst case*: it
- * assumes the focus line below wraps to its full two lines, which is why that
- * line is clamped rather than left to grow. Without the clamp a long muscle
- * list took a third line on a narrow column and ate the room this constant had
- * already promised to the bodies.
+ * The 704px is the chrome the row does not get, and it has to be a *worst
+ * case*, not a measurement of one machine. It was 640 — measured here — and CI
+ * failed: the same card there spends about 64px more on its own text, because
+ * how many lines a title and a focus list take depends on the font that
+ * actually renders, and that is not a constant across machines. A number tuned
+ * to the developer's screen is a number that will be wrong on someone else's.
+ *
+ * The focus line is clamped to two lines for the same reason: without it a long
+ * muscle list took a third line on a narrow column and ate the room this
+ * constant had already promised to the bodies.
  */
 /* Declared on the card, not on the figure row: the rest day has no session
    figures but sizes its own body by exactly the same reasoning. */
 .weekDayExpanded {
-  --figure-room: min(calc(100vh - 640px), 25rem);
+  --figure-room: min(calc(100vh - 704px), 25rem);
 }
 
 /* 854 / 1840 — the anatomical sheets' own ratio, as `MuscleSilhouette` sets it. */
@@ -550,9 +555,15 @@
  * A run has no back sheet, so its single body takes the room the pair would
  * have needed rather than half of it. Its art is a different shape — 996 / 1579
  * — so the height-derived term uses that ratio instead.
+ *
+ * And it gets 64px of that height back. `--figure-room` is the worst case,
+ * which is a *strength* card: title, exercise count and a two-line focus list.
+ * A run has no focus line, so it spends less on text and its row is that much
+ * taller — without this the runner was sized for room it was not using, coming
+ * out at 64px inside 223px of space.
  */
 .expandedFigures > .expandedFigure {
-  width: min(55%, calc(var(--figure-room) * 0.63));
+  width: min(55%, calc((var(--figure-room) + 64px) * 0.63));
 }
 
 .expandedActions {
