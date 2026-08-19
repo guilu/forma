@@ -780,8 +780,22 @@
  * that the week is visible.
  */
 @media (max-width: 900px) {
+  /*
+   * The cap and the fill above are for a strip that is one row. Wrapped, the
+   * days need several, so both have to go: `max-height` was clipping the wrap
+   * to 640px while the cards kept flowing past it, which is how the week ended
+   * up drawn on top of the counters underneath.
+   */
   .weekStrip {
     flex-wrap: wrap;
+    height: auto;
+    max-height: none;
+  }
+
+  /* Nothing is pinned to the window down here — the page scrolls, as the note
+     on the phone layout says — so the rows size to what they hold. */
+  .layout {
+    grid-template-rows: auto auto;
   }
 
   /*
