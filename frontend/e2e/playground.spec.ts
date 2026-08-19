@@ -19,10 +19,15 @@ declare const process: { readonly env: Record<string, string | undefined> };
  * `/api/v1/auth/me` fixture, which is what makes the session real as far as the
  * app is concerned.
  *
- * <p>So this opens a real Chromium with those same fixtures and then parks on
- * `page.pause()`, handing control to the Playwright Inspector: click through the
- * app, open DevTools, resize, toggle the theme. The dev server behind it is the
- * ordinary one, so hot reload still applies as you edit.
+ * <p>So this opens a real Chromium with those same fixtures and hands it over:
+ * click through the app, open DevTools, resize the window, toggle the theme.
+ * The dev server behind it is the ordinary one, so hot reload still applies as
+ * you edit.
+ *
+ * <p>`npm run dev:fixtures` does the same job without Playwright — same
+ * fixtures, served by the dev server, browsed in whatever browser you like.
+ * Prefer it for looking at layouts; this stays for driving the app from inside
+ * a Playwright session.
  *
  * <p>Skipped unless `PLAYGROUND=1`, or `npm run test:layout` would sit forever
  * waiting for someone to close a browser that CI never opened.
@@ -33,6 +38,18 @@ declare const process: { readonly env: Record<string, string | undefined> };
  */
 test.describe('playground', () => {
   test.skip(process.env.PLAYGROUND !== '1', 'Manual only — run `npm run playground`.');
+
+  /*
+   * `viewport: null` hands the page the real window instead of the fixed
+   * 1280×720 the `Desktop Chrome` preset pins. Without it, dragging the window
+   * resizes the chrome around a page that never changes size, so a layout can
+   * only ever be looked at at one width — which is not much use for judging one.
+   *
+   * For anything beyond a quick look, `npm run dev:fixtures` serves the same
+   * fixtures from the dev server and gives you an ordinary browser: real
+   * devtools, the responsive toolbar, and no Playwright in the way.
+   */
+  test.use({ viewport: null });
 
   test('browse the app signed in, with the API served from the e2e fixtures', async ({ page }) => {
     // No deadline: the whole point is to sit here as long as you are poking at
