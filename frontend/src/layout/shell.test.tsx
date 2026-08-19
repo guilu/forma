@@ -372,13 +372,13 @@ describe('application shell', () => {
       screen.queryByRole('menuitem', { name: 'Progreso', hidden: true }),
     ).not.toBeInTheDocument();
 
-    // FOR-164: the primary mobile bar is limited to Dashboard, Mediciones and
-    // Entrenamiento. Progreso moved behind "Más", so it is not a primary bar
-    // link — and FOR-185 moved Nutrición there too.
+    // The primary bar is Dashboard, Mediciones, Entrenamiento and Nutrición.
+    // Progreso stays behind "Más"; Nutrición came back to the bar once the
+    // labels went, which is what made room for a fourth section.
     expect(screen.queryByRole('link', { name: 'Progreso', hidden: true })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Nutrición', hidden: true })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Nutrición', hidden: true })).toBeInTheDocument();
 
-    const more = screen.getByRole('button', { name: 'Más', hidden: true });
+    const more = screen.getByRole('button', { name: 'Más secciones', hidden: true });
     expect(more).toHaveAttribute('aria-expanded', 'false');
     await user.click(more);
 
@@ -387,24 +387,40 @@ describe('application shell', () => {
     // FOR-185: Nutrición leads the overflow, directly above Lista de compra —
     // the order comes from NAV_ITEMS, so this pins it there.
     const items = within(menu).getAllByRole('menuitem', { hidden: true });
-    expect(items.map((item) => item.textContent)).toEqual([
-      'Nutrición',
-      'Lista de compra',
-      'Progreso',
-    ]);
-    expect(
-      within(menu).getByRole('menuitem', { name: 'Lista de compra', hidden: true }),
-    ).toBeInTheDocument();
-    expect(
-      within(menu).getByRole('menuitem', { name: 'Progreso', hidden: true }),
-    ).toBeInTheDocument();
-    expect(
-      within(menu).getByRole('menuitem', { name: 'Nutrición', hidden: true }),
-    ).toBeInTheDocument();
+    expect(items.map((item) => item.textContent)).toEqual(['Lista de compra', 'Progreso']);
     // Retired from the UI: the goals feature is no longer reachable anywhere.
     expect(
       within(menu).queryByRole('menuitem', { name: 'Objetivos', hidden: true }),
     ).not.toBeInTheDocument();
+  });
+
+  /*
+   * The bar dropped its labels: at four sections plus the disclosure they no
+   * longer fit, and a wrapped or clipped word under an icon is worse than no
+   * word at all. What replaces them is not nothing — each control carries the
+   * section name as its accessible name and as its tooltip, exactly as the
+   * training card's icon actions do.
+   */
+  it('names every bar control even though none of them shows a label', async () => {
+    render(
+      <MemoryRouter>
+        <MobileNav />
+      </MemoryRouter>,
+    );
+
+    // Queried from the document: the bar is `display: none` at the jsdom
+    // viewport, and an accessible name is not computed for a hidden container.
+    for (const name of ['Dashboard', 'Mediciones', 'Entrenamiento', 'Nutrición']) {
+      const link = screen.getByRole('link', { name, hidden: true });
+      expect(link).toHaveAttribute('title', name);
+      // No visible text: the glyph is decorative, so the name comes from the
+      // label alone and there is nothing left to read on screen.
+      expect(link).toHaveTextContent('');
+    }
+
+    const more = screen.getByRole('button', { name: 'Más secciones', hidden: true });
+    expect(more).toHaveAttribute('title', 'Más secciones');
+    expect(more).toHaveTextContent('');
   });
 
   it('collapses the "Más" overflow after choosing a section', async () => {
@@ -415,13 +431,13 @@ describe('application shell', () => {
       </MemoryRouter>,
     );
 
-    await user.click(screen.getByRole('button', { name: 'Más', hidden: true }));
+    await user.click(screen.getByRole('button', { name: 'Más secciones', hidden: true }));
     await user.click(screen.getByRole('menuitem', { name: 'Progreso', hidden: true }));
 
     expect(
       screen.queryByRole('menu', { name: 'Más secciones', hidden: true }),
     ).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Más', hidden: true })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Más secciones', hidden: true })).toHaveAttribute(
       'aria-expanded',
       'false',
     );

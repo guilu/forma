@@ -9,10 +9,16 @@ import styles from './MobileNav.module.css';
  * mobile frame in the mockups. Shows the primary sections plus a "Más" overflow
  * so every MVP section is reachable from navigation on mobile — not just by URL.
  *
- * The primary bar is limited to four sections (Dashboard, Mediciones,
- * Entrenamiento, Nutrición); the secondary items (Lista de compra, Progreso,
- * Objetivos, Ajustes) live behind a "Más" disclosure that expands above the bar
+ * The primary bar is four sections (Dashboard, Mediciones, Entrenamiento,
+ * Nutrición); the rest live behind a "Más" disclosure that expands above the bar
  * and collapses on selection.
+ *
+ * <p>The bar shows glyphs and no labels. At four sections plus the disclosure
+ * the words no longer fit — they clipped and wrapped — and a broken word under
+ * an icon is worse than no word at all. Nothing is lost to assistive tech: each
+ * control carries its section name as its accessible name, and `title` shows
+ * the same word on a long press or a hover. The disclosure keeps its labels,
+ * since it is a list with room for them.
  */
 export function MobileNav() {
   const primary = NAV_ITEMS.filter((item) => item.primary);
@@ -50,10 +56,11 @@ export function MobileNav() {
             to={item.path}
             end={item.path === '/app'}
             className={linkClass}
+            aria-label={item.label}
+            title={item.label}
             onClick={() => setMoreOpen(false)}
           >
-            <Icon name={item.icon} size={22} />
-            <span className={styles.label}>{item.label}</span>
+            <Icon name={item.icon} size={26} />
           </NavLink>
         ))}
         <button
@@ -63,10 +70,11 @@ export function MobileNav() {
             .join(' ')}
           aria-haspopup="menu"
           aria-expanded={moreOpen}
+          aria-label="Más secciones"
+          title="Más secciones"
           onClick={() => setMoreOpen((open) => !open)}
         >
-          <Icon name="more" size={22} />
-          <span className={styles.label}>Más</span>
+          <Icon name="more" size={26} />
         </button>
       </div>
     </nav>
