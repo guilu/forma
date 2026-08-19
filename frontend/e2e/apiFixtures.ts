@@ -282,7 +282,18 @@ const FIXTURES: ReadonlyArray<readonly [string, unknown]> = [
     },
   ],
   ['/api/v1/insights/history', []],
-  ['/api/v1/progress/streak', { currentWeeks: 3, bestWeeks: 5 }],
+  /*
+   * `currentStreakDays` / `longestStreakDays` / `asOf`, which is what the
+   * FOR-139 endpoint returns and what `Streak` (src/api/progress.ts) declares.
+   * This used to read `{ currentWeeks, bestWeeks }` — a *successful* response of
+   * the wrong shape, which is exactly the failure the note at the top of this
+   * file warns about: the racha tile rendered its ready state with the numbers
+   * missing ("días", "Récord: días") and nothing failed loudly enough to notice.
+   */
+  [
+    '/api/v1/progress/streak',
+    { currentStreakDays: 4, longestStreakDays: 12, asOf: daysAgo(0).slice(0, 10) },
+  ],
   ['/api/v1/progress/weekly-history', { weeks: [] }],
   ['/api/v1/progress/photos', { photos: [] }],
   // `{ goals: [...] }`, not a bare array — and a goal rather than none, so the
