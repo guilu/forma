@@ -141,12 +141,30 @@
  * carries the ratio the design asks for (a day is 1, the open day is 2.8) with
  * no track list to keep in sync.
  */
+/*
+ * Capped, and this is the cap the whole page hangs on.
+ *
+ * The row is a `1fr` grid track, so on a tall window it grew to whatever was
+ * left — 1073px at a 1400px viewport — and the open day grew with it. Two
+ * silhouettes scale with the card, so past a point they are simply too big for
+ * the column that holds them.
+ *
+ * 40rem is measured, not guessed: the strength card reads well at about 620px,
+ * which is where the pair sits comfortably inside the column at the widths this
+ * layout is for. `align-self: start` keeps the cap from being ignored by the
+ * track's own stretch, and the slack falls between the week and the counters
+ * rather than inside the cards.
+ */
 .weekStrip {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   gap: var(--space-2);
+  align-self: start;
+  width: 100%;
+  max-height: 40rem;
+  height: 100%;
   min-height: 0;
 }
 
@@ -338,6 +356,21 @@
   color: var(--color-text-muted);
 }
 
+/*
+ * Two lines and no more. The focus line lists every muscle group a session
+ * works, so it is as long as the session is varied — and the height it takes is
+ * height the silhouettes below do not get. Clamping makes the card's chrome a
+ * known quantity, which is what `--figure-room` above is counting on. The full
+ * list is in the session detail either way.
+ */
+.expandedSession > .sessionDetail:last-child {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
 .sessionDetail:has(svg) {
   display: flex;
   align-items: center;
@@ -360,9 +393,13 @@
 .expandedFigures {
   display: flex;
   flex: 1 1 0;
-  align-items: stretch;
+  align-items: center;
   justify-content: center;
   min-height: 0;
+  /* Last resort. With the width cap above and the strip's height cap below the
+     bodies should always fit; this keeps a pathological window from painting
+     one over the day next to it. */
+  overflow: hidden;
   margin: var(--space-2) 0;
 }
 
@@ -374,19 +411,62 @@
 .expandedFigurePair {
   display: flex;
   align-items: center;
-  justify-content: space-evenly;
+  justify-content: center;
   gap: var(--space-3);
   width: 100%;
   min-height: 0;
 }
 
-/* `flex: 0 1 auto` keeps flex from stretching the width it just derived; the
-   cap is what stops two sheets from overrunning a narrow column. */
+/*
+ * The body is sized by WIDTH, and the width is the smaller of the two limits it
+ * has to respect. This is the crux of the card, so it is worth spelling out.
+ *
+ * A silhouette carries its own aspect ratio, so fixing one axis fixes both —
+ * which means picking the wrong axis breaks something at one end of the range:
+ *
+ *   - by height, it overflows sideways. `max-width: 100%` is the *pair's*
+ *     width, so two bodies could come to 200% of it, and did: at 1440 they
+ *     wanted 310px of a 291px row on a 900px window, and 582px of it on a
+ *     1200px one, painting the back sheet over the day next door.
+ *   - by width alone, it overflows downwards. Half the row on a 768px window
+ *     is a body 245px tall in 135px of space.
+ *
+ * So the width takes whichever of the two is smaller. `--figure-room` is the
+ * height the row actually has: the window minus the chrome above and below it
+ * (top bar, page padding, header, the counters and the gaps), capped where the
+ * strip is. Multiplying it by the art's own ratio converts that height back
+ * into the width that would fill it.
+ *
+ * Measured across the grid this has to hold (pair width vs. row height):
+ *
+ *        1280×768   59px wide → 128 tall in 135  ·  1280×976  119 → 256 in 343
+ *        1440×900  121px wide → 260 tall in 334  ·  1440×1200 186 → 401 in 402
+ *        1725×768   59px wide → 128 tall in 135  ·  1725×976  156 → 336 in 402
+ *
+ * The 640px is the chrome the row does not get, and it is a *worst case*: it
+ * assumes the focus line below wraps to its full two lines, which is why that
+ * line is clamped rather than left to grow. Without the clamp a long muscle
+ * list took a third line on a narrow column and ate the room this constant had
+ * already promised to the bodies.
+ */
+.expandedFigures {
+  --figure-room: min(calc(100vh - 640px), 25rem);
+}
+
+/* 854 / 1840 — the anatomical sheets' own ratio, as `MuscleSilhouette` sets it. */
 .expandedFigure {
-  flex: 0 1 auto;
-  height: 100%;
-  width: auto;
-  max-width: 100%;
+  flex: 0 0 auto;
+  width: min(calc(50% - var(--space-3) / 2), calc(var(--figure-room) * 0.464));
+  height: auto;
+}
+
+/*
+ * A run has no back sheet, so its single body takes the room the pair would
+ * have needed rather than half of it. Its art is a different shape — 996 / 1579
+ * — so the height-derived term uses that ratio instead.
+ */
+.expandedFigures > .expandedFigure {
+  width: min(55%, calc(var(--figure-room) * 0.63));
 }
 
 .expandedActions {

@@ -1167,3 +1167,83 @@ test.describe('the sidebar integration card', () => {
     expect(shadow, `a muted dot haloed in accent still reads lit (${shadow})`).toBe('none');
   });
 });
+
+/*
+ * The week strip's open day (direction C, docs/design/entrenamiento-sin-scroll).
+ *
+ * A silhouette carries its own aspect ratio, so fixing one axis fixes both, and
+ * picking the wrong one breaks at one end of the window range: sized by height
+ * a strength day's two sheets spilled over the columns beside them, and sized
+ * by width alone they ran out past the bottom of their own card. Neither is
+ * visible to jsdom, which performs no layout — hence these, which measure both
+ * ends at once across the range the page is used at.
+ */
+test.describe('the open day in the week strip', () => {
+  const CARD = 'li[class*="weekDayExpanded"]';
+  const FIGURES = '[class*="expandedFigures"]';
+
+  for (const viewport of [
+    { width: 1280, height: 768 },
+    { width: 1440, height: 900 },
+    { width: 1680, height: 1200 },
+  ]) {
+    test.describe(`at ${viewport.width}×${viewport.height}`, () => {
+      test.use({ viewport });
+
+      // Both kinds: a run draws one body, a strength day draws front and back,
+      // and it is the pair that used to overflow.
+      for (const [kind, steps] of [
+        ['a run', 0],
+        ['a strength day', 1],
+      ] as const) {
+        test(`keeps ${kind}'s silhouettes inside the card`, async ({ page }) => {
+          await gotoApp(page, '/app/training');
+          for (let step = 0; step < steps; step += 1) {
+            await page.getByRole('button', { name: 'Día siguiente' }).click();
+          }
+          await expect(page.locator(`${CARD} ${FIGURES}`)).toBeVisible();
+
+          const fit = await page.evaluate(
+            ({ card, figures }) => {
+              const box = document.querySelector(card)!.querySelector(figures)!;
+              /*
+               * The silhouette's own box, not the `<img>` inside it and not the
+               * pair that wraps the two. `[data-silhouette]` sits on the image,
+               * whose parent is an inner layer container that measures 0 —
+               * measuring that reported a clean fit while the bodies were
+               * visibly spilling over the next column.
+               */
+              const bodies = [...box.querySelectorAll('[class*="expandedFigure"]')]
+                .filter((body) => !body.className.includes('Pair'))
+                .map((body) => body.getBoundingClientRect());
+              const room = box.getBoundingClientRect();
+              return {
+                widest: Math.round(Math.max(...bodies.map((b) => b.right)) - room.left),
+                tallest: Math.round(Math.max(...bodies.map((b) => b.height))),
+                room: { width: Math.round(room.width), height: Math.round(room.height) },
+                count: bodies.length,
+              };
+            },
+            { card: CARD, figures: FIGURES },
+          );
+
+          expect(fit.count).toBeGreaterThan(0);
+          /*
+           * A body that measures nothing passes every "does it fit" check ever
+           * written, and this one shipped: on a phone the open day's silhouette
+           * resolved to 0px and simply was not there. Fitting is only half the
+           * claim; being drawn is the other half.
+           */
+          expect(fit.tallest, 'the bodies collapsed to nothing').toBeGreaterThan(80);
+          // One pixel of slack for layout rounding, as elsewhere in this file.
+          expect(fit.widest, 'the bodies run past their own column').toBeLessThanOrEqual(
+            fit.room.width + 1,
+          );
+          expect(fit.tallest, 'the bodies run past the row that holds them').toBeLessThanOrEqual(
+            fit.room.height + 1,
+          );
+        });
+      }
+    });
+  }
+});
