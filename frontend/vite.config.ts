@@ -1,9 +1,22 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
+import { devApiFixtures } from './devApiFixtures';
+
+/*
+ * Declared here rather than pulled in with `@types/node`, for the reason
+ * playwright.config.ts gives: that package has no `types` fence, so installing
+ * it would make Node's globals visible to the application sources too, and
+ * `process.env` compiling inside a browser bundle is a trap worth not setting.
+ */
+declare const process: { readonly env: Record<string, string | undefined> };
 
 // Vite + React config for the FORMA frontend skeleton (FOR-81).
 export default defineConfig({
-  plugins: [react()],
+  /*
+   * The fixture server is opt-in and dev-only (`npm run dev:fixtures`): a plain
+   * `npm run dev` keeps proxying to a real backend, and a build never sees it.
+   */
+  plugins: [react(), ...(process.env.FIXTURES === '1' ? [devApiFixtures()] : [])],
   server: {
     port: 5173,
     // The app calls relative `/api/...` (same-origin). In dev, proxy those to the
