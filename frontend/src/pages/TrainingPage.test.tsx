@@ -687,6 +687,23 @@ describe('TrainingPage', () => {
       expect(updateMock).toHaveBeenCalledWith('MONDAY:RUNNING', 'PLANNED');
       expect(await screen.findByRole('button', { name: 'Completar carrera' })).toBeInTheDocument();
     });
+
+    it('prints the short label but keeps the whole one as its accessible name', async () => {
+      getWeekMock.mockResolvedValue(runningToday('PLANNED'));
+
+      renderPage();
+      const button = await screen.findByRole('button', { name: 'Completar carrera' });
+
+      // Three buttons share the open column's width and "Completar carrera"
+      // pushed the third onto a line of its own. The word that fits is
+      // "Completar" — which on its own is ambiguous, and ambiguity is exactly
+      // what a screen reader would be left with, so the name keeps the noun.
+      expect(button).toHaveTextContent('Completar');
+      expect(button).not.toHaveTextContent('Completar carrera');
+
+      const group = button.closest('[role="group"]') as HTMLElement;
+      expect(within(group).getAllByRole('button')).toHaveLength(3);
+    });
   });
 
   /*

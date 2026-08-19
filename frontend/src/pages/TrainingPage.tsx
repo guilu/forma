@@ -636,12 +636,22 @@ function ExpandedDay({
                 ) : (
                   <Button
                     type="button"
+                    /*
+                     * "Completar" on the button, "Completar carrera" as its
+                     * name. Three actions share the open column and the long
+                     * label pushed this one onto a line of its own; the short
+                     * word fits, but on its own it does not say *what* is being
+                     * completed — and that is exactly what a screen reader
+                     * would be left with, since it never sees the session title
+                     * sitting a few lines above.
+                     */
+                    aria-label="Completar carrera"
                     disabled={pendingId === session.id}
                     loading={pendingId === session.id}
                     onClick={() => mark(session.id, 'COMPLETED')}
                   >
                     <Icon name="check" size={17} />
-                    Completar carrera
+                    Completar
                   </Button>
                 )}
               </div>
