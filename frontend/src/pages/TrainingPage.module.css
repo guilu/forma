@@ -601,6 +601,41 @@
   grid-area: head / head / body / body;
 }
 
+/*
+ * The running variant: same grid, one column, no ring.
+ *
+ * A run is a single session that is either planned or done, so the ring next to
+ * it could only ever read 0% or 100% (see `TodaySessionCard`). With it gone the
+ * left column has nothing to hold, and a two-column grid with an empty half is
+ * worse than no split at all — so the run stacks and the figure takes the whole
+ * middle, exactly like the rest day above.
+ *
+ * Written with the compound selector, and with `.todayArea` in front, because
+ * the base areas are redefined at 721px and again at 1200px (`.todayArea
+ * .todayLayout`). Plain `.todayLayoutRun` would lose to both.
+ */
+.todayLayout.todayLayoutRun,
+.todayArea .todayLayout.todayLayoutRun {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'head'
+    'body'
+    'figure'
+    'actions';
+  grid-template-rows: auto auto 1fr auto;
+  align-items: stretch;
+}
+
+/*
+ * The same generous height the rest day gives its silhouette: this figure is no
+ * longer a column beside the text, it is the body of the card. `min-height: 0`
+ * clears the 721px floor, which was sized for the narrow figure cell.
+ */
+.todayLayout.todayLayoutRun > .todayFigures {
+  height: clamp(9rem, 44vh, 32rem);
+  min-height: 0;
+}
+
 .sessionBody {
   display: flex;
   flex-direction: column;

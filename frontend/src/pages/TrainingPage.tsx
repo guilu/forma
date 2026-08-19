@@ -472,10 +472,24 @@ function TodaySessionCard({
   const { completed, planned } = tally(sessions);
   const percent = planned > 0 ? Math.round((completed / planned) * 100) : 0;
   const visualSession = sessions.find((session) => session.kind === 'STRENGTH') ?? sessions[0];
+  /*
+   * A run has no ring.
+   *
+   * The ring counts *sessions*, and a running day carries exactly one with two
+   * states — planned or completed — so the dial could only ever read 0% or
+   * 100%. A progress indicator that never shows progress is a decoration that
+   * asks to be read, so the run drops it and hands the figure the middle of the
+   * card, the way the rest day already does. Whatever a run should say beyond
+   * its distance belongs in the title or the detail line, not in a dial.
+   *
+   * `visualSession` prefers a strength session, so a run here means the day has
+   * nothing but runs.
+   */
+  const isRun = visualSession.kind === 'RUNNING';
 
   return (
     <Card title={title} headingLevel={2} className={styles.todayCard}>
-      <div className={styles.todayLayout}>
+      <div className={`${styles.todayLayout} ${isRun ? styles.todayLayoutRun : ''}`}>
         {/*
          * One session renders flat, several render as a list.
          *
@@ -499,26 +513,28 @@ function TodaySessionCard({
           </ul>
         )}
 
-        <div className={styles.todayRing}>
-          {/* Ring shows today's real session completion; the "N/M ejercicios"
+        {!isRun && (
+          <div className={styles.todayRing}>
+            {/* Ring shows today's real session completion; the "N/M ejercicios"
                 figure below it is placeholder (per-exercise data isn't backed). */}
-          <ProgressRing
-            value={completed}
-            max={Math.max(planned, 1)}
-            label={`${completed} de ${planned} sesiones completadas hoy`}
-            size={128}
-          >
-            <span className={styles.ringPercent}>{percent}%</span>
-          </ProgressRing>
-          <p className={styles.ringStatus}>{percent === 100 ? 'Completado' : 'En progreso'}</p>
-          {/* The ring counts sessions, which is what the week payload
+            <ProgressRing
+              value={completed}
+              max={Math.max(planned, 1)}
+              label={`${completed} de ${planned} sesiones completadas hoy`}
+              size={128}
+            >
+              <span className={styles.ringPercent}>{percent}%</span>
+            </ProgressRing>
+            <p className={styles.ringStatus}>{percent === 100 ? 'Completado' : 'En progreso'}</p>
+            {/* The ring counts sessions, which is what the week payload
                 actually carries. It used to be captioned "4 / 6 ejercicios"
                 from a constant — a figure that was wrong for every day and
                 meaningless for a run. */}
-          <p className={styles.ringCaption}>
-            {completed} / {planned} {planned === 1 ? 'sesión' : 'sesiones'}
-          </p>
-        </div>
+            <p className={styles.ringCaption}>
+              {completed} / {planned} {planned === 1 ? 'sesión' : 'sesiones'}
+            </p>
+          </div>
+        )}
         <TodayFigures session={visualSession} sex={anatomySex} />
 
         {/*
