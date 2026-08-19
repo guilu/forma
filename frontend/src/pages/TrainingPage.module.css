@@ -120,6 +120,13 @@
   grid-template-rows: minmax(0, 1fr) auto;
   gap: var(--space-4);
   min-height: 0;
+  /*
+   * How long a day takes to open. One number for the whole gesture — the
+   * columns trading width, and everything that only exists inside the open one
+   * fading in — so the two halves cannot drift apart into something that reads
+   * as two separate movements.
+   */
+  --day-swap: 260ms;
 }
 
 @media (min-width: 901px) {
@@ -190,7 +197,52 @@
    * between seven items, so there is no width to animate — the browser
    * interpolates the ratio and lays out from it.
    */
-  transition: flex-grow 260ms ease-in-out;
+  transition: flex-grow var(--day-swap) ease-in-out;
+}
+
+/*
+ * What the open day carries and a compact one does not — the status pill, the
+ * bodies, the actions — is *mounted*, not merely revealed: it does not exist
+ * in the compact column, so there is no previous value for a `transition` to
+ * interpolate from and it would otherwise pop in fully formed against a column
+ * that is still widening. An entrance animation runs without a previous value,
+ * which is why these fade rather than transition.
+ *
+ * Same duration as the width, so the column and its contents arrive together.
+ */
+@keyframes dayOpens {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* The pill also grows into place: it is the smallest thing on the card and a
+   plain fade at that size barely registers as movement. */
+@keyframes pillArrives {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.expandedFigures,
+.expandedActions,
+.restLayout {
+  animation: dayOpens var(--day-swap) ease-in-out both;
+}
+
+.expandedStatus {
+  display: inline-flex;
+  animation: pillArrives var(--day-swap) ease-in-out both;
 }
 
 /*
@@ -202,6 +254,13 @@
   .weekDay,
   .weekDayExpanded {
     transition: none;
+  }
+
+  .expandedFigures,
+  .expandedActions,
+  .restLayout,
+  .expandedStatus {
+    animation: none;
   }
 }
 

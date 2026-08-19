@@ -567,7 +567,13 @@ function ExpandedDay({
     <>
       <div className={styles.expandedHead}>
         <h2 className={styles.expandedDayName}>{isToday ? `Hoy · ${label}` : label}</h2>
-        {!day.rest && <StatusPill kind="training" value={dayStatus(day)} />}
+        {!day.rest && (
+          /* Wrapped because `StatusPill` takes no className, and this is the
+             element the open-day entrance animation hangs off. */
+          <span className={styles.expandedStatus}>
+            <StatusPill kind="training" value={dayStatus(day)} />
+          </span>
+        )}
       </div>
 
       {day.rest ? (
