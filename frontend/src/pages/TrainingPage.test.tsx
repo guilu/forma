@@ -132,18 +132,19 @@ describe('TrainingPage', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Cargando tu semana');
   });
 
-  it("renders today's session card for the current day of week", async () => {
+  it("expands today's column inside the week strip", async () => {
     getWeekMock.mockResolvedValue(week);
 
     renderPage();
 
-    // Direct sibling of the page <h1> (no intervening <h2>), so per FOR-112
-    // it must render as <h2>.
+    // Direct sibling of the page <h1> (no intervening heading), so per FOR-112
+    // it must render as <h2>. Named after the day it opens, not "hoy" alone:
+    // the arrows move the expanded column to any day of the week.
     const todayHeading = await screen.findByRole('heading', {
-      name: 'Entrenamiento de hoy',
+      name: 'Hoy · Lunes',
       level: 2,
     });
-    const todayCard = todayHeading.closest('section') as HTMLElement;
+    const todayCard = todayHeading.closest('li') as HTMLElement;
 
     expect(within(todayCard).getByText('Fuerza · Empuje')).toBeInTheDocument();
     expect(within(todayCard).getByText('3 ejercicios')).toBeInTheDocument();
@@ -165,9 +166,9 @@ describe('TrainingPage', () => {
 
     renderPage();
 
-    const todayCard = (
-      await screen.findByRole('heading', { name: 'Entrenamiento de hoy' })
-    ).closest('section') as HTMLElement;
+    const todayCard = (await screen.findByRole('heading', { name: 'Hoy · Lunes' })).closest(
+      'li',
+    ) as HTMLElement;
     expect(
       within(todayCard)
         .getAllByRole('presentation', { hidden: true })
@@ -180,7 +181,7 @@ describe('TrainingPage', () => {
     getWeekMock.mockResolvedValue(week);
 
     renderPage();
-    await screen.findByRole('heading', { name: 'Entrenamiento de hoy' });
+    await screen.findByRole('heading', { name: 'Hoy · Lunes' });
 
     expect(
       screen.queryByRole('heading', { name: 'Grupos musculares trabajados esta semana' }),
@@ -214,49 +215,43 @@ describe('TrainingPage', () => {
 
     renderPage();
 
-    const todayCard = (
-      await screen.findByRole('heading', { name: 'Entrenamiento de hoy' })
-    ).closest('section') as HTMLElement;
+    const todayCard = (await screen.findByRole('heading', { name: 'Hoy · Lunes' })).closest(
+      'li',
+    ) as HTMLElement;
     expect(within(todayCard).getByRole('button', { name: 'Entrenar' })).toBeInTheDocument();
-    expect(within(todayCard).queryByRole('button', { name: 'Saltar' })).not.toBeInTheDocument();
+    expect(
+      within(todayCard).queryByRole('button', { name: 'Saltar la sesión' }),
+    ).not.toBeInTheDocument();
 
     await userEvent.click(within(todayCard).getByRole('button', { name: 'Entrenar' }));
     expect(screen.getByTestId('location')).toHaveTextContent('/app/training/MONDAY%3ASTRENGTH');
   });
 
-  it('renders the weekly calendar with running, strength and rest days', async () => {
+  it('renders the week strip with running, strength and rest days', async () => {
     getWeekMock.mockResolvedValue(week);
 
     renderPage();
     // Direct sibling of the page <h1>, so it must render as <h2> (FOR-112).
-    await screen.findByRole('heading', { name: 'Calendario semanal', level: 2 });
+    await screen.findByRole('heading', { name: 'Hoy · Lunes', level: 2 });
 
     expect(screen.getByText('Tirada larga')).toBeInTheDocument();
-    // Each day title nested inside the calendar card stays an <h3> — one
-    // level below its now-<h2> "Calendario semanal" container.
-    expect(screen.getByRole('heading', { name: 'Lunes', level: 3 })).toBeInTheDocument();
-    const mondayDay = screen.getByRole('heading', { name: 'Lunes', level: 3 }).closest('li');
-    expect(mondayDay).not.toBeNull();
-    // Strength days draw the front sheet only, even for a pull session whose
-    // own bodyView is BACK: at card size a front/back pair would halve each
-    // body. The detail view is where both sheets are shown.
-    // Queried by attribute, not by role: the silhouette is decorative
+    // Tuesday is a compact column: today (Monday) is the one that expands.
+    const tuesday = screen.getByRole('heading', { name: 'Martes', level: 2 }).closest('li');
+    expect(tuesday).not.toBeNull();
+    // A compact column draws one body, never the front/back pair the expanded
+    // day gets: at this width a pair would halve each one and neither would
+    // read. Queried by attribute, not by role: the silhouette is decorative
     // (`alt=""`), which makes it a presentation node rather than an image.
-    expect(
-      (mondayDay as HTMLElement)
-        .querySelector('[data-silhouette]')
-        ?.getAttribute('data-silhouette'),
-    ).toBe('male/front');
+    expect((tuesday as HTMLElement).querySelectorAll('[data-silhouette]')).toHaveLength(1);
     // Sunday is a rest day: shown, with no session controls for it. Queried by
     // accessible name, not by text: the strip prints "DOM" and carries the whole
     // word on the heading, so this also pins that the short label never reaches
     // assistive tech.
-    const sundayHeading = screen.getByRole('heading', { name: 'Domingo', level: 3 });
+    const sundayHeading = screen.getByRole('heading', { name: 'Domingo', level: 2 });
     const sundayDay = sundayHeading.closest('li');
     expect(sundayDay).not.toBeNull();
     expect(sundayDay).toHaveTextContent('Descanso');
     expect(sundayDay?.querySelector('button')).toBeNull();
-    expect(screen.getByRole('img', { name: 'Progreso semanal' })).toBeInTheDocument();
   });
 
   it('opens the session detail for a strength session', async () => {
@@ -264,9 +259,9 @@ describe('TrainingPage', () => {
     const user = userEvent.setup();
 
     renderPage();
-    await screen.findByRole('heading', { name: 'Calendario semanal' });
+    await screen.findByRole('heading', { name: 'Hoy · Lunes' });
 
-    await user.click(screen.getByRole('button', { name: 'Detalle' }));
+    await user.click(screen.getByRole('button', { name: 'Ver el detalle' }));
 
     expect(screen.getByRole('dialog', { name: /Lunes · Fuerza/ })).toBeInTheDocument();
     // Documented gap: no exercise-level breakdown is available from the API.
@@ -279,8 +274,8 @@ describe('TrainingPage', () => {
     const user = userEvent.setup();
 
     renderPage();
-    await screen.findByRole('heading', { name: 'Calendario semanal' });
-    await user.click(screen.getByRole('button', { name: 'Detalle' }));
+    await screen.findByRole('heading', { name: 'Hoy · Lunes' });
+    await user.click(screen.getByRole('button', { name: 'Ver el detalle' }));
 
     const dialog = await screen.findByRole('dialog', { name: /Lunes · Fuerza/ });
     await user.selectOptions(within(dialog).getByLabelText('Mover a otro día'), 'WEDNESDAY');
@@ -296,8 +291,8 @@ describe('TrainingPage', () => {
     const user = userEvent.setup();
 
     renderPage();
-    await screen.findByRole('heading', { name: 'Calendario semanal' });
-    await user.click(screen.getByRole('button', { name: 'Detalle' }));
+    await screen.findByRole('heading', { name: 'Hoy · Lunes' });
+    await user.click(screen.getByRole('button', { name: 'Ver el detalle' }));
 
     const dialog = await screen.findByRole('dialog', { name: /Lunes · Fuerza/ });
     await user.selectOptions(within(dialog).getByLabelText('Mover a otro día'), 'WEDNESDAY');
@@ -318,9 +313,9 @@ describe('TrainingPage', () => {
     const user = userEvent.setup();
 
     renderPage();
-    await screen.findByRole('heading', { name: 'Calendario semanal' });
+    await screen.findByRole('heading', { name: 'Hoy · Lunes' });
 
-    await user.click(screen.getByRole('button', { name: 'Detalle' }));
+    await user.click(screen.getByRole('button', { name: 'Ver el detalle' }));
 
     expect(getMuscleMapMock).toHaveBeenCalledWith('MONDAY:STRENGTH');
     const dialog = await screen.findByRole('dialog', { name: /Lunes · Fuerza/ });
@@ -337,9 +332,9 @@ describe('TrainingPage', () => {
     const user = userEvent.setup();
 
     renderPage();
-    await screen.findByRole('heading', { name: 'Calendario semanal' });
+    await screen.findByRole('heading', { name: 'Hoy · Lunes' });
 
-    await user.click(screen.getByRole('button', { name: 'Detalle' }));
+    await user.click(screen.getByRole('button', { name: 'Ver el detalle' }));
 
     const dialog = await screen.findByRole('dialog', { name: /Lunes · Fuerza/ });
     expect(
@@ -392,7 +387,9 @@ describe('TrainingPage', () => {
     renderPage();
     await screen.findByText('Tirada larga');
 
-    const runningTile = screen.getByRole('listitem', { name: 'Carreras' });
+    const runningTile = screen
+      .getByRole('heading', { name: 'Carreras', level: 2 })
+      .closest('div') as HTMLElement;
     expect(runningTile).not.toBeNull();
     expect(within(runningTile as HTMLElement).getByText('0 / 1')).toBeInTheDocument();
 
@@ -411,7 +408,7 @@ describe('TrainingPage', () => {
     const user = userEvent.setup();
 
     renderPage();
-    await screen.findByRole('heading', { name: 'Calendario semanal' });
+    await screen.findByRole('heading', { name: 'Hoy · Lunes' });
 
     await user.click(screen.getByRole('button', { name: /Carrera.*Tirada larga/s }));
     await user.click(screen.getByRole('button', { name: 'Completar' }));
@@ -420,30 +417,23 @@ describe('TrainingPage', () => {
     expect(await within(region).findByText(/marcado como completado/i)).toBeInTheDocument();
   });
 
-  it('shows the weekly summary with planned vs completed counts', async () => {
+  it('counts the week once in the stats strip, with no percentages to disagree', async () => {
     getWeekMock.mockResolvedValue(week);
 
     renderPage();
-    await screen.findByRole('heading', { name: 'Calendario semanal' });
+    await screen.findByRole('heading', { name: 'Hoy · Lunes' });
 
-    // Direct sibling of the page <h1>, so it must render as <h2> (FOR-112).
-    const summaryHeading = screen.getByRole('heading', { name: 'Resumen semanal', level: 2 });
-    const summary = summaryHeading.closest('section');
-    expect(summary).not.toBeNull();
-    const summaryView = within(summary as HTMLElement);
-    expect(summaryView.getByText('0 / 2')).toBeInTheDocument(); // Sesiones totales
-    expect(summaryView.getAllByText('0 / 1')).toHaveLength(2); // Carreras + Fuerza tiles
-    expect(
-      summaryView.getByRole('heading', { name: 'Sesiones totales', level: 3 }),
-    ).toBeInTheDocument();
-    expect(summaryView.getByText('Sesiones completadas')).toBeInTheDocument();
-    expect(summaryView.getByRole('heading', { name: 'Carreras', level: 3 })).toBeInTheDocument();
-    expect(summaryView.getByRole('heading', { name: 'Fuerza', level: 3 })).toBeInTheDocument();
-    // The kind is already the row's own heading, so the caption only has to say
-    // what the number counts.
-    expect(summaryView.getAllByText('Completadas')).toHaveLength(2);
-    expect(summaryView.getAllByText('0%')).toHaveLength(3);
-    expect(summaryView.getByRole('link', { name: /Ver estadísticas completas/i })).toHaveAttribute(
+    const stats = within(screen.getByRole('region', { name: 'Resumen de la semana' }));
+    const tile = (name: string) =>
+      within(stats.getByRole('heading', { name, level: 2 }).closest('div') as HTMLElement);
+
+    expect(tile('Sesiones').getByText('0 / 2')).toBeInTheDocument();
+    expect(tile('Carreras').getByText('0 / 1')).toBeInTheDocument();
+    expect(tile('Fuerza').getByText('0 / 1')).toBeInTheDocument();
+    // The three rings the old summary card drew are gone with it: a percentage
+    // of two sessions says nothing the fraction beside it does not.
+    expect(stats.queryByText('0%')).toBeNull();
+    expect(stats.getByRole('link', { name: /Ver estadísticas completas/i })).toHaveAttribute(
       'href',
       '/app/progress',
     );
@@ -458,12 +448,14 @@ describe('TrainingPage', () => {
     getWeekMock.mockResolvedValue(week);
     renderPage();
 
-    const calendar = await screen.findByRole('list', {
-      name: 'Calendario semanal de entrenamiento',
-    });
+    // Monday expands by default and keeps its whole title, so the prefix rule
+    // has to be read on a compact column: move the expansion off Monday first.
+    await screen.findByRole('heading', { name: 'Hoy · Lunes' });
+    await userEvent.click(screen.getByRole('button', { name: 'Día siguiente' }));
+    const strip = screen.getByRole('list', { name: 'Semana de entrenamiento' });
 
-    expect(within(calendar).getByText('Empuje')).toBeInTheDocument();
-    expect(within(calendar).queryByText('Fuerza · Empuje')).not.toBeInTheDocument();
+    expect(within(strip).getByText('Empuje')).toBeInTheDocument();
+    expect(within(strip).queryByText('Fuerza · Empuje')).not.toBeInTheDocument();
   });
 
   /*
@@ -475,7 +467,7 @@ describe('TrainingPage', () => {
   it('leads the header date with the weekday, as its own droppable element', async () => {
     getWeekMock.mockResolvedValue(week);
     renderPage();
-    await screen.findByRole('heading', { name: 'Calendario semanal' });
+    await screen.findByRole('heading', { name: 'Hoy · Lunes' });
 
     const weekday = screen.getByTestId('date-weekday');
 
@@ -484,31 +476,31 @@ describe('TrainingPage', () => {
     );
   });
 
-  it('keys the calendar legend to the three session statuses and nothing else', async () => {
+  it('names each day status on the dot itself, with no legend to key it to', async () => {
     getWeekMock.mockResolvedValue(week);
     renderPage();
-    await screen.findByRole('heading', { name: 'Calendario semanal' });
+    await screen.findByRole('heading', { name: 'Hoy · Lunes' });
 
-    const legend = screen.getByRole('list', { name: 'Leyenda del calendario' });
-
-    for (const entry of ['Completado', 'Pendiente', 'Saltado']) {
-      expect(within(legend).getByText(entry)).toBeInTheDocument();
-    }
-    // The kinds left the legend when the badges left the cards, and "Hoy" went
-    // with them: a colour key for something the grid never draws in that colour
-    // is noise, and the highlighted card is its own label.
-    for (const gone of ['Hoy', 'Fuerza', 'Carrera', 'Descanso']) {
-      expect(within(legend).queryByText(gone)).not.toBeInTheDocument();
-    }
+    // The legend row went with the calendar card it lived in. The dot carries
+    // its own name instead — for assistive tech via `aria-label`, and for a
+    // sighted reader via the tooltip, so nothing depends on remembering a key.
+    const tuesday = screen.getByRole('heading', { name: 'Martes', level: 2 }).closest('li');
+    expect(within(tuesday as HTMLElement).getByLabelText('Planificado')).toHaveAttribute(
+      'title',
+      'Planificado',
+    );
+    expect(screen.queryByRole('list', { name: 'Leyenda del calendario' })).toBeNull();
   });
 
   it('shows each day status in the card corner', async () => {
     getWeekMock.mockResolvedValue(week);
     renderPage();
-    await screen.findByRole('heading', { name: 'Calendario semanal' });
+    await screen.findByRole('heading', { name: 'Hoy · Lunes' });
 
-    const monday = screen.getByRole('heading', { name: 'Lunes', level: 3 }).closest('li');
-    expect(within(monday as HTMLElement).getByLabelText('Pendiente')).toBeInTheDocument();
+    // Read on Tuesday: Monday is the expanded column, which states its status
+    // in words rather than as a dot.
+    const tuesday = screen.getByRole('heading', { name: 'Martes', level: 2 }).closest('li');
+    expect(within(tuesday as HTMLElement).getByLabelText('Planificado')).toBeInTheDocument();
   });
 
   /*
@@ -542,9 +534,9 @@ describe('TrainingPage', () => {
       getWeekMock.mockResolvedValue(runningToday);
 
       renderPage();
-      const todayCard = (
-        await screen.findByRole('heading', { name: 'Entrenamiento de hoy' })
-      ).closest('section') as HTMLElement;
+      const todayCard = (await screen.findByRole('heading', { name: 'Hoy · Lunes' })).closest(
+        'li',
+      ) as HTMLElement;
 
       expect(within(todayCard).getByText('4.0 km')).toBeInTheDocument();
       expect(within(todayCard).queryByText(/Enfoque/)).not.toBeInTheDocument();
@@ -563,9 +555,9 @@ describe('TrainingPage', () => {
       });
 
       renderPage();
-      const todayCard = (
-        await screen.findByRole('heading', { name: 'Entrenamiento de hoy' })
-      ).closest('section') as HTMLElement;
+      const todayCard = (await screen.findByRole('heading', { name: 'Hoy · Lunes' })).closest(
+        'li',
+      ) as HTMLElement;
 
       expect(await within(todayCard).findByText('Enfoque: Pecho, Tríceps')).toBeInTheDocument();
     });
@@ -577,7 +569,14 @@ describe('TrainingPage', () => {
    * that has no progress. The run card drops it and gives the figure the middle
    * of the card, the way the rest day already does.
    */
-  describe("today's completion ring", () => {
+  /*
+   * The dial went with the card it lived in. It counted *sessions*, and a day
+   * holds one or two, so it could only ever read 0%, 50% or 100% — three
+   * positions on a control that looks like it has a hundred. The expanded day
+   * states its status in a word instead, which is the same fact without the
+   * pretence of precision.
+   */
+  describe('el estado del día', () => {
     const runningToday: TrainingWeek = {
       days: week.days.map((day) =>
         day.dayOfWeek === 'MONDAY'
@@ -598,35 +597,31 @@ describe('TrainingPage', () => {
       ),
     };
 
-    it('is left off a running day', async () => {
-      getWeekMock.mockResolvedValue(runningToday);
-
-      renderPage();
-      const todayCard = (
-        await screen.findByRole('heading', { name: 'Entrenamiento de hoy' })
-      ).closest('section') as HTMLElement;
-
-      expect(within(todayCard).queryByText('0%')).not.toBeInTheDocument();
-      expect(within(todayCard).queryByText('En progreso')).not.toBeInTheDocument();
-      expect(within(todayCard).queryByText('0 / 1 sesión')).not.toBeInTheDocument();
-      // The run still says what it is and how it is closed.
-      expect(within(todayCard).getByText('Series')).toBeInTheDocument();
-      expect(
-        within(todayCard).getByRole('button', { name: 'Completar carrera' }),
-      ).toBeInTheDocument();
-    });
-
-    it('still reports session completion on a strength day', async () => {
+    it('is stated as a word, with no percentage dial anywhere on the page', async () => {
       getWeekMock.mockResolvedValue(week);
 
       renderPage();
-      const todayCard = (
-        await screen.findByRole('heading', { name: 'Entrenamiento de hoy' })
-      ).closest('section') as HTMLElement;
+      const monday = (await screen.findByRole('heading', { name: 'Hoy · Lunes' })).closest(
+        'li',
+      ) as HTMLElement;
 
-      expect(within(todayCard).getByText('0%')).toBeInTheDocument();
-      expect(within(todayCard).getByText('En progreso')).toBeInTheDocument();
-      expect(within(todayCard).getByText('0 / 1 sesión')).toBeInTheDocument();
+      expect(within(monday).getByText('Planificado')).toBeInTheDocument();
+      expect(screen.queryByText('0%')).toBeNull();
+      expect(screen.queryByText('En progreso')).toBeNull();
+      expect(screen.queryByText(/0 \/ 1 sesión/)).toBeNull();
+    });
+
+    it('says the same for a run, which only ever has two of them', async () => {
+      getWeekMock.mockResolvedValue(runningToday);
+
+      renderPage();
+      const monday = (await screen.findByRole('heading', { name: 'Hoy · Lunes' })).closest(
+        'li',
+      ) as HTMLElement;
+
+      expect(within(monday).getByText('Series')).toBeInTheDocument();
+      expect(within(monday).getByText('Planificado')).toBeInTheDocument();
+      expect(within(monday).getByRole('button', { name: 'Completar carrera' })).toBeInTheDocument();
     });
   });
 
@@ -666,7 +661,9 @@ describe('TrainingPage', () => {
       await screen.findByRole('button', { name: 'Completar carrera' });
 
       // Two runs in the fixture week (Monday and Tuesday), neither done yet.
-      const runningTile = screen.getByRole('listitem', { name: 'Carreras' });
+      const runningTile = screen
+        .getByRole('heading', { name: 'Carreras', level: 2 })
+        .closest('div') as HTMLElement;
       expect(within(runningTile).getByText('0 / 2')).toBeInTheDocument();
 
       await user.click(screen.getByRole('button', { name: 'Completar carrera' }));
@@ -692,6 +689,37 @@ describe('TrainingPage', () => {
       expect(updateMock).toHaveBeenCalledWith('MONDAY:RUNNING', 'PLANNED');
       expect(await screen.findByRole('button', { name: 'Completar carrera' })).toBeInTheDocument();
     });
+
+    /*
+     * The three actions are glyphs now, not labels. Even trimmed to one word
+     * each they crowded the open column at every width below the widest, and a
+     * button that has to wrap is worse than one that has to be recognised.
+     *
+     * What that costs is the label, and it is paid back twice: `aria-label`
+     * carries the whole sentence to assistive tech, and `title` shows it on
+     * hover for everyone else. What must never happen is a glyph reaching the
+     * accessibility tree unnamed, so that is what these pin.
+     */
+    it('states each action in full on its name and its tooltip, not on its face', async () => {
+      getWeekMock.mockResolvedValue(runningToday('PLANNED'));
+
+      renderPage();
+      const complete = await screen.findByRole('button', { name: 'Completar carrera' });
+      const group = complete.closest('[role="group"]') as HTMLElement;
+      const actions = within(group).getAllByRole('button');
+
+      expect(actions).toHaveLength(3);
+      for (const action of actions) {
+        // The glyph is decorative (see Icon), so the name has to come from the
+        // label — an empty one here means an unnamed control.
+        expect(action).toHaveAccessibleName();
+        expect(action).toHaveAttribute('title', action.getAttribute('aria-label'));
+        expect(action).toHaveTextContent('');
+      }
+
+      expect(within(group).getByRole('button', { name: 'Saltar la sesión' })).toBeInTheDocument();
+      expect(within(group).getByRole('button', { name: 'Ver el detalle' })).toBeInTheDocument();
+    });
   });
 
   /*
@@ -699,19 +727,19 @@ describe('TrainingPage', () => {
    * which is the only range the API has: `GET /training/week` returns the
    * current week and takes no date (docs/api/training-week.md).
    */
-  describe('the date arrows move the card across the week', () => {
-    it('swaps the card to the chosen day and names it', async () => {
+  describe('the date arrows move the expanded column across the week', () => {
+    it('expands the chosen day and names it', async () => {
       getWeekMock.mockResolvedValue(week);
       const user = userEvent.setup();
 
       renderPage();
-      await screen.findByRole('heading', { name: 'Entrenamiento de hoy' });
+      await screen.findByRole('heading', { name: 'Hoy · Lunes' });
 
       await user.click(screen.getByRole('button', { name: 'Día siguiente' }));
 
-      const card = (
-        await screen.findByRole('heading', { name: 'Entrenamiento del martes' })
-      ).closest('section') as HTMLElement;
+      const card = (await screen.findByRole('heading', { name: 'Martes' })).closest(
+        'li',
+      ) as HTMLElement;
       expect(within(card).getByText('Tirada larga')).toBeInTheDocument();
       expect(screen.getByTestId('date-weekday')).toHaveTextContent('Martes,');
     });
@@ -721,7 +749,7 @@ describe('TrainingPage', () => {
       const user = userEvent.setup();
 
       renderPage();
-      await screen.findByRole('heading', { name: 'Entrenamiento de hoy' });
+      await screen.findByRole('heading', { name: 'Hoy · Lunes' });
 
       // TODAY is the Monday of the fixture week, so there is nothing before it.
       expect(screen.getByRole('button', { name: 'Día anterior' })).toBeDisabled();
@@ -730,9 +758,7 @@ describe('TrainingPage', () => {
         await user.click(screen.getByRole('button', { name: 'Día siguiente' }));
       }
       expect(screen.getByRole('button', { name: 'Día siguiente' })).toBeDisabled();
-      expect(
-        await screen.findByRole('heading', { name: 'Entrenamiento del domingo' }),
-      ).toBeInTheDocument();
+      expect(await screen.findByRole('heading', { name: 'Domingo' })).toBeInTheDocument();
     });
   });
 
@@ -760,7 +786,7 @@ describe('TrainingPage', () => {
     const user = userEvent.setup();
 
     renderPage();
-    await screen.findByRole('heading', { name: 'Calendario semanal' });
+    await screen.findByRole('heading', { name: 'Hoy · Lunes' });
 
     await user.click(screen.getByRole('button', { name: 'Completar carrera' }));
 
@@ -797,7 +823,11 @@ describe('TrainingPage', () => {
 
     renderPage();
 
-    expect(await screen.findByText('Hoy es día de descanso.')).toBeInTheDocument();
+    const sunday = (await screen.findByRole('heading', { name: 'Hoy · Domingo' })).closest(
+      'li',
+    ) as HTMLElement;
+    expect(within(sunday).getByText('Descanso')).toBeInTheDocument();
+    expect(within(sunday).getByText('El plan no trae sesión para este día.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Entrenar' })).toBeNull();
   });
 
@@ -805,7 +835,7 @@ describe('TrainingPage', () => {
   // to replace the "RACHA ACTUAL"/weekly-history gap this page's doc comment
   // documented (mockup docs/3-entrenamiento.png). Each fetches independently
   // of the training week and of each other (FOR-60 pattern).
-  describe('streak widget (FOR-143)', () => {
+  describe('streak tile (FOR-143)', () => {
     it('shows the current and longest streak once loaded', async () => {
       getWeekMock.mockResolvedValue(week);
       getStreakMock.mockResolvedValue({
@@ -816,8 +846,9 @@ describe('TrainingPage', () => {
 
       renderPage();
 
-      const heading = await screen.findByRole('heading', { name: 'Racha actual', level: 2 });
-      const card = heading.closest('section') as HTMLElement;
+      const card = (await screen.findByRole('heading', { name: 'Racha', level: 2 })).closest(
+        'div',
+      ) as HTMLElement;
       expect(await within(card).findByText('4')).toBeInTheDocument();
       expect(within(card).getByText(/Récord: 12 días/)).toBeInTheDocument();
     });
@@ -832,8 +863,9 @@ describe('TrainingPage', () => {
 
       renderPage();
 
-      const heading = await screen.findByRole('heading', { name: 'Racha actual' });
-      const card = heading.closest('section') as HTMLElement;
+      const card = (await screen.findByRole('heading', { name: 'Racha' })).closest(
+        'div',
+      ) as HTMLElement;
       expect(await within(card).findByText('0')).toBeInTheDocument();
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
@@ -848,7 +880,7 @@ describe('TrainingPage', () => {
       // card has actually mounted and started its own (never-resolving)
       // fetch — otherwise this could pass merely because the outer page is
       // still on its own "Cargando tu semana…" loading state.
-      await screen.findByRole('heading', { name: 'Calendario semanal' });
+      await screen.findByRole('heading', { name: 'Hoy · Lunes' });
       expect(screen.getByText('Cargando racha…')).toBeInTheDocument();
     });
 
@@ -859,13 +891,14 @@ describe('TrainingPage', () => {
 
       renderPage();
 
-      const heading = await screen.findByRole('heading', { name: 'Racha actual' });
-      const card = heading.closest('section') as HTMLElement;
+      const card = (await screen.findByRole('heading', { name: 'Racha' })).closest(
+        'div',
+      ) as HTMLElement;
       expect(await within(card).findByRole('alert')).toHaveTextContent(
         'No se pudo cargar tu racha',
       );
-      // The weekly summary (a sibling widget) still rendered normally.
-      expect(screen.getByRole('heading', { name: 'Resumen semanal' })).toBeInTheDocument();
+      // The sibling tiles in the same strip still rendered normally.
+      expect(screen.getByRole('heading', { name: 'Sesiones', level: 2 })).toBeInTheDocument();
 
       getStreakMock.mockResolvedValue({
         currentStreakDays: 4,
@@ -875,6 +908,176 @@ describe('TrainingPage', () => {
       await user.click(within(card).getByRole('button', { name: 'Reintentar' }));
 
       expect(await within(card).findByText('4')).toBeInTheDocument();
+    });
+  });
+
+  /*
+   * FOR — "Entrenamiento sin scroll": the week stops being a card and becomes the
+   * page. Seven columns across, the selected day expanded inside the row rather
+   * than living in a card of its own, and one strip of counters underneath.
+   *
+   * Design canvas: docs/design/entrenamiento-sin-scroll (direction C).
+   *
+   * These tests describe the shape the redesign has to hold, not its pixels: one
+   * list for the whole week, one expanded day inside it, and counters that only
+   * count what the API actually returns.
+   */
+  describe('la semana como columna vertebral', () => {
+    /*
+     * A day column is found by its own heading: the expanded one reads
+     * "Hoy · Lunes", a compact one carries the whole weekday as the accessible
+     * name behind its abbreviation. Indexing the list items instead would count
+     * the nested list a two-session day renders.
+     */
+    const dayColumn = (heading: string) =>
+      screen.getByRole('heading', { name: heading }).closest('li') as HTMLElement;
+
+    const fullWeek: TrainingWeek = {
+      days: [
+        {
+          dayOfWeek: 'MONDAY',
+          rest: false,
+          sessions: [
+            {
+              id: 'MONDAY:STRENGTH',
+              kind: 'STRENGTH',
+              bodyView: 'BACK',
+              title: 'Fuerza · Tirón',
+              detail: '5 ejercicios',
+              status: 'PLANNED',
+            },
+          ],
+        },
+        {
+          dayOfWeek: 'TUESDAY',
+          rest: false,
+          sessions: [
+            {
+              id: 'TUESDAY:RUNNING',
+              kind: 'RUNNING',
+              bodyView: 'FRONT',
+              title: 'Carrera · Series',
+              detail: '4.0 km',
+              status: 'PLANNED',
+            },
+          ],
+        },
+        {
+          dayOfWeek: 'WEDNESDAY',
+          rest: false,
+          sessions: [
+            {
+              id: 'WEDNESDAY:STRENGTH',
+              kind: 'STRENGTH',
+              bodyView: 'FRONT',
+              title: 'Fuerza · Empuje',
+              detail: '6 ejercicios',
+              status: 'COMPLETED',
+            },
+          ],
+        },
+        { dayOfWeek: 'SUNDAY', rest: true, sessions: [] },
+      ],
+    };
+
+    beforeEach(() => {
+      getWeekMock.mockResolvedValue(fullWeek);
+    });
+
+    it('renders one list for the whole week, with a card per day', async () => {
+      renderPage();
+
+      const strip = await screen.findByRole('list', { name: 'Semana de entrenamiento' });
+      // One heading per day the API returned, and nothing else: the week is the
+      // page now, so there is no second calendar to keep in sync with this one.
+      // Counted by heading rather than by list item because a day with two
+      // sessions nests a list of its own.
+      expect(within(strip).getAllByRole('heading', { level: 2 })).toHaveLength(4);
+      expect(screen.queryByRole('heading', { name: 'Calendario semanal' })).toBeNull();
+      expect(screen.queryByRole('heading', { name: 'Entrenamiento de hoy' })).toBeNull();
+    });
+
+    it('expands the selected day inside the strip and leaves the rest compact', async () => {
+      renderPage();
+
+      await screen.findByRole('list', { name: 'Semana de entrenamiento' });
+      const monday = dayColumn('Hoy · Lunes');
+      const tuesday = dayColumn('Martes');
+
+      // The expanded day carries the whole session: full title, its detail and
+      // the actions. Today is Monday (fixed clock at the top of this file).
+      expect(within(monday).getByText('Fuerza · Tirón')).toBeInTheDocument();
+      expect(within(monday).getByText('5 ejercicios')).toBeInTheDocument();
+      expect(within(monday).getByRole('button', { name: 'Entrenar' })).toBeInTheDocument();
+
+      // A compact day names its session and opens the detail; it carries no
+      // actions of its own, which is what keeps seven columns readable.
+      expect(within(tuesday).getByText('Series')).toBeInTheDocument();
+      expect(within(tuesday).queryByRole('button', { name: 'Entrenar' })).toBeNull();
+    });
+
+    it('moves the expanded column with the date arrows', async () => {
+      renderPage();
+
+      await screen.findByRole('list', { name: 'Semana de entrenamiento' });
+      await userEvent.click(screen.getByRole('button', { name: 'Día siguiente' }));
+
+      const monday = dayColumn('Lunes');
+      const tuesday = dayColumn('Martes');
+      expect(within(tuesday).getByText('Carrera · Series')).toBeInTheDocument();
+      expect(
+        within(tuesday).getByRole('button', { name: 'Completar carrera' }),
+      ).toBeInTheDocument();
+      expect(within(monday).queryByRole('button', { name: 'Entrenar' })).toBeNull();
+    });
+
+    it('counts the week once, in one strip, and drops the metrics nothing backs', async () => {
+      renderPage();
+
+      const stats = await screen.findByRole('region', { name: 'Resumen de la semana' });
+      const view = within(stats);
+
+      expect(view.getByRole('heading', { name: 'Sesiones', level: 2 })).toBeInTheDocument();
+      expect(view.getByText('1 / 3')).toBeInTheDocument(); // completadas / planificadas
+      expect(view.getByRole('heading', { name: 'Carreras', level: 2 })).toBeInTheDocument();
+      expect(view.getByRole('heading', { name: 'Fuerza', level: 2 })).toBeInTheDocument();
+
+      // Volumen, duración y calorías eran constantes en el propio componente: no
+      // hay endpoint que las devuelva, así que dejan de mostrarse.
+      expect(screen.queryByText(/Volumen total/i)).toBeNull();
+      expect(screen.queryByText(/Duración total/i)).toBeNull();
+      expect(screen.queryByText(/Calorías estimadas/i)).toBeNull();
+      expect(screen.queryByText(/vs semana anterior/i)).toBeNull();
+    });
+
+    it('carries the streak in the same strip instead of a card of its own', async () => {
+      renderPage();
+
+      const stats = await screen.findByRole('region', { name: 'Resumen de la semana' });
+
+      expect(await within(stats).findByText('4')).toBeInTheDocument();
+      expect(within(stats).getByRole('heading', { name: 'Racha', level: 2 })).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: 'Racha actual' })).toBeNull();
+      expect(screen.queryByRole('heading', { name: 'Resumen semanal' })).toBeNull();
+      expect(screen.queryByRole('heading', { name: 'Distribución semanal' })).toBeNull();
+    });
+
+    it('lets a rest day pull a session across from another day', async () => {
+      vi.setSystemTime(new Date('2026-07-12T09:00:00')); // domingo
+      rescheduleMock.mockResolvedValue(fullWeek);
+
+      renderPage();
+
+      await screen.findByRole('list', { name: 'Semana de entrenamiento' });
+      const sunday = dayColumn('Hoy · Domingo');
+
+      expect(within(sunday).getByText('Descanso')).toBeInTheDocument();
+      await userEvent.selectOptions(
+        within(sunday).getByLabelText('Mover una sesión a este día'),
+        'TUESDAY:RUNNING',
+      );
+
+      expect(rescheduleMock).toHaveBeenCalledWith('TUESDAY:RUNNING', 'SUNDAY');
     });
   });
 });

@@ -1,7 +1,16 @@
+/*
+ * Training page — "la semana como columna vertebral".
+ *
+ * The page is one week strip and one row of counters, and it is meant to fit
+ * the window rather than scroll: everything here is sized so the strip takes
+ * whatever height the header and the stats leave it. Design canvas:
+ * `docs/design/entrenamiento-sin-scroll` (direction C).
+ */
+
 .wrapper {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
+  gap: var(--space-4);
 }
 
 /*
@@ -11,9 +20,7 @@
  * date dropping to its own line and pushing the week down. On a 375px phone
  * that row cannot hold both: the title needs 176px and the date navigator 210px
  * inside 343px, so the promise was kept by letting the title run *under* the
- * navigator instead of moving it. An overlapping title is worse than a second
- * row, and the dashboard — the header this one was modelled on — has always
- * wrapped at that width rather than overlap.
+ * navigator instead of moving it.
  */
 .header {
   display: flex;
@@ -52,12 +59,6 @@
   color: var(--color-text-muted);
 }
 
-.dateArrow {
-  display: flex;
-  align-items: center;
-  color: var(--color-text-muted);
-}
-
 .dateArrowPrev {
   transform: rotate(180deg);
 }
@@ -76,7 +77,7 @@
 /*
  * The droppable half of the date. FOR-193 removed the long date form because
  * it took the training header onto a second row at 390px and pushed the whole
- * page down; the weekday is back for the desktop mockup, but it leaves the row
+ * page down; the weekday is back for the desktop layout, but it leaves the row
  * before that can happen again.
  */
 @media (max-width: 700px) {
@@ -101,65 +102,336 @@
 
 .rest {
   margin: 0;
+  font-size: var(--font-size-sm);
   color: var(--color-text-muted);
 }
 
-/* Today's card + weekly calendar stack in the main column; the summary is a
- * side column on desktop (docs/3-entrenamiento.png two-column layout) and
- * falls after them on mobile, where "today's plan" leads (ui-guidelines.md
- * mobile priority #1). */
+/*
+ * The strip on top, the counters under it.
+ *
+ * `1fr auto` and a bounded height are the whole trick: the counters ask for
+ * what they need and the week takes the rest, so the page ends exactly at the
+ * bottom of the window instead of running past it. Without the `min-height: 0`
+ * on the strip, a tall silhouette would push the grid open from the inside and
+ * the scrollbar would come back.
+ */
 .layout {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 24px;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: var(--space-4);
+  min-height: 0;
+  /*
+   * How long a day takes to open. One number for the whole gesture — the
+   * columns trading width, and everything that only exists inside the open one
+   * fading in — so the two halves cannot drift apart into something that reads
+   * as two separate movements.
+   */
+  --day-swap: 260ms;
 }
 
-.todayArea,
-.summaryArea,
-.calendarArea,
-.tabletPair,
-.streakArea {
+@media (min-width: 901px) {
+  .wrapper {
+    /* The shell's own padding (`--space-6` top and bottom) and the fixed top
+       bar are what the page has to give back before claiming the rest. */
+    height: calc(100dvh - var(--topbar-height) - 2 * var(--space-6));
+  }
+
+  .layout {
+    flex: 1;
+  }
+}
+
+/* ── The week strip ─────────────────────────────────────────────────── */
+/*
+ * Flex rather than a seven-column grid, because the number of columns is
+ * whatever the API returned and the wide one moves with the arrows. `flex-grow`
+ * carries the ratio the design asks for (a day is 1, the open day is 2.8) with
+ * no track list to keep in sync.
+ */
+/*
+ * Capped, and this is the cap the whole page hangs on.
+ *
+ * The row is a `1fr` grid track, so on a tall window it grew to whatever was
+ * left — 1073px at a 1400px viewport — and the open day grew with it. Two
+ * silhouettes scale with the card, so past a point they are simply too big for
+ * the column that holds them.
+ *
+ * 40rem is measured, not guessed: the strength card reads well at about 620px,
+ * which is where the pair sits comfortably inside the column at the widths this
+ * layout is for. `align-self: start` keeps the cap from being ignored by the
+ * track's own stretch, and the slack falls between the week and the counters
+ * rather than inside the cards.
+ */
+.weekStrip {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: var(--space-2);
+  align-self: start;
+  width: 100%;
+  max-height: 40rem;
+  height: 100%;
+  min-height: 0;
+}
+
+.weekDay,
+.weekDayExpanded {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
+  min-height: 0;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  /*
+   * The arrows swap which column is open, and the two columns that change
+   * trade width: one grows to 2.8, the other falls back to 1. Animating
+   * `flex-grow` is what makes that read as one column opening rather than as
+   * the whole week jumping — every other column shifts a little as a
+   * consequence, and the eye follows the movement instead of re-reading the
+   * row.
+   *
+   * `flex-grow` and not `width`: the widths are a ratio the row divides
+   * between seven items, so there is no width to animate — the browser
+   * interpolates the ratio and lays out from it.
+   */
+  transition: flex-grow var(--day-swap) ease-in-out;
 }
 
-.tabletPair {
-  display: grid;
-  gap: 24px;
+/*
+ * What the open day carries and a compact one does not — the status pill, the
+ * bodies, the actions — is *mounted*, not merely revealed: it does not exist
+ * in the compact column, so there is no previous value for a `transition` to
+ * interpolate from and it would otherwise pop in fully formed against a column
+ * that is still widening. An entrance animation runs without a previous value,
+ * which is why these fade rather than transition.
+ *
+ * Same duration as the width, so the column and its contents arrive together.
+ */
+@keyframes dayOpens {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
-.todaySessions {
+/* The pill also grows into place: it is the smallest thing on the card and a
+   plain fade at that size barely registers as movement. */
+@keyframes pillArrives {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.expandedFigures,
+.expandedActions,
+.restLayout {
+  animation: dayOpens var(--day-swap) ease-in-out both;
+}
+
+.expandedStatus {
+  display: inline-flex;
+  animation: pillArrives var(--day-swap) ease-in-out both;
+}
+
+/*
+ * Someone who has asked for less motion gets the same layout, arrived at
+ * instantly. The reason to animate here is comfort, not meaning: nothing about
+ * which day is open depends on having seen it widen.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .weekDay,
+  .weekDayExpanded {
+    transition: none;
+  }
+
+  .expandedFigures,
+  .expandedActions,
+  .restLayout,
+  .expandedStatus {
+    animation: none;
+  }
+}
+
+.weekDay {
+  flex: 1 1 0;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-2);
+}
+
+.weekDayExpanded {
+  flex: 2.8 1 0;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-left: 2px solid var(--color-accent);
+  background:
+    radial-gradient(
+      circle at 60% 100%,
+      color-mix(in srgb, var(--color-accent) 9%, transparent),
+      transparent 42%
+    ),
+    var(--color-surface);
+}
+
+/* ── A compact day ──────────────────────────────────────────────────── */
+/*
+ * The day name is centred on the card, not on the space the dot leaves it, so
+ * the dot comes out of the flow and pins to the corner — otherwise the weekday
+ * labels would sit at slightly different offsets depending on whether their day
+ * carries a dot.
+ */
+.compactHead {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  align-self: stretch;
+  min-height: 1rem;
+}
+
+.compactDayName {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.compactStatus {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-text-muted);
+}
+
+.compactStatus[data-status='COMPLETED'] {
+  background: var(--color-accent);
+}
+
+/* Amber, not red: skipping a session is a fact about the week, not a failure
+   (ui-guidelines.md "no guilt language"). Same token StatusPill gives SKIPPED,
+   so the dot and the pill can never drift apart. */
+.compactStatus[data-status='SKIPPED'] {
+  background: var(--color-warning-graphic);
+}
+
+.compactSessions {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-2);
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+.compactSessions > li {
+  height: 100%;
+  min-height: 0;
+}
+
+.compactButton,
+.compactRest {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: var(--space-1) 0;
+  text-align: center;
+  color: inherit;
+  background: none;
+  border: 0;
+}
+
+.compactTitle {
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.compactDetail {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
 }
 
 /*
- * `--space-2` rather than `--space-1`: the three lines are a title, a count and
- * a muscle list — three different kinds of information, not one paragraph — and
- * at the tighter spacing they read as a single block.
+ * Sized by width, and by width alone.
+ *
+ * `MuscleSilhouette` carries the art's aspect ratio on its own box and paints
+ * the layers inside it with `object-fit: fill`, so the box has to be left free
+ * to derive one axis from the other. Giving it a width *and* letting flex set
+ * its height overrides the ratio and stretches the body — which is exactly what
+ * happened to the rest-day figure, whose art is far wider than the anatomical
+ * sheets and so distorted the most.
+ *
+ * `flex: 0 0 auto` keeps flex out of the height, and the auto block margins
+ * centre it in whatever the name and the title leave.
  */
-.todaySession {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
+.compactFigure {
+  flex: 0 0 auto;
+  width: min(4.5rem, 100%);
+  margin-block: auto;
 }
 
-/* The status sits at the far edge of the card, away from the title, so the
-   title has the whole row to run in before it wraps. */
-.todaySessionHeader {
+/* ── The expanded day ───────────────────────────────────────────────── */
+.expandedHead {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
 }
 
-.todaySessionTitle {
+.expandedDayName {
   margin: 0;
-  font-size: var(--font-size-lg);
-  font-weight: 600;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-accent-strong);
+}
+
+.expandedSessions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.expandedSession {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.expandedTitle {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 .sessionDetail {
@@ -168,23 +440,212 @@
   color: var(--color-text-muted);
 }
 
+/*
+ * Two lines and no more. The focus line lists every muscle group a session
+ * works, so it is as long as the session is varied — and the height it takes is
+ * height the silhouettes below do not get. Clamping makes the card's chrome a
+ * known quantity, which is what `--figure-room` above is counting on. The full
+ * list is in the session detail either way.
+ */
+.expandedSession > .sessionDetail:last-child {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
 .sessionDetail:has(svg) {
   display: flex;
   align-items: center;
   gap: var(--space-2);
 }
 
-.actions {
+/*
+ * Height-driven, and that direction is the whole point.
+ *
+ * One axis has to come from the other or the aspect ratio is overridden and the
+ * body distorts. Here it must be the *height* that leads: this row gets what
+ * the title and the actions leave, which at 1024px is about 180px, and a body
+ * is taller than it is wide — so deriving the height from a share of the width
+ * asks for more room than the row has and the figure gets cut off at the knees.
+ * `stretch` hands each body the row's height and the ratio works out the width.
+ *
+ * The opposite choice is right for `.compactFigure`, where height is plentiful
+ * and width is the scarce axis.
+ */
+.expandedFigures {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-top: var(--space-2);
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  /* Last resort. With the width cap above and the strip's height cap below the
+     bodies should always fit; this keeps a pathological window from painting
+     one over the day next to it. */
+  overflow: hidden;
+  margin: var(--space-2) 0;
 }
 
 /*
- * Moving a session sits above the Completar/Saltar row and reads as a field,
- * not an action: it changes when the session is planned rather than recording
- * what happened, so it deliberately does not look like the two buttons below.
+ * `space-evenly` rather than `center`: two narrow bodies in a wide column left
+ * a block of empty card between them and the text. Spreading them uses the
+ * width the pair cannot fill by growing.
+ */
+.expandedFigurePair {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 0;
+}
+
+/*
+ * The body is sized by WIDTH, and the width is the smaller of the two limits it
+ * has to respect. This is the crux of the card, so it is worth spelling out.
+ *
+ * A silhouette carries its own aspect ratio, so fixing one axis fixes both —
+ * which means picking the wrong axis breaks something at one end of the range:
+ *
+ *   - by height, it overflows sideways. `max-width: 100%` is the *pair's*
+ *     width, so two bodies could come to 200% of it, and did: at 1440 they
+ *     wanted 310px of a 291px row on a 900px window, and 582px of it on a
+ *     1200px one, painting the back sheet over the day next door.
+ *   - by width alone, it overflows downwards. Half the row on a 768px window
+ *     is a body 245px tall in 135px of space.
+ *
+ * So the width takes whichever of the two is smaller. `--figure-room` is the
+ * height the row actually has: the window minus the chrome above and below it
+ * (top bar, page padding, header, the counters and the gaps), capped where the
+ * strip is. Multiplying it by the art's own ratio converts that height back
+ * into the width that would fill it.
+ *
+ * Measured across the grid this has to hold (pair width vs. row height):
+ *
+ *        1280×768   30px wide →  64 tall in 135  ·  1280×976  119 → 256 in 343
+ *        1440×900   91px wide → 196 tall in 334  ·  1440×1200 186 → 401 in 402
+ *        1725×768   30px wide →  64 tall in 135  ·  1725×976  126 → 272 in 402
+ *
+ * The 704px is the chrome the row does not get, and it has to be a *worst
+ * case*, not a measurement of one machine. It was 640 — measured here — and CI
+ * failed: the same card there spends about 64px more on its own text, because
+ * how many lines a title and a focus list take depends on the font that
+ * actually renders, and that is not a constant across machines. A number tuned
+ * to the developer's screen is a number that will be wrong on someone else's.
+ *
+ * The focus line is clamped to two lines for the same reason: without it a long
+ * muscle list took a third line on a narrow column and ate the room this
+ * constant had already promised to the bodies.
+ */
+/* Declared on the card, not on the figure row: the rest day has no session
+   figures but sizes its own body by exactly the same reasoning. */
+.weekDayExpanded {
+  --figure-room: min(calc(100dvh - 704px), 25rem);
+  /*
+   * What a run gets on top. `--figure-room` is the worst case, which is a
+   * *strength* card — title, exercise count and a two-line focus list — and a
+   * run has no focus line, so its row really is that much taller. Held in its
+   * own property because the phone layout has to zero it: there the row's
+   * height is fixed, so the spare 64px does not exist and claiming it makes the
+   * runner overflow.
+   */
+  --figure-room-run: calc(var(--figure-room) + 64px);
+}
+
+/* 854 / 1840 — the anatomical sheets' own ratio, as `MuscleSilhouette` sets it. */
+.expandedFigure {
+  flex: 0 0 auto;
+  width: min(calc(50% - var(--space-3) / 2), calc(var(--figure-room) * 0.464));
+  height: auto;
+}
+
+/*
+ * A run has no back sheet, so its single body takes the room the pair would
+ * have needed rather than half of it. Its art is a different shape — 996 / 1579
+ * — so the height-derived term uses that ratio instead.
+ *
+ * And it takes `--figure-room-run`, which is that room plus what a run does not
+ * spend on a focus line — see the note where it is declared. Without it the
+ * runner was sized for a card it is not, coming out at 64px inside 223px of
+ * space.
+ */
+.expandedFigures > .expandedFigure {
+  width: min(55%, calc(var(--figure-room-run) * 0.63));
+}
+
+.expandedActions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: auto;
+}
+
+.expandedActionGroup {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+
+/*
+ * Less air, so the three actions share one line.
+ *
+ * Shortening the label to "Completar" was not enough on its own. Measured at
+ * 1440: the three buttons came to 300px against 291px of column — nine short,
+ * and almost all of the difference is padding. `Button` reserves 24px each
+ * side, which is right for a dialog and generous for a column this narrow.
+ * At 8px they measure 268 and the row holds with 23px to spare.
+ *
+ * The 44px minimum height is untouched, so the touch target is the same size
+ * it was; only the horizontal air changes.
+ *
+ * Below about 1360px the column is narrower than the row needs and the buttons
+ * wrap onto two lines, which is the right thing to do rather than shaving the
+ * padding until they are unreadable.
+ */
+.expandedActionGroup > * {
+  padding-inline: var(--space-2);
+  font-size: var(--font-size-sm);
+}
+
+/* ── The expanded day, when the plan leaves it empty ────────────────── */
+.restLayout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  flex: 1;
+  min-height: 0;
+}
+
+.restFigure {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  overflow: hidden;
+  padding: var(--space-2) 0;
+}
+
+/*
+ * Same rule as the session bodies above, with the rest art's own ratio.
+ *
+ * It was sized by height alone and came out pressed against both edges of the
+ * card: this drawing is 996 / 1579, far wider for its height than the
+ * anatomical sheets, so the same height buys it a lot more width. Capping the
+ * width at 70% leaves it room to breathe, and the height-derived term keeps it
+ * from outgrowing the card on a tall window, exactly as for the others.
+ */
+.restBody {
+  width: min(70%, calc(var(--figure-room) * 0.63));
+  height: auto;
+}
+
+/*
+ * Moving a session reads as a field, not an action: it changes what is planned
+ * rather than recording what happened, so it deliberately does not look like
+ * the buttons the other days carry.
  */
 .moveField {
   display: flex;
@@ -203,7 +664,7 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background-color: var(--color-surface);
-  color: var(--color-text-primary);
+  color: var(--color-text);
   font: inherit;
 }
 
@@ -212,235 +673,301 @@
   cursor: not-allowed;
 }
 
-.actions button {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.progressWrap {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  margin-top: var(--space-4);
-}
-
-.progressText {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
-}
-
-.progressTrack {
-  height: 8px;
-  border-radius: var(--radius-sm);
-  background-color: var(--color-border);
-  overflow: hidden;
-}
-
-.progressFill {
-  height: 100%;
-  background-color: var(--color-accent);
-  border-radius: var(--radius-sm);
-}
-
-.calendarGrid {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: var(--space-2);
-}
-
-.calendarDay {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  min-width: 0;
-  padding: var(--space-3) var(--space-2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-}
-
+/* ── The week in numbers ────────────────────────────────────────────── */
 /*
- * Row 1 of the card. The day name is centred on the card, not on the space the
- * dot leaves it, so the dot is taken out of the flow and pinned to the corner —
- * otherwise the seven weekday labels would sit at seven slightly different
- * offsets depending on whether their day carries a dot.
+ * One row: four counters, the split donut and the way out to the full stats.
+ * The counters are `1fr` and the last two are content-sized, so the numbers
+ * stay on a common grid while the donut keeps exactly the width its legend
+ * needs.
  */
-.calendarDayHead {
-  position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 1rem;
-}
-
-.calendarDayTitle {
-  margin: 0;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  text-align: center;
-}
-
-.calendarDayStatus {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--color-text-muted);
-}
-
-.calendarDayStatus[data-status='COMPLETED'] {
-  background: var(--color-accent);
-}
-
-.calendarDayStatus[data-status='SKIPPED'] {
-  background: var(--color-warning-graphic);
-}
-
-.calendarSessions {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  flex: 1;
-}
-
-.calendarSessions > li,
-.calendarSessionButton {
-  height: 100%;
-}
-
-.calendarSessionButton {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  /*
-   * Not `space-between`: that pins the body to the top of the card and drops
-   * all the slack between it and the title, and the slack differs per card
-   * because the three sheets have very different proportions — the rest body is
-   * wider than it is tall while the anatomical sheet is twice as tall as it is
-   * wide, so at a shared width they come out at wildly different heights and
-   * the row of bodies stepped up and down. The auto margins on the figure below
-   * split that slack evenly above and under it instead.
-   */
-  justify-content: flex-start;
-  gap: var(--space-2);
-  width: 100%;
-  height: 100%;
-  padding: var(--space-2);
-  text-align: center;
-  color: inherit;
-  background: none;
-  border: 0;
-  border-radius: var(--radius-sm);
-  min-height: 44px;
-}
-
-.calendarSessionTitle {
-  font-size: 0.75rem;
-  font-weight: 600;
-  line-height: 1.25;
-  text-align: center;
-}
-
-/*
- * Sized by width so the seven cards agree: the silhouette carries its own
- * aspect ratio, and pinning the height instead would make the running body —
- * far wider than the anatomical sheets — pick a different width from its
- * neighbours and break the row.
- */
-.calendarFigure {
-  width: min(4.5rem, 100%);
-  /*
-   * Centres the body in whatever room the day name and the title leave it: a
-   * flex column hands its free space to an item's auto margins, so an equal
-   * share lands above and below, and the title still ends up at the bottom.
-   */
-  margin-block: auto;
-}
-
-/* Right-column widget stack (Resumen semanal, Racha actual, Historial
- * semanal) — docs/3-entrenamiento.png's side column. */
-.side {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
-  align-self: start;
-}
-
-.summary {
-  align-self: start;
-}
-
-/* `order`, not a Card API change: the primitive renders `title` then `action`,
-   and this is the one header in the app whose icon leads. The header's own
-   `space-between` would then throw the two to opposite edges, so this pair
-   packs to the start instead. */
-.summary > header {
-  justify-content: flex-start;
-  gap: var(--space-2);
-}
-
-.summaryTitleIcon {
-  order: -1;
-  color: var(--color-accent-strong);
-}
-
-.summaryGrid {
+.weekStats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto auto;
+  align-items: stretch;
   gap: var(--space-3);
 }
 
-.summaryNote {
-  margin: var(--space-4) 0 0;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
-}
-
-.widgetCaption {
-  margin: 0 0 var(--space-3);
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
-}
-
-/* "Racha actual" (FOR-143). */
-.streak {
+.statTile {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  justify-content: center;
   gap: var(--space-1);
-  text-align: center;
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
 }
 
-.streakValue {
+.statLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
   margin: 0;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  /* Cut rather than spill: at tablet width the tiles are narrow enough that
+     "CARRERAS" ran out past its own border. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.statIcon {
+  color: var(--color-accent-strong);
+  flex-shrink: 0;
+}
+
+/* Violet marks strength here the same way it marks the strength row on the
+   dashboard and the muscle tags on the detail screen. */
+.statIcon[data-tone='strength'] {
+  color: var(--color-violet-strong);
+}
+
+.statIcon[data-tone='streak'] {
+  color: var(--color-warning-graphic);
+}
+
+.statValue {
+  margin: 0;
+  font-family: var(--font-heading);
   font-size: var(--font-size-xl);
   font-weight: 700;
-  line-height: 1;
+  line-height: 1.1;
+  color: var(--color-text);
 }
 
-.streakUnit {
+.statUnit {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.statCaption {
   margin: 0;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   color: var(--color-text-muted);
 }
 
-.streakNote {
-  margin: var(--space-2) 0 0;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
+/* A tile is too small for the shared `ErrorState` block, so the message and its
+   retry share one line. Still `role="alert"`, and still scoped to this tile —
+   a failed streak must not take the week's counters with it. */
+.statError {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-danger);
 }
 
+.statRetry {
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--color-danger);
+  text-decoration: underline;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.statsLink {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-accent-strong);
+}
+
+/* ── The split donut ────────────────────────────────────────────────── */
+.distributionTile {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+}
+
+.distributionRing {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.distributionHole {
+  position: absolute;
+  inset: 9px;
+  border-radius: 50%;
+  background-color: var(--color-surface);
+}
+
+.distributionLegend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.distributionItem {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  column-gap: var(--space-2);
+}
+
+.distributionDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.dotStrength {
+  background-color: var(--color-warning-graphic);
+}
+
+.dotRunning {
+  background-color: var(--color-accent);
+}
+
+.dotRest {
+  background-color: var(--color-border);
+}
+
+.distributionLabel {
+  font-size: var(--font-size-xs);
+  color: var(--color-text);
+}
+
+.distributionPercent {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+/*
+ * Between the desktop grid and the wrap, the five tiles share a narrower row
+ * and their labels start being cut ("SESIO…"). The words are short enough to
+ * fit; what does not fit is the air around them, so that is what goes.
+ */
+@media (max-width: 1200px) {
+  .statTile {
+    padding: var(--space-3);
+  }
+
+  .statLabel {
+    gap: var(--space-1);
+    letter-spacing: 0.02em;
+  }
+}
+
+/* ── Narrow windows ─────────────────────────────────────────────────── */
+/*
+ * Below the tablet rail the seven columns stop being readable, so the strip
+ * wraps instead: the open day takes a row of its own and the rest fall into a
+ * grid under it. Wrapping rather than scrolling sideways on purpose — a
+ * horizontal scroller hides days behind an edge, and the point of this page is
+ * that the week is visible.
+ */
+@media (max-width: 900px) {
+  /*
+   * The cap and the fill above are for a strip that is one row. Wrapped, the
+   * days need several, so both have to go: `max-height` was clipping the wrap
+   * to 640px while the cards kept flowing past it, which is how the week ended
+   * up drawn on top of the counters underneath.
+   */
+  .weekStrip {
+    flex-wrap: wrap;
+    height: auto;
+    max-height: none;
+  }
+
+  /* Nothing is pinned to the window down here — the page scrolls, as the note
+     on the phone layout says — so the rows size to what they hold. */
+  .layout {
+    grid-template-rows: auto auto;
+  }
+
+  /*
+   * `order: -1` puts the open day first. Wrapped, it would otherwise sit in its
+   * calendar position — a phone would open on Monday and Tuesday and you would
+   * scroll past two days you have already done to reach today's.
+   */
+  .weekDayExpanded {
+    flex: 1 0 100%;
+    order: -1;
+  }
+
+  /*
+   * Above 901px the page is pinned to the window and this row takes the slack,
+   * so the bodies can be sized from what the window leaves over. Here the
+   * column grows with its content and there is no slack to take a share of —
+   * the row is simply given a height.
+   */
+  .expandedFigures {
+    flex: 0 0 auto;
+    height: 14rem;
+  }
+
+  /*
+   * Which makes the viewport term meaningless down here, and worse than
+   * meaningless: it made the bodies a different size in Safari on a phone than
+   * in Chrome's phone simulator, because the two do not resolve a viewport unit
+   * to the same number. The row's height is known — it is the line above — so
+   * that is what the width derives from, and the drawing comes out the same
+   * everywhere.
+   */
+  .weekDayExpanded {
+    --figure-room: 14rem;
+    /* No spare height to claim here: the row is 14rem whatever the day holds. */
+    --figure-room-run: 14rem;
+  }
+
+  .weekDay {
+    flex: 1 1 calc(25% - var(--space-2));
+    min-height: 9rem;
+  }
+
+  /* A wrapped column is much shorter than a full-height one, and the figure's
+     height comes from its width — so the width has to come down with it. */
+  .compactFigure {
+    width: min(3rem, 100%);
+  }
+
+  .weekStats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .distributionTile,
+  .statsLink {
+    grid-column: 1 / -1;
+  }
+
+  .statsLink {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 560px) {
+  .weekDay {
+    flex: 1 1 calc(50% - var(--space-2));
+  }
+}
+
+/* ── Session detail dialog ──────────────────────────────────────────── */
 .detail {
   display: flex;
   flex-direction: column;
@@ -504,886 +1031,15 @@
   gap: var(--space-1);
 }
 
-/* ── Today card (FOR-164) ────────────────────────────────────────────── */
-/*
- * Two columns, and the split is by *kind of thing* rather than by source: the
- * words on the left, the body and its actions on the right. The title spans
- * both because it names the whole card, and the ring sits under the text it
- * summarises.
- *
- *   head   head        <- phone; on a tablet the title shares its row
- *   body   figure
- *   ring   actions
- */
-/*
- * The rest day has its own layout instead of borrowing `.todayLayout`.
- * That grid is built for a session — head / body / ring / figure / actions —
- * and a rest day fills two of those five cells, so the silhouette was landing
- * in the narrow `figure` column while the empty ring and action rows held the
- * card open underneath it. Hence a thumbnail marooned at the top of a very
- * tall card.
- *
- * Here the sentence takes the top and the body gets everything left, centred
- * on both axes.
- */
-.todayRestLayout {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  height: 100%;
-  min-width: 0;
-}
-
-.todayRestFigure {
-  display: flex;
-  flex: 1;
-  align-items: center;
-  justify-content: center;
-  /* Without this the flex item refuses to shrink below its content and the
-     figure pushes the card taller instead of settling inside it. */
-  min-height: 0;
-  padding: var(--space-3) 0;
-}
-
-/*
- * Sized by height alone, never by both: the silhouette carries its own
- * `aspect-ratio` and the bitmap inside it is `object-fit: fill`, so pinning a
- * width as well would stretch the body rather than letterbox it. The clamp is
- * what makes it big on a desktop card and still sane on a phone.
- */
-.todayRestBody {
-  height: clamp(9rem, 44vh, 32rem);
-}
-
-.todayLayout {
-  display: grid;
-  /*
-   * Not an even split: the right column carries the silhouettes and the two
-   * actions, and at half a phone's width the buttons wrapped one per line.
-   */
-  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
-  /*
-   * The actions take a row of their own on a phone. Sharing the right column
-   * with the silhouettes left them about 186px for a pair that needs ~248 with
-   * their icons, so they wrapped one per line — taller *and* uglier than simply
-   * letting them span. The body keeps the two rows beside the text, which is
-   * what makes it big enough to read at this width.
-   */
-  grid-template-areas:
-    'head head'
-    'body figure'
-    'ring figure'
-    'actions actions';
-  grid-template-rows: auto auto 1fr auto;
-  align-items: start;
-  gap: var(--space-3) var(--space-4);
-}
-
-.todayLayout > .todaySessionHeader {
-  grid-area: head;
-}
-
-.todayLayout > .sessionBody {
-  grid-area: body;
-}
-
-.todayLayout > .todayRing {
-  grid-area: ring;
-}
-
-.todayLayout > .todayFigures {
-  grid-area: figure;
-}
-
-/* The rare multi-session day keeps a real list and simply stacks: the
-   two-column split assumes one session's worth of text. */
-.todayLayout > .todaySessions {
-  grid-area: head / head / body / body;
-}
-
-/*
- * The running variant: same grid, one column, no ring.
- *
- * A run is a single session that is either planned or done, so the ring next to
- * it could only ever read 0% or 100% (see `TodaySessionCard`). With it gone the
- * left column has nothing to hold, and a two-column grid with an empty half is
- * worse than no split at all — so the run stacks and the figure takes the whole
- * middle, exactly like the rest day above.
- *
- * Written with the compound selector, and with `.todayArea` in front, because
- * the base areas are redefined at 721px and again at 1200px (`.todayArea
- * .todayLayout`). Plain `.todayLayoutRun` would lose to both.
- */
-.todayLayout.todayLayoutRun,
-.todayArea .todayLayout.todayLayoutRun {
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-areas:
-    'head'
-    'body'
-    'figure'
-    'actions';
-  grid-template-rows: auto auto 1fr auto;
-  align-items: stretch;
-}
-
-/*
- * The same generous height the rest day gives its silhouette: this figure is no
- * longer a column beside the text, it is the body of the card. `min-height: 0`
- * clears the 721px floor, which was sized for the narrow figure cell.
- */
-.todayLayout.todayLayoutRun > .todayFigures {
-  height: clamp(9rem, 44vh, 32rem);
-  min-height: 0;
-}
-
-.sessionBody {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-/* Right-aligned, and wrapping to their own line before they ever squash. */
-.todayActions {
-  grid-area: actions;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  gap: var(--space-3);
-  height: 100%;
-}
-
-.todayActionGroup {
+.actions {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
-  align-items: flex-end;
   gap: var(--space-2);
+  margin-top: var(--space-2);
 }
 
-/*
- * Narrower buttons on a phone, where the pair shares a column with the
- * silhouettes: at the default padding "Detalle" and "Entrenar" need about
- * 208px and the column offers 186, so they wrapped one per line and pushed the
- * card taller. The labels are short enough to carry less air around them.
- */
-@media (max-width: 480px) {
-  .todayActionGroup > * {
-    padding-inline: var(--space-3);
-  }
-}
-
-/*
- * Fills the two-row area on desktop (see the `min-width: 1200px` block); on a
- * single row it is content-sized as before, since the area is not stretched.
- * The column + `flex: 1` is what passes that height down to the content —
- * `Card` renders a plain block, so without it the card grew and its inside
- * stayed at text height, leaving the gap this was meant to close.
- */
-.todayArea > .todayCard {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.todayArea > .todayCard > .todayLayout {
-  flex: 1;
-  min-height: 0;
-}
-
-.todayCard {
-  position: relative;
-  overflow: hidden;
-  border-left: 2px solid var(--color-accent);
-  background:
-    radial-gradient(
-      circle at 60% 100%,
-      color-mix(in srgb, var(--color-accent) 9%, transparent),
-      transparent 42%
-    ),
-    var(--color-surface);
-}
-
-.todayCard > header h2 {
-  color: var(--color-accent-strong);
-}
-
-.todaySessionTitle {
-  font-family: var(--font-heading);
-  font-size: 1.25rem;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.todayRing {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-}
-
-.ringPercent {
-  font-family: var(--font-heading);
-  font-size: var(--font-size-lg);
-  font-weight: 700;
-  color: var(--color-text);
-}
-
-.ringCaption {
-  margin: 0;
-  max-width: 8rem;
-  text-align: center;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
-}
-
-.ringStatus {
-  margin: 0;
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: var(--color-accent-strong);
-}
-
-/*
- * The figures are the card's tall element, so they are what earns it the second
- * grid row on desktop (see `.todayArea` below). They stretch to whatever height
- * the card ends up with rather than carrying a fixed size: the silhouettes keep
- * their own aspect ratio, so a taller card simply draws a bigger body.
- */
-/*
- * The figures get a *definite* height, and that is what makes them behave: each
- * silhouette carries an aspect ratio, so given a height it works out its own
- * width. Sized by width instead — a share of the row — the ratio pushed the
- * height back out and the card grew to 143% of an iPad's viewport.
- *
- * `clamp` rather than a flat `vh`: a short window should not shrink the body to
- * a stamp, and a tall one should not turn the card into a poster.
- */
-.todayFigures {
-  display: flex;
-  flex: 1;
-  align-items: stretch;
-  justify-content: center;
-  height: clamp(9rem, 26vh, 20rem);
-}
-
-/*
- * Front and back, side by side. `min-height: 0` matters in a stretched flex
- * item: without it the pair would size to the images' intrinsic height and push
- * the card taller instead of filling it.
- */
-/*
- * `space-evenly` rather than `center`: two narrow bodies in a wide cell left a
- * block of empty card between them and the text. Spreading them uses the width
- * the pair cannot fill by growing.
- */
-.todayFigurePair {
-  display: flex;
-  align-items: stretch;
-  justify-content: space-evenly;
-  gap: var(--space-3);
-  width: 100%;
-  height: 100%;
-}
-
-/*
- * Height-driven, not width-driven. Each silhouette carries `aspect-ratio`, so
- * giving it the row's full height lets it work out its own width and the pair
- * grows with the card. `width: auto` overrides the intrinsic sizing an image
- * box would otherwise take.
- */
-/*
- * Sized by width, not height. Each silhouette carries its own `aspect-ratio`,
- * so handing it a share of the row is enough for it to work out its height;
- * `max-height` then keeps a wide card from growing the figure past the space
- * the row actually has. Doing it the other way round — `height: 100%` and
- * `width: auto` — collapsed them to 12px: the muscle layers are absolutely
- * positioned, so the box has no intrinsic width for the ratio to scale from.
- */
-/*
- * Height-driven: the row's height is definite (above), so `width: auto` lets
- * the aspect ratio do the rest. `flex: 0 1 auto` keeps the pair from being
- * stretched to fill the row — they size themselves and sit centred.
- */
-.todayFigure {
-  flex: 0 1 auto;
-  height: 100%;
-  width: auto;
-  max-width: 100%;
-}
-
-/* ── Weekly calendar (FOR-164) ──────────────────────────────────────── */
-.calendarToday {
-  border-color: var(--color-accent);
-  background: color-mix(in srgb, var(--color-accent) 7%, var(--color-surface));
-}
-
-/* Same three-row shape as a session card, so the rest day lines up with its
-   neighbours instead of floating at its own height. */
-.calendarRest {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  gap: var(--space-2);
-  flex: 1;
-  padding: var(--space-1) 0;
-}
-
-.calendarSessionButton {
-  padding: var(--space-1) 0;
-}
-
-.calendarLegend {
-  list-style: none;
-  margin: var(--space-4) 0 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-4);
-  font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
-}
-
-.calendarTimeline {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  align-items: center;
-  margin-top: var(--space-4);
-  padding: 0 var(--space-4);
-}
-
-.calendarTimeline::before {
-  position: absolute;
-  right: var(--space-4);
-  left: var(--space-4);
-  height: 2px;
-  content: '';
-  background: var(--color-border);
-}
-
-.calendarTimelineDot {
-  z-index: 1;
-  justify-self: center;
-  width: 10px;
-  height: 10px;
-  background: var(--color-border);
-  border: 2px solid var(--color-surface);
-  border-radius: 50%;
-}
-
-.calendarTimelineDone {
-  background: var(--color-accent-strong);
-}
-
-.calendarTimelineToday {
-  width: 14px;
-  height: 14px;
-  background: var(--color-info);
-}
-
-@media (max-width: 1100px) {
-  .calendarGrid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-
-  .calendarTimeline {
-    display: none;
-  }
-}
-
-@media (max-width: 560px) {
-  .calendarGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-.calendarLegend li {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-}
-
-/* 8px, matching the muscle-focus legend on the detail screen. At 10px the dot
-   read heavier than the label beside it once the legend type came down. */
-.legendDot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: var(--color-border);
-}
-
-.legendDone {
-  background-color: var(--color-accent);
-}
-
-.legendPending {
-  background-color: var(--color-text-muted);
-}
-
-/* Amber, not red: skipping a session is a fact about the week, not a failure
-   (ui-guidelines.md "no guilt language"). Same token StatusPill gives SKIPPED,
-   so the dot and the pill can never drift apart. */
-.legendSkipped {
-  background-color: var(--color-warning-graphic);
-}
-
-/* ── Stats row (FOR-164) ────────────────────────────────────────────── */
-.statsRow {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--space-4);
-}
-
-@media (max-width: 720px) {
-  .statsRow {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-/* ── Weekly summary rows (FOR-164) ──────────────────────────────────── */
-.summaryList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.summaryRow {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-4);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
-}
-
-.summaryIcon {
-  display: grid;
-  width: 56px;
-  height: 56px;
-  place-items: center;
-  color: var(--color-accent-strong);
-  background: color-mix(in srgb, var(--color-accent) 13%, transparent);
-  border-radius: var(--radius-lg);
-}
-
-.summaryIcon[data-kind='strength'] {
-  color: var(--color-violet-strong);
-  background: color-mix(in srgb, var(--color-violet) 13%, transparent);
-}
-
-.summaryContent {
-  min-width: 0;
-}
-
-.summaryLabel,
-.summaryValue,
-.summaryCaption {
-  margin: 0;
-}
-
-.summaryLabel {
-  font-size: var(--font-size-sm);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--color-text);
-}
-
-.summaryValue {
-  margin-top: var(--space-1);
-  font-family: var(--font-heading);
-  font-size: 1.75rem;
-  font-weight: 700;
-  line-height: 1;
-  color: var(--color-text);
-}
-
-.summaryCaption {
-  margin-top: var(--space-1);
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
-}
-
-.summaryProgress {
-  padding-left: var(--space-4);
-  border-left: 1px solid var(--color-border);
-}
-
-.summaryRingText {
-  font-size: var(--font-size-sm);
-  font-weight: 700;
-  color: var(--color-text);
-}
-
-.summaryLink {
+.actions button {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  margin-top: var(--space-4);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: var(--color-accent-strong);
-}
-
-@media (max-width: 480px) {
-  .summaryRow {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-
-  .summaryProgress {
-    grid-column: 1 / -1;
-    justify-self: stretch;
-    display: flex;
-    justify-content: center;
-    padding: var(--space-3) 0 0;
-    border-top: 1px solid var(--color-border);
-    border-left: 0;
-  }
-}
-
-/* ── Distribution donut (FOR-164) ───────────────────────────────────── */
-.distribution {
-  display: flex;
-  align-items: center;
-  gap: var(--space-5);
-  flex-wrap: wrap;
-}
-
-.distributionRing {
-  position: relative;
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.distributionHole {
-  position: absolute;
-  inset: 14px;
-  border-radius: 50%;
-  background-color: var(--color-surface);
-}
-
-.distributionLegend {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  flex: 1;
-  min-width: 10rem;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.distributionItem {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  column-gap: var(--space-2);
-}
-
-.distributionDot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-.dotStrength {
-  background-color: var(--color-warning-graphic);
-}
-
-.dotRunning {
-  background-color: var(--color-accent);
-}
-
-.dotRest {
-  background-color: var(--color-border);
-}
-
-.distributionLabel {
-  font-size: var(--font-size-sm);
-  color: var(--color-text);
-}
-
-.distributionPercent {
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.distributionCount {
-  grid-column: 2 / -1;
-  font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
-}
-
-.distributionNote {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin: var(--space-4) 0 0;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
-}
-
-.distributionNoteIcon {
-  color: var(--color-accent-strong);
-  flex-shrink: 0;
-}
-
-/* ── Streak (FOR-164) ───────────────────────────────────────────────── */
-.streakHeadline {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-}
-
-.streakFire {
-  font-size: 1.5rem;
-}
-
-.streakCheer {
-  margin: 0;
-  font-weight: 600;
-  color: var(--color-accent-strong);
-}
-
-@media (min-width: 1200px) {
-  .layout {
-    grid-template-columns: 2fr 1fr;
-    align-items: start;
-  }
-
-  /*
-   * Today's card spans the two rows the right-hand column needs for the weekly
-   * summary and the distribution chart. It used to sit on one row and end
-   * wherever its text ended, leaving a tall empty gap underneath it while the
-   * column beside it ran on — and it is the card carrying the body
-   * illustration, so the spare height is exactly what the silhouettes want.
-   *
-   * `align-self: stretch` is needed because `.layout` sets `align-items: start`
-   * for the other cards, which would otherwise leave this one at its content
-   * height and put the gap back.
-   */
-  .todayArea {
-    grid-column: 1;
-    grid-row: 1 / span 2;
-    align-self: stretch;
-  }
-
-  /*
-   * The desktop card keeps the text across the top and pairs the ring with the
-   * silhouettes underneath, because here it is two grid rows tall and has the
-   * height to give them. The tablet arrangement — title beside the body — would
-   * waste that height on a column of empty space next to three lines of text.
-   */
-  .todayArea .todayLayout {
-    grid-template-columns: auto minmax(0, 1fr);
-    grid-template-areas:
-      'head head'
-      'body body'
-      'ring figure'
-      'actions actions';
-    grid-template-rows: auto auto 1fr auto;
-  }
-
-  /* Fills the row the two-row card hands down, rather than the viewport-based
-     floor the narrower layouts use. */
-  .todayArea .todayFigures {
-    width: 100%;
-    height: 100%;
-    min-height: 0;
-  }
-
-  .summaryArea {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
-  .tabletPair {
-    display: contents;
-  }
-
-  .tabletPair > :first-child {
-    grid-column: 2;
-    grid-row: 2;
-  }
-
-  .calendarArea {
-    grid-column: 1;
-    grid-row: 3;
-  }
-
-  /*
-   * The streak sits beside the calendar and the four stat tiles run the full
-   * width underneath, rather than the other way round. Stacked in the 1fr
-   * column the tiles had ~200px each for a label like "SESIONES COMPLETADAS"
-   * and a number with a unit, so the labels clipped; across the whole width
-   * they get roughly double that and the row reads as one set of figures. The
-   * streak is the card that genuinely fits a narrow column — one number, one
-   * line of text.
-   */
-  .streakArea {
-    grid-column: 2;
-    grid-row: 3;
-  }
-
-  .tabletPair > :last-child {
-    grid-column: 1 / -1;
-    grid-row: 4;
-  }
-}
-
-/*
- * From tablet up the card is wide enough for the title to share its row with
- * the silhouettes, which pulls the whole written column into the left half and
- * lets the body start at the top of the card rather than below the heading.
- */
-@media (min-width: 721px) {
-  .todayLayout {
-    /*
-     * The body runs the height of the card and the actions tuck under it, with
-     * the ring taking the space the text leaves on the left. Giving the figure
-     * only the two text rows kept it at its floor height while the ring's row
-     * — the tallest of the three — sat beside empty space.
-     */
-    grid-template-areas:
-      'head figure'
-      'body figure'
-      'ring figure'
-      'ring actions';
-    grid-template-rows: auto auto 1fr auto;
-    align-items: stretch;
-  }
-
-  .todayLayout > .todayFigures {
-    /*
-     * The floor is what actually sizes the body here, not the text beside it:
-     * the silhouettes are tall and narrow, so their width comes from their
-     * height, and the three rows of text on the left only came to ~240px —
-     * leaving the figures at 112px wide in a 600px cell. Raising the floor
-     * grows them in both directions and spends the empty half of the card.
-     */
-    height: 100%;
-    min-height: clamp(12rem, 38vh, 26rem);
-  }
-}
-
-@media (min-width: 900px) and (max-width: 1199px) {
-  .wrapper {
-    gap: 24px;
-  }
-
-  .layout {
-    gap: 24px;
-  }
-
-  .todayArea {
-    grid-row: 1;
-  }
-
-  .summaryArea {
-    grid-row: 2;
-  }
-
-  .calendarArea {
-    grid-row: 3;
-  }
-
-  .tabletPair {
-    grid-row: 4;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    align-items: stretch;
-  }
-
-  .tabletPair > * {
-    height: 100%;
-  }
-
-  .tabletPair .statsRow {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .summary {
-    width: 100%;
-  }
-
-  .summaryList {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 16px;
-  }
-
-  .summaryRow {
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: 12px;
-    padding: 20px;
-  }
-
-  .summaryProgress {
-    grid-column: 1 / -1;
-    justify-self: center;
-    padding: 12px 0 0;
-    border-top: 1px solid var(--color-border);
-    border-left: 0;
-  }
-
-  .todayCard {
-    padding: 24px;
-  }
-
-  .todayCard > header h2 {
-    font-size: var(--font-size-base);
-  }
-
-  .todayLayout {
-    flex-wrap: nowrap;
-    align-items: center;
-  }
-
-  .todaySessionTitle {
-    font-size: 1.6rem;
-    white-space: nowrap;
-  }
-
-  .actions {
-    flex-wrap: nowrap;
-  }
-
-  .calendarGrid {
-    display: flex;
-    gap: 16px;
-    overflow-x: auto;
-    padding: 4px 4px 16px;
-    scroll-behavior: smooth;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: thin;
-    overscroll-behavior-inline: contain;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .calendarDay {
-    flex: 0 0 170px;
-    min-height: 250px;
-    padding: 20px;
-    scroll-snap-align: center;
-    scroll-snap-stop: always;
-  }
-
-  .calendarDayTitle,
-  .calendarSessionTitle {
-    font-size: var(--font-size-sm);
-  }
-
-  .calendarTimeline {
-    display: none;
-  }
 }

@@ -55,15 +55,17 @@
      * the floating nav -- unlike the previous grid-pinned bar, the pill now
      * *overlaps* the content row (it's `position: fixed`, not a sibling grid
      * row), so this is real occlusion to compensate for, not just breathing
-     * room. Sized as (estimated pill content height) + 2 * var(--space-4):
-     * one `--space-4` for the pill's own `bottom` offset from the viewport,
-     * one more for clearance between the last content and the pill's top
-     * edge. The 56px is the bar's own height with no dedicated token to pull
-     * from: `--space-2` padding top+bottom (16px) + the primary items' 22px
-     * icon + 2px icon/label gap + the ~0.6875rem label line (~14px) ≈ 54px,
-     * rounded up to 56px.
+     * room. Sized as (pill content height) + 2 * var(--space-4): one
+     * `--space-4` for the pill's own `bottom` offset from the viewport, one
+     * more for clearance between the last content and the pill's top edge.
+     *
+     * The 60px is the bar's own height, with no dedicated token to pull from:
+     * a 26px glyph in 9px of padding each side (44px, the mobile touch
+     * minimum) inside the bar's own `--space-2` top and bottom. It used to be
+     * 56px for an icon-over-label column; the labels are gone and the discs
+     * stand taller than the words did, so the reservation follows.
      */
-    padding-bottom: calc(56px + var(--space-4) * 2);
+    padding-bottom: calc(60px + var(--space-4) * 2);
   }
 }
 
@@ -90,6 +92,6 @@
 
   .content {
     padding: 24px;
-    padding-bottom: calc(56px + var(--space-4) * 2);
+    padding-bottom: calc(60px + var(--space-4) * 2);
   }
 }

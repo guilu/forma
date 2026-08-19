@@ -1,0 +1,78 @@
+{
+  "pages": [
+    { "id": "page-1", "name": "Dirección C · estados" },
+    { "id": "page-2", "name": "Tablet y móvil" },
+    { "id": "page-3", "name": "Descartadas" }
+  ],
+  "artboards": [
+    { "file": "OpcionC.dc.html", "title": "C · Día de fuerza", "page": "page-1", "x": 0, "y": 0, "w": 1440, "h": 900 },
+    { "file": "CarreraHoy.dc.html", "title": "C · Día de carrera", "page": "page-1", "x": 1560, "y": 0, "w": 1440, "h": 900 },
+    { "file": "DescansoHoy.dc.html", "title": "C · Día de descanso", "page": "page-1", "x": 0, "y": 1500, "w": 1440, "h": 900 },
+    { "file": "SinPlan.dc.html", "title": "C · Sin plan todavía", "page": "page-1", "x": 1560, "y": 1500, "w": 1440, "h": 900 },
+
+    { "file": "Tablet.dc.html", "title": "Tablet · 1024×768", "page": "page-2", "x": 0, "y": 0, "w": 1024, "h": 768 },
+    { "file": "Movil.dc.html", "title": "Móvil · 390×844", "page": "page-2", "x": 1160, "y": 0, "w": 390, "h": 844 },
+
+    { "file": "Main.dc.html", "title": "A · Rejilla densa (descartada)", "page": "page-3", "x": 0, "y": 0, "w": 1440, "h": 900 },
+    { "file": "OpcionB.dc.html", "title": "B · Hoy manda (descartada)", "page": "page-3", "x": 1560, "y": 0, "w": 1440, "h": 900 }
+  ],
+  "annotations": [
+    {
+      "id": "nota-c",
+      "page": "page-1",
+      "x": 0,
+      "y": -420,
+      "w": 520,
+      "text": "DIRECCIÓN ELEGIDA · La semana manda\n\nLa semana deja de ser una tarjeta y pasa a ser la página: siete columnas a lo ancho, y la de hoy se expande dentro de la fila en vez de vivir aparte. Debajo, una franja de KPIs.\n\nSe acabó la duplicación entre «tarjeta de hoy» y «calendario semanal» — eran la misma cosa contada dos veces."
+    },
+    {
+      "id": "nota-carrera",
+      "page": "page-1",
+      "x": 1560,
+      "y": -420,
+      "w": 520,
+      "text": "DÍA DE CARRERA · el hueco que faltaba\n\nUna carrera no trae músculos ni ejercicios: la API solo da título, tipo y distancia. En vez de rellenar la columna ancha con métricas inventadas, el único dato que existe —la distancia— se lleva tamaño de display, y el corredor ocupa el resto.\n\nSin dial de progreso, igual que quedó ayer la tarjeta: una carrera está pendiente o hecha, nunca al 40%."
+    },
+    {
+      "id": "nota-descanso",
+      "page": "page-1",
+      "x": 0,
+      "y": 1080,
+      "w": 520,
+      "text": "DÍA DE DESCANSO\n\nNada que completar, así que la acción no puede ser «Entrenar». Lo único real que se puede hacer es traerse una sesión de otro día — el endpoint de mover sesión ya existe.\n\nDebajo, la próxima sesión, que es la pregunta que uno se hace un día libre."
+    },
+    {
+      "id": "nota-sinplan",
+      "page": "page-1",
+      "x": 1560,
+      "y": 1080,
+      "w": 520,
+      "text": "SIN PLAN TODAVÍA\n\nSiete columnas vacías se leen como una carga que falló, no como «aún no has empezado». La pantalla entera pasa a ser el estado vacío, con la única acción que desbloquea el resto.\n\nEl navegador de fechas desaparece: no hay semana que hojear."
+    },
+    {
+      "id": "nota-tamanos",
+      "page": "page-2",
+      "x": 0,
+      "y": -340,
+      "w": 560,
+      "text": "TABLET · el carril de iconos no es invención mía: la app ya lo monta entre 900 y 1199px. A 1024×768 la semana sigue cabiendo entera; lo que cae es la lista de músculos de hoy, que a 286px de columna se comía el cuerpo.\n\nMÓVIL · aquí «sin scroll» deja de ser el objetivo. 390×844 no da para la semana entera, y forzarlo solo produce tipografía ilegible. Se mantiene el orden de la C — hoy completo y accionable arriba, la semana justo debajo — y la fila de días se desliza en horizontal, que es lo que el calendario ya hace hoy por debajo de 1100px."
+    },
+    {
+      "id": "nota-a",
+      "page": "page-3",
+      "x": 0,
+      "y": -420,
+      "w": 520,
+      "text": "A · Rejilla densa (descartada)\n\nNo quitaba nada, solo comprimía. Cero decisiones de producto, pero la silueta dejaba de ser el centro de la pantalla y el 1/6 seguía contándose en tres sitios."
+    },
+    {
+      "id": "nota-b",
+      "page": "page-3",
+      "x": 1560,
+      "y": -420,
+      "w": 520,
+      "text": "B · Hoy manda (descartada)\n\nHoy se llevaba dos tercios con las siluetas grandes y lo semanal se fundía en un carril derecho. Cortaba volumen, duración y calorías, que son PLACEHOLDER en el código."
+    }
+  ],
+  "launch": { "view": "canvas", "page": "page-1" }
+}

@@ -38,6 +38,9 @@ export type IconName =
   | 'refresh'
   | 'upload'
   | 'checkCircle'
+  | 'play'
+  | 'skip'
+  | 'flag'
   | 'arrowRight'
   | 'share'
   | 'globe'
@@ -103,6 +106,15 @@ const PATHS: Record<IconName, string> = {
   // Circled checkmark — capability bullet on the public landing (FOR-185),
   // standing in for the template's `check_circle` Material symbol.
   checkCircle: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8 12l3 3 5-6',
+  // Start: the training screen's own action, and the shape everyone reads as
+  // "begin". Drawn closed so the round join gives it the same soft corners the
+  // rest of the set has.
+  play: 'M8 5l11 7-11 7z',
+  // Skip ahead — the same triangle against a bar, as on any transport control.
+  skip: 'M6 5l9 7-9 7zM18 5v14',
+  // The finish line: what completing a run is. A pennant rather than a
+  // chequered flag, which at 17px would be a grey smudge.
+  flag: 'M6 21V4M6 5h12l-2.5 3.5L18 12H6',
   // Rightward arrow — inline "read more" affordance (FOR-185 landing),
   // template symbol `arrow_forward`.
   arrowRight: 'M4 12h15M13 6l6 6-6 6',

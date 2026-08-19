@@ -1,0 +1,488 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Montserrat:wght@600;700;800;900&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #16801f; text-decoration: none; }
+    a:hover { color: #0f5e16; }
+
+    .app {
+      --bg: #f4f7f5;
+      --surface: #ffffff;
+      --card: #ffffff;
+      --border: #dfe7e2;
+      --text: #0f1a13;
+      --muted: #5c6b62;
+      --secondary: #3c4a42;
+      --accent: #63e662;
+      --accent-strong: #16801f;
+      --warning: #f19c2b;
+      --violet: #8b5cf6;
+      --violet-strong: #6d28d9;
+      --info: #53adf3;
+      --ramp: linear-gradient(135deg, #0b755f 0%, #85f55c 100%);
+      --on-ramp: #10141a;
+      --shadow: 0 1px 3px rgba(15, 26, 19, 0.08);
+      --body-tint: none;
+
+      width: 1440px;
+      height: 900px;
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: 80px 1fr;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      font-size: 16px;
+    }
+
+    .app[data-theme="dark"] {
+      --bg: #10141a;
+      --surface: #161b22;
+      --card: #1c2026;
+      --border: #30363d;
+      --text: #dfe2eb;
+      --muted: #8b949e;
+      --secondary: #bbcabe;
+      --accent-strong: #63e662;
+      --warning: #ffab70;
+      --violet-strong: #a78bfa;
+      --info: #3b82f6;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+      --body-tint: invert(1) brightness(1.6) contrast(0.85);
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .brand-mark {
+      width: 30px; height: 30px; border-radius: 8px;
+      background: var(--ramp);
+      display: grid; place-items: center;
+      color: var(--on-ramp);
+      font-family: 'Montserrat', sans-serif; font-weight: 900; font-size: 19px;
+    }
+    .brand-word {
+      font-family: 'Montserrat', sans-serif; font-weight: 800;
+      font-size: 21px; letter-spacing: 0.04em; color: var(--text);
+    }
+    .topbar-right { display: flex; align-items: center; gap: 12px; }
+    .icon-btn {
+      width: 40px; height: 40px; border-radius: 8px;
+      border: 1px solid var(--border); background: var(--card);
+      display: grid; place-items: center; color: var(--muted);
+    }
+    .account {
+      display: flex; align-items: center; gap: 10px;
+      height: 40px; padding: 0 16px 0 12px;
+      border: 1px solid var(--border); border-radius: 8px;
+      background: var(--card); color: var(--text); font-size: 15px;
+    }
+
+    .shell { display: grid; grid-template-columns: 272px 1fr; min-height: 0; }
+
+    .sidebar {
+      display: flex; flex-direction: column; gap: 24px;
+      padding: 16px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+    }
+    .nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+    .nav-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 16px; border-radius: 12px;
+      color: var(--muted); font-size: 16px; font-weight: 500;
+    }
+    .nav-item[data-active="true"] {
+      background: color-mix(in srgb, var(--accent) 10%, transparent);
+      color: var(--accent-strong); font-weight: 700;
+      border-right: 4px solid var(--accent);
+    }
+    .integration {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px; border: 1px solid var(--border); border-radius: 12px;
+    }
+    .integration-name {
+      font-family: 'Montserrat', sans-serif; font-size: 13px; font-weight: 700;
+      letter-spacing: 0.06em; color: var(--text);
+    }
+    .integration-status { font-size: 13px; color: var(--muted); }
+
+    .content { padding: 32px; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+
+    .page-head { display: flex; align-items: center; justify-content: space-between; }
+    .page-title {
+      margin: 0; font-family: 'Montserrat', sans-serif;
+      font-size: 24px; font-weight: 700; line-height: 1.2; color: var(--text);
+    }
+    .page-sub { margin: 4px 0 0; font-size: 16px; color: var(--muted); }
+    .date-nav {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 8px;
+    }
+    .date-label { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      padding: 16px;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .card-title {
+      margin: 0 0 12px;
+      font-size: 13px; font-weight: 700; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--muted);
+    }
+    .today-card { border-left: 2px solid var(--accent); }
+    .today-card .card-title { color: var(--accent-strong); }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      height: 40px; padding: 0 18px;
+      font-family: inherit; font-size: 15px; font-weight: 700;
+      border: 1px solid transparent; border-radius: 8px;
+    }
+    .btn-secondary { color: var(--text); background: transparent; border-color: var(--border); }
+    .btn-primary {
+      color: var(--on-ramp); background: var(--ramp);
+      box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 30%, transparent);
+    }
+
+    /*
+     * The silhouettes never size their own box: they are handed one and fitted
+     * inside it. They used to carry `height: 100%`, a percentage resolved
+     * against the whole card rather than against the room its siblings leave,
+     * so a body grew past the card and painted over whatever sat next to it.
+     * `object-fit: contain` inside a flex item that is allowed to shrink
+     * (`min-height: 0`) cannot overflow, and the art keeps its ratio either way.
+     */
+    .body-row {
+      flex: 1 1 0;
+      min-width: 0;
+      min-height: 0;
+      object-fit: contain;
+      display: block;
+      filter: var(--body-tint);
+    }
+    .body-col {
+      flex: 1 1 0;
+      width: 100%;
+      min-height: 0;
+      object-fit: contain;
+      display: block;
+      filter: var(--body-tint);
+    }
+
+    .ring { display: grid; place-items: center; border-radius: 50%; }
+    .ring > .ring-hole {
+      display: grid; place-items: center; border-radius: 50%;
+      background: var(--surface);
+    }
+
+    .stat-tile {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; box-shadow: var(--shadow);
+      padding: 14px 16px; display: flex; flex-direction: column; gap: 2px;
+      min-width: 0;
+    }
+    .stat-label {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 12px; font-weight: 700; letter-spacing: 0.05em;
+      text-transform: uppercase; color: var(--muted);
+    }
+    .stat-value {
+      margin: 2px 0 0; font-family: 'Montserrat', sans-serif;
+      font-size: 24px; font-weight: 700; line-height: 1.1; color: var(--text);
+    }
+    .stat-unit { font-family: 'Be Vietnam Pro', sans-serif; font-size: 15px; font-weight: 500; color: var(--muted); }
+    .stat-caption { font-size: 12px; color: var(--muted); }
+
+    .day {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      padding: 8px 6px; border: 1px solid var(--border); border-radius: 8px;
+      min-width: 0;
+    }
+    .day-name {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.02em;
+      text-transform: uppercase; color: var(--muted);
+    }
+    .day-title { font-size: 12px; font-weight: 600; line-height: 1.25; text-align: center; }
+    .day-today { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, var(--surface)); }
+    .dot { width: 7px; height: 7px; border-radius: 50%; }
+  </style>
+</helmet>
+
+<div class="app" data-theme="{{theme}}">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">F</span>
+      <span class="brand-word">FORMA</span>
+    </div>
+    <div class="topbar-right">
+      <span class="icon-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg></span>
+      <span class="icon-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"></path></svg></span>
+      <span class="account">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="color: #5c6b62"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM5 20a7 7 0 0 1 14 0"></path></svg>
+        diegobarrioh@gmail.com
+      </span>
+    </div>
+  </header>
+
+  <div class="shell">
+    <nav class="sidebar">
+      <div class="nav">
+        <span class="nav-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h7v7H3zM14 3h7v4h-7zM14 10h7v11h-7zM3 13h7v8H3z"></path></svg>Dashboard</span>
+        <span class="nav-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3 7 4-14 3 7h4"></path></svg>Mediciones</span>
+        <span class="nav-item" data-active="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6v12M18 6v12M4 9h2v6H4zM18 9h2v6h-2zM6 12h12"></path></svg>Entrenamiento</span>
+        <span class="nav-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c4 0 6 3 6 7a6 6 0 0 1-12 0c0-4 2-7 6-7zM12 3v6"></path></svg>Nutrición</span>
+        <span class="nav-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h2l2 12h10l2-8H7M9 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM17 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"></path></svg>Lista de compra</span>
+        <span class="nav-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V4M4 20h16M8 16l4-5 3 3 5-7"></path></svg>Progreso</span>
+      </div>
+      <div class="integration">
+        <span style="width: 34px; height: 34px; border-radius: 8px; display: grid; place-items: center; color: #16801f; background: color-mix(in srgb, #63e662 13%, transparent)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 0 1-13.7 5.7M4 12a8 8 0 0 1 13.7-5.7M4 18v-4h4M20 6v4h-4"></path></svg>
+        </span>
+        <span style="display: flex; flex-direction: column; gap: 2px">
+          <span class="integration-name">WITHINGS</span>
+          <span class="integration-status">Conectado</span>
+        </span>
+        <span class="dot" style="background: #63e662; margin-left: auto"></span>
+      </div>
+    </nav>
+
+    <main class="content">
+
+      <div class="page-head">
+        <div>
+          <h1 class="page-title">Entrenamiento</h1>
+          <p class="page-sub">Sigue tu plan y mejora cada día.</p>
+        </div>
+        <div class="date-nav">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="color: #5c6b62"><path d="M6 3v3M18 3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1z"></path></svg>
+          <span class="date-label">Miércoles, 19 ago 2026</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="color: #5c6b62; transform: rotate(180deg)"><path d="M9 6l6 6-6 6"></path></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="color: #5c6b62"><path d="M9 6l6 6-6 6"></path></svg>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; flex: 1; min-height: 0">
+
+        <div style="display: grid; grid-template-rows: minmax(0, 1fr) 224px; gap: 16px; min-width: 0">
+
+          <section class="card today-card" style="padding: 20px 24px">
+            <p class="card-title" style="margin-bottom: 8px">Entrenamiento de hoy</p>
+
+            <div style="display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 28px; flex: 1; min-height: 0">
+
+              <div style="display: flex; align-items: stretch; gap: 16px; width: 300px; min-height: 0">
+                <img class="body-row" src="body-front.png" alt="">
+                <img class="body-row" src="body-back.png" alt="">
+              </div>
+
+              <div style="display: flex; flex-direction: column; min-width: 0">
+                <p style="margin: 0; font-family: 'Montserrat', sans-serif; font-size: 32px; font-weight: 700; line-height: 1.15">Fuerza · Tirón</p>
+                <p style="margin: 8px 0 0; font-size: 16px; color: var(--secondary)">5 ejercicios · sesión 3 de la semana</p>
+
+                <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px">
+                  <span style="display: inline-flex; align-items: center; height: 30px; padding: 0 12px; border-radius: 9999px; font-size: 13px; font-weight: 600; color: var(--violet-strong); background: color-mix(in srgb, var(--violet) 13%, transparent)">Espalda</span>
+                  <span style="display: inline-flex; align-items: center; height: 30px; padding: 0 12px; border-radius: 9999px; font-size: 13px; font-weight: 600; color: var(--violet-strong); background: color-mix(in srgb, var(--violet) 13%, transparent)">Bíceps</span>
+                  <span style="display: inline-flex; align-items: center; height: 30px; padding: 0 12px; border-radius: 9999px; font-size: 13px; font-weight: 600; color: var(--violet-strong); background: color-mix(in srgb, var(--violet) 13%, transparent)">Hombro posterior</span>
+                  <span style="display: inline-flex; align-items: center; height: 30px; padding: 0 12px; border-radius: 9999px; font-size: 13px; font-weight: 600; color: var(--violet-strong); background: color-mix(in srgb, var(--violet) 13%, transparent)">Trapecio</span>
+                </div>
+
+                <div style="margin: 18px 0 0; padding: 12px 14px; border: 1px dashed var(--border); border-radius: 8px">
+                <p style="display: flex; align-items: center; gap: 6px; margin: 0 0 10px; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--warning)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 16H3zM12 10v4M12 16.5v.01"></path></svg>
+                  Datos que la API aún no expone
+                </p>
+                <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px">
+                  <li style="display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 12px; font-size: 15px">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-strong)"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8 12l3 3 5-6"></path></svg>
+                    <span>Dominadas</span>
+                    <span style="color: var(--muted); font-size: 14px">4 × 8</span>
+                  </li>
+                  <li style="display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 12px; font-size: 15px">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-strong)"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8 12l3 3 5-6"></path></svg>
+                    <span>Remo con barra</span>
+                    <span style="color: var(--muted); font-size: 14px">4 × 10</span>
+                  </li>
+                  <li style="display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 12px; font-size: 15px">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-strong)"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8 12l3 3 5-6"></path></svg>
+                    <span>Face pull</span>
+                    <span style="color: var(--muted); font-size: 14px">3 × 15</span>
+                  </li>
+                  <li style="display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 12px; font-size: 15px; color: var(--muted)">
+                    <span style="width: 18px; height: 18px; border: 1.75px solid var(--border); border-radius: 50%"></span>
+                    <span>Curl martillo</span>
+                    <span style="font-size: 14px">3 × 12</span>
+                  </li>
+                  <li style="display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 12px; font-size: 15px; color: var(--muted)">
+                    <span style="width: 18px; height: 18px; border: 1.75px solid var(--border); border-radius: 50%"></span>
+                    <span>Curl femoral</span>
+                    <span style="font-size: 14px">3 × 12</span>
+                  </li>
+                </ul>
+                <div style="display: flex; align-items: center; gap: 10px; margin-top: 12px">
+                  <span style="font-size: 13px; color: var(--muted)">3 de 5 hechos</span>
+                  <span style="flex: 1; height: 8px; border-radius: 4px; background: var(--border); overflow: hidden">
+                    <span style="display: block; width: 60%; height: 100%; border-radius: 4px; background: var(--accent)"></span>
+                  </span>
+                </div>
+                </div>
+
+                <div style="display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: auto">
+                  <span class="btn btn-secondary">Detalle</span>
+                  <span class="btn btn-primary">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"></path></svg>
+                    Entrenar
+                  </span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="card">
+            <p class="card-title">La semana</p>
+            <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; flex: 1; min-height: 0">
+              <div class="day">
+                <span class="day-name">Lun</span>
+                <img class="body-col" src="body-front.png" alt="">
+                <span class="day-title">Rodaje suave</span>
+                <span class="dot" style="background: var(--accent)"></span>
+              </div>
+              <div class="day">
+                <span class="day-name">Mar</span>
+                <img class="body-col" src="body-back.png" alt="">
+                <span class="day-title">Empuje</span>
+                <span class="dot" style="background: var(--warning)"></span>
+              </div>
+              <div class="day day-today">
+                <span class="day-name" style="color: var(--accent-strong)">Mié</span>
+                <img class="body-col" src="body-back.png" alt="">
+                <span class="day-title">Tirón</span>
+                <span class="dot" style="background: var(--info)"></span>
+              </div>
+              <div class="day">
+                <span class="day-name">Jue</span>
+                <img class="body-col" src="body-front.png" alt="">
+                <span class="day-title">Series</span>
+                <span class="dot" style="background: var(--border)"></span>
+              </div>
+              <div class="day">
+                <span class="day-name">Vie</span>
+                <img class="body-col" src="body-front.png" alt="">
+                <span class="day-title">Pierna</span>
+                <span class="dot" style="background: var(--border)"></span>
+              </div>
+              <div class="day">
+                <span class="day-name">Sáb</span>
+                <img class="body-col" src="body-front.png" alt="">
+                <span class="day-title">Tirada larga</span>
+                <span class="dot" style="background: var(--border)"></span>
+              </div>
+              <div class="day">
+                <span class="day-name">Dom</span>
+                <span style="flex: 1; display: grid; place-items: center; font-size: 13px; color: var(--muted)">Descanso</span>
+                <span class="day-title" style="color: var(--muted)">—</span>
+                <span class="dot" style="background: var(--border)"></span>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <section class="card" style="min-height: 0">
+          <p class="card-title">Tu semana</p>
+
+          <div style="display: flex; align-items: center; gap: 20px">
+            <div class="ring" style="width: 108px; height: 108px; flex-shrink: 0; background: conic-gradient(var(--warning) 0deg 154deg, var(--accent) 154deg 309deg, var(--border) 309deg 360deg)">
+              <div class="ring-hole" style="width: 76px; height: 76px; flex-direction: column">
+                <span style="font-family: 'Montserrat', sans-serif; font-size: 24px; font-weight: 700; line-height: 1">1/6</span>
+                <span style="font-size: 12px; color: var(--muted)">sesiones</span>
+              </div>
+            </div>
+            <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; flex: 1">
+              <li style="display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px">
+                <span class="dot" style="background: var(--warning)"></span>
+                <span style="font-size: 14px">Fuerza</span>
+                <span style="font-size: 14px; font-weight: 700">1 / 3</span>
+              </li>
+              <li style="display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px">
+                <span class="dot" style="background: var(--accent)"></span>
+                <span style="font-size: 14px">Carreras</span>
+                <span style="font-size: 14px; font-weight: 700">0 / 3</span>
+              </li>
+              <li style="display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px">
+                <span class="dot" style="background: var(--border)"></span>
+                <span style="font-size: 14px">Descanso</span>
+                <span style="font-size: 14px; font-weight: 700">1 día</span>
+              </li>
+            </ul>
+          </div>
+
+          <p style="display: flex; align-items: flex-start; gap: 8px; margin: 16px 0 0; font-size: 13px; color: var(--muted)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-strong); flex-shrink: 0; margin-top: 2px"><path d="M4 12l5 5 11-11"></path></svg>
+            Buen balance entre fuerza y cardio.
+          </p>
+
+          <div style="height: 1px; background: var(--border); margin: 20px 0"></div>
+
+          <p class="card-title" style="margin-bottom: 12px">Racha actual</p>
+          <div style="display: flex; align-items: baseline; gap: 8px">
+            <span style="font-family: 'Montserrat', sans-serif; font-size: 40px; font-weight: 700; line-height: 1">2</span>
+            <span style="font-size: 15px; color: var(--muted)">días seguidos</span>
+          </div>
+          <p style="margin: 6px 0 0; font-size: 13px; color: var(--muted)">Días consecutivos con registro de nutrición.</p>
+
+          <div style="height: 1px; background: var(--border); margin: 20px 0"></div>
+
+          <p class="card-title" style="margin-bottom: 12px">Próxima sesión</p>
+          <div style="display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px">
+            <span style="width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; color: var(--accent-strong); background: color-mix(in srgb, var(--accent) 13%, transparent)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2 5 4-14 2 9 2-5h4"></path></svg>
+            </span>
+            <span>
+              <span style="display: block; font-size: 15px; font-weight: 600">Series · 4,0 km</span>
+              <span style="display: block; font-size: 13px; color: var(--muted)">Mañana, jueves</span>
+            </span>
+          </div>
+
+          <a href="#" style="display: inline-flex; align-items: center; gap: 8px; margin-top: auto; font-size: 13px; font-weight: 600; color: var(--accent-strong)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V4M4 20h16M8 16l4-5 3 3 5-7"></path></svg>
+            Ver estadísticas completas
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"></path></svg>
+          </a>
+        </section>
+      </div>
+
+    </main>
+  </div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light","section":"Tema"},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { theme: this.props.theme ?? 'light' };
+  }
+}
+</script>
+</body>
+</html>
