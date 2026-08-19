@@ -541,7 +541,16 @@
 /* Declared on the card, not on the figure row: the rest day has no session
    figures but sizes its own body by exactly the same reasoning. */
 .weekDayExpanded {
-  --figure-room: min(calc(100vh - 704px), 25rem);
+  --figure-room: min(calc(100dvh - 704px), 25rem);
+  /*
+   * What a run gets on top. `--figure-room` is the worst case, which is a
+   * *strength* card — title, exercise count and a two-line focus list — and a
+   * run has no focus line, so its row really is that much taller. Held in its
+   * own property because the phone layout has to zero it: there the row's
+   * height is fixed, so the spare 64px does not exist and claiming it makes the
+   * runner overflow.
+   */
+  --figure-room-run: calc(var(--figure-room) + 64px);
 }
 
 /* 854 / 1840 — the anatomical sheets' own ratio, as `MuscleSilhouette` sets it. */
@@ -556,14 +565,13 @@
  * have needed rather than half of it. Its art is a different shape — 996 / 1579
  * — so the height-derived term uses that ratio instead.
  *
- * And it gets 64px of that height back. `--figure-room` is the worst case,
- * which is a *strength* card: title, exercise count and a two-line focus list.
- * A run has no focus line, so it spends less on text and its row is that much
- * taller — without this the runner was sized for room it was not using, coming
- * out at 64px inside 223px of space.
+ * And it takes `--figure-room-run`, which is that room plus what a run does not
+ * spend on a focus line — see the note where it is declared. Without it the
+ * runner was sized for a card it is not, coming out at 64px inside 223px of
+ * space.
  */
 .expandedFigures > .expandedFigure {
-  width: min(55%, calc((var(--figure-room) + 64px) * 0.63));
+  width: min(55%, calc(var(--figure-room-run) * 0.63));
 }
 
 .expandedActions {
@@ -905,14 +913,27 @@
 
   /*
    * Above 901px the page is pinned to the window and this row takes the slack,
-   * so `height: 100%` on the bodies resolves against something. Here the column
-   * grows with its content and that slack is zero — the silhouette measured 0px
-   * and simply did not appear. A fixed height gives it back the axis it derives
-   * its width from.
+   * so the bodies can be sized from what the window leaves over. Here the
+   * column grows with its content and there is no slack to take a share of —
+   * the row is simply given a height.
    */
   .expandedFigures {
     flex: 0 0 auto;
-    height: 13rem;
+    height: 14rem;
+  }
+
+  /*
+   * Which makes the viewport term meaningless down here, and worse than
+   * meaningless: it made the bodies a different size in Safari on a phone than
+   * in Chrome's phone simulator, because the two do not resolve a viewport unit
+   * to the same number. The row's height is known — it is the line above — so
+   * that is what the width derives from, and the drawing comes out the same
+   * everywhere.
+   */
+  .weekDayExpanded {
+    --figure-room: 14rem;
+    /* No spare height to claim here: the row is 14rem whatever the day holds. */
+    --figure-room-run: 14rem;
   }
 
   .weekDay {
