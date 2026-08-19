@@ -595,64 +595,65 @@ function ExpandedDay({
                 aria-label={session.title}
               >
                 {session.status === 'PLANNED' && (
-                  <Button
-                    type="button"
+                  <IconButton
                     variant="ghost"
+                    size="lg"
+                    label="Saltar la sesión"
+                    title="Saltar la sesión"
                     disabled={pendingId === session.id}
                     onClick={() => mark(session.id, 'SKIPPED')}
                   >
-                    Saltar
-                  </Button>
+                    <Icon name="skip" size={19} />
+                  </IconButton>
                 )}
-                <Button
-                  type="button"
-                  variant="secondary"
+                <IconButton
+                  variant="surface"
+                  size="lg"
+                  label="Ver el detalle"
+                  title="Ver el detalle"
                   onClick={() => openDetail({ dayOfWeek: day.dayOfWeek, session })}
                 >
-                  <Icon name="menu" size={17} />
-                  Detalle
-                </Button>
+                  <Icon name="menu" size={19} />
+                </IconButton>
                 {session.kind === 'STRENGTH' ? (
-                  <Button type="button" onClick={() => openTraining(session)}>
-                    <Icon name="arrowRight" size={17} />
-                    Entrenar
-                  </Button>
+                  <IconButton
+                    variant="soft"
+                    size="lg"
+                    label="Entrenar"
+                    title="Entrenar"
+                    onClick={() => openTraining(session)}
+                  >
+                    <Icon name="play" size={19} />
+                  </IconButton>
                 ) : session.status === 'COMPLETED' ? (
                   /* A run has no per-exercise screen to open, so its action marks
                      completion in place — and undoes it, or a mistaken tap would
                      be permanent. Back to PLANNED, not SKIPPED: undoing means
                      "this did not happen yet". */
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    aria-label="Desmarcar la carrera como completada"
+                  <IconButton
+                    variant="surface"
+                    size="lg"
+                    label="Desmarcar la carrera como completada"
+                    title="Desmarcar la carrera como completada"
                     disabled={pendingId === session.id}
-                    loading={pendingId === session.id}
                     onClick={() => mark(session.id, 'PLANNED')}
                   >
-                    <Icon name="checkCircle" size={17} />
-                    Completada
-                  </Button>
+                    <Icon name="checkCircle" size={19} />
+                  </IconButton>
                 ) : (
-                  <Button
-                    type="button"
-                    /*
-                     * "Completar" on the button, "Completar carrera" as its
-                     * name. Three actions share the open column and the long
-                     * label pushed this one onto a line of its own; the short
-                     * word fits, but on its own it does not say *what* is being
-                     * completed — and that is exactly what a screen reader
-                     * would be left with, since it never sees the session title
-                     * sitting a few lines above.
-                     */
-                    aria-label="Completar carrera"
+                  <IconButton
+                    variant="soft"
+                    size="lg"
+                    label="Completar carrera"
+                    title="Completar carrera"
                     disabled={pendingId === session.id}
-                    loading={pendingId === session.id}
                     onClick={() => mark(session.id, 'COMPLETED')}
                   >
-                    <Icon name="check" size={17} />
-                    Completar
-                  </Button>
+                    {/* The finish line, not a tick: a tick is the same mark the
+                        calendar dots already use for "done", and this is the
+                        control that *makes* it done. */}
+                    <Icon name="flag" size={19} />
+                  </IconButton>
                 )}
               </div>
             ))}

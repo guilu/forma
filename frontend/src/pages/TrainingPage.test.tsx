@@ -219,7 +219,9 @@ describe('TrainingPage', () => {
       'li',
     ) as HTMLElement;
     expect(within(todayCard).getByRole('button', { name: 'Entrenar' })).toBeInTheDocument();
-    expect(within(todayCard).queryByRole('button', { name: 'Saltar' })).not.toBeInTheDocument();
+    expect(
+      within(todayCard).queryByRole('button', { name: 'Saltar la sesión' }),
+    ).not.toBeInTheDocument();
 
     await userEvent.click(within(todayCard).getByRole('button', { name: 'Entrenar' }));
     expect(screen.getByTestId('location')).toHaveTextContent('/app/training/MONDAY%3ASTRENGTH');
@@ -259,7 +261,7 @@ describe('TrainingPage', () => {
     renderPage();
     await screen.findByRole('heading', { name: 'Hoy · Lunes' });
 
-    await user.click(screen.getByRole('button', { name: 'Detalle' }));
+    await user.click(screen.getByRole('button', { name: 'Ver el detalle' }));
 
     expect(screen.getByRole('dialog', { name: /Lunes · Fuerza/ })).toBeInTheDocument();
     // Documented gap: no exercise-level breakdown is available from the API.
@@ -273,7 +275,7 @@ describe('TrainingPage', () => {
 
     renderPage();
     await screen.findByRole('heading', { name: 'Hoy · Lunes' });
-    await user.click(screen.getByRole('button', { name: 'Detalle' }));
+    await user.click(screen.getByRole('button', { name: 'Ver el detalle' }));
 
     const dialog = await screen.findByRole('dialog', { name: /Lunes · Fuerza/ });
     await user.selectOptions(within(dialog).getByLabelText('Mover a otro día'), 'WEDNESDAY');
@@ -290,7 +292,7 @@ describe('TrainingPage', () => {
 
     renderPage();
     await screen.findByRole('heading', { name: 'Hoy · Lunes' });
-    await user.click(screen.getByRole('button', { name: 'Detalle' }));
+    await user.click(screen.getByRole('button', { name: 'Ver el detalle' }));
 
     const dialog = await screen.findByRole('dialog', { name: /Lunes · Fuerza/ });
     await user.selectOptions(within(dialog).getByLabelText('Mover a otro día'), 'WEDNESDAY');
@@ -313,7 +315,7 @@ describe('TrainingPage', () => {
     renderPage();
     await screen.findByRole('heading', { name: 'Hoy · Lunes' });
 
-    await user.click(screen.getByRole('button', { name: 'Detalle' }));
+    await user.click(screen.getByRole('button', { name: 'Ver el detalle' }));
 
     expect(getMuscleMapMock).toHaveBeenCalledWith('MONDAY:STRENGTH');
     const dialog = await screen.findByRole('dialog', { name: /Lunes · Fuerza/ });
@@ -332,7 +334,7 @@ describe('TrainingPage', () => {
     renderPage();
     await screen.findByRole('heading', { name: 'Hoy · Lunes' });
 
-    await user.click(screen.getByRole('button', { name: 'Detalle' }));
+    await user.click(screen.getByRole('button', { name: 'Ver el detalle' }));
 
     const dialog = await screen.findByRole('dialog', { name: /Lunes · Fuerza/ });
     expect(
@@ -688,21 +690,35 @@ describe('TrainingPage', () => {
       expect(await screen.findByRole('button', { name: 'Completar carrera' })).toBeInTheDocument();
     });
 
-    it('prints the short label but keeps the whole one as its accessible name', async () => {
+    /*
+     * The three actions are glyphs now, not labels. Even trimmed to one word
+     * each they crowded the open column at every width below the widest, and a
+     * button that has to wrap is worse than one that has to be recognised.
+     *
+     * What that costs is the label, and it is paid back twice: `aria-label`
+     * carries the whole sentence to assistive tech, and `title` shows it on
+     * hover for everyone else. What must never happen is a glyph reaching the
+     * accessibility tree unnamed, so that is what these pin.
+     */
+    it('states each action in full on its name and its tooltip, not on its face', async () => {
       getWeekMock.mockResolvedValue(runningToday('PLANNED'));
 
       renderPage();
-      const button = await screen.findByRole('button', { name: 'Completar carrera' });
+      const complete = await screen.findByRole('button', { name: 'Completar carrera' });
+      const group = complete.closest('[role="group"]') as HTMLElement;
+      const actions = within(group).getAllByRole('button');
 
-      // Three buttons share the open column's width and "Completar carrera"
-      // pushed the third onto a line of its own. The word that fits is
-      // "Completar" — which on its own is ambiguous, and ambiguity is exactly
-      // what a screen reader would be left with, so the name keeps the noun.
-      expect(button).toHaveTextContent('Completar');
-      expect(button).not.toHaveTextContent('Completar carrera');
+      expect(actions).toHaveLength(3);
+      for (const action of actions) {
+        // The glyph is decorative (see Icon), so the name has to come from the
+        // label — an empty one here means an unnamed control.
+        expect(action).toHaveAccessibleName();
+        expect(action).toHaveAttribute('title', action.getAttribute('aria-label'));
+        expect(action).toHaveTextContent('');
+      }
 
-      const group = button.closest('[role="group"]') as HTMLElement;
-      expect(within(group).getAllByRole('button')).toHaveLength(3);
+      expect(within(group).getByRole('button', { name: 'Saltar la sesión' })).toBeInTheDocument();
+      expect(within(group).getByRole('button', { name: 'Ver el detalle' })).toBeInTheDocument();
     });
   });
 

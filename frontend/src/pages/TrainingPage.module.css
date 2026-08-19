@@ -449,7 +449,9 @@
  * list took a third line on a narrow column and ate the room this constant had
  * already promised to the bodies.
  */
-.expandedFigures {
+/* Declared on the card, not on the figure row: the rest day has no session
+   figures but sizes its own body by exactly the same reasoning. */
+.weekDayExpanded {
   --figure-room: min(calc(100vh - 640px), 25rem);
 }
 
@@ -519,12 +521,22 @@
   align-items: center;
   justify-content: center;
   min-height: 0;
+  overflow: hidden;
   padding: var(--space-2) 0;
 }
 
+/*
+ * Same rule as the session bodies above, with the rest art's own ratio.
+ *
+ * It was sized by height alone and came out pressed against both edges of the
+ * card: this drawing is 996 / 1579, far wider for its height than the
+ * anatomical sheets, so the same height buys it a lot more width. Capping the
+ * width at 70% leaves it room to breathe, and the height-derived term keeps it
+ * from outgrowing the card on a tall window, exactly as for the others.
+ */
 .restBody {
-  height: 100%;
-  max-height: 100%;
+  width: min(70%, calc(var(--figure-room) * 0.63));
+  height: auto;
 }
 
 /*
