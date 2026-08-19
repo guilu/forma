@@ -178,6 +178,31 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-card);
+  /*
+   * The arrows swap which column is open, and the two columns that change
+   * trade width: one grows to 2.8, the other falls back to 1. Animating
+   * `flex-grow` is what makes that read as one column opening rather than as
+   * the whole week jumping — every other column shifts a little as a
+   * consequence, and the eye follows the movement instead of re-reading the
+   * row.
+   *
+   * `flex-grow` and not `width`: the widths are a ratio the row divides
+   * between seven items, so there is no width to animate — the browser
+   * interpolates the ratio and lays out from it.
+   */
+  transition: flex-grow 260ms ease-in-out;
+}
+
+/*
+ * Someone who has asked for less motion gets the same layout, arrived at
+ * instantly. The reason to animate here is comfort, not meaning: nothing about
+ * which day is open depends on having seen it widen.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .weekDay,
+  .weekDayExpanded {
+    transition: none;
+  }
 }
 
 .weekDay {
