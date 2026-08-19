@@ -635,7 +635,7 @@ function ExpandedDay({
                     size="lg"
                     label="Desmarcar la carrera como completada"
                     title="Desmarcar la carrera como completada"
-                    disabled={pendingId === session.id}
+                    loading={pendingId === session.id}
                     onClick={() => mark(session.id, 'PLANNED')}
                   >
                     <Icon name="checkCircle" size={19} />
@@ -646,7 +646,7 @@ function ExpandedDay({
                     size="lg"
                     label="Completar carrera"
                     title="Completar carrera"
-                    disabled={pendingId === session.id}
+                    loading={pendingId === session.id}
                     onClick={() => mark(session.id, 'COMPLETED')}
                   >
                     {/* The finish line, not a tick: a tick is the same mark the

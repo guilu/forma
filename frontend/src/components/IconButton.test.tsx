@@ -95,3 +95,50 @@ describe('IconButton', () => {
     expect(screen.getByRole('button', { name: 'Anterior' })).toHaveClass('page-local');
   });
 });
+
+/*
+ * An icon-only control has no room for a spinner beside its glyph — there is no
+ * "beside". So loading replaces the glyph rather than joining it, which is the
+ * one difference from `Button`; everything else about the state is the same
+ * contract: the action cannot be re-triggered, and assistive tech is told the
+ * control is busy rather than being left to infer it from a disabled attribute.
+ */
+describe('loading', () => {
+  it('replaces the glyph with a spinner and blocks the action', async () => {
+    const onClick = vi.fn();
+    render(
+      <IconButton label="Guardar" loading onClick={onClick}>
+        <span data-testid="glyph">★</span>
+      </IconButton>,
+    );
+
+    const button = screen.getByRole('button', { name: 'Guardar' });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute('aria-busy', 'true');
+    expect(screen.queryByTestId('glyph')).not.toBeInTheDocument();
+
+    await userEvent.click(button);
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it('keeps its name while busy, so the control never goes anonymous mid-action', () => {
+    render(
+      <IconButton label="Completar carrera" loading>
+        <span>★</span>
+      </IconButton>,
+    );
+
+    expect(screen.getByRole('button', { name: 'Completar carrera' })).toBeInTheDocument();
+  });
+
+  it('shows the glyph and no busy state when it is not loading', () => {
+    render(
+      <IconButton label="Guardar">
+        <span data-testid="glyph">★</span>
+      </IconButton>,
+    );
+
+    expect(screen.getByTestId('glyph')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Guardar' })).not.toHaveAttribute('aria-busy');
+  });
+});

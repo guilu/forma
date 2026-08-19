@@ -24,6 +24,13 @@ export type IconButtonSize = 'sm' | 'md' | 'lg';
  * each caller has to remember. The glyph itself stays `aria-hidden` (see
  * {@link Icon}), so the label is the only accessible name.
  *
+ * <p>`loading` implies `disabled`, as it does on {@link Button}: a pending
+ * action must not be re-triggered. Where it differs is what it does with the
+ * glyph — it *replaces* it rather than sitting beside it, because a square this
+ * size has no "beside". The label is untouched, so the control keeps its
+ * accessible name while it is busy instead of going anonymous mid-action, and
+ * `aria-busy` says why it stopped responding.
+ *
  * <p>`tone="danger"` is presentation only — it tints a row deletion so the
  * destructive control does not read identically to "edit" beside it. It changes
  * no behaviour: a destructive action still needs its own confirmation (see
@@ -35,6 +42,7 @@ interface IconButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 
   readonly tone?: IconButtonTone;
   readonly size?: IconButtonSize;
   readonly type?: 'button' | 'submit' | 'reset';
+  readonly loading?: boolean;
   readonly children: ReactNode;
 }
 
@@ -44,6 +52,8 @@ export function IconButton({
   tone = 'default',
   size = 'md',
   type = 'button',
+  loading = false,
+  disabled,
   className,
   children,
   ...rest
@@ -52,12 +62,14 @@ export function IconButton({
     <button
       type={type}
       aria-label={label}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
       className={[styles.iconButton, styles[variant], styles[tone], styles[size], className]
         .filter(Boolean)
         .join(' ')}
       {...rest}
     >
-      {children}
+      {loading ? <span className={styles.spinner} aria-hidden="true" /> : children}
     </button>
   );
 }
