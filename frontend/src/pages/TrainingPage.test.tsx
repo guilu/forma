@@ -433,10 +433,13 @@ describe('TrainingPage', () => {
     // The three rings the old summary card drew are gone with it: a percentage
     // of two sessions says nothing the fraction beside it does not.
     expect(stats.queryByText('0%')).toBeNull();
-    expect(stats.getByRole('link', { name: /Ver estadísticas completas/i })).toHaveAttribute(
-      'href',
-      '/app/progress',
-    );
+    /*
+     * No link out. "Ver estadísticas completas" pointed at /app/progress, which
+     * is a section of its own in the sidebar and in the phone bar — so it was
+     * not a way out of a dead end, it was a second door to a room that already
+     * had one, taking up the end of the counters row to say so.
+     */
+    expect(stats.queryByRole('link')).toBeNull();
   });
 
   /*
