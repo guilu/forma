@@ -91,15 +91,6 @@
   color: var(--color-text-muted);
 }
 
-.actionError {
-  margin: 0;
-  padding: var(--space-3);
-  font-size: var(--font-size-sm);
-  color: var(--color-danger);
-  border: 1px solid var(--color-danger);
-  border-radius: var(--radius-md);
-}
-
 .rest {
   margin: 0;
   font-size: var(--font-size-sm);
@@ -527,6 +518,13 @@
  *        1440×900   91px wide → 196 tall in 334  ·  1440×1200 186 → 401 in 402
  *        1725×768   30px wide →  64 tall in 135  ·  1725×976  126 → 272 in 402
  *
+ * The floor is not decoration. The middle term is a *subtraction*, and a
+ * subtraction has no lower bound: on an iPad in landscape with Safari's bars
+ * taking their share the window is about 700px tall, `100dvh - 704px` came out
+ * at or below zero, and the bodies were laid out at 0×0 — the open day showed
+ * no silhouette at all. 8rem is the smallest body still worth drawing, and it
+ * still fits the row at that height.
+ *
  * The 704px is the chrome the row does not get, and it has to be a *worst
  * case*, not a measurement of one machine. It was 640 — measured here — and CI
  * failed: the same card there spends about 64px more on its own text, because
@@ -541,7 +539,7 @@
 /* Declared on the card, not on the figure row: the rest day has no session
    figures but sizes its own body by exactly the same reasoning. */
 .weekDayExpanded {
-  --figure-room: min(calc(100dvh - 704px), 25rem);
+  --figure-room: clamp(8rem, calc(100dvh - 704px), 25rem);
   /*
    * What a run gets on top. `--figure-room` is the worst case, which is a
    * *strength* card — title, exercise count and a two-line focus list — and a
@@ -859,6 +857,45 @@
   .statLabel {
     gap: var(--space-1);
     letter-spacing: 0.02em;
+  }
+}
+
+/*
+ * Short windows, at any width: an iPad in landscape with Safari's bars, or a
+ * laptop with a lot of chrome.
+ *
+ * Below about 860px there is no arrangement that holds the week, the counters
+ * *and* a silhouette anyone can read — the row was down to 62px of room, which
+ * is not a body, it is a smudge. So the page stops being pinned to the window
+ * here and scrolls instead, and the figure takes a fixed height like it does on
+ * a phone.
+ *
+ * That is a deliberate retreat, not a failure: "everything at a glance" was a
+ * promise made at 1440×900, and keeping it at 700 would mean keeping it in name
+ * only.
+ */
+@media (min-width: 901px) and (max-height: 860px) {
+  .wrapper {
+    height: auto;
+  }
+
+  .layout {
+    grid-template-rows: auto auto;
+  }
+
+  .weekStrip {
+    height: auto;
+    max-height: none;
+  }
+
+  .expandedFigures {
+    flex: 0 0 auto;
+    height: 14rem;
+  }
+
+  .weekDayExpanded {
+    --figure-room: 14rem;
+    --figure-room-run: 14rem;
   }
 }
 

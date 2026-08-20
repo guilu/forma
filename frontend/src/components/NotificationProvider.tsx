@@ -36,6 +36,8 @@ interface Notification {
   readonly id: string;
   readonly type: NotificationType;
   readonly message: string;
+  /** Set while its exit animation plays; the row is removed once it ends. */
+  readonly leaving?: boolean;
 }
 
 interface NotifyApi {
@@ -48,9 +50,33 @@ const NotificationContext = createContext<NotifyApi | null>(null);
 
 /** Caps concurrent toasts (spec edge case: "avoid stacking excessive notifications"). */
 const MAX_NOTIFICATIONS = 3;
-/** Success toasts auto-dismiss; warnings/errors persist until the user dismisses them
- * (spec ui.md: "auto-dismiss for success only" / "errors persist until dismissed"). */
-const SUCCESS_AUTO_DISMISS_MS = 5000;
+/**
+ * Every toast goes on its own; a failure just gets longer to be read.
+ *
+ * <p>FOR-63's ui.md says "auto-dismiss for success only" and "errors persist
+ * until dismissed", and that was right while errors were rare and each page
+ * also drew its own inline banner for them. It stopped being right when a
+ * failed request became *the* toast: an undismissed error from ten minutes ago
+ * sits on top of a page it has nothing to do with, and the reflex becomes
+ * closing toasts without reading them — which costs more than the occasional
+ * missed message. The dismiss button stays for anyone who wants it gone sooner.
+ */
+const AUTO_DISMISS_MS: Record<NotificationType, number> = {
+  success: 5000,
+  warning: 9000,
+  error: 9000,
+};
+
+/**
+ * How long the exit animation gets before the row is dropped.
+ *
+ * <p>Dismissing cannot simply remove the notification: React would unmount the
+ * element on the spot and there would be nothing left on screen to animate. So
+ * a dismissed toast is flagged first, the stylesheet plays it out, and this
+ * timer does the removal. Kept in step with `.toast[data-leaving='true']`'s own
+ * duration in the stylesheet.
+ */
+const LEAVE_MS = 200;
 
 const TYPE_ICON: Record<NotificationType, IconName> = {
   success: 'check',
@@ -69,7 +95,14 @@ export function NotificationProvider({ children }: { readonly children: ReactNod
   const nextId = useRef(0);
 
   const dismiss = useCallback((id: string) => {
-    setNotifications((current) => current.filter((notification) => notification.id !== id));
+    setNotifications((current) =>
+      current.map((notification) =>
+        notification.id === id ? { ...notification, leaving: true } : notification,
+      ),
+    );
+    setTimeout(() => {
+      setNotifications((current) => current.filter((notification) => notification.id !== id));
+    }, LEAVE_MS);
   }, []);
 
   const push = useCallback((type: NotificationType, message: string) => {
@@ -121,21 +154,17 @@ function Toast({
   readonly notification: Notification;
   readonly onDismiss: (id: string) => void;
 }) {
-  const { id, type, message } = notification;
+  const { id, type, message, leaving } = notification;
 
   useEffect(() => {
-    if (type !== 'success') {
-      // Warnings/errors persist until the user dismisses them (spec edge case:
-      // "long-running failure -> transitions to an error message, not a
-      // stuck pending state" — the state must stay visible, not vanish on a timer).
-      return undefined;
-    }
-    const timer = setTimeout(() => onDismiss(id), SUCCESS_AUTO_DISMISS_MS);
+    // Already on its way out: a second dismiss would only restart the removal.
+    if (leaving) return undefined;
+    const timer = setTimeout(() => onDismiss(id), AUTO_DISMISS_MS[type]);
     return () => clearTimeout(timer);
-  }, [id, type, onDismiss]);
+  }, [id, type, leaving, onDismiss]);
 
   return (
-    <div className={styles.toast} data-type={type}>
+    <div className={styles.toast} data-type={type} data-leaving={leaving ? 'true' : 'false'}>
       <Icon name={TYPE_ICON[type]} size={18} className={styles.icon} />
       <p className={styles.message}>
         <span className={styles.srOnly}>{TYPE_LABEL[type]}: </span>

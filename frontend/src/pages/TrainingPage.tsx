@@ -202,7 +202,6 @@ export function TrainingPage() {
   const navigate = useNavigate();
   const [state, setState] = useState<State>({ status: 'loading' });
   const anatomySex = useAnatomySex();
-  const [actionError, setActionError] = useState<string | undefined>(undefined);
   const [pendingId, setPendingId] = useState<string | undefined>(undefined);
   const [detailTarget, setDetailTarget] = useState<DetailTarget | undefined>(undefined);
   const [selectedDay, setSelectedDay] = useState<string>(() => todayDayOfWeek());
@@ -221,7 +220,6 @@ export function TrainingPage() {
   }, [load]);
 
   async function mark(sessionId: string, status: SessionStatus) {
-    setActionError(undefined);
     setPendingId(sessionId);
     try {
       await updateSessionStatus(sessionId, status);
@@ -239,7 +237,11 @@ export function TrainingPage() {
         notify.success('Entrenamiento marcado como completado.');
       }
     } catch (error) {
-      setActionError(error instanceof ApiRequestError ? error.message : MARK_ERROR);
+      // Every failure goes to the notification region, the same place a success
+      // does — rather than to a band this page draws for itself, which is how
+      // the app ended up telling you about a failure in a different spot on
+      // every screen.
+      notify.error(error instanceof ApiRequestError ? error.message : MARK_ERROR);
     } finally {
       setPendingId(undefined);
     }
@@ -253,7 +255,6 @@ export function TrainingPage() {
    * from.
    */
   async function move(sessionId: string, day: DayOfWeek) {
-    setActionError(undefined);
     setPendingId(sessionId);
     try {
       await rescheduleSession(sessionId, day);
@@ -261,7 +262,7 @@ export function TrainingPage() {
       setDetailTarget(undefined);
       notify.success(`Sesión movida a ${DAY_LABELS[day].toLocaleLowerCase('es-ES')}.`);
     } catch (error) {
-      setActionError(error instanceof ApiRequestError ? error.message : MOVE_ERROR);
+      notify.error(error instanceof ApiRequestError ? error.message : MOVE_ERROR);
     } finally {
       setPendingId(undefined);
     }
@@ -309,12 +310,6 @@ export function TrainingPage() {
           </IconButton>
         </div>
       </header>
-
-      {actionError && (
-        <p className={styles.actionError} role="alert">
-          {actionError}
-        </p>
-      )}
 
       {renderContent(
         state,

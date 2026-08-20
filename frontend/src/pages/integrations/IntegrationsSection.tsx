@@ -49,8 +49,7 @@ import styles from './IntegrationsSection.module.css';
  * documented stub this slice (FOR-126: `importedCount` is always `0`, real
  * Withings sync is FOR-103 slice 3) and can resolve with a readable
  * `result: 'NOT_CONNECTED'` outcome instead of importing anything — that case
- * renders the existing `actionError` message rather than a fabricated
- * success toast.
+ * notifies the honest error rather than a fabricated success toast.
  *
  * <p>FOR-133 fixes the FOR-123 connect drift: {@link connectIntegration} now
  * returns a discriminated union (FOR-131's `ConnectResult`). For a provider
@@ -151,7 +150,6 @@ export function IntegrationsSection() {
   // Shared with the sidebar's status card (FOR-189): two copies of this list
   // meant a disconnect here left that card claiming "Conectado" until a reload.
   const { status, connections, refresh } = useIntegrations();
-  const [actionError, setActionError] = useState<string | undefined>(undefined);
   const [pendingProviderId, setPendingProviderId] = useState<IntegrationProviderId | undefined>(
     undefined,
   );
@@ -160,7 +158,6 @@ export function IntegrationsSection() {
   );
 
   async function handleConnect(provider: IntegrationConnection) {
-    setActionError(undefined);
     setPendingProviderId(provider.providerId);
     try {
       const result = await connectIntegration(provider.providerId);
@@ -175,14 +172,13 @@ export function IntegrationsSection() {
       notify.success(`Conectado con ${provider.providerName}.`);
       refresh();
     } catch (error) {
-      setActionError(messageFromError(error, `No se pudo conectar con ${provider.providerName}.`));
+      notify.error(messageFromError(error, `No se pudo conectar con ${provider.providerName}.`));
     } finally {
       setPendingProviderId(undefined);
     }
   }
 
   async function handleSync(provider: IntegrationConnection) {
-    setActionError(undefined);
     setPendingProviderId(provider.providerId);
     try {
       const outcome = await syncIntegration(provider.providerId);
@@ -191,13 +187,13 @@ export function IntegrationsSection() {
       // successful sync, so it must not produce a success toast (FOR-123:
       // never fabricate success feedback for a call that didn't actually sync).
       if (outcome.result === 'NOT_CONNECTED') {
-        setActionError(`No se pudo sincronizar ${provider.providerName}: ya no está conectado.`);
+        notify.error(`No se pudo sincronizar ${provider.providerName}: ya no está conectado.`);
       } else {
         notify.success(`Sincronizado con ${provider.providerName}.`);
         refresh();
       }
     } catch (error) {
-      setActionError(messageFromError(error, `No se pudo sincronizar ${provider.providerName}.`));
+      notify.error(messageFromError(error, `No se pudo sincronizar ${provider.providerName}.`));
     } finally {
       setPendingProviderId(undefined);
     }
@@ -205,14 +201,13 @@ export function IntegrationsSection() {
 
   async function handleDisconnectConfirm() {
     if (!disconnectTarget) return;
-    setActionError(undefined);
     setPendingProviderId(disconnectTarget.providerId);
     try {
       await disconnectIntegration(disconnectTarget.providerId);
       notify.success(`Desconectado de ${disconnectTarget.providerName}.`);
       refresh();
     } catch (error) {
-      setActionError(
+      notify.error(
         messageFromError(error, `No se pudo desconectar ${disconnectTarget.providerName}.`),
       );
     } finally {
@@ -226,12 +221,6 @@ export function IntegrationsSection() {
       <h2 id="integrations-section-title" className={styles.title}>
         Integraciones
       </h2>
-
-      {actionError && (
-        <p className={styles.actionError} role="alert">
-          {actionError}
-        </p>
-      )}
 
       {renderContent(
         status,

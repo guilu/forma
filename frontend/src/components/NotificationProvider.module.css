@@ -1,10 +1,17 @@
-/* Fixed top-center stack (spec FOR-63 ui.md open question, resolved: "top",
- * dismissible) — positioned above the Modal backdrop (z-index: 100, see
- * Modal.module.css) so feedback stays visible even while a confirmation
- * dialog is open. */
+/*
+ * Fixed top-centre stack (spec FOR-63 ui.md open question, resolved: "top",
+ * dismissible) — above the Modal backdrop (z-index: 100, see Modal.module.css)
+ * so feedback stays visible even while a confirmation dialog is open.
+ *
+ * It hangs *under* the navigation bar rather than at the top of the viewport.
+ * At `--space-4` it landed on top of the bar, covering the theme toggle and the
+ * notification bell — the two controls someone reaching for a toast is most
+ * likely to want — and read as part of the chrome rather than as something that
+ * had just happened.
+ */
 .region {
   position: fixed;
-  top: var(--space-4);
+  top: calc(var(--topbar-height) + var(--space-3));
   left: 50%;
   z-index: 200;
   display: flex;
@@ -18,7 +25,37 @@
   pointer-events: none;
 }
 
+/*
+ * In from above and out the same way, because that is where it comes from: the
+ * bar it hangs under. A toast that simply blinks into existence is easy to miss
+ * and easy to misread as part of the page.
+ */
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-0.75rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-0.5rem);
+  }
+}
+
 .toast {
+  animation: toastIn 220ms ease-out both;
   display: flex;
   align-items: flex-start;
   gap: var(--space-2);
@@ -30,6 +67,21 @@
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-card);
   pointer-events: auto;
+}
+
+/* Kept in step with `LEAVE_MS` in NotificationProvider.tsx, which is what
+   actually takes the row out once this has played. */
+.toast[data-leaving='true'] {
+  animation: toastOut 200ms ease-in both;
+}
+
+/* The movement is decoration; the message is the content. Without it the toast
+   still appears and still goes, just without the travel. */
+@media (prefers-reduced-motion: reduce) {
+  .toast,
+  .toast[data-leaving='true'] {
+    animation: none;
+  }
 }
 
 .toast[data-type='success'] {

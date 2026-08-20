@@ -162,8 +162,10 @@ describe('IntegrationsSection', () => {
     renderSection();
     await user.click(await screen.findByRole('button', { name: 'Sincronizar ahora' }));
 
-    const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('No se pudo sincronizar Withings');
+    const alert = await within(screen.getByRole('log')).findByText(
+      /No se pudo sincronizar Withings/,
+    );
+    expect(alert).toBeInTheDocument();
     expect(alert.textContent).not.toMatch(/token|secret|password|bearer/i);
   });
 
@@ -181,8 +183,10 @@ describe('IntegrationsSection', () => {
     renderSection();
     await user.click(await screen.findByRole('button', { name: 'Conectar' }));
 
-    const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('No se pudo conectar con Withings');
+    const alert = await within(screen.getByRole('log')).findByText(
+      /No se pudo conectar con Withings/,
+    );
+    expect(alert).toBeInTheDocument();
     expect(alert.textContent).not.toMatch(/token|secret|password|bearer/i);
   });
 
@@ -210,7 +214,9 @@ describe('IntegrationsSection', () => {
     await user.click(within(modal).getByRole('button', { name: 'Desconectar' }));
 
     await waitFor(() => expect(disconnectMock).toHaveBeenCalledWith('WITHINGS'));
-    expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo desconectar Withings');
+    expect(
+      await within(screen.getByRole('log')).findByText(/No se pudo desconectar Withings/),
+    ).toBeInTheDocument();
   });
 
   it('cancels disconnect without calling the API when the user backs out', async () => {
@@ -447,9 +453,9 @@ describe('IntegrationsSection', () => {
       renderSection();
       await user.click(await screen.findByRole('button', { name: 'Conectar' }));
 
-      expect(await screen.findByRole('alert')).toHaveTextContent(
-        'No se pudo conectar con Withings',
-      );
+      expect(
+        await within(screen.getByRole('log')).findByText(/No se pudo conectar con Withings/),
+      ).toBeInTheDocument();
       expect(screen.queryByText('Conectado con Withings.')).not.toBeInTheDocument();
     });
 
@@ -466,7 +472,7 @@ describe('IntegrationsSection', () => {
       renderSection();
       await user.click(await screen.findByRole('button', { name: 'Sincronizar ahora' }));
 
-      expect(await screen.findByRole('alert')).toHaveTextContent('Withings');
+      expect(await within(screen.getByRole('log')).findByText(/Withings/)).toBeInTheDocument();
       expect(screen.queryByText('Sincronizado con Withings.')).not.toBeInTheDocument();
       expect(screen.queryByRole('log')).not.toHaveTextContent('Sincronizado');
     });
@@ -551,9 +557,9 @@ describe('IntegrationsSection', () => {
       renderSection();
       await user.click(await screen.findByRole('button', { name: 'Conectar' }));
 
-      expect(await screen.findByRole('alert')).toHaveTextContent(
-        'No se pudo conectar con Withings',
-      );
+      expect(
+        await within(screen.getByRole('log')).findByText(/No se pudo conectar con Withings/),
+      ).toBeInTheDocument();
       expect(assignSpy).not.toHaveBeenCalled();
     });
 
