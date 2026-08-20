@@ -1159,6 +1159,22 @@ test.describe('the open day in the week strip', () => {
   const CARD = 'li[class*="weekDayExpanded"]';
   const FIGURES = '[class*="expandedFigures"]';
 
+  /*
+   * Which day opens by default is read off the machine clock, and these tests
+   * step forward from it by a fixed number of days — so without pinning the
+   * date they assert about a different day every day. Written on a Wednesday,
+   * "one step forward" was the strength day; by Thursday it was the rest day,
+   * which has no silhouette pair at all and failed on a missing element rather
+   * than on anything about layout.
+   *
+   * Wednesday 2026-08-12, so that today is the run and one step is the strength
+   * day. `setFixedTime` rather than `clock.install`, for the reason the iPad
+   * block gives: this only needs `Date` to read mid-week.
+   */
+  test.beforeEach(async ({ page }) => {
+    await page.clock.setFixedTime(new Date('2026-08-12T12:00:00'));
+  });
+
   for (const viewport of [
     { width: 1280, height: 768 },
     { width: 1440, height: 900 },

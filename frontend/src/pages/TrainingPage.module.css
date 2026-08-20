@@ -675,14 +675,13 @@
 
 /* ── The week in numbers ────────────────────────────────────────────── */
 /*
- * One row: four counters, the split donut and the way out to the full stats.
- * The counters are `1fr` and the last two are content-sized, so the numbers
- * stay on a common grid while the donut keeps exactly the width its legend
- * needs.
+ * One row: four counters and the split donut. The counters are `1fr` and the
+ * donut is content-sized, so the numbers stay on a common grid while the donut
+ * keeps exactly the width its legend needs.
  */
 .weekStats {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr)) auto auto;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
   align-items: stretch;
   gap: var(--space-3);
 }
@@ -773,17 +772,6 @@
   background: none;
   border: 0;
   cursor: pointer;
-}
-
-.statsLink {
-  display: inline-flex;
-  align-items: center;
-  align-self: center;
-  gap: var(--space-2);
-  padding: 0 var(--space-2);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: var(--color-accent-strong);
 }
 
 /* ── The split donut ────────────────────────────────────────────────── */
@@ -951,13 +939,8 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .distributionTile,
-  .statsLink {
+  .distributionTile {
     grid-column: 1 / -1;
-  }
-
-  .statsLink {
-    justify-content: center;
   }
 }
 

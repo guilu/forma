@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Badge } from '../components/Badge';
 import { MuscleSilhouette, type AnatomySex } from '../components/MuscleSilhouette';
 import { Button } from '../components/Button';
@@ -926,14 +926,6 @@ function WeekStats({ days }: { readonly days: readonly TrainingDay[] }) {
       <StatTile label="Fuerza" icon="training" t={strength} tone="strength" />
       <StreakTile />
       <DistributionTile days={days} />
-      {/* The one link the old "Resumen semanal" card carried. The strip has no
-          card footer to hang it from, but dropping it would close the only path
-          from here to the full stats. */}
-      <Link className={styles.statsLink} to="/app/progress">
-        <Icon name="progress" size={16} />
-        <span>Ver estadísticas completas</span>
-        <Icon name="arrowRight" size={16} />
-      </Link>
     </section>
   );
 }
