@@ -48,9 +48,22 @@ const NotificationContext = createContext<NotifyApi | null>(null);
 
 /** Caps concurrent toasts (spec edge case: "avoid stacking excessive notifications"). */
 const MAX_NOTIFICATIONS = 3;
-/** Success toasts auto-dismiss; warnings/errors persist until the user dismisses them
- * (spec ui.md: "auto-dismiss for success only" / "errors persist until dismissed"). */
-const SUCCESS_AUTO_DISMISS_MS = 5000;
+/**
+ * Every toast goes on its own; a failure just gets longer to be read.
+ *
+ * <p>FOR-63's ui.md says "auto-dismiss for success only" and "errors persist
+ * until dismissed", and that was right while errors were rare and each page
+ * also drew its own inline banner for them. It stopped being right when a
+ * failed request became *the* toast: an undismissed error from ten minutes ago
+ * sits on top of a page it has nothing to do with, and the reflex becomes
+ * closing toasts without reading them — which costs more than the occasional
+ * missed message. The dismiss button stays for anyone who wants it gone sooner.
+ */
+const AUTO_DISMISS_MS: Record<NotificationType, number> = {
+  success: 5000,
+  warning: 9000,
+  error: 9000,
+};
 
 const TYPE_ICON: Record<NotificationType, IconName> = {
   success: 'check',
@@ -124,13 +137,7 @@ function Toast({
   const { id, type, message } = notification;
 
   useEffect(() => {
-    if (type !== 'success') {
-      // Warnings/errors persist until the user dismisses them (spec edge case:
-      // "long-running failure -> transitions to an error message, not a
-      // stuck pending state" — the state must stay visible, not vanish on a timer).
-      return undefined;
-    }
-    const timer = setTimeout(() => onDismiss(id), SUCCESS_AUTO_DISMISS_MS);
+    const timer = setTimeout(() => onDismiss(id), AUTO_DISMISS_MS[type]);
     return () => clearTimeout(timer);
   }, [id, type, onDismiss]);
 

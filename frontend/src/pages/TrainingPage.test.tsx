@@ -297,7 +297,9 @@ describe('TrainingPage', () => {
     const dialog = await screen.findByRole('dialog', { name: /Lunes · Fuerza/ });
     await user.selectOptions(within(dialog).getByLabelText('Mover a otro día'), 'WEDNESDAY');
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/No se pudo mover/i);
+    expect(
+      await within(screen.getByRole('log')).findByText(/No se pudo mover/i),
+    ).toBeInTheDocument();
   });
 
   it('loads and renders the FOR-136 muscle map for a strength session, grouped and normalized', async () => {
@@ -793,7 +795,14 @@ describe('TrainingPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Completar carrera' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo actualizar la sesión');
+    /*
+     * As a toast, not as a red band across the page. Every failure in the app
+     * now surfaces in the one place feedback already lives — the notification
+     * region — instead of each screen inventing its own spot for it.
+     */
+    const feed = within(screen.getByRole('log'));
+    expect(await feed.findByText(/No se pudo actualizar la sesión/)).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).toBeNull();
     // Status stayed PLANNED — the run is still offered for completion.
     expect(screen.getByRole('button', { name: 'Completar carrera' })).toBeInTheDocument();
   });

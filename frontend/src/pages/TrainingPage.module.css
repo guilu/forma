@@ -91,15 +91,6 @@
   color: var(--color-text-muted);
 }
 
-.actionError {
-  margin: 0;
-  padding: var(--space-3);
-  font-size: var(--font-size-sm);
-  color: var(--color-danger);
-  border: 1px solid var(--color-danger);
-  border-radius: var(--radius-md);
-}
-
 .rest {
   margin: 0;
   font-size: var(--font-size-sm);

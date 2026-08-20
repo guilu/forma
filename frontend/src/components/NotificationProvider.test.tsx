@@ -130,7 +130,16 @@ describe('NotificationProvider / useNotify (FOR-63)', () => {
     expect(screen.queryByText(/Medición guardada\./)).not.toBeInTheDocument();
   });
 
-  it('a warning/error toast persists — it does not auto-dismiss (edge case: no stuck pending, but errors persist)', () => {
+  /*
+   * Errors used to stay until dismissed, on the reading of FOR-63's "errors
+   * persist" that a failure must not vanish on a timer. That held while errors
+   * were rare and every page also drew its own inline banner. Now that a failed
+   * request *is* the toast, an undismissed one from ten minutes ago sits on top
+   * of the page it has nothing to do with, and the reflex becomes closing them
+   * without reading. They go on their own, and take longer than a success to do
+   * it — long enough to read twice.
+   */
+  it('auto-dismisses an error too, but leaves it up longer than a success', () => {
     vi.useFakeTimers();
     render(
       <NotificationProvider>
@@ -141,11 +150,17 @@ describe('NotificationProvider / useNotify (FOR-63)', () => {
     act(() => {
       fireEvent.click(screen.getByRole('button', { name: 'error' }));
     });
-    act(() => {
-      vi.advanceTimersByTime(20_000);
-    });
 
+    // Still there well past the moment a success would have gone.
+    act(() => {
+      vi.advanceTimersByTime(6_000);
+    });
     expect(screen.getByText(/No se pudo guardar\./)).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(10_000);
+    });
+    expect(screen.queryByText(/No se pudo guardar\./)).not.toBeInTheDocument();
   });
 
   it('de-duplicates rapid repeated identical notifications (edge case)', async () => {
