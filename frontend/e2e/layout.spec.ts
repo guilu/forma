@@ -1176,6 +1176,17 @@ test.describe('the open day in the week strip', () => {
   });
 
   for (const viewport of [
+    /*
+     * 1194×700 is an iPad in landscape with Safari's bars taking their share,
+     * and it is here because it shipped broken: `--figure-room` subtracts a
+     * fixed amount of chrome from the window height, and on a window this short
+     * the subtraction reached zero — the bodies came out 0×0 and the open day
+     * showed no silhouette at all. Every check below already covered "does it
+     * fit"; none of them covered a window small enough for the answer to be
+     * "there is nothing to fit".
+     */
+    { width: 1194, height: 700 },
+    { width: 1194, height: 834 },
     { width: 1280, height: 768 },
     { width: 1440, height: 900 },
     { width: 1680, height: 1200 },
