@@ -89,6 +89,34 @@ describe('NotificationProvider / useNotify (FOR-63)', () => {
 
     await user.click(screen.getByRole('button', { name: /Descartar notificación/ }));
 
+    // It leaves rather than vanishing: React would unmount it on the spot and
+    // an exit animation needs the element to still be there while it plays, so
+    // dismissing marks it and the removal comes after.
+    await waitFor(() => expect(screen.queryByText(/No se pudo guardar\./)).not.toBeInTheDocument());
+  });
+
+  it('marks a dismissed toast as leaving before taking it out of the DOM', () => {
+    vi.useFakeTimers();
+    render(
+      <NotificationProvider>
+        <NotifyConsumer />
+      </NotificationProvider>,
+    );
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'error' }));
+    });
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: /Descartar notificación/ }));
+    });
+
+    // Still on screen, and flagged so the stylesheet can animate it out.
+    const toast = screen.getByText(/No se pudo guardar\./).closest('[data-leaving]');
+    expect(toast).toHaveAttribute('data-leaving', 'true');
+
+    act(() => {
+      vi.advanceTimersByTime(1_000);
+    });
     expect(screen.queryByText(/No se pudo guardar\./)).not.toBeInTheDocument();
   });
 
