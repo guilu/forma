@@ -46,7 +46,6 @@
 .accessCard,
 .featureCard,
 .productFrame,
-.productBadge,
 .ctaCard {
   background-color: color-mix(in srgb, var(--color-surface) 70%, transparent);
   backdrop-filter: blur(12px);
@@ -483,10 +482,6 @@
   align-items: center;
 }
 
-.productVisual {
-  position: relative;
-}
-
 /* Template: a slightly rotated, scaled-down frame that straightens on hover. */
 .productFrame {
   aspect-ratio: 1;
@@ -507,47 +502,6 @@
   height: 100%;
   object-fit: cover;
   border-radius: var(--radius-lg);
-}
-
-.productBadge {
-  position: absolute;
-  left: calc(var(--space-5) * -1);
-  bottom: calc(var(--space-5) * -1);
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-4);
-  border-radius: var(--radius-lg);
-  border-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
-}
-
-.productBadgeIcon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background-color: color-mix(in srgb, var(--color-accent) 20%, transparent);
-  color: var(--color-accent-strong);
-}
-
-.productBadgeLabel {
-  margin: 0;
-  color: var(--color-accent-strong);
-  font-size: var(--font-size-label-sm);
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.productBadgeValue {
-  margin: 0;
-  font-family: var(--font-heading);
-  font-size: var(--font-size-headline-md);
-  line-height: var(--line-height-headline-md);
-  font-weight: 600;
-  color: var(--color-text);
 }
 
 .productCopy {
