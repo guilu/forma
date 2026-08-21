@@ -21,7 +21,6 @@
 
 .panel {
   width: 100%;
-  max-width: 32rem;
   max-height: 90vh;
   overflow-y: auto;
   padding: var(--space-5);
@@ -30,6 +29,30 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
+}
+
+/*
+ * SIZE. One axis, one property: the panel's `max-width`. Padding, the 90vh cap
+ * and the type scale stay out of it deliberately — a caller asking for a wider
+ * dialog is answering a layout question, not redesigning the dialog, and
+ * folding those together is how a `size` prop turns into a second design
+ * system (the reason `IconButton` keeps size and surface as separate axes).
+ *
+ * Note this is a DESKTOP-ONLY lever: `.panel` is `width: 100%`, so below the
+ * max-width the panel already fills whatever the dialog's padding leaves it.
+ * Neither size needs a media query to behave on a phone.
+ */
+.md {
+  max-width: 32rem;
+}
+
+/*
+ * The two-column session detail (FOR-53): a muscle silhouette beside the
+ * exercise breakdown does not fit in 32rem without the prescription lines
+ * wrapping mid-value.
+ */
+.lg {
+  max-width: 45rem;
 }
 
 .dialog:focus-visible {

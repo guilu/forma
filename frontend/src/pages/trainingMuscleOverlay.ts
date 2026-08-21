@@ -117,8 +117,41 @@ const LABEL_TO_CODES: ReadonlyMap<string, readonly MuscleCode[]> = new Map([
   ['tríceps', ['TRICEPS']],
 ]);
 
-/** `HIGH` is what the session is built around; everything else supports it. */
-function roleForLoad(load: MuscleLoad): MuscleRole {
+/**
+ * Which sheet draws a muscle group, for a legend that splits by view.
+ *
+ * <p>Reads the same {@link LABEL_TO_CODES} map the overlay does, so the column
+ * a group is listed in and the body it is lit on can never disagree — a second
+ * hand-written list of "front muscles" would drift the first time the catalog
+ * grew.
+ *
+ * <p>Returns `undefined` in the two cases where a column would be a guess: a
+ * label the pack has no code for (the map is deliberately partial), and a label
+ * whose codes span both sheets. No catalog label does the latter today; the
+ * check is here so that adding one shows up as an unplaced group rather than as
+ * a muscle silently listed on the wrong body.
+ */
+export function viewForMuscle(muscle: string): BodyView | undefined {
+  const codes = LABEL_TO_CODES.get(muscle.trim().toLowerCase());
+  if (!codes || codes.length === 0) return undefined;
+
+  const views = new Set<BodyView>();
+  for (const code of codes) {
+    for (const view of ['front', 'back'] as const) {
+      if (MUSCLE_CODES_BY_VIEW[view].includes(code)) views.add(view);
+    }
+  }
+  return views.size === 1 ? [...views][0] : undefined;
+}
+
+/**
+ * `HIGH` is what the session is built around; everything else supports it.
+ *
+ * <p>Exported so a legend beside the silhouette can key its swatch off the same
+ * rule the overlay uses. A legend whose emphasis disagrees with the body it
+ * explains is worse than no legend at all.
+ */
+export function roleForLoad(load: MuscleLoad): MuscleRole {
   return load === 'HIGH' ? 'primary' : 'secondary';
 }
 

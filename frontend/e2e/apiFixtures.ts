@@ -377,6 +377,191 @@ export interface FixtureResponse {
   readonly body: unknown;
 }
 
+/*
+ * The strength prescriptions, mirroring `WorkoutTemplateCatalog.java` and the
+ * display names in `V24__exercise_catalog.sql`. The session detail dialog and
+ * the "Entrenar" page both read this endpoint, so without it `dev:fixtures`
+ * renders their breakdowns as error states.
+ */
+const WORKOUTS: Record<string, unknown> = {
+  PUSH: {
+    workoutType: 'PUSH',
+    items: [
+      {
+        exerciseId: 'dumbbell-bench-press',
+        exerciseName: 'Press de banca con mancuernas',
+        order: 1,
+        sets: 4,
+        repScheme: 'RANGE',
+        repsMin: 8,
+        repsMax: 12,
+        restSeconds: 90,
+        rir: 2,
+      },
+      {
+        exerciseId: 'dumbbell-shoulder-press',
+        exerciseName: 'Press de hombro con mancuernas',
+        order: 2,
+        sets: 3,
+        repScheme: 'RANGE',
+        repsMin: 8,
+        repsMax: 10,
+        restSeconds: 90,
+        rir: 2,
+      },
+      {
+        exerciseId: 'push-up',
+        exerciseName: 'Flexiones',
+        order: 3,
+        sets: 3,
+        repScheme: 'AMRAP',
+        restSeconds: 60,
+        rir: 1,
+      },
+      {
+        exerciseId: 'lateral-raise',
+        exerciseName: 'Elevaciones laterales',
+        order: 4,
+        sets: 3,
+        repScheme: 'RANGE',
+        repsMin: 12,
+        repsMax: 20,
+        restSeconds: 45,
+        rir: 2,
+      },
+      {
+        exerciseId: 'plank',
+        exerciseName: 'Plancha',
+        order: 5,
+        sets: 3,
+        repScheme: 'TIME_HOLD',
+        durationSecondsMin: 45,
+        durationSecondsMax: 75,
+        restSeconds: 45,
+        rir: 2,
+      },
+    ],
+  },
+  PULL: {
+    workoutType: 'PULL',
+    items: [
+      {
+        exerciseId: 'pull-up',
+        exerciseName: 'Dominadas',
+        order: 1,
+        sets: 4,
+        repScheme: 'AMRAP',
+        restSeconds: 120,
+        rir: 1,
+      },
+      {
+        exerciseId: 'dumbbell-row',
+        exerciseName: 'Remo con mancuerna',
+        order: 2,
+        sets: 4,
+        repScheme: 'RANGE',
+        repsMin: 8,
+        repsMax: 12,
+        restSeconds: 90,
+        rir: 2,
+      },
+      {
+        exerciseId: 'band-face-pull',
+        exerciseName: 'Face pull con banda',
+        order: 3,
+        sets: 3,
+        repScheme: 'RANGE',
+        repsMin: 15,
+        repsMax: 25,
+        restSeconds: 45,
+        rir: 2,
+      },
+      {
+        exerciseId: 'biceps-curl',
+        exerciseName: 'Curl de bíceps',
+        order: 4,
+        sets: 3,
+        repScheme: 'RANGE',
+        repsMin: 10,
+        repsMax: 15,
+        restSeconds: 60,
+        rir: 2,
+      },
+      {
+        exerciseId: 'rear-delt-fly',
+        exerciseName: 'Pájaros posteriores',
+        order: 5,
+        sets: 3,
+        repScheme: 'RANGE',
+        repsMin: 12,
+        repsMax: 20,
+        restSeconds: 45,
+        rir: 2,
+      },
+    ],
+  },
+  LEGS: {
+    workoutType: 'LEGS',
+    items: [
+      {
+        exerciseId: 'goblet-squat',
+        exerciseName: 'Sentadilla goblet',
+        order: 1,
+        sets: 4,
+        repScheme: 'RANGE',
+        repsMin: 10,
+        repsMax: 15,
+        restSeconds: 90,
+        rir: 2,
+      },
+      {
+        exerciseId: 'dumbbell-rdl',
+        exerciseName: 'Peso muerto rumano con mancuernas',
+        order: 2,
+        sets: 4,
+        repScheme: 'RANGE',
+        repsMin: 8,
+        repsMax: 12,
+        restSeconds: 90,
+        rir: 2,
+      },
+      {
+        exerciseId: 'reverse-lunge',
+        exerciseName: 'Zancada hacia atrás',
+        order: 3,
+        sets: 3,
+        repScheme: 'RANGE',
+        repsMin: 10,
+        repsMax: 12,
+        restSeconds: 90,
+        rir: 2,
+      },
+      {
+        exerciseId: 'calf-raise',
+        exerciseName: 'Elevación de gemelos',
+        order: 4,
+        sets: 4,
+        repScheme: 'RANGE',
+        repsMin: 15,
+        repsMax: 25,
+        restSeconds: 45,
+        rir: 1,
+      },
+      {
+        exerciseId: 'dead-bug',
+        exerciseName: 'Dead bug',
+        order: 5,
+        sets: 3,
+        repScheme: 'RANGE',
+        repsMin: 10,
+        repsMax: 15,
+        restSeconds: 45,
+        rir: 2,
+      },
+    ],
+  },
+};
+
 /**
  * Resolves a request path to its fixture.
  *
@@ -392,6 +577,16 @@ export function fixtureFor(pathname: string): FixtureResponse {
    * session with no entry answers an empty list, which is exactly what the real
    * endpoint does for a run.
    */
+  /* Same shape of problem as the muscle map: the workout type sits in the URL. */
+  const workout = /\/training\/workouts\/([^/]+)$/.exec(pathname);
+  if (workout) {
+    const type = decodeURIComponent(workout[1]).toUpperCase();
+    const found = WORKOUTS[type];
+    return found
+      ? { status: 200, body: found }
+      : { status: 404, body: { message: `No workout template for ${type}` } };
+  }
+
   const muscleMap = /\/training\/sessions\/([^/]+)\/muscle-map$/.exec(pathname);
   if (muscleMap) {
     const sessionId = decodeURIComponent(muscleMap[1]);

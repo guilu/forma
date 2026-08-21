@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Modal } from './Modal';
+import styles from './Modal.module.css';
 
 /**
  * Modal dialog tests (FOR-18): renders as an accessible dialog and can be
@@ -122,5 +123,37 @@ describe('Modal', () => {
     // Shift+Tab from the first focusable element wraps back to the last.
     await user.tab({ shift: true });
     expect(actionButton).toHaveFocus();
+  });
+
+  /*
+   * FOR-53 redesign: the session detail needs a wider panel than the 32rem every
+   * other modal uses. `size` is a *width* axis and nothing else — padding, the
+   * 90vh cap and the type scale are deliberately not part of it, so a caller
+   * cannot quietly redesign the dialog by asking for a bigger one.
+   */
+  describe('size', () => {
+    it('defaults to the medium panel, so existing callers are untouched', () => {
+      render(
+        <Modal title="Registrar medición" onClose={vi.fn()}>
+          <p>contenido</p>
+        </Modal>,
+      );
+
+      const panel = screen.getByRole('dialog').firstElementChild;
+      expect(panel).toHaveClass(styles.md);
+      expect(panel).not.toHaveClass(styles.lg);
+    });
+
+    it('widens the panel when asked for the large size', () => {
+      render(
+        <Modal title="Detalle" onClose={vi.fn()} size="lg">
+          <p>contenido</p>
+        </Modal>,
+      );
+
+      const panel = screen.getByRole('dialog').firstElementChild;
+      expect(panel).toHaveClass(styles.lg);
+      expect(panel).not.toHaveClass(styles.md);
+    });
   });
 });

@@ -4,6 +4,14 @@ import { IconButton } from './IconButton';
 import styles from './Modal.module.css';
 
 /**
+ * How wide the panel is allowed to grow. A *width* axis only: padding, the
+ * 90vh cap and the type scale are the same at both sizes, and it has no effect
+ * below the max-width because the panel is already `width: 100%` — see the
+ * SIZE block in `Modal.module.css`.
+ */
+export type ModalSize = 'md' | 'lg';
+
+/**
  * Accessible modal dialog (FOR-18). Uses the native `<dialog>` element (rendered
  * with the `open` attribute rather than `showModal()`, which jsdom does not
  * implement) so it is a first-class interactive/accessible element. Dismissal is
@@ -20,6 +28,8 @@ import styles from './Modal.module.css';
 interface ModalProps {
   readonly title: string;
   readonly onClose: () => void;
+  /** Defaults to `md` (32rem), the width every modal used before FOR-53. */
+  readonly size?: ModalSize;
   readonly children: ReactNode;
 }
 
@@ -33,7 +43,7 @@ const FOCUSABLE_SELECTOR = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(', ');
 
-export function Modal({ title, onClose, children }: ModalProps) {
+export function Modal({ title, onClose, size = 'md', children }: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = 'modal-title';
 
@@ -98,7 +108,7 @@ export function Modal({ title, onClose, children }: ModalProps) {
         }
       }}
     >
-      <div className={styles.panel}>
+      <div className={[styles.panel, styles[size]].join(' ')}>
         <header className={styles.header}>
           <h2 id={titleId} className={styles.title}>
             {title}
