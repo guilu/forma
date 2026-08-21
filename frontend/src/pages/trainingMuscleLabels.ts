@@ -50,6 +50,14 @@ function strongerLoad(a: MuscleLoad, b: MuscleLoad): MuscleLoad {
 
 /** A muscle group ready for display: normalized label + merged load. */
 export interface MuscleGroupDisplay {
+  /**
+   * The canonical catalog key ("hombro", "tríceps") the group was built from,
+   * kept beside the display text because that is what `viewForMuscle` is keyed
+   * on: the session detail's legend splits into a front and a back column, and
+   * lowercasing `label` back into a key would be a guess about capitalization
+   * rules rather than the key itself.
+   */
+  readonly canonical: string;
   readonly label: string;
   readonly load: MuscleLoad;
 }
@@ -79,6 +87,7 @@ export function groupMusclesForDisplay(
   }
 
   return order.map((canonical) => ({
+    canonical,
     label: displayLabel(canonical),
     load: loadByCanonical.get(canonical) as MuscleLoad,
   }));

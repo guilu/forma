@@ -30,7 +30,7 @@ import {
   type WorkoutItem,
 } from '../api/training';
 import { groupMusclesForDisplay, type MuscleGroupDisplay } from './trainingMuscleLabels';
-import { overlayFromMuscleMap, roleForLoad } from './trainingMuscleOverlay';
+import { overlayFromMuscleMap, roleForLoad, viewForMuscle } from './trainingMuscleOverlay';
 import { displayTitle, prescriptionSummary } from './trainingPrescription';
 import { useSessionMuscles } from './useSessionMuscles';
 import { formatShortDate, formatWeekday } from './dateLabel';
@@ -1197,6 +1197,78 @@ function SessionDetailModal({
   );
 }
 
+/** A legend group set, split by the sheet that draws it. */
+interface MusclesByView {
+  readonly front: readonly MuscleGroupDisplay[];
+  readonly back: readonly MuscleGroupDisplay[];
+  readonly unplaced: readonly MuscleGroupDisplay[];
+}
+
+/**
+ * Partitions the display groups into the two silhouettes' columns, keeping the
+ * groups the pack cannot place in a third bucket rather than forcing them into
+ * a column — a muscle listed under the wrong body is worse than one listed
+ * under neither. Preserves the incoming order inside each bucket, which is the
+ * catalog's own first-appearance order.
+ */
+function splitMusclesByView(muscles: readonly MuscleGroupDisplay[]): MusclesByView {
+  const front: MuscleGroupDisplay[] = [];
+  const back: MuscleGroupDisplay[] = [];
+  const unplaced: MuscleGroupDisplay[] = [];
+
+  for (const muscle of muscles) {
+    const view = viewForMuscle(muscle.canonical);
+    if (view === 'front') front.push(muscle);
+    else if (view === 'back') back.push(muscle);
+    else unplaced.push(muscle);
+  }
+
+  return { front, back, unplaced };
+}
+
+/**
+ * One labelled column of the legend. Renders nothing when the session works
+ * none of that sheet's muscles: a "Frente" heading over an empty column is
+ * noise, and the asymmetry itself says something true (a pull day is mostly
+ * back).
+ */
+function MuscleLegendColumn({
+  title,
+  muscles,
+}: {
+  readonly title: string;
+  readonly muscles: readonly MuscleGroupDisplay[];
+}) {
+  if (muscles.length === 0) return null;
+
+  return (
+    <div className={styles.muscleLegendColumn}>
+      {/* The columns are labelled on purpose: two unlabelled ones read as a
+          list that happened to wrap, which teaches the reader nothing about
+          why a muscle sits where it does. */}
+      <h4 className={styles.muscleLegendTitle}>{title}</h4>
+      <ul className={styles.muscleLegendList} aria-label={title}>
+        {muscles.map((muscle) => (
+          <MuscleLegendItem key={muscle.canonical} muscle={muscle} />
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** One legend row: the swatch that keys the picture, the name and the load. */
+function MuscleLegendItem({ muscle }: { readonly muscle: MuscleGroupDisplay }) {
+  return (
+    <li className={styles.muscleLegendItem}>
+      <span className={styles.muscleDot} data-role={roleForLoad(muscle.load)} aria-hidden="true" />
+      <span className={styles.muscleLegendText}>
+        <span className={styles.muscleLegendName}>{muscle.label}</span>
+        <span className={styles.muscleLegendLoad}>{statusLabel('muscleLoad', muscle.load)}</span>
+      </span>
+    </li>
+  );
+}
+
 type WorkoutState =
   | { readonly status: 'unavailable' }
   | { readonly status: 'loading' }
@@ -1342,6 +1414,7 @@ function MuscleMapSection({
   }, [sessionId]);
 
   const worked = state.status === 'ready' && state.muscles.length > 0;
+  const byView = splitMusclesByView(state.status === 'ready' ? state.muscles : []);
 
   return (
     <aside className={styles.muscleColumn}>
@@ -1373,23 +1446,20 @@ function MuscleMapSection({
               muscles={overlayFromMuscleMap(state.raw)}
             />
           </div>
-          <ul className={styles.muscleLegend}>
-            {state.muscles.map((muscle) => (
-              <li key={muscle.label} className={styles.muscleLegendItem}>
-                <span
-                  className={styles.muscleDot}
-                  data-role={roleForLoad(muscle.load)}
-                  aria-hidden="true"
-                />
-                <span className={styles.muscleLegendText}>
-                  <span className={styles.muscleLegendName}>{muscle.label}</span>
-                  <span className={styles.muscleLegendLoad}>
-                    {statusLabel('muscleLoad', muscle.load)}
-                  </span>
-                </span>
-              </li>
-            ))}
-          </ul>
+          <div className={styles.muscleLegend}>
+            <MuscleLegendColumn title="Frente" muscles={byView.front} />
+            <MuscleLegendColumn title="Espalda" muscles={byView.back} />
+            {/* Worked, but on neither sheet — see `viewForMuscle`. Listed
+                across the full width rather than dropped, because the muscle is
+                still part of the session even when the pack cannot draw it. */}
+            {byView.unplaced.length > 0 && (
+              <ul className={styles.muscleLegendUnplaced}>
+                {byView.unplaced.map((muscle) => (
+                  <MuscleLegendItem key={muscle.canonical} muscle={muscle} />
+                ))}
+              </ul>
+            )}
+          </div>
         </>
       )}
     </aside>

@@ -1096,14 +1096,49 @@
   width: 140px;
 }
 
+/*
+ * Two columns under two silhouettes: front-sheet muscles on the left, back on
+ * the right, so a row lines up with the body that draws it. `align-items:
+ * start` keeps a short column from stretching its rows to match a long one.
+ */
 .muscleLegend {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--space-3) var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.muscleLegendColumn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.muscleLegendTitle {
+  margin: 0;
+  font-size: var(--font-size-2xs);
+  font-weight: 700;
+  letter-spacing: var(--letter-spacing-label-md);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.muscleLegendList,
+.muscleLegendUnplaced {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
   margin: 0;
-  padding: var(--space-4) 0 0;
+  padding: 0;
   list-style: none;
-  border-top: 1px solid var(--color-border);
+}
+
+/* Muscles the pack cannot place span both columns rather than picking one. */
+.muscleLegendUnplaced {
+  grid-column: 1 / -1;
 }
 
 .muscleLegendItem {
@@ -1266,14 +1301,6 @@
 
   .muscleFigure {
     width: 112px;
-  }
-
-  /* Two-up instead of five stacked rows: on a phone that is ~90px of vertical
-     space, roughly a third of the one screen the legend has to share. */
-  .muscleLegend {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-3);
   }
 
   /* Full-width so the primary action is a comfortable thumb target, and still

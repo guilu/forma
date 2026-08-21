@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { overlayFromMuscleMap, MUSCLE_CODES_BY_VIEW } from './trainingMuscleOverlay';
+import { overlayFromMuscleMap, viewForMuscle, MUSCLE_CODES_BY_VIEW } from './trainingMuscleOverlay';
 
 /**
  * The catalog speaks Spanish and the silhouette pack speaks codes, so this is
@@ -93,5 +93,51 @@ describe('overlayFromMuscleMap', () => {
     // Spot-check the split against the pack's own manifest (muscle-map.json).
     expect(front.has('PECTORAL')).toBe(true);
     expect(back.has('LATS')).toBe(true);
+  });
+});
+
+/**
+ * Which anatomical sheet a display group belongs to. The session detail's
+ * legend splits into a "Frente" and an "Espalda" column beneath the two
+ * silhouettes, so it needs to place each group on the sheet that actually
+ * draws it — reading the same map the overlay does, rather than a second list
+ * that would drift from it.
+ */
+describe('viewForMuscle', () => {
+  it('places a front-sheet muscle on the front', () => {
+    expect(viewForMuscle('pecho')).toBe('front');
+    expect(viewForMuscle('hombro')).toBe('front');
+    expect(viewForMuscle('abdomen')).toBe('front');
+  });
+
+  it('places a back-sheet muscle on the back', () => {
+    // The one that makes the split worth doing: a push session works the
+    // triceps, and they are drawn on the back sheet.
+    expect(viewForMuscle('tríceps')).toBe('back');
+    expect(viewForMuscle('dorsal')).toBe('back');
+    expect(viewForMuscle('trapecio')).toBe('back');
+  });
+
+  it('places a region spanning several codes of one sheet on that sheet', () => {
+    // "core" lights ABS *and* OBLIQUES — two codes, both on the front.
+    expect(viewForMuscle('core')).toBe('front');
+  });
+
+  it('normalizes case and surrounding space like the overlay does', () => {
+    expect(viewForMuscle('  Pecho ')).toBe('front');
+  });
+
+  it('places nothing for a label the pack cannot draw', () => {
+    // The map is deliberately partial. Such a muscle is still worked, so the
+    // legend has to keep listing it — it just cannot be attributed to a sheet.
+    expect(viewForMuscle('psoas')).toBeUndefined();
+  });
+
+  it('places nothing for a label whose codes would span both sheets', () => {
+    // No catalog label does this today. If one ever did, guessing a column
+    // would be worse than admitting the group does not belong to one sheet.
+    for (const label of ['pecho', 'tríceps', 'core', 'dorsal', 'hombro']) {
+      expect(viewForMuscle(label)).not.toBeNull();
+    }
   });
 });

@@ -1113,6 +1113,72 @@ describe('TrainingPage', () => {
     });
   });
 
+  /**
+   * FOR-53 legend split: the two silhouettes sit side by side, so the legend
+   * under them reads as two columns matching them — front muscles on the left,
+   * back muscles on the right. The columns are labelled because two unlabelled
+   * columns read as a wrapped list, which would teach the reader nothing.
+   */
+  describe('TrainingPage · muscle legend by view', () => {
+    async function openWithMuscles(
+      muscles: Parameters<typeof getMuscleMapMock.mockResolvedValue>[0]['muscles'],
+    ) {
+      getWeekMock.mockResolvedValue(week);
+      getMuscleMapMock.mockResolvedValue({ sessionId: 'MONDAY:STRENGTH', muscles });
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findByRole('heading', { name: 'Hoy · Lunes' });
+      await user.click(screen.getByRole('button', { name: 'Ver el detalle' }));
+      return screen.findByRole('dialog', { name: /Lunes · Fuerza/ });
+    }
+
+    it('lists front-sheet muscles under "Frente" and back-sheet ones under "Espalda"', async () => {
+      const dialog = await openWithMuscles([
+        { muscle: 'pecho', load: 'HIGH' },
+        { muscle: 'tríceps', load: 'HIGH' },
+        { muscle: 'hombro', load: 'HIGH' },
+        { muscle: 'core', load: 'MEDIUM' },
+      ]);
+
+      const front = await within(dialog).findByRole('list', { name: 'Frente' });
+      const back = within(dialog).getByRole('list', { name: 'Espalda' });
+
+      expect(within(front).getByText('Pecho')).toBeInTheDocument();
+      expect(within(front).getByText('Hombro')).toBeInTheDocument();
+      expect(within(front).getByText('Core')).toBeInTheDocument();
+      // The one that makes the split worth doing: a push works the triceps,
+      // and they are drawn on the back sheet.
+      expect(within(back).getByText('Tríceps')).toBeInTheDocument();
+      expect(within(front).queryByText('Tríceps')).toBeNull();
+      expect(within(back).queryByText('Pecho')).toBeNull();
+    });
+
+    it('keeps a column out of the way when the session works only one sheet', async () => {
+      const dialog = await openWithMuscles([
+        { muscle: 'dorsal', load: 'HIGH' },
+        { muscle: 'trapecio', load: 'MEDIUM' },
+      ]);
+
+      expect(await within(dialog).findByRole('list', { name: 'Espalda' })).toBeInTheDocument();
+      // An empty "Frente" heading over nothing is noise, not information.
+      expect(within(dialog).queryByRole('list', { name: 'Frente' })).toBeNull();
+    });
+
+    it('still lists a muscle the silhouette pack cannot draw', async () => {
+      const dialog = await openWithMuscles([
+        { muscle: 'pecho', load: 'HIGH' },
+        // Not in the overlay map: worked, but on neither sheet. It must not
+        // vanish from the legend just because it cannot be attributed.
+        { muscle: 'psoas', load: 'MEDIUM' },
+      ]);
+
+      await within(dialog).findByRole('list', { name: 'Frente' });
+      expect(within(dialog).getByText('Psoas')).toBeInTheDocument();
+      const front = within(dialog).getByRole('list', { name: 'Frente' });
+      expect(within(front).queryByText('Psoas')).toBeNull();
+    });
+  });
+
   describe('TrainingPage · session detail breakdown', () => {
     async function openStrengthDetail() {
       const user = userEvent.setup();
