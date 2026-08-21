@@ -265,6 +265,15 @@
    * their uppercase meta labels at 16px. Declared here at the template's
    * `label-sm` size, which is what the mockups actually show.
    */
+  /*
+   * The step below `label-sm`, for meta text that must sit under a 12px label
+   * without competing with it — today the session dialog's per-exercise
+   * prescription line ("4 series · 8–12 reps · RIR 2 · Desc 90 s"), which is
+   * supporting detail under a 12px exercise name. Deliberately NOT a general
+   * body step: at 10px it is below the size any paragraph should be set in,
+   * and it is reserved for short, glanceable meta strings.
+   */
+  --font-size-2xs: 0.625rem; /* 10px — no template equivalent */
   --font-size-xs: 0.75rem; /* template: label-sm (12px) */
   --font-size-sm: 0.8125rem;
   --font-size-base: 1rem; /* template: body-md (was 0.9375rem / 15px) */

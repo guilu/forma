@@ -117,8 +117,14 @@ const LABEL_TO_CODES: ReadonlyMap<string, readonly MuscleCode[]> = new Map([
   ['tríceps', ['TRICEPS']],
 ]);
 
-/** `HIGH` is what the session is built around; everything else supports it. */
-function roleForLoad(load: MuscleLoad): MuscleRole {
+/**
+ * `HIGH` is what the session is built around; everything else supports it.
+ *
+ * <p>Exported so a legend beside the silhouette can key its swatch off the same
+ * rule the overlay uses. A legend whose emphasis disagrees with the body it
+ * explains is worse than no legend at all.
+ */
+export function roleForLoad(load: MuscleLoad): MuscleRole {
   return load === 'HIGH' ? 'primary' : 'secondary';
 }
 

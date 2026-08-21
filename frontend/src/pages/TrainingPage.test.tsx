@@ -7,9 +7,11 @@ import { NotificationProvider } from '../components/NotificationProvider';
 import {
   getMuscleMap,
   getTrainingWeek,
+  getWorkout,
   rescheduleSession,
   updateSessionStatus,
   type TrainingWeek,
+  type Workout,
 } from '../api/training';
 import { getStreak } from '../api/progress';
 import { getProfile } from '../api/profile';
@@ -35,6 +37,7 @@ vi.mock('../api/training', () => ({
   getTrainingWeek: vi.fn(),
   updateSessionStatus: vi.fn(),
   getMuscleMap: vi.fn(),
+  getWorkout: vi.fn(),
   rescheduleSession: vi.fn(),
 }));
 
@@ -53,6 +56,7 @@ const getWeekMock = vi.mocked(getTrainingWeek);
 const rescheduleMock = vi.mocked(rescheduleSession);
 const updateMock = vi.mocked(updateSessionStatus);
 const getMuscleMapMock = vi.mocked(getMuscleMap);
+const getWorkoutMock = vi.mocked(getWorkout);
 const getStreakMock = vi.mocked(getStreak);
 const getProfileMock = vi.mocked(getProfile);
 
@@ -73,6 +77,7 @@ const week: TrainingWeek = {
           title: 'Fuerza · Empuje',
           detail: '3 ejercicios',
           status: 'PLANNED',
+          workoutType: 'PUSH',
         },
       ],
     },
@@ -99,10 +104,13 @@ describe('TrainingPage', () => {
     getWeekMock.mockReset();
     updateMock.mockReset();
     getMuscleMapMock.mockReset();
+    getWorkoutMock.mockReset();
     // Default: no muscles (matches a non-strength/no-data response) so tests
     // that open a strength detail without asserting on the muscle map don't
     // hang on an unresolved promise.
     getMuscleMapMock.mockResolvedValue({ sessionId: '', muscles: [] });
+    // Same reasoning for the exercise breakdown the detail now fetches.
+    getWorkoutMock.mockResolvedValue({ workoutType: 'PUSH', items: [] });
     getStreakMock.mockReset();
     getProfileMock.mockReset();
     getProfileMock.mockResolvedValue({ sex: 'MALE' } as never);
@@ -263,9 +271,16 @@ describe('TrainingPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Ver el detalle' }));
 
-    expect(screen.getByRole('dialog', { name: /Lunes · Fuerza/ })).toBeInTheDocument();
-    // Documented gap: no exercise-level breakdown is available from the API.
-    expect(screen.getByText(/no está disponible todavía/)).toBeInTheDocument();
+    const dialog = screen.getByRole('dialog', { name: /Lunes · Fuerza/ });
+    // The dialog title already carries the kind ("Lunes · Fuerza"), so the body
+    // prints only the part it does not: which strength session this is.
+    expect(within(dialog).getByText('Empuje')).toBeInTheDocument();
+    expect(within(dialog).queryByText('Fuerza · Empuje')).toBeNull();
+    // The kind is the dialog title's job, and the count is the subtitle's; the
+    // body must not repeat either.
+    expect(within(dialog).queryByText('Fuerza')).toBeNull();
+    expect(within(dialog).getByText('3 ejercicios')).toBeInTheDocument();
+    expect(within(dialog).queryByRole('heading', { name: /Ejercicios \(/ })).toBeNull();
   });
 
   it('moves a session to another day from its detail', async () => {
@@ -331,6 +346,9 @@ describe('TrainingPage', () => {
   it('shows a calm error and preserves the rest of the detail when the muscle map fails to load', async () => {
     getWeekMock.mockResolvedValue(week);
     getMuscleMapMock.mockRejectedValue(new Error('network'));
+    // A real breakdown, so the assertion below proves it survived rather than
+    // matching the empty-template message.
+    getWorkoutMock.mockResolvedValue(pushWorkout);
     const user = userEvent.setup();
 
     renderPage();
@@ -342,8 +360,10 @@ describe('TrainingPage', () => {
     expect(
       await within(dialog).findByText(/no se pudieron cargar los músculos trabajados/i),
     ).toBeInTheDocument();
-    // The rest of the detail (exercise-breakdown gap notice) still renders.
-    expect(within(dialog).getByText(/no está disponible todavía/)).toBeInTheDocument();
+    // The rest of the detail still renders: the two sections fetch separately,
+    // so a muscle-map failure must not take the exercise breakdown with it.
+    expect(within(dialog).getByRole('list', { name: 'Ejercicios' })).toBeInTheDocument();
+    expect(within(dialog).getByLabelText('Mover a otro día')).toBeInTheDocument();
   });
 
   it('does not fetch a muscle map for a running session (FOR-136 is strength-only)', async () => {
@@ -1092,4 +1112,146 @@ describe('TrainingPage', () => {
       expect(rescheduleMock).toHaveBeenCalledWith('TUESDAY:RUNNING', 'SUNDAY');
     });
   });
+
+  describe('TrainingPage · session detail breakdown', () => {
+    async function openStrengthDetail() {
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findByRole('heading', { name: 'Hoy · Lunes' });
+      await user.click(screen.getByRole('button', { name: 'Ver el detalle' }));
+      return { user, dialog: await screen.findByRole('dialog', { name: /Lunes · Fuerza/ }) };
+    }
+
+    it('lists each exercise with its prescription on a second line', async () => {
+      getWeekMock.mockResolvedValue(week);
+      getWorkoutMock.mockResolvedValue(pushWorkout);
+
+      const { dialog } = await openStrengthDetail();
+
+      expect(getWorkoutMock).toHaveBeenCalledWith('PUSH');
+      const items = await within(dialog).findAllByRole('listitem');
+      expect(within(dialog).getByText('Press de banca con mancuernas')).toBeInTheDocument();
+      expect(
+        within(dialog).getByText('4 series · 8–12 reps · RIR 2 · Desc 90 s'),
+      ).toBeInTheDocument();
+      // AMRAP keeps its own wording rather than being padded with a "reps" unit.
+      expect(within(dialog).getByText('Flexiones')).toBeInTheDocument();
+      expect(within(dialog).getByText('3 series · AMRAP · RIR 1 · Desc 60 s')).toBeInTheDocument();
+      expect(items.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('no longer claims the API cannot serve the breakdown', async () => {
+      getWeekMock.mockResolvedValue(week);
+      getWorkoutMock.mockResolvedValue(pushWorkout);
+
+      const { dialog } = await openStrengthDetail();
+      await within(dialog).findByText('Press de banca con mancuernas');
+
+      expect(within(dialog).queryByText(/no expone las plantillas de fuerza/i)).toBeNull();
+      expect(within(dialog).queryByText(/no está disponible todavía/i)).toBeNull();
+    });
+
+    it('puts "Saltar" before "Completar" so the primary action sits on the right', async () => {
+      getWeekMock.mockResolvedValue(week);
+      getWorkoutMock.mockResolvedValue(pushWorkout);
+
+      const { dialog } = await openStrengthDetail();
+
+      const skip = within(dialog).getByRole('button', { name: 'Saltar' });
+      const complete = within(dialog).getByRole('button', { name: 'Completar' });
+      // DOM order is also tab order: "Saltar" is reached first, "Completar" last.
+      expect(skip.compareDocumentPosition(complete)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+      expect(skip.parentElement).toBe(complete.parentElement);
+    });
+
+    it('reports a failed breakdown without taking the rest of the detail down', async () => {
+      getWeekMock.mockResolvedValue(week);
+      getWorkoutMock.mockRejectedValue(new Error('network'));
+
+      const { dialog } = await openStrengthDetail();
+
+      expect(
+        await within(dialog).findByText(/no se pudieron cargar los ejercicios/i),
+      ).toBeInTheDocument();
+      expect(within(dialog).getByRole('button', { name: 'Completar' })).toBeInTheDocument();
+      expect(within(dialog).getByLabelText('Mover a otro día')).toBeInTheDocument();
+    });
+
+    it('does not ask for a breakdown for a running session', async () => {
+      getWeekMock.mockResolvedValue(week);
+      const user = userEvent.setup();
+
+      renderPage();
+      await screen.findByText('Tirada larga');
+      await user.click(screen.getByRole('button', { name: /Carrera.*Tirada larga/s }));
+
+      const dialog = await screen.findByRole('dialog', { name: /Martes · Carrera/ });
+      expect(getWorkoutMock).not.toHaveBeenCalled();
+      expect(within(dialog).queryByRole('heading', { name: /Ejercicios/ })).toBeNull();
+      // The actions a run still needs are all there.
+      expect(within(dialog).getByRole('button', { name: 'Completar' })).toBeInTheDocument();
+    });
+
+    it('says so plainly when the session carries no workout type to look up', async () => {
+      getWeekMock.mockResolvedValue({
+        days: [
+          {
+            dayOfWeek: 'MONDAY',
+            rest: false,
+            sessions: [
+              {
+                id: 'MONDAY:STRENGTH',
+                kind: 'STRENGTH',
+                bodyView: 'BACK',
+                title: 'Fuerza · Empuje',
+                detail: '3 ejercicios',
+                status: 'PLANNED',
+              },
+            ],
+          },
+        ],
+      });
+
+      const { dialog } = await openStrengthDetail();
+
+      expect(
+        await within(dialog).findByText(/este entrenamiento no tiene desglose/i),
+      ).toBeInTheDocument();
+      expect(getWorkoutMock).not.toHaveBeenCalled();
+    });
+  });
 });
+
+const pushWorkout: Workout = {
+  workoutType: 'PUSH',
+  items: [
+    {
+      exerciseId: 'dumbbell-bench-press',
+      exerciseName: 'Press de banca con mancuernas',
+      order: 1,
+      sets: 4,
+      repScheme: 'RANGE',
+      repsMin: 8,
+      repsMax: 12,
+      restSeconds: 90,
+      rir: 2,
+    },
+    {
+      exerciseId: 'push-up',
+      exerciseName: 'Flexiones',
+      order: 2,
+      sets: 3,
+      repScheme: 'AMRAP',
+      restSeconds: 60,
+      rir: 1,
+    },
+  ],
+};
+
+/**
+ * FOR-53 session-detail redesign. Two things changed that the suite has to
+ * pin down: the dialog now shows the REAL exercise breakdown (it used to
+ * apologise that "la API no expone las plantillas de fuerza por HTTP", which
+ * stopped being true once `GET /api/v1/training/workouts/{type}` shipped), and
+ * the actions moved into a sticky footer with "Saltar" ahead of "Completar".
+ */
