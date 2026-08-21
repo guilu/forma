@@ -59,8 +59,22 @@ const FEATURES: readonly Feature[] = [
   },
 ];
 
+/*
+ * Only claim integrations that exist. FORMA imports body measurements from
+ * Withings and from nowhere else: `IntegrationService` registers one
+ * `ProviderMeasuresGateway` per provider and Withings is the only provider that
+ * has one — Google Fit and Apple Health are listed as providers with no gateway
+ * behind them, and Garmin appears nowhere in the codebase at all.
+ *
+ * This block used to promise "datos en tiempo real de tus wearables favoritos
+ * (Apple Watch, Garmin, Withings)" and "Sincronización nativa con Withings &
+ * HealthKit". Three of those four are integrations FORMA does not have, and the
+ * sync that does exist is a button someone presses, not a live feed. A landing
+ * page is where a visitor decides whether to trust the product; promising an
+ * import that never arrives is the fastest way to spend that trust.
+ */
 const SYNC_CAPABILITIES = [
-  'Sincronización nativa con Withings & HealthKit',
+  'Sincronización con Withings',
   'Algoritmo de recuperación propietario',
   'Actualizaciones de peso y grasa semanales',
 ] as const;
@@ -182,9 +196,9 @@ export function LandingPage() {
               <span className={styles.accentText}>Escúchalo.</span>
             </h2>
             <p className={styles.sectionLead}>
-              Integramos datos en tiempo real de tus wearables favoritos (Apple Watch, Garmin,
-              Withings) para ajustar tu carga de entrenamiento cada mañana. No más
-              sobre-entrenamiento. Solo resultados.
+              Conecta tu cuenta de Withings y tus medidas entran solas: peso, grasa, músculo y agua,
+              sin apuntar un número a mano. Con esos datos la aplicación ajusta tu carga de
+              entrenamiento en lugar de adivinarla.
             </p>
             <ul className={styles.capabilityList}>
               {SYNC_CAPABILITIES.map((capability) => (
