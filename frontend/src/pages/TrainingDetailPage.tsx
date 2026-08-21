@@ -22,6 +22,7 @@ import { LoadingState } from '../components/LoadingState';
 import { ProgressRing } from '../components/ProgressRing';
 import { StatusPill } from '../components/StatusPill';
 import { groupMusclesForDisplay } from './trainingMuscleLabels';
+import { displayTitle, repTarget } from './trainingPrescription';
 import { formatShortDate } from './dateLabel';
 import styles from './TrainingDetailPage.module.css';
 
@@ -63,22 +64,6 @@ type SetEntry = {
 };
 
 type SetEntries = Readonly<Record<string, SetEntry>>;
-
-function displayTitle(title: string): string {
-  return title.replace(/^Fuerza\s*·\s*/i, '');
-}
-
-function repTarget(item: WorkoutItem): string {
-  if (item.repScheme === 'AMRAP') return 'AMRAP';
-  if (item.repScheme === 'TIME_HOLD') {
-    const min = item.durationSecondsMin ?? item.durationSecondsMax ?? 0;
-    const max = item.durationSecondsMax ?? min;
-    return min === max ? `${min} s` : `${min}–${max} s`;
-  }
-  const min = item.repsMin ?? item.repsMax ?? 0;
-  const max = item.repsMax ?? min;
-  return min === max ? String(min) : `${min}–${max}`;
-}
 
 function workoutDescription(title: string): string {
   return `Entrenamiento enfocado en desarrollar fuerza en ${title.toLocaleLowerCase('es-ES')}. Mantén una técnica controlada y aumenta las cargas de forma progresiva.`;
