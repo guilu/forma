@@ -11,72 +11,65 @@ Jira project: `FOR`
 
 ## Current repository status
 
-Current phase: Project Bootstrap.
+The bootstrap phase is over. Backend, frontend, database, Docker Compose environment and CI all exist and are in daily use; the application is being built feature by feature on top of them.
 
-Repository state after FOR-92:
+**This section describes what exists, not what is planned. Repository state has priority over roadmap/spec intent.** Specs describe the target for a story; the repository describes reality. If they differ, document the gap and do not invent missing code. Inspect the repository before assuming any component exists — including anything this file claims.
 
-- Documentation foundation exists.
-- Story specs exist under `specs/FOR-XXX/` for the bootstrap stories.
-- Backend scaffold may not exist until FOR-80 is implemented.
-- Frontend scaffold may not exist until FOR-81 is implemented.
-- Docker Compose environment may not exist until FOR-82 is implemented.
-- PostgreSQL migrations may not exist until FOR-83 is implemented.
-- CI may not exist until FOR-84 is implemented.
+| Component | Where it lives |
+|---|---|
+| Backend | `backend/` — Gradle, hexagonal packages under `dev.diegobarrioh.forma` |
+| Frontend | `frontend/` — Vite + React, CSS Modules |
+| Migrations | `backend/src/main/resources/db/migration/` — Flyway, `V1..V60` and counting |
+| Local environment | `compose.yaml` — Postgres + backend + frontend |
+| CI | `.github/workflows/ci.yml` |
+| Story specs | `specs/FOR-XXX/` |
 
-Always inspect the current repository state before assuming any component exists.
+## Project stack
 
-Repository state has priority over roadmap/spec intent. Specs describe the target for a story; the repository describes reality. If they differ, document the gap and do not invent missing code.
+Versions below are the ones the build files actually pin. Check the file named in each row before relying on a number here.
 
-## Project stack guidance
-
-Technical stack guidance currently lives here until the stack is split into a dedicated docs file.
-
-Planned bootstrap stack:
-
-- Backend: Java 21, Spring Boot 3.x, build tool selected by FOR-80.
-- Frontend: Node.js 24.x or active LTS, React 19.x if compatible, TypeScript, Vite, package manager selected by FOR-81.
-- Persistence: PostgreSQL 17.x where practical, migration tool selected by FOR-83.
-- Infrastructure: Docker Compose v2 selected by FOR-82.
-- CI: GitHub workflow selected by FOR-84.
+| Layer | Version | Source of truth |
+|---|---|---|
+| Java | 21 | `backend/build.gradle` (`languageVersion`) |
+| Spring Boot | 3.3.5 | `backend/build.gradle` |
+| Gradle | 8.14.1 (wrapper) | `backend/gradle/wrapper/gradle-wrapper.properties` |
+| Node.js | 22 in CI | `.github/workflows/ci.yml` |
+| React | 19 | `frontend/package.json` |
+| TypeScript | 5.7 | `frontend/package.json` |
+| Vite | 6 | `frontend/package.json` |
+| Vitest | 3 | `frontend/package.json` |
+| Playwright | 1.62 | `frontend/package.json` |
+| PostgreSQL | 17 | `compose.yaml` |
 
 Do not store technical configuration decisions in `.ai/`. The `.ai/` directory is shared context for agents, not the source of truth for stack versions or executable commands.
 
 ## Verification guidance
 
-Run the checks that match the story type and current repository state. If a command does not exist yet, document it as planned instead of inventing it.
+Run the checks that match what you touched. These are the same commands CI runs — see `.github/workflows/ci.yml`.
 
-| Story type | Expected verification |
-|---|---|
-| Documentation | Check links and referenced files. Confirm docs match repository reality. |
-| Backend | Run backend build and backend tests once FOR-80 defines commands. |
-| Frontend | Run frontend build, tests or type checks once FOR-81 defines commands. |
-| Infrastructure | Run Docker Compose validation once FOR-82 defines compose files. |
-| Persistence | Run migrations against a local database once FOR-83 defines commands. |
-| Formatting/linting | Run formatting/linting checks once FOR-85 defines commands. |
-| CI | Confirm workflow runs and reports status once FOR-84 defines CI. |
+**Backend** (from `backend/`):
 
-For documentation-only stories in the current docs-only repository, file existence and link checks are valid verification.
+```bash
+./gradlew build      # compiles, runs tests, and runs spotlessCheck (format gate)
+./gradlew bootRun    # http://localhost:8080
+```
 
-## Bootstrap dependency graph
+**Frontend** (from `frontend/`):
 
-Use this graph to understand context. Reading related specs is allowed; implementing related stories is not allowed unless explicitly requested.
+```bash
+npm run lint            # ESLint
+npm run format:check    # Prettier
+npm run typecheck       # tsc -b --noEmit
+npm test                # Vitest (jsdom suite)
+npm run test:layout     # Playwright layout checks — needs test:layout:install once
+npm run build           # tsc -b && vite build
+```
 
-| Story | Depends on | Notes |
-|---|---|---|
-| FOR-80 | FOR-92 | Backend skeleton can start after specs exist. |
-| FOR-81 | FOR-92 | Frontend skeleton can start after specs exist. |
-| FOR-82 | FOR-80, FOR-81 where practical | Compose may wire backend/frontend only if they exist. |
-| FOR-83 | FOR-80, FOR-82 | PostgreSQL wiring needs backend and local DB service. |
-| FOR-84 | FOR-80, FOR-81, FOR-85, FOR-86, FOR-87 where practical | CI should run whatever checks exist at the time. |
-| FOR-85 | FOR-80, FOR-81 where practical | Lint/format depends on selected backend/frontend tooling. |
-| FOR-86 | FOR-80 | Backend testing baseline depends on backend skeleton. |
-| FOR-87 | FOR-81 | Frontend testing baseline depends on frontend skeleton. |
-| FOR-88 | FOR-80 | API skeleton depends on backend skeleton. |
-| FOR-89 | FOR-80 through FOR-88 as references only | Docs may describe planned commands honestly. |
-| FOR-90 | FOR-80, FOR-81 where practical | Environment handling follows selected app structure. |
-| FOR-91 | FOR-80, FOR-88 where practical | Logging/correlation works through backend/API baseline. |
-| FOR-92 | Documentation foundation | Creates story specs. |
-| FOR-93 | FOR-92 and one pilot story | Validates the workflow. |
+`npm run dev:fixtures` serves the API from `frontend/e2e/apiFixtures.ts` instead of proxying to a backend. If you add an endpoint the UI consumes, add its fixture too, or that screen renders an error state in every fixture-backed run.
+
+**Documentation-only changes**: check links and referenced files, and confirm the docs match repository reality.
+
+A third check, **SonarCloud Code Analysis**, reports on pull requests. It comes from the SonarCloud GitHub app, not from a workflow in this repository, so there is no local command for it.
 
 ## Required reading order
 
@@ -87,10 +80,12 @@ Before modifying code, read:
 3. `docs/definition-of-ready.md`
 4. `docs/definition-of-done.md`
 5. `docs/coding-standards.md`
-6. This file's stack, verification and dependency sections
-7. Relevant ADRs under `docs/adr/`
+6. This file's stack and verification sections
+7. Relevant ADRs under `docs/adr/` (`ADR-001` .. `ADR-013`)
 8. Relevant story spec under `specs/FOR-XXX/` when available
 9. `.ai/product.md`, `.ai/architecture.md`, `.ai/domain.md`, `.ai/conventions.md`, `.ai/roadmap.md`
+
+For frontend work also read `docs/ui-guidelines.md`; for endpoints, `docs/api-conventions.md`; for running things locally, `docs/local-development.md`.
 
 ## Jira implementation workflow
 
@@ -101,15 +96,62 @@ When asked to implement a Jira story:
 3. Read all files under `specs/FOR-XXX/` for that story.
 4. Read referenced ADRs and global docs.
 5. Inspect the repository state before changing files.
-6. Create or use a branch named `feature/FOR-XXX-short-description`.
+6. Create a branch (see Branches and pull requests below).
 7. Implement only the requested story.
-8. Run checks from the Verification guidance section for the story type.
+8. Run the checks from the Verification guidance section.
 9. Commit and open a PR.
 10. Stop after the PR unless explicitly asked to continue.
 
+Not all work comes from a Jira story. Design changes, fixes and chores follow the same rules minus the spec reading.
+
+## Branches and pull requests
+
+These are the conventions the repository actually uses. They were read off the merged history, not off an older plan.
+
+**Branch**: `<type>/<kebab-description>`, no Jira key.
+
+```text
+feat/entrenamiento-sin-scroll
+fix/training-week-scoped-sessions
+refactor/design-system-buttons
+style/quitar-enlace-estadisticas
+chore/dev-api-fixtures
+docs/agents-md-al-dia
+```
+
+Never work directly on `main`.
+
+**Commits and PR titles**: gitmoji + Conventional Commits, description in Spanish.
+
+```text
+✨ feat(training): la semana pasa a ser la página, y cabe entera sin scroll
+🐛 fix(compra): la lista de compra se puede crear, y se ve
+♻️ refactor(design-system): unificar botones, botones de icono y chips
+```
+
+`✨ feat` · `🐛 fix` · `♻️ refactor` · `🧪 test` · `📝 docs` · `🔧 chore` · `🚀 perf` · `💄 style` · `🔒 security` · `🗃️ db`
+
+Never add `Co-Authored-By` or AI attribution trailers.
+
+**PR description**: no template file exists; the sections in use are
+
+```markdown
+## What changed
+
+## How it was tested
+
+## Known limitations
+```
+
+Add `## Lo que deliberadamente NO se mueve` when scope was deliberately limited — reviewers should not have to guess whether an omission was a decision or an oversight. Link the Jira issue when the work came from one. Include screenshots for UI changes.
+
+Prefer squash merge. Keep `main` deployable. Do not merge failing CI unless the failure is unrelated and explicitly documented.
+
+Keep PRs small and reviewable. When a change is unavoidably large, split it into commits that each stand on their own and say in the description which commit carries the decisions.
+
 ## Operating rules
 
-- Do not implement code unless the Jira story or spec explicitly asks for implementation.
+- Do not implement code unless the Jira story, spec or user request explicitly asks for implementation.
 - Keep changes small, reviewable and tied to one story.
 - Preserve hexagonal architecture boundaries.
 - Do not place business rules in controllers, UI components or persistence adapters.
@@ -148,23 +190,4 @@ Every implementation should satisfy:
 - Bypassing authorization because the MVP is currently single-user.
 - Creating speculative abstractions not needed by the current story.
 - Claiming a component exists without checking the repository.
-
-## Pull request expectations
-
-PR titles should start with the Jira key when applicable.
-
-Use this structure in PR descriptions:
-
-```markdown
-## What changed
-
-## How it was tested
-
-## Known limitations
-
-## Jira
-
-https://dbhlab.atlassian.net/browse/FOR-XXX
-```
-
-Stop after opening the PR unless explicitly asked to continue with another story.
+- Leaving a comment, message or placeholder that describes a limitation the code no longer has.

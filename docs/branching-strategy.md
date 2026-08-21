@@ -8,33 +8,42 @@
 
 Use one branch per story or coherent documentation change.
 
-Recommended format:
+Format: `<type>/<kebab-description>`. The Jira key does not go in the branch name.
 
 ```text
-feature/FOR-123-short-description
-fix/FOR-123-short-description
-docs/short-description
+feat/entrenamiento-sin-scroll
+fix/training-week-scoped-sessions
+refactor/design-system-buttons
+style/quitar-enlace-estadisticas
+chore/dev-api-fixtures
+docs/agents-md-al-dia
 ```
+
+Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `perf`, `style`, `security`.
 
 ## Pull requests
 
 Pull requests should be small and reviewable.
 
-PR titles for story work should start with the Jira key:
+PR titles use gitmoji + Conventional Commits, with the description in Spanish — the same format as the commits themselves:
 
 ```text
-FOR-123 Implement manual body measurement entry
+✨ feat(training): la semana pasa a ser la página, y cabe entera sin scroll
+🐛 fix(compra): la lista de compra se puede crear, y se ve
 ```
 
 ## PR description checklist
 
+There is no PR template file; the sections in use are `## What changed`, `## How it was tested` and `## Known limitations`.
+
 Include:
 
-- Jira issue link/key.
-- Summary of changes.
+- Summary of changes, and why.
 - How it was tested.
 - Screenshots for UI changes when useful.
 - Known limitations or follow-ups.
+- What was deliberately left out of scope, so a reviewer need not guess whether an omission was a decision.
+- Jira issue link/key when the work came from a story.
 
 ## Merge policy
 
@@ -46,4 +55,4 @@ Include:
 
 AI agents should never work directly on `main`.
 
-Agents should create branches named after the target Jira story and keep changes scoped to that story.
+Agents create a branch in the format above and keep changes scoped to the work they were asked to do. See `AGENTS.md` for the full agent workflow.
