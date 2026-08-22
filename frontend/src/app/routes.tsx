@@ -66,6 +66,9 @@ const PlanGeneratorPage = lazyPage(
   () => import('../pages/generator/PlanGeneratorPage'),
   'PlanGeneratorPage',
 );
+// Perezosa también: es un documento largo que casi nadie abre, y no tiene por qué
+// viajar en el paquete de nadie hasta que alguien pulse el enlace del paso 4.
+const PrivacyPage = lazyPage(() => import('../pages/PrivacyPage'), 'PrivacyPage');
 
 /**
  * Route table (FOR-81). Paths mirror the centralized NAV_ITEMS model.
@@ -105,6 +108,9 @@ export const routes: RouteObject[] = [
       // cuenta antes de enseñar nada lo vaciaría de sentido. Los dos endpoints que
       // hay detrás son los únicos de la API que responden sin sesión.
       { path: '/plan', element: <PlanGeneratorPage /> },
+      // Pública y sin sesión, como el embudo que enlaza a ella: se acepta antes de
+      // tener cuenta, así que hay que poder leerla antes de tener cuenta.
+      { path: '/privacidad', element: <PrivacyPage /> },
       { path: '/login', element: <LoginPage /> },
       { path: '/register', element: <RegisterPage /> },
       {

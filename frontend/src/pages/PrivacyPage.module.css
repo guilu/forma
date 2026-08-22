@@ -1,0 +1,212 @@
+/*
+ * El aviso de privacidad.
+ *
+ * Un documento largo que alguien abre para buscar UNA cosa —cuánto lo guardáis, cómo lo borro— así
+ * que la maquetación va a favor del escaneo: medida corta, encabezados que destacan, y las
+ * respuestas concretas en listas de definición y una tabla en vez de dentro de párrafos.
+ *
+ * Mobile-first, como `LandingPage.module.css`. Todo color, espacio y tamaño sale de un token.
+ */
+
+.page {
+  background-color: var(--color-bg);
+  padding: var(--space-6) var(--space-container-mobile) var(--space-10);
+}
+
+.doc {
+  /* ~68 caracteres por línea: por encima de eso el ojo pierde el renglón al volver, y esto es
+     texto que se lee de arriba abajo, no un panel que se ojea. */
+  max-width: 42rem;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
+  line-height: 1.7;
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: var(--font-size-label-sm);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-accent-strong);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--font-size-headline-lg);
+  line-height: var(--line-height-headline-lg);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+  text-wrap: balance;
+}
+
+/* El resumen de una frase, arriba. Quien no lea nada más debería salir sabiendo lo esencial. */
+.lead {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  line-height: 1.65;
+  color: var(--color-text-secondary);
+  text-wrap: pretty;
+}
+
+.version {
+  margin: 0;
+  font-size: var(--font-size-label-sm);
+  color: var(--color-text-muted);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.section p {
+  margin: 0;
+  text-wrap: pretty;
+}
+
+.h2 {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--font-size-headline-md);
+  line-height: var(--line-height-headline-md);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--color-text);
+}
+
+.h3 {
+  margin: var(--space-3) 0 0;
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.section strong {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.section a {
+  color: var(--color-accent-strong);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Los avisos que matizan lo de arriba: se leen aparte sin salirse de la columna. */
+.note {
+  padding: var(--space-3) var(--space-4);
+  border-left: 2px solid var(--color-border);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  background-color: var(--color-surface-muted);
+  font-size: var(--font-size-label-md);
+  line-height: 1.6;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
+/* Pregunta a la izquierda, respuesta a la derecha: es como se busca en un documento así. */
+.definitions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface);
+}
+
+.definitions > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-1);
+}
+
+.definitions dt {
+  font-size: var(--font-size-label-md);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.definitions dd {
+  margin: 0;
+  font-size: var(--font-size-label-md);
+}
+
+/* La tabla de finalidades se sale a lo ancho en un móvil, así que rueda dentro de su caja en vez
+   de empujar la página — el `body` nunca desplaza en horizontal. */
+.tableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-label-md);
+}
+
+.table th,
+.table td {
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  vertical-align: top;
+}
+
+.table thead th {
+  background-color: var(--color-surface);
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.table tbody tr {
+  border-top: 1px solid var(--color-border);
+}
+
+.foot {
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--color-border);
+  font-size: var(--font-size-label-md);
+}
+
+.foot a {
+  color: var(--color-accent-strong);
+  text-decoration: none;
+}
+
+.foot a:hover {
+  text-decoration: underline;
+}
+
+@media (min-width: 40rem) {
+  .page {
+    padding: var(--space-8) var(--space-container-desktop) var(--space-12);
+  }
+
+  .definitions > div {
+    grid-template-columns: minmax(0, 14rem) minmax(0, 1fr);
+    gap: var(--space-4);
+  }
+}
