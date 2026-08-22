@@ -242,6 +242,18 @@ const MUSCLE_MAPS: Record<string, readonly { muscle: string; load: string }[]> =
 /** Endpoint path → response body. Matched exactly on the pathname. */
 const FIXTURES: ReadonlyArray<readonly [string, unknown]> = [
   ['/api/v1/auth/me', { id: 'e2e-user', email: 'e2e@forma.test' }],
+  /*
+   * El embudo público (FOR-190). Las cifras son las del mockup: hombre de 45
+   * años, 75 kg, 182 cm, moderado, con un objetivo que ajusta un -20 %.
+   */
+  [
+    '/api/v1/public/plan-generator/energy-requirement',
+    { basalKcal: 1668, activityFactor: 1.55, dailyKcal: 2585, objectiveFactor: 0.8, planKcal: 2068 },
+  ],
+  [
+    '/api/v1/public/plan-generator',
+    { email: 'e2e@forma.test', planKcal: 2068, mealsPerDay: 5 },
+  ],
   [
     '/api/v1/profile',
     {

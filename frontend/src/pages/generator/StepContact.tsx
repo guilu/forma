@@ -1,8 +1,9 @@
 import { Button } from '../../components/Button';
-import { SelectField, TextField } from '../../components/FormField';
+import { TextField } from '../../components/FormField';
 import { Icon } from '../../components/Icon';
 import type { EnergyRequirement } from '../../api/planGenerator';
-import type { FunnelState } from './funnelState';
+import { ChoiceCard } from './GeneratorChrome';
+import { EATING_STYLE_LABELS, OBJECTIVE_LABELS, type FunnelState } from './funnelState';
 import styles from './PlanGenerator.module.css';
 
 /**
@@ -17,6 +18,11 @@ import styles from './PlanGenerator.module.css';
  * consentimiento que puede estar a falso no es consentimiento, y uno premarcado no es
  * una decisión de nadie. La de novedades es aparte, porque aceptar recibir lo que has
  * pedido y aceptar que te escriban después son dos preguntas.
+ *
+ * <p>FOR-190 cambió el gancho: donde había una lista de cuatro promesas («Recibirás
+ * gratis tu plan de N días con: …») ahora hay el resumen de lo que se acaba de elegir.
+ * Prometer en abstracto y enseñar lo concreto cuestan lo mismo en pantalla, y solo uno
+ * de los dos se puede comprobar.
  */
 const SOURCES = [
   'Un amigo o conocido',
@@ -25,6 +31,9 @@ const SOURCES = [
   'Un profesional de la salud',
   'Otro',
 ];
+
+/** Lo que se lleva quien termina el embudo. Cuatro, cortos, con su marca de visto. */
+const DELIVERABLES = ['Menú completo', 'Macros por comida', 'Lista de la compra', 'Equivalencias'];
 
 const NUM = new Intl.NumberFormat('es-ES');
 
@@ -49,123 +58,126 @@ export function StepContact({
     state.fullName.trim() !== '' && state.email.trim() !== '' && state.acceptsPrivacyPolicy;
 
   return (
-    <section className={styles.step2col} aria-labelledby="paso-4">
-      <div>
-        <h2 className={styles.stepTitle} id="paso-4">
-          Dónde te lo mandamos
-        </h2>
-        <p className={styles.stepLead}>Para generar tu plan y enviarte el PDF.</p>
+    <section className={styles.step} aria-labelledby="paso-4">
+      <h2 className={styles.stepTitle} id="paso-4">
+        ¿Dónde te lo enviamos?
+      </h2>
 
-        <div className={styles.gift}>
-          <span className={styles.giftIcon} aria-hidden="true">
-            🎁
-          </span>
+      <div className={styles.summary}>
+        <div className={styles.summaryHead}>
           <div>
-            <p className={styles.giftTitle}>
-              Recibirás gratis tu plan de {state.daysPerWeek} días con:
+            <p className={styles.headlineEyebrow}>Tu plan, listo</p>
+            <p className={styles.headlineValue}>
+              {energy ? (
+                <>
+                  <span className={styles.headlineNumber}>{NUM.format(energy.planKcal)}</span>
+                  <span className={styles.headlineUnit}>kcal/día</span>
+                </>
+              ) : (
+                <span className={styles.headlinePending}>Sin calcular</span>
+              )}
             </p>
-            <ul className={styles.giftList}>
-              <li>Plan de comidas completo</li>
-              <li>Distribución de macros por comida</li>
-              <li>Lista de la compra con precios</li>
-              <li>Equivalencias para intercambiar alimentos</li>
-            </ul>
           </div>
+          <ul className={styles.summaryChips}>
+            {state.objective !== '' && <li>{OBJECTIVE_LABELS[state.objective]}</li>}
+            <li>{state.daysPerWeek} días</li>
+            <li>{state.mealsPerDay} comidas</li>
+            <li>{EATING_STYLE_LABELS[state.eatingStyle]}</li>
+          </ul>
         </div>
-
-        <div className={styles.grid2}>
-          <TextField
-            id="gen-nombre"
-            label="Nombre"
-            autoComplete="name"
-            value={state.fullName}
-            required
-            onChange={(event) => onChange({ fullName: event.target.value })}
-          />
-          <TextField
-            id="gen-email"
-            label="Email"
-            type="email"
-            autoComplete="email"
-            placeholder="tu@email.com"
-            value={state.email}
-            required
-            onChange={(event) => onChange({ email: event.target.value })}
-          />
-        </div>
-
-        <SelectField
-          id="gen-origen"
-          label="¿Cómo nos encontraste? (opcional)"
-          value={state.heardAboutUs}
-          onChange={(event) => onChange({ heardAboutUs: event.target.value })}
-        >
-          <option value="">Prefiero no decirlo</option>
-          {SOURCES.map((source) => (
-            <option key={source} value={source}>
-              {source}
-            </option>
+        <ul className={styles.summaryList}>
+          {DELIVERABLES.map((item) => (
+            <li key={item}>
+              <Icon name="check" size={15} />
+              {item}
+            </li>
           ))}
-        </SelectField>
-
-        <label className={styles.check}>
-          <input
-            type="checkbox"
-            checked={state.wantsMarketing}
-            onChange={(event) => onChange({ wantsMarketing: event.target.checked })}
-          />
-          <span>
-            Quiero recibir consejos, recetas y novedades de FORMA.
-            <span className={styles.checkNote}>Sin spam. Puedes darte de baja cuando quieras.</span>
-          </span>
-        </label>
-
-        <label className={styles.check}>
-          <input
-            type="checkbox"
-            checked={state.acceptsPrivacyPolicy}
-            required
-            onChange={(event) => onChange({ acceptsPrivacyPolicy: event.target.checked })}
-          />
-          <span>
-            He leído y acepto el <a href="/privacidad">aviso de privacidad</a>.
-            <span className={styles.checkNote}>
-              Usamos tus datos solo para generarte el plan y enviártelo.
-            </span>
-          </span>
-        </label>
-
-        <div className={styles.actionsSplit}>
-          <Button type="button" variant="ghost" onClick={onBack} disabled={pending}>
-            ← Anterior
-          </Button>
-          <Button type="button" onClick={onSubmit} disabled={!ready || pending}>
-            {pending ? 'Generando…' : 'Generar mi plan →'}
-          </Button>
-        </div>
-        <p className={styles.sendNote}>Te enviaremos el plan por email.</p>
+        </ul>
       </div>
 
-      <aside className={styles.aside}>
-        <h3 className={styles.asideTitle}>Tu plan</h3>
-        {energy && (
-          <p className={styles.asideBig}>
-            {NUM.format(energy.planKcal)} <span>kcal/día</span>
-          </p>
-        )}
-        <ul className={styles.asideList}>
-          <li>
-            <Icon name="check" size={14} /> {state.daysPerWeek} días · {state.mealsPerDay} comidas
-            al día
-          </li>
-          <li>
-            <Icon name="check" size={14} /> Sin tarjeta de crédito
-          </li>
-          <li>
-            <Icon name="check" size={14} /> Tu primer plan es gratis
-          </li>
-        </ul>
-      </aside>
+      <div className={styles.fields}>
+        <TextField
+          id="gen-nombre"
+          label="Nombre"
+          autoComplete="name"
+          value={state.fullName}
+          required
+          onChange={(event) => onChange({ fullName: event.target.value })}
+        />
+        <TextField
+          id="gen-email"
+          label="Email"
+          type="email"
+          autoComplete="email"
+          placeholder="tu@email.com"
+          value={state.email}
+          required
+          onChange={(event) => onChange({ email: event.target.value })}
+        />
+      </div>
+
+      {/*
+       * Era un desplegable. Es opcional y son cinco opciones cortas: en el móvil un
+       * `select` abre una rueda del sistema para elegir entre cinco cosas que caben en
+       * dos filas. «Prefiero no decirlo» sigue siendo una opción de verdad y viene
+       * marcada, igual que era el valor vacío del desplegable.
+       */}
+      <fieldset className={styles.group}>
+        <legend className={styles.legend}>¿Cómo nos encontraste? (opcional)</legend>
+        <div className={styles.chips}>
+          <ChoiceCard
+            name="origen"
+            value=""
+            checked={state.heardAboutUs === ''}
+            onSelect={() => onChange({ heardAboutUs: '' })}
+            title="Prefiero no decirlo"
+            layout="compact"
+          />
+          {SOURCES.map((source) => (
+            <ChoiceCard
+              key={source}
+              name="origen"
+              value={source}
+              checked={state.heardAboutUs === source}
+              onSelect={(value) => onChange({ heardAboutUs: value })}
+              title={source}
+              layout="compact"
+            />
+          ))}
+        </div>
+      </fieldset>
+
+      <label className={styles.check}>
+        <input
+          type="checkbox"
+          checked={state.wantsMarketing}
+          onChange={(event) => onChange({ wantsMarketing: event.target.checked })}
+        />
+        <span>Quiero recetas y novedades. Puedes darte de baja cuando quieras.</span>
+      </label>
+
+      <label className={styles.check}>
+        <input
+          type="checkbox"
+          checked={state.acceptsPrivacyPolicy}
+          required
+          onChange={(event) => onChange({ acceptsPrivacyPolicy: event.target.checked })}
+        />
+        <span>
+          He leído y acepto el <a href="/privacidad">aviso de privacidad</a>. Solo para generarte el
+          plan y enviártelo.
+        </span>
+      </label>
+
+      <div className={styles.actionsSplit}>
+        <Button type="button" variant="ghost" onClick={onBack} disabled={pending}>
+          ← Anterior
+        </Button>
+        <Button type="button" onClick={onSubmit} disabled={!ready} loading={pending}>
+          Generar mi plan →
+        </Button>
+      </div>
+      <p className={styles.sendNote}>Sin tarjeta · Te enviaremos el plan por email</p>
     </section>
   );
 }

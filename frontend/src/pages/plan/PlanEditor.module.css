@@ -8,8 +8,8 @@
   margin: 0;
   padding: var(--space-3);
   border-radius: var(--radius-md);
-  background: var(--color-danger-surface, rgba(220, 38, 38, 0.1));
-  color: var(--color-danger, #dc2626);
+  background: var(--color-danger-surface);
+  color: var(--color-danger);
   font-size: var(--font-size-sm);
 }
 
@@ -38,7 +38,7 @@
   padding: 0;
   font-size: var(--font-size-sm);
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--color-text);
 }
 
 .day {
@@ -55,7 +55,7 @@
   padding: var(--space-3);
   border: none;
   background: transparent;
-  color: var(--color-text-primary);
+  color: var(--color-text);
   font: inherit;
   text-align: left;
   cursor: pointer;
@@ -92,7 +92,7 @@
   gap: var(--space-2);
   padding: var(--space-3);
   border-radius: var(--radius-md);
-  background: var(--color-surface-muted, rgba(0, 0, 0, 0.03));
+  background: var(--color-surface-muted);
 }
 
 .mealHead,

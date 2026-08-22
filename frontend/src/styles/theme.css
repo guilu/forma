@@ -50,6 +50,25 @@
   --color-surface-high: #262a31; /* template: surface-container-high */
   --color-surface-variant: #31353c; /* template: surface-variant */
 
+  /*
+   * The well nested INSIDE a card (FOR-190): a planned meal in the plan editor,
+   * a meal photo placeholder, an equivalence row. Nine stylesheets already
+   * reached for this name; none of them ever got it, because it was never
+   * declared.
+   *
+   * It is a role of its own rather than an alias, because neither existing tier
+   * survives both themes against the surface a card actually paints:
+   *
+   *      tier             dark (card #161b22)   light (card #ffffff)
+   *      surface-lowest   #0a0e14  visible      #ffffff  INVISIBLE
+   *      surface-low      #181c22  invisible    #eaefec  visible
+   *
+   * So the two themes pick opposite tiers, which is exactly the job a semantic
+   * token exists to do — the same shape as `--color-accent-strong`, which is
+   * identical to `--color-accent` in dark and diverges only in light.
+   */
+  --color-surface-muted: #0a0e14;
+
   /* Text */
   --color-text: #dfe2eb; /* template: on-surface / on-background (was #f4fff7) */
   --color-text-muted: #8b949e; /* template: text-dimmed (was #98a89d) */
@@ -93,6 +112,26 @@
   --color-warning-graphic: #ffab70;
   --color-danger: #ff5757; /* template: error-pulse (was #ff5f56) */
   --color-danger-graphic: #ff5757;
+
+  /*
+   * Tinted washes (FOR-190). The background behind a selected choice card and
+   * behind an error banner — the surface counterparts of `--color-accent` and
+   * `--color-danger`, not new hues.
+   *
+   * Eight stylesheets wrote `var(--color-accent-surface, rgba(37, 99, 235,
+   * 0.08))` / `var(--color-danger-surface, rgba(220, 38, 38, 0.1))` against
+   * names that were never declared, so every one of them rendered the fallback:
+   * a blue left over from a pre-brand palette, and a red that is not this
+   * theme's red. The plan generator's stepper and its selected option cards
+   * were painting #2563eb inside a green product.
+   *
+   * `color-mix` against the theme's own accent/danger rather than a fixed tint,
+   * so one declaration lands correctly on both themes' surfaces — the same
+   * idiom, and the same percentages, as Button's `.soft` and `.soft.danger`,
+   * which had drawn these by hand.
+   */
+  --color-accent-surface: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  --color-danger-surface: color-mix(in srgb, var(--color-danger) 10%, transparent);
   /*
    * Informational blue (FOR-188). It was already being used — the body-fat trend
    * line and the "Agua" legend dot both wrote `var(--color-info, #3b82f6)`, a
@@ -385,6 +424,10 @@
   --color-surface-high: #e0e7e3;
   --color-surface-variant: #d6ded9;
 
+  /* Light picks the opposite tier from dark — see the dark block's note. A
+     white well on a white card would be no well at all. */
+  --color-surface-muted: #eaefec;
+
   --color-text: #0f1a13;
   --color-text-muted: #5c6b62;
   /*
@@ -439,6 +482,12 @@
   --color-danger: #b63b33;
   /* Exact reference red for non-text fills and graphical marks. */
   --color-danger-graphic: #ec5c51;
+
+  /* Repeated verbatim rather than inherited, per this block's convention of
+     staying a complete, self-describing palette. The `color-mix` resolves
+     against THIS block's --color-accent / --color-danger. */
+  --color-accent-surface: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  --color-danger-surface: color-mix(in srgb, var(--color-danger) 10%, transparent);
   /*
    * Exact reference blue for filled controls and data marks. Its ~2.25:1
    * contrast on the page is intentionally not used for text; the strong

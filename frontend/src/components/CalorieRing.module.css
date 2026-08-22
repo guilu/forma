@@ -44,7 +44,7 @@
 .consumed {
   font-size: var(--font-size-headline-lg);
   font-weight: 700;
-  color: var(--color-text-primary);
+  color: var(--color-text);
   font-variant-numeric: tabular-nums;
 }
 
@@ -76,7 +76,7 @@
   margin: var(--space-1) 0 0;
   font-size: var(--font-size-lg);
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--color-text);
   font-variant-numeric: tabular-nums;
 }
 

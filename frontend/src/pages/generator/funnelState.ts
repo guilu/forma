@@ -28,6 +28,26 @@ export interface FunnelState {
   readonly acceptsPrivacyPolicy: boolean;
 }
 
+/**
+ * Cómo se llama cada opción, en un sitio.
+ *
+ * <p>Viven aquí por el mismo motivo que el estado: los lee más de un paso. El paso 2
+ * ofrece los objetivos y el 4 los resume en una pastilla; el 3 ofrece los estilos y el
+ * 4 hace lo mismo. Escritos dos veces, una pantalla podría acabar llamando «Pérdida de
+ * peso» a lo que la otra llama otra cosa, y el resumen dejaría de resumir.
+ */
+export const OBJECTIVE_LABELS: Readonly<Record<PlanObjective, string>> = {
+  WEIGHT_LOSS: 'Pérdida de peso',
+  MUSCLE_GAIN: 'Ganancia muscular',
+  MAINTENANCE: 'Mantenimiento',
+  HEALTHY_EATING: 'Comer sano',
+};
+
+export const EATING_STYLE_LABELS: Readonly<Record<EatingStyle, string>> = {
+  ESTANDAR_ESPANOL: 'Estándar español',
+  MEDITERRANEA: 'Mediterránea',
+};
+
 /** Un embudo sin empezar. Lo preseleccionado son los valores más comunes, no una decisión. */
 export const EMPTY_FUNNEL: FunnelState = {
   sex: 'MALE',
