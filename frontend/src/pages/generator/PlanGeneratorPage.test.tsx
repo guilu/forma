@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { PlanGeneratorPage } from './PlanGeneratorPage';
@@ -52,7 +52,7 @@ describe('PlanGeneratorPage — el embudo público', () => {
   it('empieza en el primer paso', () => {
     renderFunnel();
 
-    expect(screen.getByRole('heading', { name: 'Tus datos', level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '¿Quién eres?', level: 2 })).toBeInTheDocument();
   });
 
   /**
@@ -61,6 +61,12 @@ describe('PlanGeneratorPage — el embudo público', () => {
    * <p>Mifflin-St Jeor tiene que estar en el backend para generar el plan de verdad; escrita
    * también aquí sería libre de separarse, y el número que convence a alguien dejaría de ser
    * el número con el que se construye su plan.
+   *
+   * <p>Esto lo guardaba antes el desglose («GEB 1668 kcal», «GET 2585 kcal»), que FOR-190
+   * cambió por una sola cifra. Fijar la que queda comprobaría menos que antes, así que en su
+   * lugar se comprueba la regla directamente: la pantalla pinta lo que responde el servidor.
+   * El segundo caso usa una cifra que NINGUNA fórmula daría para esos datos — si algún día
+   * alguien vuelve a calcular en React, sale 2585 y el test cae.
    */
   it('pide el requerimiento al servidor y lo pinta', async () => {
     const user = renderFunnel();
@@ -69,14 +75,42 @@ describe('PlanGeneratorPage — el embudo público', () => {
     await user.type(screen.getByLabelText('Peso'), '75');
     await user.type(screen.getByLabelText('Altura'), '182');
 
-    // El formateador español no agrupa cuatro cifras: 1668, no 1.668.
-    expect(await screen.findByText('1668 kcal')).toBeInTheDocument();
-    expect(screen.getByText('2585 kcal')).toBeInTheDocument();
+    // El formateador español no agrupa cuatro cifras: 2585, no 2.585.
+    expect(await screen.findByText('2585')).toBeInTheDocument();
     await waitFor(() =>
       expect(energyMock).toHaveBeenCalledWith(
         expect.objectContaining({ sex: 'MALE', ageYears: 45, weightKg: 75, heightCm: 182 }),
       ),
     );
+  });
+
+  it('pinta la cifra del servidor y no una calculada aquí', async () => {
+    energyMock.mockResolvedValue({ ...REQUIREMENT, dailyKcal: 9999 });
+    const user = renderFunnel();
+
+    await user.type(screen.getByLabelText('Edad'), '45');
+    await user.type(screen.getByLabelText('Peso'), '75');
+    await user.type(screen.getByLabelText('Altura'), '182');
+
+    expect(await screen.findByText('9999')).toBeInTheDocument();
+    expect(screen.queryByText('2585')).not.toBeInTheDocument();
+  });
+
+  /**
+   * Las dos formas de dar una medida escriben el mismo dato.
+   *
+   * <p>El deslizador es lo que hace rápido el paso en el móvil, pero 74,5 kg con el pulgar
+   * es lotería: el campo numérico tiene que seguir ahí, y los dos tienen que mover el mismo
+   * valor o la pantalla mandaría al servidor algo distinto de lo que se ve.
+   */
+  it('deja dar el peso tecleándolo o arrastrando', async () => {
+    const user = renderFunnel();
+
+    await user.type(screen.getByLabelText('Peso'), '75');
+    expect(screen.getByLabelText('Peso (deslizador)')).toHaveValue('75');
+
+    fireEvent.change(screen.getByLabelText('Altura (deslizador)'), { target: { value: '182' } });
+    expect(screen.getByLabelText('Altura')).toHaveValue(182);
   });
 
   /** Nada que calcular sin datos: no se llama al servidor por una pantalla vacía. */

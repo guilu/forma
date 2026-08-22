@@ -330,17 +330,22 @@ describe('theme.css design tokens (FOR-163 reconciliation)', () => {
     });
 
     /*
-     * Ink ON the accent fill, the other direction. The stepper's current dot
-     * paints `background: var(--color-accent)`, and its label was a hardcoded
-     * `#fff` — invisible once the accent resolved to the brand green (~1.61:1)
-     * instead of the blue it had been silently falling back to. There is a
-     * token for exactly this surface, and it measures ~8.2:1.
+     * Ink ON the accent fill, the other direction. The funnel's stepper used to
+     * paint `background: var(--color-accent)` with a hardcoded `#fff` label —
+     * invisible (~1.61:1) once the accent resolved to the brand green instead of
+     * the blue it had been silently falling back to.
+     *
+     * FOR-190 replaced that stepper with a progress bar, so the accent fill now
+     * lives on the chosen option of a segmented selector. The rule is the one
+     * being guarded, not the class that happens to carry it: whatever sits on an
+     * accent fill takes `--color-accent-contrast` (~8.2:1), and no stylesheet in
+     * the funnel hardcodes a colour literal at all.
      */
-    it('paints the current step marker with the on-accent ink, not a hardcoded white', () => {
+    it('paints ink on an accent fill with the on-accent token, never a literal', () => {
       expect(planGeneratorCss).toMatch(
-        /\.dotNow\s*{[^}]*background:\s*var\(--color-accent\)[^}]*color:\s*var\(--color-accent-contrast\)/s,
+        /background-color:\s*var\(--color-accent\);\s*color:\s*var\(--color-accent-contrast\);/s,
       );
-      expect(planGeneratorCss).not.toMatch(/color:\s*#fff/i);
+      expect(planGeneratorCss).not.toMatch(/:\s*#[0-9a-f]{3,8}\b/i);
     });
 
     /*
