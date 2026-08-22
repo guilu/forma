@@ -217,6 +217,19 @@
   --space-5: 24px;
   --space-6: 32px;
   --space-8: 48px;
+  /*
+   * The three steps above 48px exist for the public landing and nothing else.
+   * Application chrome packs information densely and never needs to separate
+   * two things by more than 48px; a marketing page is the opposite job — the
+   * rhythm between its sections is what makes it scannable, and the approved
+   * landing mockup runs on 64/80/96. Declared here rather than as literals in
+   * `LandingPage.module.css` so the page keeps resolving every space through a
+   * token, and so a second marketing surface inherits the same rhythm instead
+   * of inventing its own.
+   */
+  --space-10: 64px;
+  --space-12: 80px;
+  --space-16: 96px;
   --space-container-mobile: 20px; /* template: container-margin-mobile (new) */
   --space-container-desktop: 40px; /* template: container-margin-desktop (new) */
 

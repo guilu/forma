@@ -5,11 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="dark light" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!--
+      Title and description mirror the landing's H1 and lead. They are the two
+      lines a search result actually shows, so a visitor who clicks through has
+      to find the same promise on the page: plan de entrenamiento + nutrición,
+      y la lista de la compra resuelta.
+
+      No og:image yet — the muscle map is the obvious candidate, but it has to be
+      exported to a real file under `public/` before the tag can point anywhere.
+    -->
     <meta
       name="description"
-      content="FORMA organiza composición corporal, entrenamiento, nutrición, compra e insights explicables en un único lugar."
+      content="Crea gratis tu plan de entrenamiento y nutrición en 4 pasos, sin cuenta. FORMA te enseña qué músculos trabaja cada sesión y te deja la lista de la compra hecha."
     />
-    <title>FORMA — Salud, entrenamiento y nutrición en un único lugar</title>
+    <title>FORMA — Entrenamiento y nutrición con la compra ya hecha</title>
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="es_ES" />
+    <meta property="og:title" content="FORMA — Entrenamiento y nutrición con la compra ya hecha" />
+    <meta
+      property="og:description"
+      content="Crea gratis tu plan de entrenamiento y nutrición en 4 pasos, sin cuenta. FORMA te enseña qué músculos trabaja cada sesión y te deja la lista de la compra hecha."
+    />
+    <meta name="twitter:card" content="summary" />
     <!--
       FOR-62: apply the resolved theme before the app (and its stylesheet)
       even loads, so the first paint never flashes the "wrong" theme while
