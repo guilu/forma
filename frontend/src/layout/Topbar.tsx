@@ -53,8 +53,14 @@ export function Topbar() {
     }
   }
 
-  const themeToggle = (
+  /*
+   * Takes a class per bar, the same shape `loginLink` below already has: the
+   * public bar's controls are pills like the landing's, while the application
+   * bar keeps the app radii for its dense chrome. One control, two dressings.
+   */
+  const themeToggle = (className?: string) => (
     <IconButton
+      className={className}
       label={isDark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
       onClick={() => setMode(isDark ? 'light' : 'dark')}
     >
@@ -105,7 +111,7 @@ export function Topbar() {
 
         {isAuthenticated ? (
           <div className={styles.actions}>
-            {themeToggle}
+            {themeToggle()}
             <IconButton label="Notificaciones">
               <Icon name="bell" />
             </IconButton>
@@ -231,7 +237,7 @@ export function Topbar() {
               {loginLink(styles.loginLinkSheet)}
             </nav>
             <div className={styles.publicSide}>
-              {themeToggle}
+              {themeToggle(styles.themeTogglePublic)}
               {loginLink(styles.loginLinkBar)}
               <IconButton
                 className={styles.menuButton}

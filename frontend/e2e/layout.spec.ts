@@ -751,13 +751,17 @@ test.describe('landing hero CTA', () => {
 
   /**
    * On a phone, a CTA stretched edge to edge stops reading as a button and
-   * starts reading as a form field or a banner. It is capped and centred
-   * instead, so the gutters make it look like the tappable target it is.
+   * starts reading as a form field or a banner. It is capped instead, so the
+   * gutter beside it makes it look like the tappable target it is.
    *
    * <p>The hero used to carry two CTAs and this checked they shared a width and
    * a left edge. "Ver Demo" is gone — it promised a demo and only scrolled to
    * the product section — so the pair assertions became the centring check
    * below, which is what they were really protecting.
+   *
+   * <p>Both hero actions are checked, not just the primary one: they stack on a
+   * phone, and a pair where only one of them is centred is worse than either
+   * arrangement applied to both.
    */
   test('does not span the full width of the phone', async ({ page }) => {
     await page.goto('/');
@@ -765,28 +769,105 @@ test.describe('landing hero CTA', () => {
 
     // El CTA lleva al generador de plan desde que existe el embudo: es lo que se
     // le ofrece a alguien que aún no tiene cuenta.
-    const cta = page.getByRole('link', { name: 'Crea tu plan gratis' });
-    await expect(cta).toBeVisible();
+    const actions = [
+      page.getByRole('link', { name: 'Crear mi plan gratis' }).first(),
+      page.getByRole('link', { name: 'Ver cómo funciona' }),
+    ];
 
-    const box = await cta.evaluate((link) => {
-      const rect = link.getBoundingClientRect();
-      // One client rect per line the label occupies: a narrower button that
-      // wraps its label onto two lines is not the fix we want.
+    for (const cta of actions) {
+      await expect(cta).toBeVisible();
+      const label = (await cta.textContent())?.trim();
+      const box = await cta.evaluate((link) => {
+        const rect = link.getBoundingClientRect();
+        // One client rect per line the label occupies: a narrower button that
+        // wraps its label onto two lines is not the fix we want.
+        const range = document.createRange();
+        range.selectNodeContents(link);
+        const lines = new Set([...range.getClientRects()].map((line) => Math.round(line.top))).size;
+        return { width: rect.width, centre: rect.left + rect.width / 2, lines };
+      });
+
+      expect(
+        box.width,
+        `"${label}" is ${Math.round(box.width)}px wide in a ${PHONE.width}px viewport`,
+      ).toBeLessThanOrEqual(PHONE.width * 0.75);
+      expect(box.lines, `"${label}" wraps onto ${box.lines} lines`).toBe(1);
+      expect(
+        Math.abs(box.centre - PHONE.width / 2),
+        `"${label}" is centred at ${Math.round(box.centre)}px, not ${PHONE.width / 2}px`,
+      ).toBeLessThanOrEqual(1);
+    }
+  });
+
+  /**
+   * The headline is the longest unbreakable run of text on the page —
+   * "entrenamiento" is thirteen characters of Montserrat 900 — and `.page`
+   * clips horizontal overflow, so a headline sized past the viewport does not
+   * announce itself with a scrollbar: it just comes out with its right-hand
+   * letters shaved off. That shipped once. This measures the rendered lines
+   * rather than the block, because the block obediently stops at the container
+   * while the glyphs inside it do not.
+   */
+  test('never renders the headline past the right edge', async ({ page }) => {
+    await page.goto('/');
+    const title = page.getByRole('heading', { level: 1 });
+    await expect(title).toBeVisible();
+
+    const widest = await title.evaluate((heading) => {
       const range = document.createRange();
-      range.selectNodeContents(link);
-      const lines = new Set([...range.getClientRects()].map((line) => Math.round(line.top))).size;
-      return { width: rect.width, centre: rect.left + rect.width / 2, lines };
+      range.selectNodeContents(heading);
+      return Math.max(...[...range.getClientRects()].map((line) => line.right));
     });
 
     expect(
-      box.width,
-      `The hero CTA is ${Math.round(box.width)}px wide in a ${PHONE.width}px viewport`,
-    ).toBeLessThanOrEqual(PHONE.width * 0.75);
-    expect(box.lines, `The hero CTA wraps onto ${box.lines} lines`).toBe(1);
-    expect(
-      Math.abs(box.centre - PHONE.width / 2),
-      `The hero CTA is centred at ${Math.round(box.centre)}px, not ${PHONE.width / 2}px`,
-    ).toBeLessThanOrEqual(1);
+      widest,
+      `The headline reaches ${Math.round(widest)}px in a ${PHONE.width}px viewport`,
+    ).toBeLessThanOrEqual(PHONE.width);
+  });
+});
+
+test.describe('landing hero on a desktop', () => {
+  test.use({ viewport: WIDE });
+
+  /**
+   * The muscle map is the hero's illustration, not its subject. Left to itself
+   * it stops being either: the silhouette carries a 854x1840 aspect ratio, so a
+   * card half the hero wide renders a body ~670px tall and the card grows past
+   * 800px — taller than the headline, the paragraph and both buttons stacked
+   * together, which reads as a diagram with some copy beside it.
+   *
+   * <p>The fix is to make the row height come from the copy and let the drawing
+   * scale into what is left, so this measures the card against the copy it sits
+   * beside rather than against a hardcoded pixel budget that would go stale the
+   * first time the paragraph gains a line.
+   *
+   * <p>Not exact parity, though: at parity the drawings came out small enough
+   * that the card read as a thumbnail of the feature rather than the feature,
+   * so the wells carry a floor that buys them about another hundred pixels. The
+   * band below is what that floor is worth — wide enough to leave room for it,
+   * narrow enough to still catch a card that has gone back to sizing itself
+   * from its own width.
+   */
+  test('sizes the muscle map to the height of the copy beside it', async ({ page }) => {
+    await page.goto('/');
+
+    const card = page.getByRole('region', { name: /Mapa muscular/ });
+    const badge = page.getByText('Sin cuenta · sin tarjeta · 4 pasos');
+    const trust = page.getByText('Tus datos son tuyos y puedes borrarlos');
+    await expect(card).toBeVisible();
+
+    const cardBox = await card.boundingBox();
+    const badgeBox = await badge.boundingBox();
+    const trustBox = await trust.boundingBox();
+    expect(cardBox && badgeBox && trustBox, 'The hero did not lay out').not.toBeNull();
+
+    const copyHeight = trustBox!.y + trustBox!.height - badgeBox!.y;
+
+    const overhang = cardBox!.height - copyHeight;
+    const measured = `The muscle map is ${Math.round(cardBox!.height)}px tall beside ${Math.round(copyHeight)}px of copy`;
+
+    expect(overhang, measured).toBeGreaterThanOrEqual(0);
+    expect(overhang, measured).toBeLessThanOrEqual(140);
   });
 });
 

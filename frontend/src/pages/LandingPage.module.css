@@ -1,11 +1,11 @@
 /*
- * FOR-185: translation of `docs/0-landing.html` into CSS Modules. Class names
- * follow this codebase's conventions rather than the mockup's Tailwind utility
- * strings, and every colour/space/type value resolves through a design token
- * (`styles/theme.css`) so the page follows the active theme instead of hard
- * coding the mockup's dark-only palette.
+ * Public landing page.
  *
- * Recurring mockup primitives and where they went:
+ * Every colour, radius, space and type value resolves through a design token
+ * (`styles/theme.css`), so the page follows the active theme instead of
+ * hardcoding a dark-only palette. Recurring primitives kept from the FOR-185
+ * translation of `docs/0-landing.html`:
+ *
  *   `.kinetic-bg`              -> `.page` (two soft accent radial washes)
  *   `.hero-mesh`               -> `.heroMesh`
  *   `.glass-card`              -> the shared translucent-surface rule below
@@ -13,6 +13,10 @@
  *
  * The page's own navigation bar is *not* here: FOR-185 promoted it to the
  * global Topbar (see `layout/RootLayout.tsx`).
+ *
+ * Layout convention throughout: sibling groups are flex/grid with `gap`, never
+ * margins between items. Mobile-first — the multi-column arrangements live in
+ * the breakpoint block at the foot of the file.
  */
 
 .page {
@@ -33,23 +37,123 @@
 }
 
 .hero,
-.features,
-.product,
-.cta,
+.steps,
+.split,
+.progress,
+.faq,
+.closing,
 .footer {
   padding-inline: var(--space-container-mobile);
+}
+
+/*
+ * `scroll-margin-top` keeps the sticky bar from covering a section when the
+ * public nav's `#training` / `#nutrition` / `#plans` anchors jump to it.
+ */
+.steps,
+.split,
+.progress,
+.faq,
+.closing {
+  scroll-margin-top: calc(var(--topbar-height) + var(--space-4));
 }
 
 /* Template `.glass-card`. Shared by every raised surface on the page; the
  * individual rules below only add radius, padding and their accent-tinted
  * border override. */
 .accessCard,
-.featureCard,
-.productFrame,
-.ctaCard {
+.sessionMap,
+.panel,
+.metricCard,
+.insightCard,
+.faqCard {
   background-color: color-mix(in srgb, var(--color-surface) 70%, transparent);
   backdrop-filter: blur(12px);
   border: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
+}
+
+/* --- Shared section furniture -------------------------------------------- */
+
+.eyebrow {
+  margin: 0;
+  color: var(--color-accent-strong);
+  font-size: var(--font-size-label-sm);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.sectionHeading {
+  max-width: 1440px;
+  margin: 0 auto var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.sectionTitle {
+  margin: 0;
+  max-width: 20ch;
+  font-family: var(--font-heading);
+  font-size: var(--font-size-headline-lg);
+  line-height: var(--line-height-headline-lg);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+  text-wrap: balance;
+}
+
+.sectionLead {
+  margin: 0;
+  max-width: 42rem;
+  font-size: var(--font-size-lg);
+  /* 1.65 rather than 1.556: at 18px this copy is read in a glance, not studied,
+     and the extra leading is what stops a three-line paragraph from reading as
+     a block. Straight off the mockup. */
+  line-height: 1.65;
+  color: var(--color-text-secondary);
+  text-wrap: pretty;
+}
+
+.footnote {
+  max-width: 1440px;
+  margin: var(--space-5) auto 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.accentText {
+  background-image: linear-gradient(to right, rgb(18 122 95), #ff9800, rgb(125 237 92));
+  background-clip: text;
+  color: transparent;
+}
+
+.accentStrong {
+  color: var(--color-accent-strong);
+  font-weight: 700;
+}
+
+.capabilityList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.capability {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  color: var(--color-text);
+  line-height: 1.5;
+}
+
+.capabilityIcon {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--color-accent-strong);
 }
 
 /* --- Hero ---------------------------------------------------------------- */
@@ -57,27 +161,7 @@
 .hero {
   position: relative;
   overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  /*
-   * Vertical breathing room, halved against the mockup. Two things produced
-   * it, so both are halved -- cutting only the padding would have been barely
-   * visible:
-   *
-   * - `padding-block`, 48px -> 24px.
-   * - the template's `min-h-[921px]`. The hero's own content is ~554px tall at
-   *   the desktop breakpoint, so a 921px box left ~135px of slack per side
-   *   once `align-items: center` split the difference -- roughly three times
-   *   the padding itself. 720px keeps the hero comfortably taller than its
-   *   content (so the card and copy still centre against each other) while
-   *   bringing the total gap above and below to about half of what it was.
-   *
-   * Still capped to what is left of the viewport so the hero never overflows a
-   * short laptop screen.
-   */
-  min-height: min(720px, calc(100dvh - var(--topbar-height)));
-  padding-block: var(--space-5);
+  padding-block: var(--space-6) var(--space-8);
 }
 
 /* Template `.hero-mesh`: a 40px technical grid fading behind the hero. */
@@ -100,26 +184,25 @@
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 1280px;
+  max-width: 1440px;
   margin: 0 auto;
   display: grid;
-  gap: var(--space-6);
+  gap: var(--space-8);
   align-items: center;
 }
 
 .heroCopy {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: var(--space-4);
-  text-align: center;
+  gap: var(--space-5);
 }
 
 .badge {
   display: inline-flex;
   align-items: center;
+  align-self: flex-start;
   gap: var(--space-2);
-  margin: 0 0 var(--space-2);
+  margin: 0;
   padding: 6px var(--space-4);
   border: 1px solid color-mix(in srgb, var(--color-accent) 20%, transparent);
   border-radius: var(--radius-full);
@@ -127,8 +210,7 @@
   color: var(--color-accent-strong);
   font-size: var(--font-size-label-sm);
   font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .badgeDot {
@@ -143,48 +225,53 @@
 .displayTitle {
   margin: 0;
   font-family: var(--font-heading);
-  font-size: var(--font-size-display-xl);
+  /*
+   * Fluid rather than the flat `--font-size-display-xl` (48px): "entrenamiento"
+   * is 13 characters of Montserrat 900, about 390px wide at that size, so on a
+   * phone the headline ran off the right edge of the page — and `.page` clips
+   * horizontal overflow, so it came out silently truncated rather than
+   * scrollable. The lower bound keeps the word inside a 320px viewport; the
+   * upper bound is the token, so nothing changes from the tablet breakpoint up.
+   */
+  font-size: clamp(2.125rem, 8.5vw, var(--font-size-display-xl));
   line-height: var(--line-height-display-xl);
   letter-spacing: var(--letter-spacing-display-xl);
-  font-weight: 700;
+  font-weight: 900;
   color: var(--color-text);
-}
-
-.accentText {
-  background-image: linear-gradient(to right, rgb(18 122 95), #ff9800, rgb(125 237 92));
-  background-clip: text;
-  color: transparent;
-}
-
-.accentStrong {
-  color: var(--color-accent-strong);
-  font-weight: 700;
+  text-wrap: balance;
 }
 
 .lead {
   margin: 0;
   max-width: 36rem;
   font-size: var(--font-size-lg);
-  line-height: 1.556;
+  line-height: 1.65;
   color: var(--color-text-secondary);
+  text-wrap: pretty;
 }
 
+/*
+ * Stacked on a phone and centred in the gutter: a column of capped buttons
+ * hanging off the left margin reads as an unfinished list, while centring them
+ * makes the pair read as the page's one action. They return to the left edge at
+ * the row breakpoint below, where they sit beside the copy again.
+ */
 .heroActions {
-  align-self: stretch;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-2);
-  padding-top: var(--space-2);
+  gap: var(--space-3);
+  margin-top: var(--space-2);
 }
 
 /*
  * On a phone, a CTA stretched edge to edge stops reading as a button and starts
- * reading as a form field. Cap it at a thumb-friendly width and centre it, so
- * the gutters keep it looking tappable. Released at the row breakpoint below,
- * where it sizes to its content.
+ * reading as a form field or a banner. Cap both hero actions at a thumb-friendly
+ * width so the gutter beside them keeps them looking tappable. Released at the
+ * row breakpoint below, where each sizes to its own label.
  */
-.heroActions .ctaPrimary.ctaPrimary {
+.heroActions .ctaPrimary.ctaPrimary,
+.heroActions .ctaSecondary {
   width: min(100%, 15rem);
   /* The cap sizes the box now, so the wide inline padding of the row layout
      would only eat into the label and wrap it onto a second line. */
@@ -204,10 +291,44 @@
  */
 .ctaPrimary.ctaPrimary {
   padding: var(--space-4) var(--space-8);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-full);
   font-family: var(--font-heading);
   font-size: var(--font-size-headline-md);
   text-align: center;
+}
+
+/* The secondary action is an in-page anchor, not a route, so it stays a plain
+ * `<a>` wearing an outline treatment rather than borrowing Button's variants. */
+.ctaSecondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 56px;
+  padding: var(--space-4) var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  transition: border-color 0.2s ease;
+}
+
+.ctaSecondary:hover {
+  border-color: color-mix(in srgb, var(--color-accent) 50%, transparent);
+}
+
+/* The chevron points along the reading direction; rotating it is what makes it
+ * read as "further down this page" rather than "next". */
+.ctaSecondaryIcon {
+  flex-shrink: 0;
+  color: var(--color-accent-strong);
+  transform: rotate(90deg);
+  transition: transform 0.2s ease;
+}
+
+.ctaSecondary:hover .ctaSecondaryIcon {
+  transform: rotate(90deg) translateX(4px);
 }
 
 .ctaBlock.ctaBlock {
@@ -216,53 +337,681 @@
 
 /* The closing CTA keeps the display size while sharing the primary radius. */
 .ctaPill.ctaPill {
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-full);
   padding: var(--space-5) var(--space-8);
-  font-size: var(--font-size-headline-lg);
-  line-height: var(--line-height-headline-lg);
+  font-size: var(--font-size-headline-md);
   font-weight: 900;
   letter-spacing: -0.01em;
-  text-transform: uppercase;
 }
 
-.socialProof {
+.trustList {
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-6);
+}
+
+.trustItem {
+  display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding-top: var(--space-4);
-}
-
-.avatars {
-  display: flex;
-}
-
-.avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border: 2px solid var(--color-bg);
-  background-color: var(--color-card);
-  object-fit: cover;
-}
-
-.avatar + .avatar {
-  margin-left: -16px;
-}
-
-.socialProofCopy {
-  margin: 0;
-  color: var(--color-text-secondary);
+  color: var(--color-text-muted);
   font-size: var(--font-size-label-md);
 }
 
-/* --- Hero access card ---------------------------------------------------- */
+/* --- Hero muscle map ----------------------------------------------------- */
+
+.sessionMap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  border-color: color-mix(in srgb, var(--color-accent) 20%, transparent);
+}
+
+.sessionMapHeader {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.sessionMapMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.sessionMapTitle {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--font-size-headline-md);
+  line-height: var(--line-height-headline-md);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.sessionMapDuration {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--color-tertiary) 28%, transparent);
+  border-radius: var(--radius-full);
+  background-color: color-mix(in srgb, var(--color-tertiary) 12%, transparent);
+  color: var(--color-tertiary);
+  font-size: var(--font-size-label-sm);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sessionMapViews {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+/*
+ * The silhouette sizes itself from its box and keeps its own aspect ratio, so
+ * the view only has to be a well is dark enough for the accent to read against.
+ */
+.sessionMapView {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  /* Without this a flex/grid item refuses to shrink below its content, which is
+     the whole mechanism the desktop rule below depends on. */
+  min-height: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-surface-high);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface-lowest);
+}
+
+/*
+ * In flow above the drawing rather than floated over its corner. Absolutely
+ * positioned it landed on the silhouette's head — and how badly depended on how
+ * tall the card happened to be, so there was no padding that fixed it at every
+ * size. A row of its own cannot collide with anything.
+ */
+.sessionMapViewLabel {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  padding: 3px var(--space-2);
+  border-radius: var(--radius-full);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-size: var(--font-size-2xs);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.sessionMapBody {
+  width: 100%;
+  max-width: 100%;
+}
+
+.sessionMapLegend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-surface-high);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.legendSwatch {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-accent);
+}
+
+/*
+ * The two opacities are the ones `MuscleSilhouette` paints, not a lookalike
+ * pair: a legend that does not match the thing it explains is worse than none.
+ */
+.legendPrimary {
+  opacity: 0.92;
+}
+
+.legendSecondary {
+  opacity: 0.38;
+}
+
+/* Pushed to the far end of the legend row rather than wrapped underneath it:
+   the swatches explain the drawing, the group list summarises it, and they are
+   two halves of one line. */
+.legendGroups {
+  margin-left: auto;
+}
+
+/* --- Steps --------------------------------------------------------------- */
+
+.steps {
+  padding-block: var(--space-10);
+  background-color: color-mix(in srgb, var(--color-surface-low) 50%, transparent);
+  border-block: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
+}
+
+/*
+ * Four beats on a rail. On a phone the rail runs downwards with the titles
+ * beside the circles — four columns there gave each title about 70px, which
+ * broke "Tu semana de entreno" over four lines. It turns and the titles drop
+ * underneath at the row breakpoint.
+ */
+.stepGrid {
+  --step-size: 44px;
+  --step-gap: var(--space-6);
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--step-gap);
+}
+
+/*
+ * Each item scopes its own hue through `--feature-tone` (set by the `.tone*`
+ * classes), so the circle below is one rule instead of three near-duplicates.
+ */
+.stepItem {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+/*
+ * The rail. One segment per item, running from this circle's edge to the next
+ * one's: two circle centres are one item plus one grid gap apart, so the
+ * visible run is that minus a whole circle, minus a little air at each end. A
+ * pseudo-element rather than markup because it says nothing a reader needs —
+ * the list is already ordered.
+ */
+.stepItem:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  border-radius: var(--radius-full);
+  background-color: color-mix(in srgb, var(--color-border) 80%, transparent);
+  /* Downwards, through the column of circles. */
+  top: calc(var(--step-size) + var(--space-1));
+  left: calc(var(--step-size) / 2 - 1px);
+  width: 2px;
+  height: calc(100% + var(--step-gap) - var(--step-size) - var(--space-2));
+}
+
+.tonePrimary {
+  --feature-tone: var(--color-accent);
+  --feature-ink: var(--color-accent-contrast);
+}
+
+.toneSecondary {
+  --feature-tone: var(--color-secondary);
+  --feature-ink: var(--color-secondary-contrast);
+}
+
+.toneTertiary {
+  --feature-tone: var(--color-tertiary);
+  --feature-ink: var(--color-tertiary-contrast);
+}
+
+.toneWarning {
+  --feature-tone: var(--color-warning-graphic);
+  --feature-ink: var(--color-bg);
+}
+
+.stepNumber {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: var(--step-size);
+  height: var(--step-size);
+  border-radius: var(--radius-full);
+  background-color: var(--feature-tone);
+  color: var(--feature-ink);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-lg);
+  font-weight: 900;
+  /* Above the rail, so the segment can run to the circle's edge without a
+     hairline creeping over the fill. */
+  z-index: 1;
+}
+
+.stepTitle {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--font-size-label-md);
+  line-height: 1.35;
+  font-weight: 700;
+  color: var(--color-text);
+  text-wrap: balance;
+}
+
+/* --- Split sections (training, nutrition) -------------------------------- */
+
+.split {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding-block: var(--space-8);
+  display: grid;
+  gap: var(--space-6);
+  align-items: center;
+}
+
+.splitCopy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* --- Panels (sample session, sample shopping list) ----------------------- */
+
+.panel {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.panelHeading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.panelTitle {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.panelMeta {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.panelTag {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px var(--space-3);
+  border-radius: var(--radius-full);
+  background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  color: var(--color-accent-strong);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+.panelTotal {
+  /* The total is four characters and a currency sign; letting it wrap next to a
+     long list title turned "42,85 €" into two lines on a phone. */
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-family: var(--font-heading);
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-accent-strong);
+}
+
+.panelNote {
+  margin: 0;
+  padding: var(--space-3) var(--space-5) var(--space-4);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.rowList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+}
+
+.row + .row {
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 55%, transparent);
+}
+
+.rowMain {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.rowTitle,
+.rowTitleDone {
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+  font-weight: 500;
+}
+
+.rowTitleDone {
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+}
+
+.rowMeta {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.rowValue {
+  flex-shrink: 0;
+  font-family: var(--font-heading);
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.tagRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  background-color: color-mix(in srgb, var(--color-text-muted) 14%, transparent);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+/* The primary muscle wears the same accent the overlay paints it with, so the
+ * tag and the silhouette agree about which muscle the exercise is for. */
+.tagPrimary {
+  background-color: color-mix(in srgb, var(--color-accent) 14%, transparent);
+  color: var(--color-accent-strong);
+}
+
+.checkbox {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.checkboxDone {
+  border-color: var(--color-accent);
+  background-color: var(--color-accent);
+  color: var(--color-accent-contrast);
+}
+
+/* --- Progress ------------------------------------------------------------ */
+
+.progress {
+  padding-block: var(--space-8);
+}
+
+.metricGrid {
+  max-width: 1440px;
+  margin: 0 auto var(--space-6);
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.metricCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+}
+
+.metricLabel {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-label-sm);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.metricValue {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-headline-lg);
+  line-height: 1;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.metricUnit {
+  font-size: var(--font-size-lg);
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.metricDelta {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.metricDeltaGood {
+  color: var(--color-accent-strong);
+  font-size: var(--font-size-sm);
+}
+
+.insightGrid {
+  max-width: 1440px;
+  margin: 0 auto;
+  display: grid;
+  gap: var(--space-5);
+}
+
+.insightCard {
+  display: flex;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+}
+
+.insightIcon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-lg);
+  background-color: color-mix(in srgb, var(--feature-tone) 12%, transparent);
+  color: var(--feature-tone);
+}
+
+.insightBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.insightTitle {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--font-size-headline-md);
+  line-height: var(--line-height-headline-md);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.insightText {
+  margin: 0;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+/* --- FAQ ----------------------------------------------------------------- */
+
+.faq {
+  padding-block: var(--space-8);
+  background-color: color-mix(in srgb, var(--color-surface-low) 50%, transparent);
+  border-block: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
+}
+
+.faqGrid {
+  max-width: 1440px;
+  margin: 0 auto;
+  display: grid;
+  gap: var(--space-6);
+}
+
+.faqIntro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.faqList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* The padding moved onto the trigger and the panel: the whole card is the hit
+   target now, and a card that padded its own edges would leave a dead strip
+   around a control that looks clickable. */
+.faqCard {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-lg);
+}
+
+.faqQuestion {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.faqTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  width: 100%;
+  /* The whole row, edge to edge, comfortably past the 44px floor. */
+  min-height: 44px;
+  padding: var(--space-4) var(--space-5);
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.faqTrigger:hover {
+  color: var(--color-accent-strong);
+}
+
+.faqChevron {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  /* The icon set ships a right chevron; a disclosure points down when closed
+     and up when open. */
+  transform: rotate(90deg);
+  transition: transform 0.2s ease;
+}
+
+.faqTrigger[aria-expanded='true'] .faqChevron {
+  transform: rotate(-90deg);
+}
+
+.faqTrigger:hover .faqChevron {
+  color: var(--color-accent-strong);
+}
+
+.faqPanel {
+  padding: 0 var(--space-5) var(--space-5);
+}
+
+.faqAnswer {
+  margin: 0;
+  color: var(--color-text-secondary);
+  line-height: 1.625;
+}
+
+/* --- Closing ------------------------------------------------------------- */
+
+.closing {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding-block: var(--space-8);
+  display: grid;
+  gap: var(--space-6);
+  align-items: center;
+}
+
+.closingCopy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+/* Centred with the hero's pair, and only the button: `align-items` on the
+   column would drag the heading and the lead along with it. */
+.closingCopy .ctaPill.ctaPill {
+  align-self: center;
+}
+
+/* --- Access card --------------------------------------------------------- */
 
 .accessWrapper {
   position: relative;
   width: 100%;
   max-width: 460px;
   justify-self: center;
+  scroll-margin-top: calc(var(--topbar-height) + var(--space-4));
 }
 
 /* Template: a blurred accent halo pulsing behind the card. */
@@ -295,9 +1044,9 @@
 .accessTitle {
   margin: 0 0 var(--space-2);
   font-family: var(--font-heading);
-  font-size: var(--font-size-headline-lg);
-  line-height: var(--line-height-headline-lg);
-  font-weight: 600;
+  font-size: var(--font-size-headline-md);
+  line-height: var(--line-height-headline-md);
+  font-weight: 700;
   color: var(--color-text);
 }
 
@@ -312,13 +1061,13 @@
   gap: var(--space-4);
 }
 
-/* Doubled: this class is handed to a shared control whose own rule declares
-   the same properties at the same (0,1,0) specificity. Without it, the winner
-   is whichever module lands later in the bundle. */
+/* Doubled: this class is handed to a shared control whose own rule declares the
+   same properties at the same (0,1,0) specificity. Without it, the winner is
+   whichever module lands later in the bundle. */
 .loginSubmit.loginSubmit {
   width: 100%;
   min-height: 56px;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-full);
   font-family: var(--font-heading);
   font-size: var(--font-size-headline-md);
 }
@@ -350,225 +1099,6 @@
   text-align: center;
 }
 
-/* --- Features ------------------------------------------------------------ */
-
-.features {
-  padding-block: var(--space-8);
-  background-color: color-mix(in srgb, var(--color-surface-low) 50%, transparent);
-}
-
-.sectionHeading {
-  max-width: 1280px;
-  margin: 0 auto var(--space-6);
-  text-align: center;
-}
-
-.sectionTitle {
-  margin: 0 0 var(--space-2);
-  font-family: var(--font-heading);
-  font-size: var(--font-size-headline-lg);
-  line-height: var(--line-height-headline-lg);
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.sectionLead {
-  margin: 0;
-  max-width: 42rem;
-  font-size: var(--font-size-lg);
-  line-height: 1.556;
-  color: var(--color-text-secondary);
-}
-
-.sectionHeading .sectionLead {
-  margin-inline: auto;
-}
-
-.featureGrid {
-  max-width: 1280px;
-  margin: 0 auto;
-  display: grid;
-  gap: var(--space-5);
-}
-
-/*
- * Each card scopes its own hue through `--feature-tone` (set by the
- * `.tone*` classes), so the glow, icon chip and hover border below are one
- * rule each instead of three near-duplicates.
- */
-.featureCard {
-  position: relative;
-  overflow: hidden;
-  /* `scroll-margin-top` keeps the sticky bar from covering the card when the
-   * public nav's `#entrenamiento` / `#nutricion` anchors jump here. */
-  scroll-margin-top: calc(var(--topbar-height) + var(--space-4));
-  padding: var(--space-5);
-  border-radius: var(--radius-lg);
-  transition: border-color 0.5s ease;
-}
-
-.featureCard:hover {
-  border-color: color-mix(in srgb, var(--feature-tone) 50%, transparent);
-}
-
-.featureGlow {
-  position: absolute;
-  top: -48px;
-  right: -48px;
-  width: 128px;
-  height: 128px;
-  border-radius: 50%;
-  background-color: color-mix(in srgb, var(--feature-tone) 10%, transparent);
-  filter: blur(48px);
-  transition: background-color 0.3s ease;
-}
-
-.featureCard:hover .featureGlow {
-  background-color: color-mix(in srgb, var(--feature-tone) 20%, transparent);
-}
-
-.tonePrimary {
-  --feature-tone: var(--color-accent);
-}
-
-.toneSecondary {
-  --feature-tone: var(--color-secondary);
-}
-
-.toneTertiary {
-  --feature-tone: var(--color-tertiary);
-}
-
-.featureIcon {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 56px;
-  height: 56px;
-  margin-bottom: var(--space-4);
-  border: 1px solid color-mix(in srgb, var(--feature-tone) 20%, transparent);
-  border-radius: var(--radius-lg);
-  background-color: color-mix(in srgb, var(--feature-tone) 10%, transparent);
-  color: var(--feature-tone);
-}
-
-.featureTitle {
-  position: relative;
-  margin: 0 0 var(--space-2);
-  font-family: var(--font-heading);
-  font-size: var(--font-size-headline-md);
-  line-height: var(--line-height-headline-md);
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.featureText {
-  position: relative;
-  margin: 0;
-  color: var(--color-text-secondary);
-  line-height: 1.625;
-}
-
-/* --- Product / bio-sync -------------------------------------------------- */
-
-.product {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding-block: var(--space-8);
-  scroll-margin-top: calc(var(--topbar-height) + var(--space-4));
-  display: grid;
-  gap: var(--space-8);
-  align-items: center;
-}
-
-/* Template: a slightly rotated, scaled-down frame that straightens on hover. */
-.productFrame {
-  aspect-ratio: 1;
-  padding: var(--space-2);
-  border-radius: var(--radius-lg);
-  border-color: color-mix(in srgb, var(--color-accent) 20%, transparent);
-  overflow: hidden;
-  transform: rotate(3deg) scale(0.95);
-  transition: transform 0.7s ease;
-}
-
-.productFrame:hover {
-  transform: rotate(0deg) scale(1);
-}
-
-.productImage {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: var(--radius-lg);
-}
-
-.productCopy {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-4);
-}
-
-.capabilityList {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.capability {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  color: var(--color-text);
-}
-
-.capabilityIcon {
-  flex-shrink: 0;
-  color: var(--color-accent-strong);
-}
-
-.inlineLink {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-height: 44px;
-  color: var(--color-accent-strong);
-  font-weight: 700;
-}
-
-.inlineLinkIcon {
-  transition: transform 0.2s ease;
-}
-
-.inlineLink:hover .inlineLinkIcon {
-  transform: translateX(8px);
-}
-
-/* --- Closing CTA --------------------------------------------------------- */
-
-.cta {
-  padding-block: var(--space-8);
-  scroll-margin-top: calc(var(--topbar-height) + var(--space-4));
-}
-
-.ctaCard {
-  max-width: 64rem;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-8) var(--space-6);
-  border-radius: 24px;
-  border-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
-  text-align: center;
-}
-
 /* --- Footer -------------------------------------------------------------- */
 
 .footer {
@@ -578,7 +1108,7 @@
 }
 
 .footerGrid {
-  max-width: 1280px;
+  max-width: 1440px;
   margin: 0 auto;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -611,6 +1141,7 @@
 
 .footerTagline {
   margin: 0;
+  max-width: 22rem;
   color: var(--color-text-secondary);
   font-size: var(--font-size-label-md);
   line-height: 1.625;
@@ -619,9 +1150,10 @@
 .footerHeading {
   margin: 0 0 var(--space-2);
   font-family: var(--font-heading);
-  font-size: var(--font-size-headline-md);
-  line-height: var(--line-height-headline-md);
-  font-weight: 600;
+  font-size: var(--font-size-label-sm);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: var(--color-text);
 }
 
@@ -644,9 +1176,9 @@
 }
 
 .footerBottom {
-  max-width: 1280px;
-  margin: var(--space-6) auto 0;
-  padding-top: var(--space-4);
+  max-width: 1440px;
+  margin: var(--space-8) auto 0;
+  padding-top: var(--space-5);
   border-top: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
@@ -660,24 +1192,6 @@
   font-size: var(--font-size-label-sm);
 }
 
-.footerSocial {
-  display: flex;
-  gap: var(--space-4);
-}
-
-.footerIconLink {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 44px;
-  min-height: 44px;
-  color: var(--color-text-secondary);
-}
-
-.footerIconLink:hover {
-  color: var(--color-accent-strong);
-}
-
 @keyframes pulse {
   50% {
     opacity: 0.5;
@@ -685,9 +1199,9 @@
 }
 
 /*
- * The mockup leans on decorative motion (pulsing badge/halo, hover lifts and
- * rotations). Honour the OS-level reduced-motion preference across all of it
- * in one place rather than rule by rule.
+ * The mockup leans on decorative motion (pulsing badge/halo, hover transitions).
+ * Honour the OS-level reduced-motion preference across all of it in one place
+ * rather than rule by rule.
  */
 @media (prefers-reduced-motion: reduce) {
   .badgeDot,
@@ -697,59 +1211,165 @@
 
   /* `.ctaPrimary` is absent on purpose: it composes Button's `.primary`, whose
    * own reduced-motion rule already drops the lift and the press. */
-  .productFrame,
-  .inlineLinkIcon,
-  .featureCard,
-  .featureGlow {
+  .ctaSecondary,
+  .ctaSecondaryIcon,
+  .faqChevron {
     transition: none;
   }
 
-  .productFrame,
-  .productFrame:hover,
-  .inlineLink:hover .inlineLinkIcon {
-    transform: none;
+  .ctaSecondary:hover .ctaSecondaryIcon {
+    transform: rotate(90deg);
   }
 }
 
 /* --- Breakpoints --------------------------------------------------------- */
 
 @media (min-width: 641px) {
+  /* A row now, so `align-items: center` stops meaning horizontal centring and
+     starts meaning "line the two labels up with each other", which is what a
+     row of buttons wants anyway. */
   .heroActions {
     flex-direction: row;
-    justify-content: center;
+    /* Between roughly 1025px and 1200px the copy column is narrower than the
+       two labels plus their padding. Wrapping drops the secondary action onto
+       its own line whole, rather than breaking both labels in half. */
+    flex-wrap: wrap;
   }
 
-  /* With the row's own gutters there is no full-bleed to avoid: let the label
+  .closingCopy .ctaPill.ctaPill {
+    align-self: flex-start;
+  }
+
+  /* With the row's own gutters there is no full-bleed to avoid: let each label
      size itself. */
   .heroActions .ctaPrimary.ctaPrimary {
     width: auto;
     padding-inline: var(--space-8);
   }
+
+  .heroActions .ctaSecondary {
+    width: auto;
+    padding-inline: var(--space-6);
+  }
+
+  .insightGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* The rail turns: four across, each title under its own circle. */
+  .stepGrid {
+    --step-size: 64px;
+    --step-gap: var(--space-5);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .stepGrid {
+    padding-block: var(--space-6);
+  }
+
+  .stepItem {
+    flex-direction: column;
+    gap: var(--space-3);
+    text-align: center;
+  }
+
+  .stepItem:not(:last-child)::after {
+    top: calc(var(--step-size) / 2 - 1px);
+    left: calc(50% + var(--step-size) / 2 + var(--space-2));
+    width: calc(100% + var(--step-gap) - var(--step-size) - var(--space-4));
+    height: 2px;
+  }
+
+  .metricGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 @media (min-width: 769px) {
   .hero,
-  .features,
-  .product,
-  .cta,
+  .steps,
+  .split,
+  .progress,
+  .faq,
+  .closing,
   .footer {
     padding-inline: var(--space-container-desktop);
   }
 
-  .featureGrid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  /*
+   * Section rhythm, from the mockup. On a phone 48px between sections is
+   * already a clear break because the viewport is the ruler; on a desktop the
+   * same 48px reads as one continuous scroll of cards, which is what the
+   * side-by-side comparison against the mockup showed. The banded sections
+   * (`.steps`) used to take one step less, on the grounds that their background
+   * already separates them; that held while the band was four tall cards and
+   * stopped holding once it became a single rail of circles.
+   */
+  .split,
+  .progress,
+  .faq,
+  .closing {
+    padding-block: var(--space-16);
   }
 
-  .product {
+  .steps {
+    padding-block: var(--space-16);
+  }
+
+  .hero {
+    padding-block: var(--space-10) var(--space-12);
+  }
+
+  /* The heading block and the grid under it are two beats, not one: 32px let
+     them read as a single stack. */
+  .sectionHeading {
+    margin-bottom: var(--space-8);
+  }
+
+  .stepGrid {
+    --step-size: 80px;
+  }
+
+  .stepNumber {
+    font-size: var(--font-size-headline-lg);
+  }
+
+  .stepTitle {
+    font-size: var(--font-size-lg);
+  }
+
+  .split {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-8);
+  }
+
+  /*
+   * Source order puts the copy first so a screen reader and a narrow viewport
+   * both read the argument before the illustration. On two columns the
+   * nutrition panel leads instead, so the two split sections do not stack into
+   * one long column of alternating identical shapes.
+   */
+  .splitReversed .splitCopy {
+    order: 2;
+  }
+
+  .closing {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 460px);
+    gap: var(--space-8);
+  }
+
+  .faqGrid {
+    grid-template-columns: minmax(0, 24rem) minmax(0, 1fr);
+    gap: var(--space-10);
+    align-items: start;
   }
 
   .footerGrid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1.4fr) repeat(2, minmax(0, 1fr));
   }
 
   .footerBrand {
-    grid-column: span 1;
+    grid-column: auto;
   }
 
   .footerBottom {
@@ -760,26 +1380,74 @@
 
 @media (min-width: 1025px) {
   .heroGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    /*
+     * The right column is sized for the drawing, not split down the middle.
+     * Once the row height comes from the copy, the silhouette's 854x1840 ratio
+     * fixes how wide a body can be — about 120px here — and a half-width card
+     * left ~140px of empty well on either side of each figure.
+     */
+    grid-template-columns: minmax(0, 1fr) minmax(0, 32rem);
+    /*
+     * The copy sets the height of the row and the card matches it. Centring the
+     * two instead let the card size itself, and a 854x1840 silhouette scaled to
+     * half the hero's width is ~670px tall on its own — the illustration ended
+     * up taller than the headline, the paragraph and both buttons together.
+     */
+    align-items: stretch;
   }
 
-  .heroCopy {
-    align-items: flex-start;
-    text-align: left;
+  /*
+   * Everything in the card is fixed except the drawings, so they absorb the
+   * difference: the two wells take whatever the header and the legend leave,
+   * and the bodies size from that height rather than from the card's width.
+   * `--silhouette-ratio` then derives the width, so the masks stay registered
+   * on the silhouette at any size.
+   */
+  .sessionMapViews {
+    flex: 1 1 0;
+    min-height: 0;
   }
 
-  .heroActions {
-    align-self: auto;
-    justify-content: flex-start;
+  .sessionMapBody {
+    /* The drawing takes whatever height the label leaves, and
+       `--silhouette-ratio` derives the width from it. */
+    flex: 1 1 0;
+    min-height: 0;
+    width: auto;
+    height: auto;
   }
 
-  .socialProof {
-    flex-direction: row;
-    align-items: center;
+  /*
+   * A floor, so the card is a little taller than the copy beside it instead of
+   * exactly as tall: at parity the drawings were small enough that the card
+   * read as a thumbnail of the feature rather than the feature.
+   */
+  .sessionMapViews {
+    min-height: 27rem;
   }
 
   .title {
-    font-size: 4rem;
-    line-height: 1.1;
+    font-size: 3.75rem;
+    line-height: 1.04;
+    /*
+     * Capped, because the headline's measure and the card's height are the same
+     * knob now: the row is as tall as this copy, and letting the headline run
+     * the full column drops it from three lines to two, which takes ~100px off
+     * the row and shrinks the drawing beside it. A capped measure is better
+     * typography anyway — 60px type wants a short line.
+     */
+    max-width: 38rem;
+  }
+
+  .sectionTitle {
+    font-size: 2.75rem;
+    line-height: 1.08;
+  }
+
+  /* The FAQ's heading sits in a side column, not across the page, so it keeps
+     the standard headline size — at display size it wrapped onto five lines. */
+  .faqIntro .sectionTitle {
+    font-size: var(--font-size-headline-lg);
+    line-height: var(--line-height-headline-lg);
   }
 }

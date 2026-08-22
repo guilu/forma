@@ -85,7 +85,7 @@ export function RegisterPage() {
               {error}
             </p>
           )}
-          <Button type="submit" loading={pending}>
+          <Button className={styles.submit} type="submit" loading={pending}>
             Crear cuenta
           </Button>
         </form>

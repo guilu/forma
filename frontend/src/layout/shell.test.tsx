@@ -10,6 +10,7 @@ import { listIntegrations, syncIntegration } from '../api/integrations';
 import { IntegrationsProvider } from '../integrations/IntegrationsContext';
 import { NotificationProvider } from '../components/NotificationProvider';
 import styles from './Sidebar.module.css';
+import topbarCss from './Topbar.module.css?raw';
 
 // FOR-120: ThemeProvider reads/persists the theme preference through this
 // module on mount. Mocked so these shell tests stay network-free; 'SYSTEM'
@@ -78,6 +79,24 @@ function renderSidebar(initialEntries?: readonly string[]) {
 }
 
 describe('application shell', () => {
+  /*
+   * The public bar sits above the landing and the auth pages, so its controls
+   * wear the same pill they do. The application bar underneath is deliberately
+   * left alone: its chrome is dense and keeps the app radii, which is why these
+   * are scoped classes rather than a change to `IconButton` or `Button`.
+   */
+  it.each(['loginLink', 'themeTogglePublic', 'menuButton'])(
+    'gives the public bar %s the pill radius',
+    (control) => {
+      expect(topbarCss, `${control} is not a pill`).toMatch(
+        new RegExp(
+          `\\.${control}\\.${control}\\s*{[^}]*border-radius:\\s*var\\(--radius-full\\);`,
+          's',
+        ),
+      );
+    },
+  );
+
   beforeEach(() => {
     logoutMock.mockReset();
     integrationsMock.mockReset();
