@@ -71,7 +71,7 @@ export function LoginPage() {
               {error}
             </p>
           )}
-          <Button type="submit" loading={pending}>
+          <Button className={styles.submit} type="submit" loading={pending}>
             Iniciar sesión
           </Button>
         </form>
