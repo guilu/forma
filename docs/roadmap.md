@@ -1,153 +1,60 @@
 # Forma roadmap
 
-## Sprint 0 — Product foundation
+This file is a **record of what has been built**, not a plan of what is coming. When it disagrees with the repository, the repository is right — see `AGENTS.md`.
 
-Goal: make the repository understandable before writing application code.
+Last reviewed against the repository: 2026-08-21, at `main` = PR #240.
 
-Deliverables:
+## How work is tracked
 
-- README
-- Product vision
-- Architecture notes
-- Domain model
-- UI guidelines
-- Codex prompts
-- Initial backlog issues
+Two eras, and the boundary is sharp.
 
-Status: in progress.
+**Through PR #170 (2026-07-26) — Jira.** Stories carried a `FOR-XXX` key, branches and PR titles led with it, and each story had a spec folder. Those specs are still in `specs/` (125 of them, `FOR-15` .. `FOR-185`) and are still worth reading for the areas they cover: they explain decisions the code alone does not.
 
-## Sprint 1 — Technical bootstrap
+**From PR #171 (2026-07-27) onward — the pull request is the unit.** Keeping Jira in sync stopped paying for itself. There is no `FOR-XXX` key on this work and no new spec folder; the PR description carries the intent, the scope and what was deliberately left out, and the commit messages carry the reasoning.
 
-Goal: create the runnable monorepo skeleton.
+This means: **do not go looking for a Jira story for recent work — there isn't one, and its absence is not a gap.** Do not create spec folders for new work unless asked. Write the reasoning into the PR and the commits instead.
 
-Deliverables:
+## Sprints 0–7 — delivered
 
-- `backend/` Spring Boot 3 project
-- `frontend/` React + Vite + TypeScript project
-- `infra/docker-compose.yml` with PostgreSQL
-- `.gitignore`
-- `.editorconfig`
-- root development instructions
-- GitHub Actions basic CI
+The original plan. All of it shipped; the evidence column is where to look if you need to confirm something rather than trust this table.
 
-Acceptance criteria:
+| Sprint | Goal | Evidence |
+|---|---|---|
+| 0 · Product foundation | Make the repository understandable | `README.md`, `docs/vision.md`, `docs/architecture-overview.md`, `docs/domain-model.md`, `docs/ui-guidelines.md`, `docs/prompts/`, `docs/backlog.md` |
+| 1 · Technical bootstrap | Runnable skeleton | `backend/`, `frontend/`, `compose.yaml`, `.github/workflows/ci.yml` |
+| 2 · Body dashboard | Manual measurements + trends | `frontend/src/pages/MeasurementsPage.tsx`, `frontend/src/pages/DashboardPage.tsx`, `backend/src/main/resources/db/migration/V2__body_measurements.sql` |
+| 3 · Training | Running and strength plans | `frontend/src/pages/TrainingPage.tsx`, `backend/src/main/resources/db/migration/V3__training_session_status.sql` |
+| 4 · Nutrition | Day templates, meals, macros | `frontend/src/pages/NutritionPage.tsx`, `frontend/src/pages/nutrition/` |
+| 5 · Shopping budget | Plan to shopping cost | `frontend/src/pages/ShoppingPage.tsx`, `backend/src/main/resources/db/migration/V4__shopping_products.sql`, `backend/src/main/resources/db/migration/V5__shopping_lists.sql` |
+| 6 · Insights | Rule-based weekly recommendations | `backend/src/main/java/dev/diegobarrioh/forma/delivery/insights/WeeklyInsightsResponse.java`, `backend/src/main/resources/db/migration/V10__insight_history.sql` |
+| 7 · Withings | Automatic measurement import | `backend/src/main/java/dev/diegobarrioh/forma/adapter/withings/`, `frontend/src/pages/integrations/IntegrationsSection.tsx` |
 
-- `docker compose up` starts PostgreSQL.
-- Backend starts locally.
-- Frontend starts locally.
-- CI validates backend and frontend builds.
+Two corrections to what the plan said:
 
-## Sprint 2 — Body dashboard MVP
+- Sprint 1 promised `infra/docker-compose.yml`. The file is **`compose.yaml`, at the repository root**; there is no `infra/` directory.
+- Authentication and multi-user isolation were listed as a *later idea*. They shipped — `docs/adr/ADR-012-authentication-and-multi-user-isolation.md`, `frontend/src/auth/`, and seven migrations adding `user_id`. Do not build them again.
 
-Goal: enter body measurements manually and visualize current state.
+## After Sprint 7
 
-Deliverables:
+The product kept going for three months past the last sprint in the plan. These are the areas that grew, with the PR ranges to read if you need the reasoning.
 
-- BodyMeasurement database migration
-- REST endpoints for measurements
-- dashboard endpoint
-- frontend dashboard cards
-- body measurement form
-- trend chart for weight and body fat
+**Admin and the real catalog** (#183–#199, #206–#215) — the largest body of work here, and none of it was in the plan. An admin role; a global food catalog read from the database instead of compiled into Java; a store product catalog with barcodes, sizes and availability; Mercadona import, including its published aisles; food groups, tags, servings and equivalences as data; recipes.
 
-Acceptance criteria:
+**Nutrition, made real** (#192–#221, #226, #229) — meal logging, a plan-following model, a JSON plan format an LLM can write, the real diet imported from a spreadsheet, and a run of fixes replacing invented numbers with endpoints that already existed.
 
-- User can add weight, body fat and BMI.
-- App calculates fat mass and lean mass.
-- Dashboard shows latest measurement and trends.
+**Public funnel and plan activation** (#223–#225, #228) — a four-step plan generator on the landing page, an activation modal with empty states that lead somewhere, and a shopping list generated from the active week.
 
-## Sprint 3 — Training MVP
+**Training** (#232–#239) — muscle silhouettes lit from the worked-muscle map, the week as the page with no scroll, and the session detail redesigned into two columns with the real exercise breakdown.
 
-Goal: provide running and strength plans.
+**Design system and app-wide UI** (#171–#182, #231, #238) — Playwright layout checks, on-demand route loading, routes renamed to English, unified buttons/icon buttons/chips, and errors moved into the same notification lane as successes.
 
-Deliverables:
+**Accounts** (#222) — seeded data moved onto the real account.
 
-- Running plan seed data: 16-week 4 km to 10 km progression
-- Strength plan seed data: Push/Pull/Legs
-- Training UI pages
-- Completed session logging
+One retreat worth knowing about: **goals** were withdrawn from the frontend in #181 and the **backend was kept**. `frontend/src/components/statusLabels.ts` still carries `goalStatus` tones. If you bring goals back, the API is there.
 
-Acceptance criteria:
+## Not built
 
-- User can view this week's running sessions.
-- User can view this week's strength sessions.
-- User can mark sessions completed.
-
-## Sprint 4 — Nutrition MVP
-
-Goal: model running, strength and rest day nutrition.
-
-Deliverables:
-
-- Nutrition day templates
-- Meal templates
-- Food item database
-- Macro calculation
-- UI for daily plan
-
-Acceptance criteria:
-
-- User can switch between running/strength/rest day.
-- App displays meals and macro totals.
-- Whey appears as optional/complementary, not mandatory every day.
-
-## Sprint 5 — Shopping budget
-
-Goal: connect nutrition plan to shopping cost.
-
-Deliverables:
-
-- Mercadona product catalog
-- Editable prices and URLs
-- Weekly shopping list
-- Cost per week/month
-- Cost per protein source / meal category later
-
-Acceptance criteria:
-
-- User can edit a product price.
-- Dashboard shows weekly and monthly food budget estimate.
-- Shopping list can be checked off.
-
-## Sprint 6 — Insights rules
-
-Goal: recommend small weekly adjustments.
-
-Deliverables:
-
-- Weekly check-in
-- Rule-based insights
-- Nutrition adjustment suggestions
-- Recovery warning signals
-
-Acceptance criteria:
-
-- App generates simple recommendations from trends.
-- Recommendations explain the reason, not just the action.
-
-## Sprint 7 — Withings integration
-
-Goal: import body measurements automatically.
-
-Deliverables:
-
-- Withings OAuth flow
-- token storage
-- measurement import adapter
-- sync job
-- manual sync button
-
-Acceptance criteria:
-
-- User can connect Withings.
-- App imports latest weight/body fat data.
-- Imported data is normalized into BodyMeasurement.
-
-## Later ideas
-
-- Strava/Garmin import
-- Home Assistant sleep/environment data
-- AI weekly planning assistant
-- Multi-user SaaS mode
-- Public demo mode with synthetic data
-- Blog series for Backend to the Future
+- Strava / Garmin import. Note that `LandingPage.tsx:185` already promises wearable integration to visitors — marketing ahead of product.
+- Home Assistant sleep/environment data.
+- Public demo mode with synthetic data. `npm run dev:fixtures` is the nearest thing and is development-only.
+- Blog series for Backend to the Future.

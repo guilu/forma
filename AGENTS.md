@@ -7,7 +7,7 @@ This file is the entry point for AI coding agents working on FORMA.
 FORMA is a personal health and fitness planning application. It combines body composition, training, nutrition, shopping, insights and external integrations into one explainable MVP.
 
 Repository: `guilu/forma`
-Jira project: `FOR`
+Jira project: `FOR` — used for stories up to PR #170 only; see "How work arrives" below.
 
 ## Current repository status
 
@@ -82,27 +82,30 @@ Before modifying code, read:
 5. `docs/coding-standards.md`
 6. This file's stack and verification sections
 7. Relevant ADRs under `docs/adr/` (`ADR-001` .. `ADR-013`)
-8. Relevant story spec under `specs/FOR-XXX/` when available
+8. The story spec under `specs/FOR-XXX/` when the work names a key, or when one exists for the area you are changing
 9. `.ai/product.md`, `.ai/architecture.md`, `.ai/domain.md`, `.ai/conventions.md`, `.ai/roadmap.md`
 
 For frontend work also read `docs/ui-guidelines.md`; for endpoints, `docs/api-conventions.md`; for running things locally, `docs/local-development.md`.
 
-## Jira implementation workflow
+## How work arrives
 
-When asked to implement a Jira story:
+**The pull request is the unit of work.** Its description carries the intent, the scope and what was deliberately left out; the commit messages carry the reasoning.
 
-1. Resolve the Jira key, for example `FOR-89`.
-2. Read `AGENTS.md`.
-3. Read all files under `specs/FOR-XXX/` for that story.
-4. Read referenced ADRs and global docs.
-5. Inspect the repository state before changing files.
-6. Create a branch (see Branches and pull requests below).
-7. Implement only the requested story.
-8. Run the checks from the Verification guidance section.
-9. Commit and open a PR.
-10. Stop after the PR unless explicitly asked to continue.
+Work up to PR #170 (2026-07-26) was tracked as Jira stories with `FOR-XXX` keys and spec folders under `specs/`. That stopped — keeping Jira in sync cost more than it returned. The 125 spec folders that exist are still worth reading for the areas they cover, because they explain decisions the code alone does not. But **new work gets no Jira key and no spec folder** unless you are asked for one.
 
-Not all work comes from a Jira story. Design changes, fixes and chores follow the same rules minus the spec reading.
+So: do not go looking for a Jira story behind a recent change. There isn't one, and its absence is not a gap. Do not scaffold `specs/FOR-XXX/` on your own initiative.
+
+The workflow, whether or not a story exists:
+
+1. Read `AGENTS.md`.
+2. If the request names a `FOR-XXX` key, read everything under `specs/FOR-XXX/`.
+3. Read the referenced ADRs and the global docs for the area you are touching.
+4. Inspect the repository state before changing files — including checking whether what you are about to build already exists.
+5. Create a branch (see Branches and pull requests below).
+6. Implement only what was asked.
+7. Run the checks from the Verification guidance section.
+8. Commit and open a PR that explains the reasoning.
+9. Stop after the PR unless explicitly asked to continue.
 
 ## Branches and pull requests
 
@@ -143,7 +146,7 @@ Never add `Co-Authored-By` or AI attribution trailers.
 ## Known limitations
 ```
 
-Add `## Lo que deliberadamente NO se mueve` when scope was deliberately limited — reviewers should not have to guess whether an omission was a decision or an oversight. Link the Jira issue when the work came from one. Include screenshots for UI changes.
+Add `## Lo que deliberadamente NO se mueve` when scope was deliberately limited — reviewers should not have to guess whether an omission was a decision or an oversight. Include screenshots for UI changes. Link a Jira issue only in the rare case the work came from one.
 
 Prefer squash merge. Keep `main` deployable. Do not merge failing CI unless the failure is unrelated and explicitly documented.
 
@@ -151,7 +154,7 @@ Keep PRs small and reviewable. When a change is unavoidably large, split it into
 
 ## Operating rules
 
-- Do not implement code unless the Jira story, spec or user request explicitly asks for implementation.
+- Do not implement code unless the request explicitly asks for implementation.
 - Keep changes small, reviewable and tied to one story.
 - Preserve hexagonal architecture boundaries.
 - Do not place business rules in controllers, UI components or persistence adapters.
