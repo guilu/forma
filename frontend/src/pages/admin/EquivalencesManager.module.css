@@ -51,7 +51,7 @@
   font-size: 0.75rem;
   padding: 0.125rem 0.5rem;
   border-radius: 999px;
-  background: var(--color-surface-muted, transparent);
+  background: var(--color-surface-muted);
   border: 1px solid var(--color-border);
   white-space: nowrap;
 }

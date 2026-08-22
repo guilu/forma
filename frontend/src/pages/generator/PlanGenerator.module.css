@@ -15,7 +15,7 @@
 }
 
 .back:hover {
-  color: var(--color-text-primary);
+  color: var(--color-text);
 }
 
 .header {
@@ -30,7 +30,7 @@
   margin: 0;
   font-size: var(--font-size-xl);
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--color-text);
 }
 
 .subtitle {
@@ -72,15 +72,15 @@
 }
 
 .dotNow {
-  border-color: var(--color-accent, #2563eb);
-  background: var(--color-accent, #2563eb);
-  color: #fff;
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
   font-weight: 600;
 }
 
 .dotDone {
-  border-color: var(--color-accent, #2563eb);
-  color: var(--color-accent-strong, #1d4ed8);
+  border-color: var(--color-accent);
+  color: var(--color-accent-strong);
 }
 
 .stepLabel {
@@ -105,7 +105,7 @@
   margin: 0;
   font-size: var(--font-size-lg);
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--color-text);
 }
 
 .stepLead {
@@ -124,7 +124,7 @@
   padding: 0 0 var(--space-2);
   font-size: var(--font-size-sm);
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--color-text);
 }
 
 .grid2,
@@ -164,8 +164,8 @@
 }
 
 .choiceOn {
-  border-color: var(--color-accent, #2563eb);
-  background: var(--color-accent-surface, rgba(37, 99, 235, 0.08));
+  border-color: var(--color-accent);
+  background: var(--color-accent-surface);
 }
 
 .choice:hover {
@@ -215,7 +215,7 @@
 
 .choiceInput:focus-visible + .choiceGlyph,
 .choiceInput:focus-visible ~ .choiceText {
-  outline: 2px solid var(--color-accent-strong, #1d4ed8);
+  outline: 2px solid var(--color-accent-strong);
   outline-offset: 2px;
 }
 
@@ -233,7 +233,7 @@
 
 .choiceTitle {
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--color-text);
 }
 
 .choiceDescription {
@@ -245,7 +245,7 @@
   position: absolute;
   top: var(--space-2);
   right: var(--space-2);
-  color: var(--color-accent-strong, #1d4ed8);
+  color: var(--color-accent-strong);
 }
 
 /* --- Candados --- */
@@ -258,7 +258,7 @@
   padding: var(--space-3);
   border: 1px dashed var(--color-border);
   border-radius: var(--radius-md);
-  background: var(--color-surface-muted, rgba(0, 0, 0, 0.03));
+  background: var(--color-surface-muted);
 }
 
 .lockedIcon {
@@ -299,7 +299,7 @@
   margin: 0;
   font-size: var(--font-size-sm);
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--color-text);
 }
 
 .asideEmpty {
@@ -318,7 +318,7 @@
   margin: 0;
   font-size: var(--font-size-xl);
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--color-text);
 }
 
 .asideBig span {
@@ -366,7 +366,7 @@
 .breakdownTotal dd {
   margin: 0;
   font-variant-numeric: tabular-nums;
-  color: var(--color-text-primary);
+  color: var(--color-text);
 }
 
 .breakdownTotal {
@@ -377,7 +377,7 @@
 .breakdownTotal dt,
 .breakdownTotal dd {
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--color-text);
 }
 
 /* --- Regalo, casillas y acciones --- */
@@ -388,7 +388,7 @@
   margin-bottom: var(--space-4);
   padding: var(--space-3);
   border-radius: var(--radius-md);
-  background: var(--color-accent-surface, rgba(37, 99, 235, 0.08));
+  background: var(--color-accent-surface);
 }
 
 .giftIcon {
@@ -400,7 +400,7 @@
   margin: 0 0 var(--space-2);
   font-size: var(--font-size-sm);
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--color-text);
 }
 
 .giftList {
@@ -454,8 +454,8 @@
   margin: 0 0 var(--space-3);
   padding: var(--space-3);
   border-radius: var(--radius-md);
-  background: var(--color-danger-surface, rgba(220, 38, 38, 0.1));
-  color: var(--color-danger, #dc2626);
+  background: var(--color-danger-surface);
+  color: var(--color-danger);
   font-size: var(--font-size-sm);
 }
 
@@ -476,14 +476,14 @@
 }
 
 .readyIcon {
-  color: var(--color-accent-strong, #1d4ed8);
+  color: var(--color-accent-strong);
 }
 
 .readyTitle {
   margin: 0;
   font-size: var(--font-size-xl);
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--color-text);
 }
 
 .readyLead {
@@ -503,7 +503,7 @@
   margin: 0 0 var(--space-2);
   font-size: var(--font-size-sm);
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--color-text);
 }
 
 .readyList {
