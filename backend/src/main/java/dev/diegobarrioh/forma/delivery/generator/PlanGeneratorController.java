@@ -1,5 +1,7 @@
 package dev.diegobarrioh.forma.delivery.generator;
 
+import dev.diegobarrioh.forma.application.PlanDraft;
+import dev.diegobarrioh.forma.application.PlanLeadService;
 import dev.diegobarrioh.forma.delivery.ApiPaths;
 import dev.diegobarrioh.forma.domain.EnergyRequirement;
 import dev.diegobarrioh.forma.domain.PlanObjective;
@@ -15,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>UNAUTHENTICATED, and the only part of the API that is besides logging in. Somebody who has
  * never heard of FORMA answers four screens and gets a plan; asking them to register first would
  * make the funnel pointless. Everything here is therefore rate-limited by nothing yet — see the
- * note on {@link #generate}.
+ * note on {@link #generate}, which since V61 also WRITES.
  *
  * <p>{@code /energy-requirement} exists so the funnel can show its arithmetic without owning it.
  * The frontend says of itself that it "owns no nutrition rules and never recomputes macros", and
@@ -26,6 +28,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping(ApiPaths.V1 + "/public/plan-generator")
 public class PlanGeneratorController {
+
+  private final PlanLeadService leads;
+
+  public PlanGeneratorController(PlanLeadService leads) {
+    this.leads = leads;
+  }
 
   /**
    * The daily requirement, worked out.
@@ -51,30 +59,40 @@ public class PlanGeneratorController {
   }
 
   /**
-   * Accepts a finished funnel.
+   * Accepts a finished funnel and keeps it.
    *
-   * <p><b>NOTHING IS GENERATED AND NOTHING IS STORED YET.</b> This endpoint exists so the four
-   * screens can be built and used end to end while the three pieces behind it do not exist: the
-   * plan generator, the PDF, and sending mail. It validates what it is given and says yes.
+   * <p>V61 ended the part of this that was indefensible. Until then the endpoint validated what it
+   * was given and said yes, which meant the funnel DROPPED EVERY LEAD: somebody answered four
+   * screens, gave their email, saw a success page, and no trace of them survived the request.
    *
-   * <p>Which means the funnel currently DROPS EVERY LEAD. Somebody fills in four screens, gives
-   * their email and gets a success page, and no trace of them survives the request. That is
-   * acceptable while this is being built and is not acceptable the day it is put in front of
-   * anybody — it is the first thing to fix, ahead of the plan itself.
+   * <p><b>Still not generated, still not sent.</b> The plan, the PDF and the mail do not exist yet,
+   * and {@link dev.diegobarrioh.forma.application.PlanLead} is what makes building them later
+   * possible for the people who asked first. The success screen must not promise a delivery until
+   * they do.
    *
-   * <p>Nor is there any rate limiting. An unauthenticated endpoint that will eventually create
-   * accounts and send mail is a spam vector, and the protection has to exist before the mail does.
+   * <p>Nor is there any rate limiting. An unauthenticated endpoint that now WRITES a row is a
+   * better spam target than one that wrote nothing, and the protection has to exist before the mail
+   * does — it is the next thing here.
    */
   @PostMapping
   public PlanDraftAccepted generate(@Valid @RequestBody PlanDraftRequest request) {
     EnergyRequirement requirement =
-        EnergyRequirement.of(
-            request.sex(),
-            request.ageYears(),
-            request.weightKg(),
-            request.heightCm(),
-            request.activityLevel(),
-            request.objective());
+        leads.record(
+            new PlanDraft(
+                request.fullName(),
+                request.email(),
+                request.country(),
+                request.heardAboutUs(),
+                request.sex(),
+                request.ageYears(),
+                request.weightKg(),
+                request.heightCm(),
+                request.activityLevel(),
+                request.objective(),
+                request.daysPerWeek(),
+                request.mealsPerDay(),
+                request.eatingStyle(),
+                request.wantsMarketing()));
     return new PlanDraftAccepted(request.email(), requirement.planKcal(), request.mealsPerDay());
   }
 }
