@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card } from '../../components/Card';
 import {
@@ -46,6 +46,29 @@ export function PlanGeneratorPage() {
     (change: Partial<FunnelState>) => setState((current) => ({ ...current, ...change })),
     [],
   );
+
+  /*
+   * Al cambiar de paso, el foco se va al paso nuevo.
+   *
+   * <p>Sin esto, pulsar «Siguiente» deja el foco donde estaba: React reutiliza el
+   * nodo del botón, así que el foco se queda en un «Siguiente» que ahora pertenece a
+   * otra pregunta, y quien navega con lector de pantalla no oye que la pantalla haya
+   * cambiado. Mover el foco lo anuncia y, de paso, sube la vista — que en un móvil
+   * hace falta, porque los pasos son más altos que la pantalla y el siguiente
+   * empezaba a media página.
+   *
+   * <p>En el primer render no: entrar en una página y que te robe el foco es peor
+   * que no anunciar nada.
+   */
+  const stepRef = useRef<HTMLDivElement>(null);
+  const entered = useRef(false);
+  useEffect(() => {
+    if (!entered.current) {
+      entered.current = true;
+      return;
+    }
+    stepRef.current?.focus();
+  }, [step]);
 
   // El servidor recalcula cuando cambia algo que entra en la fórmula. Con retardo: son teclas, no
   // decisiones, y una petición por pulsación sería ruido.
@@ -138,11 +161,14 @@ export function PlanGeneratorPage() {
         ← Volver al inicio
       </Link>
 
+      {/*
+       * El subtítulo («Crea tu plan personalizado en 4 pasos. Gratis.») se fue con
+       * FOR-190: la barra de progreso ya dice cuántos pasos hay y por cuál vas, y
+       * decirlo además en prosa era la misma frase dos veces. El h1 se queda — la
+       * página necesita un encabezado, y el de cada paso es una pregunta, no un título.
+       */}
       <header className={styles.header}>
-        <div>
-          <h1 className={styles.title}>Generador de plan nutricional</h1>
-          <p className={styles.subtitle}>Crea tu plan personalizado en 4 pasos. Gratis.</p>
-        </div>
+        <h1 className={styles.title}>Generador de plan nutricional</h1>
         <Stepper current={step} />
       </header>
 
@@ -153,36 +179,38 @@ export function PlanGeneratorPage() {
           </p>
         )}
 
-        {step === 0 && (
-          <StepPatient state={state} energy={energy} onChange={patch} onNext={() => setStep(1)} />
-        )}
-        {step === 1 && (
-          <StepClinical
-            state={state}
-            energy={energy}
-            onChange={patch}
-            onBack={() => setStep(0)}
-            onNext={() => setStep(2)}
-          />
-        )}
-        {step === 2 && (
-          <StepPreferences
-            state={state}
-            onChange={patch}
-            onBack={() => setStep(1)}
-            onNext={() => setStep(3)}
-          />
-        )}
-        {step === 3 && (
-          <StepContact
-            state={state}
-            energy={energy}
-            pending={pending}
-            onChange={patch}
-            onBack={() => setStep(2)}
-            onSubmit={submit}
-          />
-        )}
+        <div ref={stepRef} tabIndex={-1} className={styles.stepFocus}>
+          {step === 0 && (
+            <StepPatient state={state} energy={energy} onChange={patch} onNext={() => setStep(1)} />
+          )}
+          {step === 1 && (
+            <StepClinical
+              state={state}
+              energy={energy}
+              onChange={patch}
+              onBack={() => setStep(0)}
+              onNext={() => setStep(2)}
+            />
+          )}
+          {step === 2 && (
+            <StepPreferences
+              state={state}
+              onChange={patch}
+              onBack={() => setStep(1)}
+              onNext={() => setStep(3)}
+            />
+          )}
+          {step === 3 && (
+            <StepContact
+              state={state}
+              energy={energy}
+              pending={pending}
+              onChange={patch}
+              onBack={() => setStep(2)}
+              onSubmit={submit}
+            />
+          )}
+        </div>
       </Card>
 
       <p className={styles.disclaimer}>

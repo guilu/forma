@@ -44,10 +44,31 @@ export type IconName =
   | 'arrowRight'
   | 'share'
   | 'globe'
-  | 'logout';
+  | 'logout'
+  | 'male'
+  | 'female'
+  | 'trendDown'
+  | 'balance'
+  | 'leaf';
 
 const PATHS: Record<IconName, string> = {
   dashboard: 'M3 3h7v7H3zM14 3h7v4h-7zM14 10h7v11h-7zM3 13h7v8H3z',
+  /*
+   * Mars and Venus, for the sex question in the public plan generator (FOR-190).
+   * The funnel used the 🧔/👩 emoji, which is the one place in the app that did
+   * — everything else draws from this set — and an emoji cannot take
+   * `currentColor`, so a selected card could not tint its own glyph.
+   */
+  male: 'M10 19a5 5 0 1 0 0-10 5 5 0 0 0 0 10M13.6 10.4L20 4M15 4h5v5',
+  female: 'M12 3a5 5 0 1 0 0 10 5 5 0 0 0 0-10M12 13v8M9 18h6',
+  /* The mirror of `progress` (a rising line): a falling one, for a weight-loss
+     objective. Same axes, so the pair reads as one family. */
+  trendDown: 'M4 20V4M4 20h16M8 8l4 5 3-3 5 7',
+  /* Arrows both ways off one axis — "hold where you are", for a maintenance
+     objective. Not a literal scale: at 24px a scale's pans turn to mush. */
+  balance: 'M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4',
+  /* An olive leaf, for the Mediterranean eating style (the funnel had 🫒). */
+  leaf: 'M4 20c0-8 6-14 16-16 0 10-6 16-16 16zM4 20c4-6 8-8 12-9',
   measurements: 'M3 12h4l3 7 4-14 3 7h4',
   training: 'M6 6v12M18 6v12M4 9h2v6H4zM18 9h2v6h-2zM6 12h12',
   nutrition: 'M12 3c4 0 6 3 6 7a6 6 0 0 1-12 0c0-4 2-7 6-7zM12 3v6',
