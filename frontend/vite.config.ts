@@ -17,6 +17,27 @@ export default defineConfig({
    * `npm run dev` keeps proxying to a real backend, and a build never sees it.
    */
   plugins: [react(), ...(process.env.FIXTURES === '1' ? [devApiFixtures()] : [])],
+  build: {
+    /*
+     * Never inline the anatomy muscle masks.
+     *
+     * `MuscleSilhouette` reaches its pack with an eager `import.meta.glob`, so
+     * whichever chunk imports the component carries a reference to all 42 mask
+     * files. Each one is a couple of kB — comfortably under the default 4 kB
+     * inline threshold — so Vite turned every one of them into a data URI baked
+     * into that chunk. Harmless while the component only ran on a lazily loaded
+     * training route; not harmless once the public landing put the overlay in
+     * its hero, where it added ~63 kB (~16 kB gzipped) to the entry chunk that
+     * blocks first paint.
+     *
+     * Emitted as files instead, the chunk carries 42 short URLs and the browser
+     * fetches only the handful of masks a given view actually draws. Returning
+     * `undefined` for everything else keeps Vite's default behaviour, so this is
+     * a rule about one directory rather than a change of policy.
+     */
+    assetsInlineLimit: (filePath: string) =>
+      /\/assets\/anatomy\/.+\.svg$/.test(filePath) ? false : undefined,
+  },
   server: {
     port: 5173,
     // The app calls relative `/api/...` (same-origin). In dev, proxy those to the
