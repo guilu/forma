@@ -97,7 +97,7 @@
 
 .tagOption:has(input:checked) {
   border-color: var(--color-accent);
-  background: var(--color-accent-soft, transparent);
+  background: var(--color-accent-surface);
 }
 
 .tagOption:has(input:focus-visible) {
