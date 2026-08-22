@@ -59,9 +59,29 @@ const FEATURES: readonly Feature[] = [
   },
 ];
 
+/*
+ * Only claim integrations that exist. FORMA imports body measurements from
+ * Withings and from nowhere else: `IntegrationService` registers one
+ * `ProviderMeasuresGateway` per provider and Withings is the only provider that
+ * has one — Google Fit and Apple Health are listed as providers with no gateway
+ * behind them, and Garmin appears nowhere in the codebase at all.
+ *
+ * This block used to promise "datos en tiempo real de tus wearables favoritos
+ * (Apple Watch, Garmin, Withings)" and "Sincronización nativa con Withings &
+ * HealthKit". Three of those four are integrations FORMA does not have, and the
+ * sync that does exist is a button someone presses, not a live feed. A landing
+ * page is where a visitor decides whether to trust the product; promising an
+ * import that never arrives is the fastest way to spend that trust.
+ *
+ * <p>The same rule removed two more claims from this section: a "98% Precisión"
+ * badge over the phone mockup, which no measurement in this repository backs —
+ * a concrete number reads as data, not as enthusiasm — and "Algoritmo de
+ * recuperación propietario", which oversells the two rule-based recommendation
+ * services that actually run (`TrainingAdherenceRecommendationService`,
+ * `PaceDegradationRecommendationService`).
+ */
 const SYNC_CAPABILITIES = [
-  'Sincronización nativa con Withings & HealthKit',
-  'Algoritmo de recuperación propietario',
+  'Sincronización con Withings',
   'Actualizaciones de peso y grasa semanales',
 ] as const;
 
@@ -157,23 +177,14 @@ export function LandingPage() {
         </section>
 
         <section id="producto" className={styles.product} aria-labelledby="product-title">
-          <div className={styles.productVisual}>
-            <div className={styles.productFrame}>
-              <img
-                className={styles.productImage}
-                src="/landing/app-preview.jpg"
-                alt="La aplicación FORMA en un móvil, mostrando frecuencia cardiaca, objetivos de calorías y el resumen semanal."
-              />
-            </div>
-            <div className={styles.productBadge}>
-              <span className={styles.productBadgeIcon} aria-hidden="true">
-                <Icon name="activity" />
-              </span>
-              <div>
-                <p className={styles.productBadgeLabel}>Bio-Sincronización</p>
-                <p className={styles.productBadgeValue}>98% Precisión</p>
-              </div>
-            </div>
+          {/* The frame is the grid column itself: the wrapper that used to hold it
+              existed only to anchor the removed "98% Precisión" badge. */}
+          <div className={styles.productFrame}>
+            <img
+              className={styles.productImage}
+              src="/landing/app-preview.jpg"
+              alt="La aplicación FORMA en un móvil, mostrando frecuencia cardiaca, objetivos de calorías y el resumen semanal."
+            />
           </div>
           <div className={styles.productCopy}>
             <h2 id="product-title" className={styles.displayTitle}>
@@ -182,9 +193,9 @@ export function LandingPage() {
               <span className={styles.accentText}>Escúchalo.</span>
             </h2>
             <p className={styles.sectionLead}>
-              Integramos datos en tiempo real de tus wearables favoritos (Apple Watch, Garmin,
-              Withings) para ajustar tu carga de entrenamiento cada mañana. No más
-              sobre-entrenamiento. Solo resultados.
+              Conecta tu cuenta de Withings y tus medidas entran solas: peso, grasa, músculo y agua,
+              sin apuntar un número a mano. Con esos datos la aplicación ajusta tu carga de
+              entrenamiento en lugar de adivinarla.
             </p>
             <ul className={styles.capabilityList}>
               {SYNC_CAPABILITIES.map((capability) => (
