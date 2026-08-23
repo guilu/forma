@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { Button } from '../../components/Button';
 import { TextField } from '../../components/FormField';
 import { Icon } from '../../components/Icon';
@@ -164,8 +165,14 @@ export function StepContact({
           onChange={(event) => onChange({ acceptsPrivacyPolicy: event.target.checked })}
         />
         <span>
-          He leído y acepto el <a href="/privacidad">aviso de privacidad</a>. Solo para generarte el
-          plan y enviártelo.
+          {/*
+            `Link` y no `<a href>`: hasta V61 esto apuntaba a una ruta que NO EXISTÍA, así que la
+            casilla obligaba a aceptar un documento que devolvía un 404 — un consentimiento sobre
+            un texto ilegible no es un consentimiento. Con el router, además, leerlo no recarga la
+            página y no se pierde el embudo a medias.
+          */}
+          He leído y acepto el <Link to="/privacidad">aviso de privacidad</Link>. Solo para
+          generarte el plan y enviártelo.
         </span>
       </label>
 
