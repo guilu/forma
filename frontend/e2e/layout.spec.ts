@@ -800,6 +800,58 @@ test.describe('landing hero CTA', () => {
   });
 
   /**
+   * El margen entre la etiqueta y su caja, medido.
+   *
+   * <p>La prueba de arriba solo se entera de que algo va mal cuando la etiqueta YA ha partido en
+   * dos líneas, y eso depende de la plataforma: `Crear mi plan gratis` medía 205,69px dentro de una
+   * caja de 206px —0,31px de margen— así que entraba en macOS y no en el runner de Linux. El
+   * síntoma aparecía solo en CI y parecía cosa de CI; el defecto era un diseño apoyado en el borde.
+   *
+   * <p>Esto mide lo que aquello no podía ver: cuánto sitio sobra. Falla mientras aún se puede
+   * arreglar, en vez de cuando una plataforma cualquiera decide redondear al alza.
+   *
+   * <p>El 8% es el umbral: las diferencias de métricas entre plataformas para una misma fuente
+   * están muy por debajo, y un margen menor significa que la próxima palabra que alguien añada a la
+   * etiqueta —o el próximo ajuste de tamaño— la parte en dos.
+   */
+  test('deja margen suficiente entre la etiqueta y su caja', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    await page.evaluate(() => document.fonts.ready);
+
+    const actions = [
+      page.getByRole('link', { name: 'Crear mi plan gratis' }).first(),
+      page.getByRole('link', { name: 'Ver cómo funciona' }),
+    ];
+
+    for (const cta of actions) {
+      const room = await cta.evaluate((link) => {
+        const style = getComputedStyle(link);
+        // El ancho natural de la etiqueta en una línea, medido en un clon sin restricciones: el
+        // elemento real ya está limitado por su caja, así que preguntarle a él no dice nada.
+        const probe = document.createElement('span');
+        probe.textContent = link.textContent?.trim() ?? '';
+        probe.style.cssText = `position:absolute;white-space:nowrap;visibility:hidden;font:${style.font};letter-spacing:${style.letterSpacing}`;
+        document.body.appendChild(probe);
+        const textWidth = probe.getBoundingClientRect().width;
+        probe.remove();
+
+        const content =
+          link.clientWidth -
+          parseFloat(style.paddingLeft) -
+          parseFloat(style.paddingRight);
+        return { label: probe.textContent, textWidth, content };
+      });
+
+      const slack = (room.content - room.textWidth) / room.content;
+      expect(
+        slack,
+        `"${room.label}" ocupa ${room.textWidth.toFixed(1)}px de los ${room.content.toFixed(1)}px de su caja: ${(slack * 100).toFixed(1)}% de margen. Por debajo del 8% parte en dos líneas en cuanto cambia la plataforma.`,
+      ).toBeGreaterThanOrEqual(0.08);
+    }
+  });
+
+  /**
    * The headline is the longest unbreakable run of text on the page —
    * "entrenamiento" is thirteen characters of Montserrat 900 — and `.page`
    * clips horizontal overflow, so a headline sized past the viewport does not
