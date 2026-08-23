@@ -272,7 +272,22 @@
  */
 .heroActions .ctaPrimary.ctaPrimary,
 .heroActions .ctaSecondary {
-  width: min(100%, 15rem);
+  /*
+   * 16.5rem y no 15rem, y el motivo merece quedar escrito.
+   *
+   * Con 15rem la caja daba 240px, menos 32px de padding = 206px de contenido, y
+   * «Crear mi plan gratis» en Montserrat 700 a 20px mide 205,69px. Es decir:
+   * 0,31px de margen. Menos de un tercio de píxel. En macOS entraba y en el
+   * runner de Linux no, porque cualquier diferencia de rasterizado entre
+   * plataformas es mayor que eso — y la etiqueta caía a dos líneas.
+   *
+   * No era un problema de fuentes sin cargar (Montserrat carga en los dos
+   * sitios): era un diseño apoyado justo en el borde. 16.5rem deja 232px de
+   * contenido, ~26px de margen (12%), que ya absorbe cualquier diferencia de
+   * métricas. Sigue en el 70% del ancho del móvil, así que el hueco lateral que
+   * hace que se lea como botón y no como campo de formulario no se pierde.
+   */
+  width: min(100%, 16.5rem);
   /* The cap sizes the box now, so the wide inline padding of the row layout
      would only eat into the label and wrap it onto a second line. */
   padding-inline: var(--space-4);
