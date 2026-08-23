@@ -1,10 +1,31 @@
+/*
+ * El embudo público del generador de plan (FOR-190).
+ *
+ * Antes: cada paso era una rejilla `4.6fr / 1fr` con un panel lateral que repetía
+ * en prosa lo que el formulario ya decía, y en el móvil ese panel caía debajo,
+ * o sea que el ancho pequeño ya había decidido que era prescindible. Ahora hay
+ * UNA columna a cualquier ancho, y el trabajo del panel lo hace una cifra grande
+ * en la cabecera de cada paso.
+ *
+ * Convención, como en `LandingPage.module.css`: mobile-first — lo de varias
+ * columnas vive en el bloque de breakpoints al final del fichero. Los grupos de
+ * hermanos son flex/grid con `gap`, nunca márgenes entre elementos.
+ *
+ * Todo color, radio, espacio y tamaño sale de un token (`styles/theme.css`).
+ * Este fichero fue el peor consumidor de tokens fantasma del repo — pedía
+ * `--color-text-primary`, `--color-accent-surface`, `--color-surface-muted` y
+ * `--color-danger-surface`, ninguno declarado, y pintaba los azules de sus
+ * fallbacks dentro de un producto verde. Al arreglarlo (FOR-190) se quedó sin
+ * un solo literal de color.
+ */
+
 .wrapper {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  max-width: 1280px;
+  max-width: 46rem;
   margin: 0 auto;
-  padding: var(--space-6) var(--space-4);
+  padding: var(--space-5) var(--space-container-mobile) var(--space-8);
 }
 
 .back {
@@ -15,183 +36,328 @@
 }
 
 .back:hover {
-  color: var(--color-text-primary);
+  color: var(--color-text);
 }
 
 .header {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-5);
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: var(--space-3);
 }
 
 .title {
   margin: 0;
-  font-size: var(--font-size-xl);
-  font-weight: 600;
-  color: var(--color-text-primary);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-headline-md);
+  line-height: var(--line-height-headline-md);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--color-text);
 }
 
-.subtitle {
-  margin: var(--space-1) 0 0;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-}
+/* --- Progreso ------------------------------------------------------------- */
 
-/* --- Progreso --- */
-
-.stepper {
+.progress {
   display: flex;
-  align-items: flex-start;
-  gap: var(--space-4);
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.progressLabel {
+  margin: 0;
+  font-size: var(--font-size-label-sm);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.progressTrack {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
+.segment,
+.segmentOn {
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: var(--color-border);
+}
+
+.segmentOn {
+  background-image: var(--gradient-accent);
+}
+
+/* --- Un paso -------------------------------------------------------------- */
+
 .step {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: var(--space-1);
-}
-
-.dot,
-.dotNow,
-.dotDone {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 50%;
-  border: 1px solid var(--color-border);
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-}
-
-.dotNow {
-  border-color: var(--color-accent, #2563eb);
-  background: var(--color-accent, #2563eb);
-  color: #fff;
-  font-weight: 600;
-}
-
-.dotDone {
-  border-color: var(--color-accent, #2563eb);
-  color: var(--color-accent-strong, #1d4ed8);
-}
-
-.stepLabel {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-secondary);
-  white-space: nowrap;
-}
-
-/* --- Estructura de un paso --- */
-
-/*
- * El panel lateral es un acompañante, no un protagonista: con 1,6fr se comía
- * el ancho que necesitan las cinco tarjetas de actividad para caber en una fila.
- */
-.step2col {
-  display: grid;
-  grid-template-columns: minmax(0, 4.6fr) minmax(0, 1fr);
-  gap: var(--space-5);
+  gap: var(--space-4);
 }
 
 .stepTitle {
   margin: 0;
-  font-size: var(--font-size-lg);
-  font-weight: 600;
-  color: var(--color-text-primary);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-xl);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: var(--color-text);
+  text-wrap: balance;
 }
 
-.stepLead {
-  margin: var(--space-1) 0 var(--space-4);
-  font-size: var(--font-size-sm);
+/* --- La cifra viva -------------------------------------------------------- */
+
+.headline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 28%, transparent);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-accent-surface);
+}
+
+.headlineMain {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.headlineEyebrow {
+  margin: 0;
+  font-size: var(--font-size-label-sm);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-tertiary);
+}
+
+.headlineValue {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0;
+  min-height: 2.5rem;
+}
+
+.headlineNumber {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-headline-lg);
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+
+.headlineUnit {
+  font-size: var(--font-size-label-md);
+  font-weight: 600;
   color: var(--color-text-secondary);
 }
 
+/* El hueco del número mientras no hay número: mismo sitio, sin salto de altura. */
+.headlinePending {
+  align-self: center;
+  font-size: var(--font-size-label-md);
+  color: var(--color-text-muted);
+}
+
+.headlineAside {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+  text-align: right;
+}
+
+.headlineTag {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-label-sm);
+  white-space: nowrap;
+  color: var(--color-text-muted);
+}
+
+.headlineFoot {
+  font-size: var(--font-size-label-sm);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--color-text-muted);
+}
+
+/*
+ * El ajuste por objetivo. Ámbar y no rojo para el déficit: un plan de pérdida de
+ * peso con -20 % no es un error ni un peligro, y `--color-danger` significa las
+ * dos cosas en el resto de la app.
+ */
+.deltaUp,
+.deltaDown,
+.deltaFlat {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-label-md);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.deltaUp {
+  color: var(--color-accent-strong);
+  background-color: var(--color-accent-surface);
+}
+
+.deltaDown {
+  color: var(--color-warning);
+  background-color: color-mix(in srgb, var(--color-warning) 14%, transparent);
+}
+
+.deltaFlat {
+  color: var(--color-text-muted);
+  background-color: var(--color-surface-muted);
+}
+
+/* --- Grupos de opciones --------------------------------------------------- */
+
 .group {
-  margin: 0 0 var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
   padding: 0;
   border: none;
 }
 
 .legend {
-  padding: 0 0 var(--space-2);
-  font-size: var(--font-size-sm);
+  padding: 0;
+  font-size: var(--font-size-label-sm);
   font-weight: 600;
-  color: var(--color-text-primary);
-}
-
-.grid2,
-.grid3,
-.grid4,
-.gridActivity {
-  display: grid;
-  gap: var(--space-3);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
 }
 
 .grid2 {
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
 }
 
-.grid3 {
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  margin-bottom: var(--space-4);
+/* Los campos de texto se apilan en el móvil: dos cajas de ~170 px con etiqueta
+   encima no son dos campos, son dos rendijas. Las tarjetas de `.grid2` sí caben
+   a dos columnas, porque su contenido puede partirse en varias líneas. */
+.fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
 }
 
-.grid4,
-.gridActivity {
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+/* La pastilla segmentada: el fondo es el carril y cada opción va dentro. */
+.segmented {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background-color: var(--color-surface-muted);
 }
 
-/* --- Tarjeta elegible --- */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* --- Una opción ----------------------------------------------------------- */
 
 .choice,
 .choiceOn {
   position: relative;
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-  padding: var(--space-3);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface);
+  color: var(--color-text-muted);
   cursor: pointer;
 }
 
 .choiceOn {
-  border-color: var(--color-accent, #2563eb);
-  background: var(--color-accent-surface, rgba(37, 99, 235, 0.08));
+  border-color: var(--color-accent);
+  background-color: var(--color-accent-surface);
+  color: var(--color-accent-strong);
 }
 
 .choice:hover {
-  border-color: var(--color-text-secondary);
+  border-color: var(--color-text-muted);
 }
 
-/*
- * Variante en columna: el icono encima del texto, todo centrado. La usa el sexo,
- * donde solo hay dos opciones y la tarjeta puede permitirse respirar.
- */
+.choiceRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  /* Objetivo táctil cómodo en móvil (ui-guidelines, prioridad móvil #2). */
+  min-height: 44px;
+  /* El hueco de la derecha es para `.choiceCheck`, que va en posición absoluta:
+     sin él, un título de dos líneas se mete debajo de la marca de elegido. */
+  padding: var(--space-3) var(--space-5) var(--space-3) var(--space-4);
+}
+
 .choiceStacked {
+  display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  min-height: 96px;
-  padding: var(--space-4);
+  min-height: 76px;
+  padding: var(--space-3);
   text-align: center;
 }
 
-.choiceStacked .choiceText {
+/*
+ * La pastilla: la opción de un segmentado o de una fila de chips. Conserva su
+ * caja, porque suelta —en `.chips`— es lo único que la hace parecer pulsable.
+ */
+.choiceCompact {
+  display: flex;
   align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-full);
+  text-align: center;
 }
 
-.choiceStacked .choiceGlyph {
-  font-size: 1.5rem;
+/*
+ * Dentro del carril de `.segmented` sí pierde la caja: una pastilla con borde
+ * dentro de otra con borde son dos cajas para una cosa, y el carril ya agrupa.
+ */
+.segmented .choiceCompact {
+  border-color: transparent;
+  background-color: transparent;
+}
+
+.segmented .choiceCompact:hover {
+  border-color: transparent;
+  color: var(--color-text);
+}
+
+/* La elegida de un segmentado usa el relleno plano del accent, igual que
+   `Button.accent` — así «elegido» se ve igual en toda la app. */
+.choiceOn.choiceCompact {
+  border-color: transparent;
+  background-color: var(--color-accent);
+  color: var(--color-accent-contrast);
 }
 
 .choice[data-disabled='true'],
@@ -213,14 +379,17 @@
   border: 0;
 }
 
-.choiceInput:focus-visible + .choiceGlyph,
-.choiceInput:focus-visible ~ .choiceText {
-  outline: 2px solid var(--color-accent-strong, #1d4ed8);
+.choiceInput:focus-visible ~ .choiceGlyph,
+.choiceInput:focus-visible ~ .choiceText,
+.choiceInput:focus-visible ~ .scaleBars,
+.choiceInput:focus-visible ~ .scaleLabel {
+  outline: 2px solid var(--color-accent-strong);
   outline-offset: 2px;
 }
 
 .choiceGlyph {
-  font-size: 1.25rem;
+  display: inline-flex;
+  flex-shrink: 0;
   line-height: 1;
 }
 
@@ -231,241 +400,483 @@
   min-width: 0;
 }
 
+.choiceStacked .choiceText {
+  align-items: center;
+}
+
 .choiceTitle {
+  font-size: var(--font-size-label-md);
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--color-text);
+}
+
+.choiceCompact .choiceTitle {
+  color: inherit;
 }
 
 .choiceDescription {
-  font-size: var(--font-size-label-md);
-  color: var(--color-text-secondary);
+  font-size: var(--font-size-label-sm);
+  color: var(--color-text-muted);
 }
 
 .choiceCheck {
   position: absolute;
   top: var(--space-2);
   right: var(--space-2);
-  color: var(--color-accent-strong, #1d4ed8);
+  color: var(--color-accent-strong);
 }
 
-/* --- Candados --- */
+/* --- Medidas: número editable + deslizador --------------------------------- */
 
-.locked {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-  margin-bottom: var(--space-3);
-  padding: var(--space-3);
-  border: 1px dashed var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-muted, rgba(0, 0, 0, 0.03));
-}
-
-.lockedIcon {
-  color: var(--color-text-secondary);
-}
-
-.lockedText {
+.metrics {
   display: flex;
   flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface);
+}
+
+.metric {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+}
+
+.metricLabel {
+  font-size: var(--font-size-label-md);
+  color: var(--color-text-muted);
+}
+
+.metricValue {
+  display: flex;
+  align-items: baseline;
   gap: var(--space-1);
+  justify-self: end;
+}
+
+/*
+ * El número grande ES el campo. Sin caja ni borde: la caja de un `input` al lado
+ * de una barra de rango son dos controles que se ven distintos para el mismo
+ * dato. Las flechitas del `number` se quitan porque ya hay una forma mejor de
+ * subir y bajar el valor, justo debajo.
+ */
+.metricInput {
+  width: 4.5ch;
+  padding: 0;
+  font-family: var(--font-heading);
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--color-text);
+  background: transparent;
+  border: none;
+}
+
+.metricInput::placeholder {
+  color: var(--color-text-muted);
+}
+
+.metricInput::-webkit-outer-spin-button,
+.metricInput::-webkit-inner-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+.metricInput[type='number'] {
+  appearance: textfield;
+}
+
+.metricInput:focus-visible {
+  outline: 2px solid var(--color-accent-strong);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.metricUnit {
+  font-size: var(--font-size-label-md);
+  color: var(--color-text-muted);
+}
+
+.metricSlider,
+.metricSliderEmpty {
+  grid-column: 1 / -1;
+  width: 100%;
+  height: 24px;
+  margin: 0;
+  padding: 0;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.metricSliderEmpty {
+  opacity: 0.45;
+}
+
+.metricSlider::-webkit-slider-runnable-track,
+.metricSliderEmpty::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-border);
+}
+
+.metricSlider::-moz-range-track,
+.metricSliderEmpty::-moz-range-track {
+  height: 4px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-border);
+}
+
+/* 24px de diámetro: es el objetivo táctil, no una decoración. */
+.metricSlider::-webkit-slider-thumb,
+.metricSliderEmpty::-webkit-slider-thumb {
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  margin-top: -10px;
+  border: 4px solid var(--color-surface);
+  border-radius: 50%;
+  background-color: var(--color-accent);
+}
+
+.metricSlider::-moz-range-thumb,
+.metricSliderEmpty::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 4px solid var(--color-surface);
+  border-radius: 50%;
+  background-color: var(--color-accent);
+}
+
+.metricSlider:focus-visible,
+.metricSliderEmpty:focus-visible {
+  outline: 2px solid var(--color-accent-strong);
+  outline-offset: 2px;
+  border-radius: var(--radius-full);
+}
+
+/* --- Escala de actividad --------------------------------------------------- */
+
+.scale {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.scaleStep,
+.scaleStepOn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 68px;
+  padding: var(--space-2) var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.scaleStepOn {
+  border-color: var(--color-accent);
+  background-color: var(--color-accent-surface);
+  color: var(--color-accent-strong);
+}
+
+.scaleStep:hover {
+  border-color: var(--color-text-muted);
+}
+
+.scaleBars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 16px;
+}
+
+.scaleBar,
+.scaleBarOn {
+  width: 4px;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-border);
+}
+
+.scaleBarOn {
+  background-color: currentColor;
+}
+
+.scaleLabel {
+  font-size: var(--font-size-label-sm);
+  font-weight: 600;
+  text-align: center;
+  color: inherit;
+}
+
+.scaleHint {
+  margin: 0;
+  font-size: var(--font-size-label-md);
+  color: var(--color-text-muted);
+}
+
+/* --- La semana y la forma del día ------------------------------------------ */
+
+.week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.weekDay,
+.weekDayOn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-label-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.weekDay {
+  opacity: 0.4;
+}
+
+.weekDayOn {
+  border-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
+  background-color: var(--color-accent-surface);
+  color: var(--color-accent-strong);
+}
+
+.dayShape {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface);
+  list-style: none;
+}
+
+.dayShapeSlot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1 1 0;
   min-width: 0;
 }
 
-.lockedTitle {
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: var(--color-text-secondary);
+.dayShapeBar {
+  width: 100%;
+  height: 28px;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  background-image: linear-gradient(
+    180deg,
+    var(--color-accent-ramp-to) 0%,
+    var(--color-accent-ramp-from) 100%
+  );
 }
 
-.lockedExamples {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-secondary);
+.dayShapeName {
+  /* Dos líneas reservadas siempre: «Media mañana» ocupa dos y las demás una, y
+     sin reserva su barra subía una línea y la fila perdía la base común. */
+  min-height: 2.5em;
+  font-size: var(--font-size-2xs);
+  line-height: 1.25;
+  text-align: center;
+  color: var(--color-text-muted);
 }
 
-/* --- Panel lateral --- */
+/* --- Candados -------------------------------------------------------------- */
 
-.aside {
+.lockedGroup {
   display: flex;
   flex-direction: column;
+  gap: var(--space-2);
+}
+
+/*
+ * Una fila, no una caja. Eran dos bloques punteados con título y ejemplos, y
+ * juntos ocupaban más que las opciones que sí se pueden elegir: un paso donde lo
+ * bloqueado pesa más que lo disponible se lee como un muro, no como un adelanto.
+ */
+.locked {
+  display: flex;
+  align-items: center;
   gap: var(--space-3);
-  padding: var(--space-4);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  align-self: start;
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface-muted);
 }
 
-.asideTitle {
-  margin: 0;
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: var(--color-text-primary);
+.lockedIcon {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--color-text-muted);
 }
 
-.asideEmpty {
-  margin: 0;
+.lockedText {
+  flex-grow: 1;
+  min-width: 0;
   font-size: var(--font-size-label-md);
-  color: var(--color-text-secondary);
+  color: var(--color-text-muted);
 }
 
-.asideNote {
-  margin: 0;
-  font-size: var(--font-size-xs);
-  color: var(--color-text-secondary);
+.lockedBadge {
+  flex-shrink: 0;
+  padding: 2px var(--space-2);
+  border: 1px solid color-mix(in srgb, var(--color-violet) 45%, transparent);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-2xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--color-violet-strong);
 }
 
-.asideBig {
-  margin: 0;
-  font-size: var(--font-size-xl);
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
+/* --- Resumen del paso 4 ---------------------------------------------------- */
 
-.asideBig span {
-  font-size: var(--font-size-sm);
-  font-weight: 400;
-  color: var(--color-text-secondary);
-}
-
-.asideList {
+.summary {
   display: flex;
   flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 28%, transparent);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-accent-surface);
+}
+
+.summaryHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.summaryChips {
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: var(--font-size-sm);
+}
+
+.summaryChips li {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background-color: var(--color-bg);
+  font-size: var(--font-size-label-sm);
   color: var(--color-text-secondary);
 }
 
-/* --- Desglose del cálculo --- */
-
-.breakdown {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  margin: 0;
-}
-
-.breakdownRow,
-.breakdownTotal {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin: 0;
-}
-
-.breakdownRow dt,
-.breakdownTotal dt {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-}
-
-.breakdownRow dd,
-.breakdownTotal dd {
-  margin: 0;
-  font-variant-numeric: tabular-nums;
-  color: var(--color-text-primary);
-}
-
-.breakdownTotal {
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--color-border);
-}
-
-.breakdownTotal dt,
-.breakdownTotal dd {
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-
-/* --- Regalo, casillas y acciones --- */
-
-.gift {
-  display: flex;
-  gap: var(--space-3);
-  margin-bottom: var(--space-4);
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--color-accent-surface, rgba(37, 99, 235, 0.08));
-}
-
-.giftIcon {
-  font-size: 1.5rem;
-  line-height: 1;
-}
-
-.giftTitle {
-  margin: 0 0 var(--space-2);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-
-.giftList {
+.summaryList {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: var(--space-1) var(--space-3);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2) var(--space-3);
   margin: 0;
-  padding-left: var(--space-4);
-  font-size: var(--font-size-sm);
+  padding-top: var(--space-4);
+  border-top: 1px solid color-mix(in srgb, var(--color-accent) 20%, transparent);
+  list-style: none;
+}
+
+.summaryList li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-label-md);
   color: var(--color-text-secondary);
 }
+
+.summaryList svg {
+  flex-shrink: 0;
+  color: var(--color-accent-strong);
+}
+
+/* --- Casillas y acciones ---------------------------------------------------- */
 
 .check {
   display: flex;
   align-items: flex-start;
-  gap: var(--space-2);
-  margin: var(--space-3) 0;
-  font-size: var(--font-size-sm);
+  gap: var(--space-3);
+  font-size: var(--font-size-label-md);
+  line-height: 1.4;
   color: var(--color-text-secondary);
+  cursor: pointer;
 }
 
-.checkNote {
-  display: block;
-  font-size: var(--font-size-xs);
-  color: var(--color-text-secondary);
+.check input {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--color-accent);
 }
 
 .actions,
 .actionsSplit {
   display: flex;
-  gap: var(--space-2);
-  margin-top: var(--space-4);
+  gap: var(--space-3);
+  margin-top: var(--space-2);
 }
 
 .actions {
-  justify-content: flex-end;
+  flex-direction: column;
 }
 
 .actionsSplit {
-  justify-content: space-between;
+  /* Apilados y a lo ancho en el móvil, con la acción principal arriba: en fila,
+     «Generar mi plan →» y «← Anterior» se reparten 353 px y los dos parten su
+     texto en dos líneas. */
+  flex-direction: column-reverse;
+}
+
+.actionsSplit > * {
+  width: 100%;
 }
 
 .sendNote {
-  margin: var(--space-2) 0 0;
-  text-align: right;
-  font-size: var(--font-size-xs);
-  color: var(--color-text-secondary);
+  margin: 0;
+  text-align: center;
+  font-size: var(--font-size-label-sm);
+  color: var(--color-text-muted);
 }
 
 .error {
   margin: 0 0 var(--space-3);
-  padding: var(--space-3);
+  padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-md);
-  background: var(--color-danger-surface, rgba(220, 38, 38, 0.1));
-  color: var(--color-danger, #dc2626);
-  font-size: var(--font-size-sm);
+  background-color: var(--color-danger-surface);
+  color: var(--color-danger);
+  font-size: var(--font-size-label-md);
 }
 
 .disclaimer {
   margin: 0;
-  font-size: var(--font-size-label-md);
-  color: var(--color-text-secondary);
+  text-align: center;
+  font-size: var(--font-size-label-sm);
+  color: var(--color-text-muted);
 }
 
-/* --- Pantalla final --- */
+/* --- Pantalla final --------------------------------------------------------- */
 
 .ready {
   display: flex;
@@ -476,14 +887,16 @@
 }
 
 .readyIcon {
-  color: var(--color-accent-strong, #1d4ed8);
+  color: var(--color-accent-strong);
 }
 
 .readyTitle {
   margin: 0;
+  font-family: var(--font-heading);
   font-size: var(--font-size-xl);
-  font-weight: 600;
-  color: var(--color-text-primary);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
 }
 
 .readyLead {
@@ -501,9 +914,11 @@
 
 .readyNextTitle {
   margin: 0 0 var(--space-2);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-label-sm);
   font-weight: 600;
-  color: var(--color-text-primary);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
 }
 
 .readyList {
@@ -512,7 +927,7 @@
   gap: var(--space-2);
   margin: 0;
   padding-left: var(--space-4);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-label-md);
   color: var(--color-text-secondary);
 }
 
@@ -525,16 +940,96 @@
   justify-content: center;
 }
 
-@media (max-width: 899px) {
-  .step2col {
-    grid-template-columns: 1fr;
+/* --- Anchos mayores ---------------------------------------------------------
+ *
+ * Lo único que cambia con el ancho es lo que de verdad no cabe en un móvil: los
+ * chips de origen en fila, la escala de actividad con sus cinco nombres y el par
+ * de botones. La columna sigue siendo una.
+ */
+
+@media (min-width: 40rem) {
+  .wrapper {
+    padding: var(--space-6) var(--space-container-desktop) var(--space-10);
   }
 
-  .stepper {
-    gap: var(--space-2);
+  .title {
+    font-size: var(--font-size-xl);
   }
 
-  .stepLabel {
-    display: none;
+  .stepTitle {
+    font-size: var(--font-size-headline-lg);
+    line-height: var(--line-height-headline-lg);
   }
+
+  .headlineNumber {
+    font-size: var(--font-size-display-xl);
+    letter-spacing: var(--letter-spacing-display-xl);
+  }
+
+  .actions {
+    flex-direction: row;
+    justify-content: flex-end;
+  }
+
+  .actionsSplit {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .actionsSplit > * {
+    width: auto;
+  }
+
+  .fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .summaryList {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/*
+ * Por debajo de esto, la escala de actividad no cabe con las etiquetas: cinco
+ * nombres en cinco columnas de ~62 px parten «Sedentario» por la mitad. Se
+ * quedan las barras, que son la escala, y el nombre del nivel elegido se sigue
+ * leyendo entero en `.scaleHint`, justo debajo. El `radio` conserva su etiqueta,
+ * así que quien navega con lector de pantalla no pierde nada.
+ */
+@media (max-width: 26rem) {
+  /*
+   * Una tarjeta por fila. A dos columnas quedan ~150 px por tarjeta, y de ahí
+   * hay que descontar icono, hueco y el sitio reservado a la marca de elegido:
+   * «Mediterránea» no tiene por dónde partirse y se salía de su caja. En una
+   * fila entera el icono va a la izquierda y el texto tiene el ancho del móvil.
+   */
+  .grid2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .scaleLabel {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
+  .scaleStep,
+  .scaleStepOn {
+    min-height: 52px;
+  }
+}
+
+/*
+ * El contenedor que recibe el foco al cambiar de paso (ver `PlanGeneratorPage`).
+ * Sin anillo propio: no es un control, y un recuadro alrededor de la pantalla
+ * entera al pulsar «Siguiente» se lee como un error, no como «estás aquí».
+ */
+.stepFocus:focus {
+  outline: none;
 }

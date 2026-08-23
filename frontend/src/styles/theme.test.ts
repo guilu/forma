@@ -330,6 +330,25 @@ describe('theme.css design tokens (FOR-163 reconciliation)', () => {
     });
 
     /*
+     * Ink ON the accent fill, the other direction. The funnel's stepper used to
+     * paint `background: var(--color-accent)` with a hardcoded `#fff` label —
+     * invisible (~1.61:1) once the accent resolved to the brand green instead of
+     * the blue it had been silently falling back to.
+     *
+     * FOR-190 replaced that stepper with a progress bar, so the accent fill now
+     * lives on the chosen option of a segmented selector. The rule is the one
+     * being guarded, not the class that happens to carry it: whatever sits on an
+     * accent fill takes `--color-accent-contrast` (~8.2:1), and no stylesheet in
+     * the funnel hardcodes a colour literal at all.
+     */
+    it('paints ink on an accent fill with the on-accent token, never a literal', () => {
+      expect(planGeneratorCss).toMatch(
+        /background-color:\s*var\(--color-accent\);\s*color:\s*var\(--color-accent-contrast\);/s,
+      );
+      expect(planGeneratorCss).not.toMatch(/:\s*#[0-9a-f]{3,8}\b/i);
+    });
+
+    /*
      * The muscle donut and its legend are one chart drawn twice — a
      * conic-gradient for the ring, a swatch per legend row — so the two palettes
      * have to stay the same list in the same order or the legend lies about
@@ -369,5 +388,63 @@ describe('theme.css design tokens (FOR-163 reconciliation)', () => {
       expect(themeInvariant.has('--radius-full')).toBe(true);
       expect(lightNames.has('--radius-full')).toBe(false);
     });
+  });
+});
+
+/*
+ * Regression guard for *undeclared* tokens, the failure mode FOR-163 already
+ * hit once with `--font-size-xs` (see the typography block above).
+ *
+ * `color: var(--color-text-primary)` with no fallback is invalid at computed-
+ * value time, so the declaration is dropped and the property silently falls
+ * back to its inherited value. With a fallback it is worse than silent: it
+ * renders the fallback, and every one of the fallbacks below was a *blue*
+ * left over from a pre-brand palette — `.dotNow` and `.choiceOn` in the plan
+ * generator were painting #2563eb inside a green product.
+ *
+ * Pinning three more hexes would not have caught either case, because neither
+ * token existed to be pinned. This asserts the relationship instead: every
+ * global-namespace token a stylesheet reaches for must actually be declared in
+ * `theme.css`.
+ */
+describe('no stylesheet reaches for a token theme.css does not declare', () => {
+  /* Prefixes owned by the token layer. Modules also declare their own local
+     custom properties (`--chart-height`, `--muscle-mask`, `--step-size`);
+     those are none of this test's business, and none of them use a prefix
+     below. A module that *does* declare one locally is honoured, so a
+     component may still shadow a global token on purpose. */
+  const GLOBAL_PREFIXES = [
+    '--color-',
+    '--space-',
+    '--radius-',
+    '--font-',
+    '--shadow-',
+    '--gradient-',
+    '--line-height-',
+  ];
+
+  const modules = import.meta.glob('../**/*.module.css', {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  }) as Record<string, string>;
+
+  const declared = new Set(tokenNames(themeCss));
+
+  it('finds the stylesheets to check', () => {
+    // Guards the glob itself: a pattern that matches nothing would make every
+    // assertion below pass for the wrong reason.
+    expect(Object.keys(modules).length).toBeGreaterThan(20);
+  });
+
+  it.each(Object.keys(modules).sort())('%s', (path) => {
+    const css = modules[path];
+    const localTokens = new Set(tokenNames(css));
+    const missing = [...css.matchAll(/var\((--[a-z0-9-]+)/gi)]
+      .map((match) => match[1])
+      .filter((name) => GLOBAL_PREFIXES.some((prefix) => name.startsWith(prefix)))
+      .filter((name) => !declared.has(name) && !localTokens.has(name));
+
+    expect([...new Set(missing)].sort()).toEqual([]);
   });
 });
