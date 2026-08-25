@@ -1,11 +1,15 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { TrendWidget } from './TrendWidget';
-import { listBodyMeasurements, type BodyMeasurement } from '../../api/bodyMeasurements';
+import type { BodyMeasurement } from '../../api/bodyMeasurements';
 
-vi.mock('../../api/bodyMeasurements', () => ({ listBodyMeasurements: vi.fn() }));
-
-const listMock = vi.mocked(listBodyMeasurements);
+/*
+ * Render puro: el widget ya no busca nada. El historial se lee una vez en
+ * `DashboardPage` y se reparte, así que aquí solo entra por props — ver
+ * `measurementsState.ts`.
+ */
+const conMediciones = (history: BodyMeasurement[]) =>
+  render(<TrendWidget state={{ status: 'ready', history }} />);
 
 /*
  * Dates are relative to the run, not pinned with fake timers. The widget windows
@@ -31,23 +35,15 @@ const base: BodyMeasurement = {
 };
 
 describe('TrendWidget', () => {
-  beforeEach(() => {
-    listMock.mockReset();
-  });
-
   it('shows honest copy when the window holds fewer than two measurements', async () => {
-    listMock.mockResolvedValue([base]);
-
-    render(<TrendWidget />);
+    conMediciones([base]);
 
     expect(await screen.findByText(/No hay mediciones en los últimos 30 días/)).toBeInTheDocument();
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
   });
 
   it('plots the trend line once there are at least two measurements', async () => {
-    listMock.mockResolvedValue([base, { ...base, measuredAt: daysAgo(3), weightKg: 74.1 }]);
-
-    render(<TrendWidget />);
+    conMediciones([base, { ...base, measuredAt: daysAgo(3), weightKg: 74.1 }]);
 
     expect(await screen.findByRole('img', { name: /Tendencia de peso/ })).toBeInTheDocument();
   });
@@ -59,9 +55,7 @@ describe('TrendWidget', () => {
    * one place the colour reaches the DOM as an inline value.
    */
   it('paints each series in its assigned token', async () => {
-    listMock.mockResolvedValue([base, { ...base, measuredAt: daysAgo(3), weightKg: 74.1 }]);
-
-    render(<TrendWidget />);
+    conMediciones([base, { ...base, measuredAt: daysAgo(3), weightKg: 74.1 }]);
 
     await screen.findByRole('img', { name: /Tendencia de peso/ });
     const colourFor = (label: string) => {
@@ -84,7 +78,7 @@ describe('TrendWidget', () => {
     const on = (days: number): BodyMeasurement => ({ ...base, measuredAt: daysAgo(days) });
 
     it('plots only the measurements inside it', async () => {
-      listMock.mockResolvedValue([
+      conMediciones([
         on(1),
         on(20),
         // Older than 30 days: outside the window the title promises.
@@ -92,15 +86,11 @@ describe('TrendWidget', () => {
         on(260),
       ]);
 
-      render(<TrendWidget />);
-
       expect(await screen.findByRole('img', { name: /2 mediciones/ })).toBeInTheDocument();
     });
 
     it('labels the axis with the window, not with the data', async () => {
-      listMock.mockResolvedValue([on(1), on(2)]);
-
-      render(<TrendWidget />);
+      conMediciones([on(1), on(2)]);
 
       // The window is fixed: 30 days back from today, to today — regardless of
       // where the first and last measurements happen to sit inside it.
@@ -109,9 +99,7 @@ describe('TrendWidget', () => {
     });
 
     it('says the window is empty when every measurement predates it', async () => {
-      listMock.mockResolvedValue([on(90), on(260)]);
-
-      render(<TrendWidget />);
+      conMediciones([on(90), on(260)]);
 
       // Loading and the empty window are both announced via role="status", so
       // wait for the terminal content rather than the first match.
@@ -125,9 +113,7 @@ describe('TrendWidget', () => {
   });
 
   it('shows an error state when the request fails', async () => {
-    listMock.mockRejectedValue(new Error('network'));
-
-    render(<TrendWidget />);
+    render(<TrendWidget state={{ status: 'error' }} />);
 
     expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo cargar tu tendencia');
   });

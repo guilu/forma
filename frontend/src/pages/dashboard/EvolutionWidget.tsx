@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Chip } from '../../components/Chip';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
 import { LineChart, type ChartPoint } from '../../components/LineChart';
 import { WidgetLoading } from '../../components/WidgetLoading';
-import { listBodyMeasurements, type BodyMeasurement } from '../../api/bodyMeasurements';
+import type { BodyMeasurement } from '../../api/bodyMeasurements';
+import type { MeasurementsState } from './measurementsState';
 import { narrowingRanges, pointsInRange, type RangeOption } from '../chartRanges';
 import { WidgetSection } from './WidgetSection';
 import styles from './EvolutionWidget.module.css';
@@ -54,32 +55,23 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 }
 
-export function EvolutionWidget() {
-  const [state, setState] = useState<State>({ status: 'loading' });
+export function EvolutionWidget({ measurements }: { readonly measurements: MeasurementsState }) {
+  /*
+   * El «vacío» se deriva aquí y no lo manda quien pide los datos: un historial de cero
+   * mediciones es una respuesta correcta del servidor, no un estado distinto de la carga.
+   * Los otros dos widgets que leen la misma lista no distinguen ese caso, así que meterlo en
+   * el tipo compartido les obligaría a tratar un estado que no significa nada para ellos.
+   */
+  const state: State =
+    measurements.status === 'ready' && measurements.history.length === 0
+      ? { status: 'empty' }
+      : measurements;
+
   const [metric, setMetric] = useState<MetricKey>('weight');
   // Keyed by option key, not index: the offered set changes with the data, and
   // the choice has to survive a metric switch (a different series can offer
   // different windows).
   const [rangeKey, setRangeKey] = useState('ALL');
-
-  useEffect(() => {
-    let active = true;
-    listBodyMeasurements()
-      .then((measurements) => {
-        if (!active) return;
-        setState(
-          measurements.length === 0
-            ? { status: 'empty' }
-            : { status: 'ready', history: measurements },
-        );
-      })
-      .catch(() => {
-        if (active) setState({ status: 'error' });
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const selector =
     state.status === 'ready' ? (

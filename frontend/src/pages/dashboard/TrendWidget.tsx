@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
 import { ErrorState } from '../../components/ErrorState';
 import { MultiLineChart, type Series } from '../../components/MultiLineChart';
 import { WidgetLoading } from '../../components/WidgetLoading';
-import { listBodyMeasurements, type BodyMeasurement } from '../../api/bodyMeasurements';
+import type { BodyMeasurement } from '../../api/bodyMeasurements';
+import type { MeasurementsState } from './measurementsState';
 import { WidgetSection } from './WidgetSection';
 import styles from './TrendWidget.module.css';
 
@@ -22,11 +22,11 @@ import styles from './TrendWidget.module.css';
  * the dates should say so even when the data starts partway through. With
  * nothing to plot inside the window it says that, instead of falling back to
  * older data the title does not cover (ADR-006 — no fabricated trend).
+ *
+ * <p>El histórico llega por props. Lo buscaba él mismo, y era la tercera petición idéntica
+ * de la misma carga — ver {@link MeasurementsState}.
  */
-type State =
-  | { readonly status: 'loading' }
-  | { readonly status: 'error' }
-  | { readonly status: 'ready'; readonly history: BodyMeasurement[] };
+type State = MeasurementsState;
 
 const WINDOW_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -45,23 +45,7 @@ function formatTimestamp(epochMs: number): string {
   return new Date(epochMs).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 }
 
-export function TrendWidget() {
-  const [state, setState] = useState<State>({ status: 'loading' });
-
-  useEffect(() => {
-    let active = true;
-    listBodyMeasurements()
-      .then((measurements) => {
-        if (active) setState({ status: 'ready', history: measurements });
-      })
-      .catch(() => {
-        if (active) setState({ status: 'error' });
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-
+export function TrendWidget({ state }: { readonly state: MeasurementsState }) {
   return (
     <WidgetSection id="trend-widget-title" title="Tendencia 30 días">
       {renderContent(state)}
