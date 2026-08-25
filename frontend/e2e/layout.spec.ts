@@ -6,10 +6,19 @@ import { expectGlassSurface, expectNoHorizontalOverflow, expectSinglePageScrolle
  * Layout checks (FOR-186) — see `playwright.config.ts` for why these exist
  * alongside the jsdom suite.
  *
- * <p>The widths are not round numbers for their own sake: 375 is the common
+ * <p>The widths are not round numbers for their own sake: 320 is the narrowest
+ * phone still in use and the floor everything has to survive, 375 is the common
  * phone, 574 is where a two-column dashboard grid was still rendering when it
  * should have collapsed, and 1280 is the sidebar layout.
  */
+/*
+ * The floor. It was untested until a chip row in `/app/measurements` was found
+ * pushing the page 31px past the viewport here — three tabs that fit at 375 and
+ * had nowhere to go at 320. Every width above this one passed, which is exactly
+ * why the floor needs its own row: the first width that breaks is the one
+ * nobody measures.
+ */
+const TINY = { width: 320, height: 720 };
 const PHONE = { width: 375, height: 720 };
 const NARROW = { width: 574, height: 720 };
 const TABLET = { width: 1180, height: 820 };
@@ -42,7 +51,7 @@ async function gotoApp(page: Page, path: string): Promise<void> {
   await page.waitForFunction(() => document.fonts.ready.then(() => true));
 }
 
-for (const viewport of [PHONE, NARROW, TABLET, DESKTOP]) {
+for (const viewport of [TINY, PHONE, NARROW, TABLET, DESKTOP]) {
   test.describe(`at ${viewport.width}px`, () => {
     test.use({ viewport });
 
