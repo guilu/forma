@@ -70,10 +70,19 @@ export function PlanGeneratorPage() {
     stepRef.current?.focus();
   }, [step]);
 
+  /*
+   * Si el servidor puede calcular ya, en un booleano.
+   *
+   * <p>Se saca del efecto a propósito. Dentro, la llamada era `canCalculate(state)`, y esa
+   * referencia al objeto entero obligaba a `react-hooks/exhaustive-deps` a pedir `state` en
+   * las dependencias — ver el efecto de abajo, que es donde eso hacía daño.
+   */
+  const canAsk = canCalculate(state);
+
   // El servidor recalcula cuando cambia algo que entra en la fórmula. Con retardo: son teclas, no
   // decisiones, y una petición por pulsación sería ruido.
   useEffect(() => {
-    if (!canCalculate(state)) {
+    if (!canAsk) {
       setEnergy(undefined);
       return;
     }
@@ -98,14 +107,29 @@ export function PlanGeneratorPage() {
       active = false;
       window.clearTimeout(timer);
     };
+    /*
+     * SIN `state`. Estaba aquí junto a los seis campos, y los anulaba a todos.
+     *
+     * <p>`patch` construye un objeto nuevo en cada cambio (`{ ...current, ...change }`), como
+     * debe ser, así que `state` es una referencia distinta CADA VEZ que se toca cualquier cosa
+     * del embudo. Los seis campos de arriba son cadenas y se comparan por valor; `state` se
+     * compara por identidad, y con que uno cambie el efecto se repite. El resultado era que
+     * escribir el nombre, teclear el correo, marcar una casilla o cambiar las comidas volvía a
+     * pedir el requerimiento CON LOS MISMOS SEIS DATOS de la vez anterior.
+     *
+     * <p>Estaba porque el efecto llamaba a `canCalculate(state)` y la regla del linter, que es
+     * conservadora a propósito, exige el objeto completo cuando se lo referencia. Con la
+     * comprobación fuera y reducida a un booleano, la regla queda satisfecha sin arrastrar la
+     * identidad del objeto.
+     */
   }, [
+    canAsk,
     state.sex,
     state.ageYears,
     state.weightKg,
     state.heightCm,
     state.activityLevel,
     state.objective,
-    state,
   ]);
 
   async function submit() {

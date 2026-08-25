@@ -204,6 +204,42 @@ describe('PlanGeneratorPage — el embudo público', () => {
   });
 
   /**
+   * Escribir en el paso 4 no vuelve a pedir el requerimiento.
+   *
+   * <p>Lo volvía a pedir. El efecto que lo calcula llevaba `state` en sus dependencias además
+   * de los seis campos que entran en la fórmula, y `patch` construye un objeto nuevo en cada
+   * cambio — así que la identidad de `state` cambiaba al teclear el nombre, al escribir el
+   * correo o al marcar una casilla, y el efecto se repetía con los mismos seis datos.
+   *
+   * <p>Se notaba poco porque la respuesta era la correcta y solo sobraban peticiones. Duele
+   * desde que el endpoint público vive detrás de un limitador que refila a una por segundo:
+   * escribir un correo puede gastar el cupo del cálculo que sí hace falta.
+   */
+  it('no vuelve a pedir el requerimiento al escribir los datos de contacto', async () => {
+    const user = renderFunnel();
+    await completeStepOne(user);
+    await user.click(screen.getByRole('radio', { name: /Mantenimiento/ }));
+    await user.click(screen.getByRole('button', { name: /Siguiente/ }));
+    await user.click(screen.getByRole('button', { name: /Siguiente/ }));
+
+    // Lo pedido hasta aquí es legítimo: cambiaron edad, peso, altura y objetivo.
+    await waitFor(() => expect(energyMock).toHaveBeenCalled());
+    const hastaAhora = energyMock.mock.calls.length;
+
+    await user.type(screen.getByLabelText('Nombre'), 'Diego');
+    await user.type(screen.getByLabelText('Email'), 'diego@ejemplo.com');
+    await user.click(screen.getByRole('checkbox', { name: /recetas y novedades/ }));
+
+    // El retardo del cálculo es de 300 ms; se espera de sobra antes de contar.
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    expect(
+      energyMock.mock.calls.length,
+      `peticiones antes: ${hastaAhora}, después: ${energyMock.mock.calls.length}`,
+    ).toBe(hastaAhora);
+  });
+
+  /**
    * Leer el aviso de privacidad no puede costar el embudo.
    *
    * <p>Costaba. Era un `Link` a `/privacidad`, y navegar desmontaba `PlanGeneratorPage` con
