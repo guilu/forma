@@ -9,8 +9,11 @@ import styles from './PlanGenerator.module.css';
  * <p>FOR-190 rehízo el embudo en UNA columna. Antes cada paso era una rejilla de
  * 4,6fr/1fr con un panel lateral, y ese panel era la mayor fuente de texto de la
  * pantalla: repetía en prosa lo que el formulario ya decía. Ahora el lateral no
- * existe y su trabajo lo hace {@link EnergyHeadline}, una sola cifra arriba que se
- * mueve con cada respuesta — el efecto de contestar se ve, en vez de leerse.
+ * existe y su trabajo lo hace {@link EnergyHeadline}, una sola cifra que se mueve con
+ * cada respuesta — el efecto de contestar se ve, en vez de leerse. Cada paso la coloca
+ * donde tiene sentido: en el 2 encabeza la pantalla porque el objetivo la cambia de
+ * inmediato; en el 1 cierra el paso, porque hasta que no están las cuatro respuestas
+ * no hay número que enseñar.
  */
 export const STEPS = [
   { key: 'paciente', label: 'Tus datos' },
@@ -54,6 +57,19 @@ export function Stepper({ current }: { readonly current: number }) {
  * <p>`aria-live="polite"` porque el número cambia sin que nadie pulse nada: se
  * recalcula al soltar un deslizador o al elegir un objetivo, y sin anunciarlo el
  * único efecto visible de contestar se lo pierde quien no ve la pantalla.
+ *
+ * <p><b>El rótulo fuera, la cifra y el costado juntos.</b> Antes los tres iban en una
+ * sola fila flexible y el rótulo era el que no cabía: «REQUERIMIENTO DEL PLAN» en
+ * versalitas mide 202 px de los 253 útiles de un móvil, así que competía por el ancho
+ * con la cifra y no dejaba sitio al costado por ninguna de las dos vías — envolviendo,
+ * el costado entero caía a una fila propia; sin envolver, la cifra no tiene por dónde
+ * partirse y se desbordaba hasta pintarse DEBAJO de la pastilla.
+ *
+ * <p>En su propia fila el rótulo tiene el ancho entero y deja de estorbar. Lo que
+ * queda —cifra y costado— se reparte la fila de abajo y se apila SOLO si de verdad no
+ * cabe: es `flex-wrap`, no un punto de corte. El ancho que hace falta depende de lo
+ * larga que sea la cifra y de lo que ponga la pastilla, así que un umbral en píxeles
+ * sería una respuesta fija a una pregunta que cambia con el contenido.
  */
 export function EnergyHeadline({
   eyebrow,
@@ -72,8 +88,8 @@ export function EnergyHeadline({
 }) {
   return (
     <div className={styles.headline}>
-      <div className={styles.headlineMain}>
-        <p className={styles.headlineEyebrow}>{eyebrow}</p>
+      <p className={styles.headlineEyebrow}>{eyebrow}</p>
+      <div className={styles.headlineRow}>
         <p className={styles.headlineValue} aria-live="polite">
           {value === undefined ? (
             <span className={styles.headlinePending}>{pending}</span>
@@ -84,8 +100,8 @@ export function EnergyHeadline({
             </>
           )}
         </p>
+        {aside && <div className={styles.headlineAside}>{aside}</div>}
       </div>
-      {aside && <div className={styles.headlineAside}>{aside}</div>}
     </div>
   );
 }
