@@ -992,6 +992,30 @@
   width: 100%;
 }
 
+/*
+ * Los botones del embudo, en pastilla.
+ *
+ * <p>`Button` es del sistema y redondea a `--radius-md`, que es lo correcto en el resto de
+ * la aplicación. Aquí no: el embudo está hecho de pastillas —los segmentados, las opciones
+ * de actividad, los chips del resumen, la etiqueta de la fórmula, el disco del visto— y con
+ * 8 px los botones eran la única esquina cuadrada de la pantalla. La consistencia que manda
+ * es la de lo que se ve junto.
+ *
+ * <p>Acotado a las tres filas de acciones y NO al componente: cambiarlo en `Button` movería
+ * los botones de los 33 ficheros que lo usan, que es justo lo contrario de lo que se busca.
+ * Por contenedor y no por una clase en cada llamada, para que un botón nuevo en estas filas
+ * nazca ya redondeado en vez de depender de que alguien se acuerde.
+ *
+ * <p>Gana por especificidad (0,1,1 contra el 0,1,0 de `.button`), no por orden de carga, que
+ * entre dos módulos de CSS no está garantizado.
+ */
+.actions button,
+.actionsSplit button,
+.readyActions button,
+.readyActions a {
+  border-radius: var(--radius-full);
+}
+
 .sendNote {
   margin: 0;
   text-align: center;
