@@ -1017,12 +1017,52 @@
 
 /* --- Pantalla final --------------------------------------------------------- */
 
+/*
+ * La pantalla final, centrada en lo que queda de viewport.
+ *
+ * <p>`.root` del marco global reserva la barra superior con `padding-top` dentro de sus
+ * 100dvh, así que lo que le queda a la vista enrutada es exactamente esa resta. Se dice
+ * con el mismo token que la reserva, no con un número: si la barra cambia de alto, esto
+ * la sigue.
+ *
+ * <p>`min-height` y no `height`, y de ahí que `justify-content: center` sea seguro aquí.
+ * Centrar recorta por arriba cuando el contenedor tiene alto FIJO: el sobrante se reparte a
+ * los dos lados y la mitad de arriba se sale por encima del origen del scroll. Con
+ * `min-height` el contenedor crece con el contenido —en un móvil la tarjeta mide 824 de 874
+ * y con el pie ya no cabe—, así que no hay espacio libre que repartir ni nada que recortar:
+ * la página simplemente scrollea. Comprobado a 393 y a 1280.
+ */
+.readyWrapper {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-4);
+  min-height: calc(100dvh - var(--topbar-height));
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-container-mobile) var(--space-8);
+}
+
+/*
+ * Dos bloques separados de verdad, no cuatro piezas seguidas.
+ *
+ * <p>Iban todos en la misma columna con `--space-3` entre ellos y `margin-top` suelto
+ * en dos de ellos, así que el acuse de recibo y lo que se puede hacer después se leían
+ * como un solo párrafo largo. `--space-6` y una raya en medio dicen que son dos cosas.
+ */
 .ready {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-6);
   text-align: center;
+}
+
+.readyHead {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
 }
 
 .readyIcon {
@@ -1044,15 +1084,23 @@
   color: var(--color-text-secondary);
 }
 
-.readyNext {
+.readyRule {
   width: 100%;
-  max-width: 60ch;
-  margin-top: var(--space-4);
-  text-align: left;
+  height: 1px;
+  margin: 0;
+  border: none;
+  background-color: var(--color-border);
+}
+
+.readyNext {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
 }
 
 .readyNextTitle {
-  margin: 0 0 var(--space-2);
+  margin: 0;
   font-size: var(--font-size-label-sm);
   font-weight: 600;
   letter-spacing: 0.1em;
@@ -1060,23 +1108,68 @@
   color: var(--color-text-muted);
 }
 
-.readyList {
+/*
+ * Los tres pasos, en globos.
+ *
+ * <p>Eran una lista con viñetas y tres frases largas: en un móvil ocupaban media
+ * pantalla de texto corrido y ninguna se distinguía de la siguiente. En cajas, cada una
+ * es una cosa que se puede mirar por separado, y el titular de cada una se lee sin leer
+ * el resto.
+ *
+ * <p>Una columna aquí y tres en el bloque de anchos mayores: a lo ancho de un móvil, tres
+ * cajas serían tres rendijas.
+ */
+.readyBubbles {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.readyBubble {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-1);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface);
+  text-align: left;
+}
+
+.readyBubbleTitle {
   margin: 0;
-  padding-left: var(--space-4);
   font-size: var(--font-size-label-md);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.readyBubbleText {
+  margin: 0;
+  font-size: var(--font-size-label-md);
+  line-height: 1.45;
   color: var(--color-text-secondary);
 }
 
+/*
+ * Apilados en el móvil; en fila, y del mismo ancho, en cuanto hay sitio.
+ *
+ * <p>El mismo caso que `.actionsSplit`, medido: la fila da 312 px y los dos botones piden
+ * 427 —«Generar otro plan» 189 y «Crear mi cuenta gratis» 226—. Y no es el relleno: solo
+ * el texto son 141 y 178, o sea 319, que ya no caben. A la fuerza, los dos parten su texto
+ * en dos líneas, que es justo uno de los defectos que este rediseño vino a quitar.
+ *
+ * <p>`column-reverse` para que apilados suba el de crear cuenta, que es el que se quiere
+ * pulsar, sin invertir el orden del documento: en fila tiene que quedar a la derecha, y el
+ * de volver a empezar a la izquierda y primero en el recorrido del teclado.
+ */
 .readyActions {
   display: flex;
-  align-items: center;
+  flex-direction: column-reverse;
   gap: var(--space-3);
-  margin-top: var(--space-4);
-  flex-wrap: wrap;
-  justify-content: center;
+  width: 100%;
 }
 
 /* --- Anchos mayores ---------------------------------------------------------
@@ -1126,6 +1219,29 @@
 
   .summaryList {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  /* Los tres globos, uno al lado del otro: aquí ya hay ancho para tres columnas de texto. */
+  .readyBubbles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  /*
+   * En fila y a partes iguales. `1 1 0` y no el ancho natural: «Crear mi cuenta gratis» es
+   * más largo que «Generar otro plan», y a lo natural la pareja quedaba descompensada sin
+   * que esa diferencia significara nada.
+   */
+  .readyActions {
+    flex-direction: row;
+  }
+
+  .readyActions > * {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .readyWrapper {
+    padding: var(--space-6) var(--space-container-desktop) var(--space-10);
   }
 }
 

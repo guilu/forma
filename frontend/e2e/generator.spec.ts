@@ -236,6 +236,102 @@ async function goToStepThree(page: import('@playwright/test').Page) {
   await page.getByRole('button', { name: /Siguiente/ }).click();
 }
 
+/** Recorre el embudo entero y lo envía, para llegar a la pantalla final. */
+async function completeFunnel(page: import('@playwright/test').Page) {
+  await completeStepOne(page);
+  await page.getByRole('button', { name: /Siguiente/ }).click();
+  await page.getByRole('radio', { name: /Ganancia muscular/ }).check({ force: true });
+  await page.getByRole('button', { name: /Siguiente/ }).click();
+  await page.getByRole('button', { name: /Siguiente/ }).click();
+  await page.getByLabel('Nombre').fill('Diego');
+  await page.getByLabel('Email').fill('diego@ejemplo.com');
+  await page.getByRole('checkbox', { name: /acepto el aviso/ }).check({ force: true });
+  await page.getByRole('button', { name: /Generar mi plan/ }).click();
+  await page.getByRole('heading', { name: /Tenemos tus datos/ }).waitFor();
+  await page.evaluate(() => window.scrollTo(0, 0));
+}
+
+/**
+ * Los dos botones de la pantalla final no parten su texto.
+ *
+ * <p>«Generar otro plan» pide 189 px y «Crear mi cuenta gratis» 226; en un móvil de 402 la
+ * fila da 312. Y no es cuestión de recortar el relleno: solo el texto son 141 y 178, o sea
+ * 319, que ya no caben. En fila a la fuerza, los dos parten su texto en dos líneas — el
+ * mismo defecto que este rediseño vino a quitar del embudo. Por eso se apilan en el móvil
+ * y solo van en fila a partir de 40rem.
+ *
+ * <p>Se mide el ALTO y no la dirección: es el alto lo que delata el texto partido, y es lo
+ * que se rompe si alguien fuerza la fila en un ancho donde no cabe.
+ */
+for (const [name, viewport, enFila] of [
+  ['móvil', PHONE, false],
+  ['escritorio', DESKTOP, true],
+] as const) {
+  test(`los botones de la pantalla final no parten su texto en ${name}`, async ({ page }) => {
+    await stubApi(page);
+    await page.setViewportSize(viewport);
+    await page.goto('/plan');
+    await completeFunnel(page);
+
+    const botones = await page.locator('[class*="readyActions"] > *').evaluateAll((els) =>
+      els.map((el) => {
+        const r = el.getBoundingClientRect();
+        return {
+          t: (el.textContent ?? '').trim(),
+          alto: Math.round(r.height),
+          top: Math.round(r.top),
+          left: Math.round(r.left),
+        };
+      }),
+    );
+
+    expect(botones.length).toBe(2);
+    for (const b of botones) {
+      // Una sola línea de texto dentro del botón. Dos pasan de 70.
+      expect(b.alto, `«${b.t}» mide ${b.alto} px de alto`).toBeLessThanOrEqual(60);
+    }
+
+    const [reiniciar, cuenta] = botones;
+    if (enFila) {
+      // En fila: volver a empezar a la izquierda, crear cuenta a la derecha.
+      expect(reiniciar.top).toBe(cuenta.top);
+      expect(reiniciar.left).toBeLessThan(cuenta.left);
+    } else {
+      // Apilados: arriba el que se quiere pulsar.
+      expect(cuenta.top).toBeLessThan(reiniciar.top);
+    }
+  });
+}
+
+/**
+ * La tarjeta final se centra en lo que queda de viewport cuando hay sitio.
+ *
+ * <p>Solo en escritorio, porque es donde sobra alto: en un móvil la tarjeta mide 824 px de
+ * 874 y con el pie no cabe, así que ahí «centrada» y «arriba del todo» son lo mismo y no
+ * habría nada que comprobar.
+ *
+ * <p>El margen absorbe el pie —«El plan generado es orientativo…»—, que entra en el bloque
+ * centrado y baja el reparto respecto al centro exacto de la tarjeta.
+ */
+test('la tarjeta de la pantalla final se centra cuando sobra alto', async ({ page }) => {
+  await stubApi(page);
+  await page.setViewportSize(DESKTOP);
+  await page.goto('/plan');
+  await completeFunnel(page);
+
+  const hueco = await page.locator('[class*="ready_"]').evaluateAll((els) => {
+    const card = els[0].parentElement!;
+    const r = card.getBoundingClientRect();
+    return { arriba: Math.round(r.top), abajo: Math.round(window.innerHeight - r.bottom) };
+  });
+
+  expect(hueco.arriba, `arriba ${hueco.arriba}, abajo ${hueco.abajo}`).toBeGreaterThan(0);
+  expect(
+    Math.abs(hueco.arriba - hueco.abajo),
+    `arriba ${hueco.arriba}, abajo ${hueco.abajo}`,
+  ).toBeLessThanOrEqual(48);
+});
+
 /**
  * Las barras del día se apoyan en una línea de base común.
  *
