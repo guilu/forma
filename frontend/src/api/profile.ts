@@ -125,29 +125,71 @@ export interface UpdateProfileFieldsInput {
  * guardarlo es peor defecto que el que se venía a arreglar. Lo único que se comparte es la
  * ventana en la que la pregunta ya está hecha y aún no ha vuelto.
  */
+/**
+ * Cuánto vale el perfil recién traído antes de volver a preguntar.
+ *
+ * <p>El hueco que hay que cubrir es el de una carga de página: `ThemeProvider` monta arriba
+ * del todo y pide el perfil de inmediato, mientras que la página va en un trozo aparte
+ * (`app/routes.tsx` la carga con `lazy`) y no monta hasta que ese trozo llega. Medido en
+ * producción, esas dos peticiones salían con segundos de diferencia — por eso fundir solo
+ * las simultáneas no las juntaba: cuando salía la segunda, la primera ya había respondido.
+ *
+ * <p>Y por eso tiene fecha de caducidad en vez de durar lo que dure la pestaña. Todo lo que
+ * cambia el perfil pasa por este módulo y deja aquí el resultado, así que dentro de una
+ * pestaña nunca se lee algo viejo; el caso que no cubre es otra pestaña —o el móvil— tocando
+ * el perfil a la vez. Sin caducidad, esa pestaña enseñaría lo de antes hasta que alguien
+ * recargara. Treinta segundos cubren de sobra la carga más lenta y dejan esa ventana corta.
+ */
+const FRESH_FOR_MS = 30_000;
+
 let inFlight: Promise<UserProfile> | undefined;
+let cached: { readonly profile: UserProfile; readonly at: number } | undefined;
+
+/**
+ * Guarda lo último que dijo el servidor.
+ *
+ * <p>Lo llaman también los tres que ESCRIBEN, que devuelven el perfil ya actualizado: así un
+ * guardado no invalida la copia, la sustituye, y quien pregunte justo después recibe lo que
+ * se acaba de guardar sin un viaje de más.
+ */
+function remember(profile: UserProfile): UserProfile {
+  cached = { profile, at: Date.now() };
+  return profile;
+}
+
+/**
+ * Solo el cliente por defecto comparte copia. `client` existe para inyectar uno falso en las
+ * pruebas, y una copia compartida entre clientes distintos haría que un test leyera la
+ * respuesta preparada para otro.
+ */
+function shared(client: ApiClient): boolean {
+  return client === apiClient;
+}
 
 /**
  * Fetches the profile & preferences aggregate, with FOR-107's first-run defaults.
  *
- * <p>Tres cosas distintas quieren un trozo distinto del mismo perfil al abrir el panel:
- * {@link ThemeContext} el modo de tema, `useAnatomySex` el sexo para las siluetas y la
- * página el nombre del saludo. Ninguna puede recibirlo por props —dos son un proveedor y un
- * hook, y el proveedor se aplica antes del primer pintado— así que la coincidencia se
- * resuelve aquí, donde las tres pasan igualmente.
+ * <p>Tres cosas distintas quieren un trozo distinto del mismo perfil al abrir la aplicación:
+ * `ThemeContext` el modo de tema, `useAnatomySex` el sexo para las siluetas y `DashboardPage`
+ * el nombre del saludo. Ninguna puede recibirlo por props —dos son un proveedor y un hook, y
+ * el proveedor se aplica antes del primer pintado— así que la coincidencia se resuelve aquí,
+ * donde las tres pasan igualmente.
  *
- * <p>Solo se funden las del cliente por defecto: `client` existe para inyectar uno falso en
- * las pruebas, y compartir promesas entre clientes distintos haría que un test viera la
- * respuesta preparada para otro.
+ * <p>Dos mecanismos, para dos formas de coincidir: {@link cached} para las que se separan en
+ * el tiempo (ver {@link FRESH_FOR_MS}) y {@link inFlight} para las verdaderamente a la vez,
+ * que si no saldrían las dos antes de que ninguna haya podido guardar nada.
  */
 export function getProfile(client: ApiClient = apiClient): Promise<UserProfile> {
-  if (client !== apiClient) {
+  if (!shared(client)) {
     return client.request<UserProfile>('/api/v1/profile');
+  }
+  if (cached && Date.now() - cached.at < FRESH_FOR_MS) {
+    return Promise.resolve(cached.profile);
   }
   if (inFlight) {
     return inFlight;
   }
-  const request = client.request<UserProfile>('/api/v1/profile');
+  const request = client.request<UserProfile>('/api/v1/profile').then(remember);
   inFlight = request;
   request
     .finally(() => {
@@ -173,11 +215,13 @@ export function updateProfileFields(
   input: UpdateProfileFieldsInput,
   client: ApiClient = apiClient,
 ): Promise<UserProfile> {
-  return client.request<UserProfile>('/api/v1/profile', {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input),
-  });
+  return client
+    .request<UserProfile>('/api/v1/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    .then((profile) => (shared(client) ? remember(profile) : profile));
 }
 
 /** Body accepted by `PATCH /api/v1/profile/theme` — single-valued, required (FOR-107). */
@@ -195,11 +239,13 @@ export function updateThemeMode(
   input: UpdateThemeModeInput,
   client: ApiClient = apiClient,
 ): Promise<UserProfile> {
-  return client.request<UserProfile>('/api/v1/profile/theme', {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input),
-  });
+  return client
+    .request<UserProfile>('/api/v1/profile/theme', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    .then((profile) => (shared(client) ? remember(profile) : profile));
 }
 
 /**
@@ -248,9 +294,11 @@ export function submitOnboardingAnswers(
   input: OnboardingAnswersInput,
   client: ApiClient = apiClient,
 ): Promise<UserProfile> {
-  return client.request<UserProfile>('/api/v1/profile/onboarding', {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input),
-  });
+  return client
+    .request<UserProfile>('/api/v1/profile/onboarding', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    .then((profile) => (shared(client) ? remember(profile) : profile));
 }
