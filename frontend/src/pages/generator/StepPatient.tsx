@@ -74,7 +74,7 @@ function Metric({
           min={min}
           max={max}
           step={step}
-          placeholder="—"
+          placeholder="--"
           value={value}
           onChange={(event) => onChange(event.target.value)}
         />
@@ -110,15 +110,6 @@ export function StepPatient({ state, energy, onChange, onNext }: StepPatientProp
       <h2 className={styles.stepTitle} id="paso-1">
         ¿Quién eres?
       </h2>
-
-      {/* Calculado por el servidor, que es quien usa la misma fórmula para el plan. */}
-      <EnergyHeadline
-        eyebrow="Tu gasto diario"
-        value={energy ? `${NUM.format(energy.dailyKcal)}` : undefined}
-        unit="kcal"
-        pending="Rellena edad, peso y altura"
-        aside={<span className={styles.headlineTag}>Mifflin-St Jeor</span>}
-      />
 
       <fieldset className={styles.group}>
         <legend className={styles.legend}>Sexo</legend>
@@ -186,6 +177,22 @@ export function StepPatient({ state, energy, onChange, onNext }: StepPatientProp
           onSelect={(value) => onChange({ activityLevel: value as ActivityLevel })}
         />
       </fieldset>
+
+      {/*
+        Calculado por el servidor, que es quien usa la misma fórmula para el plan.
+
+        Va al FINAL del paso, no arriba: la cifra no existe hasta que hay edad, peso,
+        altura y actividad, así que arriba lo primero que se veía era un hueco pidiendo
+        datos que aún no se habían pedido. Aquí llega como resultado — se rellena el
+        formulario y el número aparece justo debajo, encima del botón que sigue.
+      */}
+      <EnergyHeadline
+        eyebrow="Tu gasto diario"
+        value={energy ? `${NUM.format(energy.dailyKcal)}` : undefined}
+        unit="kcal"
+        pending="Rellena edad, peso y altura"
+        aside={<span className={styles.headlineTag}>Mifflin-St Jeor</span>}
+      />
 
       <div className={styles.actions}>
         <Button type="button" onClick={onNext} disabled={!canCalculate(state)}>

@@ -135,17 +135,19 @@ describe('PlanGeneratorPage — el embudo público', () => {
   });
 
   /**
-   * Ni patologías, ni alergias, ni restricciones: con candado.
+   * Las restricciones con candado; las patologías, ni eso.
    *
-   * <p>Son datos de salud y hoy nada sabe convertirlos en una restricción del plan. Se enseña
-   * que existen y no se piden.
+   * <p>Las restricciones alimentarias existen y hoy nada sabe convertirlas en un menú
+   * distinto: se enseña que llegarán y no se piden. Las patologías no se enseñan siquiera
+   * — anunciarlas prometía una capacidad clínica que no hay, e invitaba a pensar en datos
+   * de salud dentro de un embudo público que no los recoge.
    */
-  it('enseña las patologías con candado y no las pide', async () => {
+  it('enseña las restricciones con candado y no menciona patologías', async () => {
     const user = renderFunnel();
     await completeStepOne(user);
 
-    expect(screen.getByText(/12 objetivos clínicos y patologías/)).toBeInTheDocument();
     expect(screen.getByText(/Restricciones alimentarias/)).toBeInTheDocument();
+    expect(screen.queryByText(/patologías/i)).not.toBeInTheDocument();
     expect(screen.queryByRole('checkbox', { name: /Hipertensión/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('radio', { name: /Hipertensión/ })).not.toBeInTheDocument();
   });
