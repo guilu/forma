@@ -228,31 +228,74 @@ test('los rótulos de sección se despegan de lo que rotulan', async ({ page }) 
   }
 });
 
-/**
- * Las barras del reparto del día comparten línea de base.
- *
- * <p>«Media mañana» es la única etiqueta que ocupa dos líneas, y sin reservarle
- * el hueco su barra subía una línea entera respecto a las demás: una fila de
- * cinco barras iguales en la que una estaba más alta, que se lee como que esa
- * comida es mayor. Es una medida, así que vive aquí y no en jsdom.
- */
-test('las barras del día se alinean aunque una etiqueta ocupe dos líneas', async ({ page }) => {
-  await stubApi(page);
-  await page.setViewportSize(PHONE);
-  await page.goto('/plan');
-
+/** Lleva el embudo hasta el paso 3, donde vive la forma del día. */
+async function goToStepThree(page: import('@playwright/test').Page) {
   await completeStepOne(page);
   await page.getByRole('button', { name: /Siguiente/ }).click();
   await page.getByRole('radio', { name: /Pérdida de peso/ }).check({ force: true });
   await page.getByRole('button', { name: /Siguiente/ }).click();
+}
 
-  const tops = await page
+/**
+ * Las barras del día se apoyan en una línea de base común.
+ *
+ * <p>«Media mañana» es la única etiqueta que ocupa dos líneas, y sin reservarle el
+ * hueco su barra subía una línea entera respecto a las demás. Cuando todas medían lo
+ * mismo eso se veía como una barra más alta que el resto — o sea, como que esa comida
+ * era mayor. Ahora que las alturas SÍ significan eso, el defecto sería peor: diría un
+ * reparto falso con la misma pinta que el verdadero.
+ *
+ * <p>Por eso se miden los BORDES INFERIORES y no los superiores. Los de arriba fueron
+ * la medida buena mientras las cinco barras eran iguales, pero medían la altura tanto
+ * como la alineación; los de abajo aíslan lo que esta prueba defiende.
+ */
+test('las barras del día se apoyan en la misma base aunque una etiqueta ocupe dos líneas', async ({
+  page,
+}) => {
+  await stubApi(page);
+  await page.setViewportSize(PHONE);
+  await page.goto('/plan');
+  await goToStepThree(page);
+
+  const bottoms = await page
     .locator('[class*="dayShapeBar"]')
-    .evaluateAll((bars) => bars.map((bar) => Math.round(bar.getBoundingClientRect().top)));
+    .evaluateAll((bars) => bars.map((bar) => Math.round(bar.getBoundingClientRect().bottom)));
 
-  expect(tops.length).toBe(5);
+  expect(bottoms.length).toBe(5);
   expect(
-    Math.max(...tops) - Math.min(...tops),
-    `bordes superiores: ${tops.join(', ')}`,
+    Math.max(...bottoms) - Math.min(...bottoms),
+    `bordes inferiores: ${bottoms.join(', ')}`,
   ).toBeLessThanOrEqual(1);
+});
+
+/**
+ * La forma del día tiene forma: las comidas grandes se ven grandes.
+ *
+ * <p>El perfil es ilustrativo y vive en `StepPreferences` (`DAY_SHAPE`), no en el
+ * servidor — no hay reparto por comida en el dominio y esta pantalla no se lo inventa
+ * con cifras. Lo que sí afirma es el orden: comida por encima de desayuno y cena, y
+ * esas por encima de media mañana y merienda. Si alguien aplana las barras o invierte
+ * el perfil, el dibujo deja de decir lo que dice su propio nombre.
+ *
+ * <p>Se comprueba con las alturas y no con los estilos porque el suelo de `BAR_MIN_PX`
+ * puede aplastar los extremos: lo que importa es lo que se ve, no lo que se declara.
+ */
+test('la forma del día ordena las comidas por tamaño', async ({ page }) => {
+  await stubApi(page);
+  await page.setViewportSize(PHONE);
+  await page.goto('/plan');
+  await goToStepThree(page);
+
+  const alturas = await page
+    .locator('[class*="dayShapeBar"]')
+    .evaluateAll((bars) => bars.map((bar) => Math.round(bar.getBoundingClientRect().height)));
+
+  const [desayuno, mediaManana, comida, merienda, cena] = alturas;
+
+  expect(alturas.length).toBe(5);
+  expect(comida, `alturas: ${alturas.join(', ')}`).toBeGreaterThan(desayuno);
+  expect(desayuno).toBeGreaterThan(mediaManana);
+  expect(cena).toBeGreaterThan(merienda);
+  // Y ninguna aplastada hasta desaparecer: la más pequeña sigue siendo una barra.
+  expect(Math.min(...alturas)).toBeGreaterThanOrEqual(10);
 });

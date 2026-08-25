@@ -57,17 +57,80 @@ const WEEK = ['L', 'M', 'X', 'J', 'V', 'S', 'D'] as const;
  * para repartir nada. Un «Desayuno · 533 kcal» sería un número inventado en la
  * pantalla que presume de que la fórmula la lleva el servidor.
  *
+ * <p><b>Pero las barras sí tienen forma, y hay que saber qué es.</b> `share` es un
+ * perfil de reparto típico, escrito aquí y fijo: no sale del servidor, no depende de
+ * las respuestas de nadie y NO es el reparto del plan de quien mira. Es un dibujo de
+ * cómo cae un día —el desayuno y la comida pesan, lo de en medio no—, y por eso no
+ * lleva cifras ni sale del `aria-hidden`: una barra sin número dice «así de grande,
+ * más o menos», que es lo único que aquí se puede decir con verdad. El reparto de
+ * verdad es lo que vende el candado de «Distribución de porciones por comida», y el
+ * día que exista lo mandará el servidor y estos números se irán.
+ *
+ * <p>Cada fila suma 100, que es la única regla que tienen que cumplir.
+ *
  * <p>Los nombres salen del vocabulario que ya usa la app (`MealType`: BREAKFAST,
  * MID_MORNING, LUNCH, SNACK, DINNER). «Recena» es el único que el dominio todavía no
  * tiene; entra aquí porque una sexta comida en España se llama así, y el enum tendrá
  * que aprenderla cuando el generador construya comidas de verdad.
  */
-const DAY_SHAPE: Readonly<Record<number, readonly string[]>> = {
-  3: ['Desayuno', 'Comida', 'Cena'],
-  4: ['Desayuno', 'Comida', 'Merienda', 'Cena'],
-  5: ['Desayuno', 'Media mañana', 'Comida', 'Merienda', 'Cena'],
-  6: ['Desayuno', 'Media mañana', 'Comida', 'Merienda', 'Cena', 'Recena'],
+interface DayShapeMeal {
+  readonly name: string;
+  /** Cuánto del día pesa esta comida, en tanto por ciento. Ilustrativo. Ver arriba. */
+  readonly share: number;
+}
+
+const DAY_SHAPE: Readonly<Record<number, readonly DayShapeMeal[]>> = {
+  3: [
+    { name: 'Desayuno', share: 30 },
+    { name: 'Comida', share: 40 },
+    { name: 'Cena', share: 30 },
+  ],
+  4: [
+    { name: 'Desayuno', share: 25 },
+    { name: 'Comida', share: 35 },
+    { name: 'Merienda', share: 15 },
+    { name: 'Cena', share: 25 },
+  ],
+  5: [
+    { name: 'Desayuno', share: 25 },
+    { name: 'Media mañana', share: 10 },
+    { name: 'Comida', share: 30 },
+    { name: 'Merienda', share: 10 },
+    { name: 'Cena', share: 25 },
+  ],
+  6: [
+    { name: 'Desayuno', share: 22 },
+    { name: 'Media mañana', share: 10 },
+    { name: 'Comida', share: 28 },
+    { name: 'Merienda', share: 10 },
+    { name: 'Cena', share: 22 },
+    { name: 'Recena', share: 8 },
+  ],
 };
+
+/**
+ * De tanto por ciento a píxeles de barra.
+ *
+ * <p>La escala es la MISMA para las cuatro formas, no una por cuenta de comidas: así
+ * la barra de la comida encoge al partir el día en seis, que es lo que de verdad pasa.
+ * Normalizando cada fila a su propio máximo, las cuatro se verían iguales y el
+ * selector no enseñaría nada al cambiar de opción.
+ *
+ * <p>El suelo de 10 px es para que la comida más pequeña —un 8 % en la forma de seis—
+ * siga siendo una barra y no una línea: por debajo, los 8 px de `--radius-md` del
+ * remate se comen la pieza entera y deja de leerse como parte de la misma serie.
+ *
+ * <p>Va en el `style` del elemento y no en `.dayShapeBar` porque es un dato, no una
+ * decisión de estilo: la hoja no puede saber cuánto pesa cada comida. Es el mismo
+ * camino que ya usa `ActivityScale` para el alto de sus barritas. La regla CSS
+ * conserva un alto fijo, que es el que se ve si algún día se pinta una barra suelta.
+ */
+const BAR_MIN_PX = 10;
+const BAR_PX_PER_SHARE = 1.1;
+
+function barHeight(share: number): string {
+  return `${Math.max(BAR_MIN_PX, Math.round(share * BAR_PX_PER_SHARE))}px`;
+}
 
 interface StepPreferencesProps {
   readonly state: FunnelState;
@@ -144,9 +207,9 @@ export function StepPreferences({ state, onChange, onBack, onNext }: StepPrefere
         </div>
         <ol className={styles.dayShape} aria-hidden="true">
           {(DAY_SHAPE[state.mealsPerDay] ?? []).map((meal) => (
-            <li key={meal} className={styles.dayShapeSlot}>
-              <span className={styles.dayShapeBar} />
-              <span className={styles.dayShapeName}>{meal}</span>
+            <li key={meal.name} className={styles.dayShapeSlot}>
+              <span className={styles.dayShapeBar} style={{ height: barHeight(meal.share) }} />
+              <span className={styles.dayShapeName}>{meal.name}</span>
             </li>
           ))}
         </ol>
