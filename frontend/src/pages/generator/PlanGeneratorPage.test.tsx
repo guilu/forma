@@ -203,6 +203,60 @@ describe('PlanGeneratorPage — el embudo público', () => {
     expect(screen.getByRole('button', { name: /Generar mi plan/ })).toBeEnabled();
   });
 
+  /**
+   * Leer el aviso de privacidad no puede costar el embudo.
+   *
+   * <p>Costaba. Era un `Link` a `/privacidad`, y navegar desmontaba `PlanGeneratorPage` con
+   * todo su estado dentro: quien lo leía volvía al paso 1 en blanco, y le tocaba responder
+   * las cuatro pantallas otra vez con el correo ya escrito. En un modal el paso 4 no se va a
+   * ninguna parte.
+   *
+   * <p>Se comprueba el correo y no el paso, porque volver al paso 1 con los datos puestos
+   * sería igual de malo: lo que hay que defender es que no se pierde NADA.
+   */
+  it('deja leer el aviso de privacidad sin perder lo escrito', async () => {
+    const user = renderFunnel();
+    await completeStepOne(user);
+    await user.click(screen.getByRole('radio', { name: /Mantenimiento/ }));
+    await user.click(screen.getByRole('button', { name: /Siguiente/ }));
+    await user.click(screen.getByRole('button', { name: /Siguiente/ }));
+
+    await user.type(screen.getByLabelText('Nombre'), 'Diego');
+    await user.type(screen.getByLabelText('Email'), 'diego@ejemplo.com');
+
+    await user.click(screen.getByRole('button', { name: 'aviso de privacidad' }));
+
+    const dialog = screen.getByRole('dialog');
+    expect(
+      within(dialog).getByRole('heading', { name: /Aviso de privacidad/ }),
+    ).toBeInTheDocument();
+    // El texto de verdad, no un enlace a él: la casilla de al lado dice «he leído».
+    expect(within(dialog).getByText(/Quién es responsable/)).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole('button', { name: /Cerrar/ }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Email')).toHaveValue('diego@ejemplo.com');
+    expect(screen.getByLabelText('Nombre')).toHaveValue('Diego');
+    expect(screen.getByRole('heading', { name: /¿Dónde te lo enviamos\?/ })).toBeInTheDocument();
+  });
+
+  /** El origen es opcional y por defecto nadie dice nada; el embudo no debe mandar un valor. */
+  it('manda el origen solo cuando se elige uno', async () => {
+    const user = renderFunnel();
+    await completeStepOne(user);
+    await user.click(screen.getByRole('radio', { name: /Mantenimiento/ }));
+    await user.click(screen.getByRole('button', { name: /Siguiente/ }));
+    await user.click(screen.getByRole('button', { name: /Siguiente/ }));
+
+    const origen = screen.getByLabelText(/Cómo nos encontraste/);
+    expect(origen).toHaveValue('');
+
+    await user.selectOptions(origen, 'Redes sociales');
+
+    expect(origen).toHaveValue('Redes sociales');
+  });
+
   it('manda el embudo entero y enseña la pantalla final', async () => {
     const user = renderFunnel();
     await completeStepOne(user);
