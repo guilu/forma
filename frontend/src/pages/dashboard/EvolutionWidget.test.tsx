@@ -1,12 +1,16 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EvolutionWidget } from './EvolutionWidget';
-import { listBodyMeasurements, type BodyMeasurement } from '../../api/bodyMeasurements';
+import type { BodyMeasurement } from '../../api/bodyMeasurements';
 
-vi.mock('../../api/bodyMeasurements', () => ({ listBodyMeasurements: vi.fn() }));
-
-const listMock = vi.mocked(listBodyMeasurements);
+/*
+ * Render puro: el widget ya no busca nada. El historial se lee una vez en
+ * `DashboardPage` y se reparte, así que aquí solo entra por props — ver
+ * `measurementsState.ts`.
+ */
+const conMediciones = (history: BodyMeasurement[]) =>
+  render(<EvolutionWidget measurements={{ status: 'ready', history }} />);
 
 const base: BodyMeasurement = {
   measuredAt: '2026-07-05T08:00:00Z',
@@ -38,14 +42,8 @@ const spread: BodyMeasurement[] = [
 ];
 
 describe('EvolutionWidget', () => {
-  beforeEach(() => {
-    listMock.mockReset();
-  });
-
   it('shows the latest value for the default metric and plots the series', async () => {
-    listMock.mockResolvedValue(history);
-
-    render(<EvolutionWidget />);
+    conMediciones(history);
 
     // Latest weight highlighted.
     expect(await screen.findByText('69.2')).toBeInTheDocument();
@@ -53,10 +51,9 @@ describe('EvolutionWidget', () => {
   });
 
   it('re-plots a different backed metric when the selector changes', async () => {
-    listMock.mockResolvedValue(history);
     const user = userEvent.setup();
 
-    render(<EvolutionWidget />);
+    conMediciones(history);
     await screen.findByText('69.2');
 
     await user.selectOptions(screen.getByRole('combobox', { name: 'Métrica' }), 'fat');
@@ -67,9 +64,7 @@ describe('EvolutionWidget', () => {
   });
 
   it('shows an empty state when there are no measurements', async () => {
-    listMock.mockResolvedValue([]);
-
-    render(<EvolutionWidget />);
+    conMediciones([]);
 
     expect(
       await screen.findByText(/Aún no hay mediciones para mostrar tu evolución/),
@@ -77,19 +72,16 @@ describe('EvolutionWidget', () => {
   });
 
   it('shows an error state when the request fails', async () => {
-    listMock.mockRejectedValue(new Error('network'));
-
-    render(<EvolutionWidget />);
+    render(<EvolutionWidget measurements={{ status: 'error' }} />);
 
     expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo cargar tu evolución');
   });
 
   describe('range tabs', () => {
     it('narrows the plotted series to the chosen range', async () => {
-      listMock.mockResolvedValue(spread);
       const user = userEvent.setup();
 
-      render(<EvolutionWidget />);
+      conMediciones(spread);
 
       // "Todos" is the default: every measurement is plotted.
       const all = await screen.findByRole('button', { name: 'Todos' });
@@ -114,9 +106,7 @@ describe('EvolutionWidget', () => {
      * cannot change what is on screen.
      */
     it('hides the group entirely when there is nothing to choose', async () => {
-      listMock.mockResolvedValue(history);
-
-      render(<EvolutionWidget />);
+      conMediciones(history);
 
       await screen.findByText('69.2');
       expect(screen.queryByRole('group', { name: 'Rango del gráfico' })).not.toBeInTheDocument();
@@ -125,10 +115,9 @@ describe('EvolutionWidget', () => {
     });
 
     it('keeps the chosen range when the metric changes', async () => {
-      listMock.mockResolvedValue(spread);
       const user = userEvent.setup();
 
-      render(<EvolutionWidget />);
+      conMediciones(spread);
 
       await user.click(await screen.findByRole('button', { name: '7D' }));
       await user.selectOptions(screen.getByRole('combobox'), 'lean');

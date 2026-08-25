@@ -115,9 +115,52 @@ export interface UpdateProfileFieldsInput {
   readonly mainGoal?: MainGoal;
 }
 
-/** Fetches the profile & preferences aggregate, with FOR-107's first-run defaults. */
+/**
+ * La petición en vuelo, para que tres pantallas que arrancan a la vez no la pidan tres
+ * veces.
+ *
+ * <p>NO es una caché: se suelta en cuanto la respuesta llega, así que la siguiente llamada
+ * vuelve a preguntar al servidor. Cachear el perfil obligaría a invalidarlo cada vez que se
+ * guarda —ajustes, unidades, tema, onboarding— y un perfil viejo enseñado después de
+ * guardarlo es peor defecto que el que se venía a arreglar. Lo único que se comparte es la
+ * ventana en la que la pregunta ya está hecha y aún no ha vuelto.
+ */
+let inFlight: Promise<UserProfile> | undefined;
+
+/**
+ * Fetches the profile & preferences aggregate, with FOR-107's first-run defaults.
+ *
+ * <p>Tres cosas distintas quieren un trozo distinto del mismo perfil al abrir el panel:
+ * {@link ThemeContext} el modo de tema, `useAnatomySex` el sexo para las siluetas y la
+ * página el nombre del saludo. Ninguna puede recibirlo por props —dos son un proveedor y un
+ * hook, y el proveedor se aplica antes del primer pintado— así que la coincidencia se
+ * resuelve aquí, donde las tres pasan igualmente.
+ *
+ * <p>Solo se funden las del cliente por defecto: `client` existe para inyectar uno falso en
+ * las pruebas, y compartir promesas entre clientes distintos haría que un test viera la
+ * respuesta preparada para otro.
+ */
 export function getProfile(client: ApiClient = apiClient): Promise<UserProfile> {
-  return client.request<UserProfile>('/api/v1/profile');
+  if (client !== apiClient) {
+    return client.request<UserProfile>('/api/v1/profile');
+  }
+  if (inFlight) {
+    return inFlight;
+  }
+  const request = client.request<UserProfile>('/api/v1/profile');
+  inFlight = request;
+  request
+    .finally(() => {
+      if (inFlight === request) {
+        inFlight = undefined;
+      }
+    })
+    .catch(() => {
+      // El fallo lo recibe quien llamó, por `request`. Este `catch` es solo para la promesa
+      // que encadena `finally`, que si no queda sin manejar y el runtime avisa de un rechazo
+      // que en realidad sí tiene dueño.
+    });
+  return request;
 }
 
 /**

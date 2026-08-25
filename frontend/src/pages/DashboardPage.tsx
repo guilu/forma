@@ -3,6 +3,7 @@ import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
 import { WaterTracker } from '../components/WaterTracker';
 import { BodyWidget, type BodyState } from './dashboard/BodyWidget';
+import type { MeasurementsState } from './dashboard/measurementsState';
 import { TrainingWidget } from './dashboard/TrainingWidget';
 import { NutritionWidget } from './dashboard/NutritionWidget';
 import { NutritionSummaryWidget } from './dashboard/NutritionSummaryWidget';
@@ -123,6 +124,18 @@ export function DashboardPage() {
     };
   }, []);
 
+  /*
+   * Una sola lectura del historial, repartida a los tres que lo pintan. `TrendWidget` y
+   * `EvolutionWidget` se la pedían cada uno por su cuenta: tres `listBodyMeasurements()`
+   * idénticas por carga del panel, con un limitador delante que convierte las últimas de la
+   * ráfaga en 429. Ver `measurementsState.ts`.
+   */
+  const measurements: MeasurementsState = failed
+    ? { status: 'error' }
+    : history === undefined
+      ? { status: 'loading' }
+      : { status: 'ready', history };
+
   const body: BodyState = failed
     ? { status: 'error' }
     : history === undefined
@@ -184,7 +197,7 @@ export function DashboardPage() {
             onMealToggled={reloadConsumption}
             consumption={consumption.status === 'ready' ? consumption.consumption : undefined}
           />
-          <TrendWidget />
+          <TrendWidget state={measurements} />
         </div>
       </WidgetSection>
 
@@ -192,7 +205,7 @@ export function DashboardPage() {
         {/* Evolución takes two tracks: it inherited the width the retired
             "Tu progreso" card left behind, and a chart is what actually uses
             it (see DashboardPage.module.css `.rowThreeWide`). */}
-        <EvolutionWidget />
+        <EvolutionWidget measurements={measurements} />
         <ShoppingWidget />
         <div className={styles.tipColumn}>
           <TipWidget />
