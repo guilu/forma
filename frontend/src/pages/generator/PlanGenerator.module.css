@@ -360,12 +360,6 @@
   background-color: var(--color-surface-muted);
 }
 
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
 /* --- Una opción ----------------------------------------------------------- */
 
 .choice,
@@ -411,8 +405,9 @@
 }
 
 /*
- * La pastilla: la opción de un segmentado o de una fila de chips. Conserva su
- * caja, porque suelta —en `.chips`— es lo único que la hace parecer pulsable.
+ * La pastilla: la opción de un segmentado. Conserva su caja porque es lo único que la
+ * hace parecer pulsable. `.chips`, la fila suelta que también la usaba, se fue con el
+ * desplegable de «¿Cómo nos encontraste?».
  */
 .choiceCompact {
   display: flex;
@@ -865,35 +860,64 @@
   list-style: none;
 }
 
+/*
+ * En verde, porque no son etiquetas neutras: son lo que se acaba de elegir, y la
+ * tarjeta entera es el acuse de recibo de esas cuatro respuestas. En gris sobre fondo
+ * oscuro se leían como metadatos apagados dentro de una tarjeta que sí está viva.
+ *
+ * <p>El fondo se queda oscuro y solo cambian borde y texto: la tarjeta ya usa
+ * `--color-accent-surface`, así que un relleno de acento encima no se distinguiría.
+ */
 .summaryChips li {
   padding: var(--space-1) var(--space-3);
-  border: 1px solid var(--color-border);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 40%, transparent);
   border-radius: var(--radius-full);
   background-color: var(--color-bg);
   font-size: var(--font-size-label-sm);
-  color: var(--color-text-secondary);
+  color: var(--color-accent-strong);
 }
 
+/*
+ * `padding` entero y no solo `padding-top`: es un `<ul>`, y la hoja del navegador le
+ * pone `padding-inline-start: 40px` para dejar sitio a las viñetas. Aquí no hay
+ * viñetas —`list-style: none`— pero el sangrado seguía puesto, así que las dos
+ * columnas empezaban 40 px dentro de la tarjeta: la lista se veía empujada a la
+ * derecha y sus textos partidos en dos líneas por falta de ancho. `margin: 0` sí
+ * estaba; el `padding` es el que se coló.
+ */
 .summaryList {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-2) var(--space-3);
   margin: 0;
-  padding-top: var(--space-4);
+  padding: var(--space-4) 0 0;
   border-top: 1px solid color-mix(in srgb, var(--color-accent) 20%, transparent);
   list-style: none;
 }
 
+/*
+ * El visto se apoya en la PRIMERA línea, no en el centro del bloque.
+ *
+ * <p>En un móvil de 402 px cada columna mide 125 y «Macros por comida» pide 155, así que
+ * tres de los cuatro ocupan dos líneas — dos columnas sin partir pedirían 322 px de
+ * contenido y hay 264. Centrado, el visto quedaba flotando entre las dos líneas y a media
+ * altura de su texto; en la primera línea lee como lo que es, la marca de un elemento de
+ * lista.
+ */
 .summaryList li {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-2);
   font-size: var(--font-size-label-md);
+  line-height: 1.35;
   color: var(--color-text-secondary);
 }
 
 .summaryList svg {
   flex-shrink: 0;
+  /* Ópticamente sobre la primera línea: el alto del glifo (15) es menor que el del
+     renglón, y sin el empujón el visto queda pegado al borde de arriba. */
+  margin-top: 2px;
   color: var(--color-accent-strong);
 }
 
@@ -915,6 +939,35 @@
   height: 20px;
   margin: 0;
   accent-color: var(--color-accent);
+}
+
+/*
+ * Un botón vestido de enlace: abre el aviso de privacidad en un modal, no navega.
+ *
+ * <p>Es un `button` y no un `a` porque no lleva a ninguna parte, y eso importa más de lo
+ * que parece: un lector de pantalla anuncia «enlace» y quien lo oye espera irse de la
+ * página. Vestirlo de enlace es lo correcto —subrayado y color, como cualquier otro texto
+ * pulsable dentro de un párrafo—; mentir sobre lo que es, no.
+ *
+ * <p>Va en verde de acento porque está DENTRO de la frase que hay que aceptar para poder
+ * terminar, y en gris era la única pieza pulsable del paso que no se veía pulsable.
+ *
+ * <p>Hereda tamaño y alto de línea del párrafo: sin eso, `button` trae los del navegador
+ * y la palabra se sale del renglón que la contiene.
+ */
+.inlineLink {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: var(--color-accent-strong);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.inlineLink:hover {
+  text-decoration-thickness: 2px;
 }
 
 .actions,
