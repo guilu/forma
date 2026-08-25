@@ -311,7 +311,7 @@ for (const [name, viewport, enFila] of [
  * habría nada que comprobar.
  *
  * <p>El margen absorbe el pie —«El plan generado es orientativo…»—, que entra en el bloque
- * centrado y baja el reparto respecto al centro exacto de la tarjeta.
+ * centrado y baja el reparto respecto al centro exacto del contenido.
  */
 test('la tarjeta de la pantalla final se centra cuando sobra alto', async ({ page }) => {
   await stubApi(page);
@@ -320,8 +320,7 @@ test('la tarjeta de la pantalla final se centra cuando sobra alto', async ({ pag
   await completeFunnel(page);
 
   const hueco = await page.locator('[class*="ready_"]').evaluateAll((els) => {
-    const card = els[0].parentElement!;
-    const r = card.getBoundingClientRect();
+    const r = els[0].getBoundingClientRect();
     return { arriba: Math.round(r.top), abajo: Math.round(window.innerHeight - r.bottom) };
   });
 
@@ -330,6 +329,39 @@ test('la tarjeta de la pantalla final se centra cuando sobra alto', async ({ pag
     Math.abs(hueco.arriba - hueco.abajo),
     `arriba ${hueco.arriba}, abajo ${hueco.abajo}`,
   ).toBeLessThanOrEqual(48);
+});
+
+/**
+ * Con el movimiento reducido, el visto se ve igual de bien.
+ *
+ * <p>La trampa está en `animation-fill-mode: both`, que deja aplicado el primer fotograma
+ * —`opacity: 0`— antes de arrancar. Si alguien «desactiva» la animación quitándole la
+ * duración en vez de la animación entera, el fotograma inicial se queda puesto para
+ * siempre y el visto no llega a verse: la pantalla de éxito pierde su único símbolo, y
+ * solo para quien pidió menos movimiento. Nadie que no tenga esa preferencia lo vería.
+ */
+test('el visto de la pantalla final se ve con el movimiento reducido', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await stubApi(page);
+  await page.setViewportSize(DESKTOP);
+  await page.goto('/plan');
+  await completeFunnel(page);
+
+  const icono = page.locator('[class*="readyIcon"]');
+  await expect(icono).toBeVisible();
+
+  const pintado = await icono.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return {
+      animacion: cs.animationName,
+      opacidad: Number(cs.opacity),
+      ancho: (el as HTMLElement).offsetWidth,
+    };
+  });
+
+  expect(pintado.animacion).toBe('none');
+  expect(pintado.opacidad, 'el visto quedaría invisible').toBe(1);
+  expect(pintado.ancho).toBeGreaterThan(64);
 });
 
 /**

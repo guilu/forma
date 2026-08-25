@@ -1038,7 +1038,7 @@
   justify-content: center;
   gap: var(--space-4);
   min-height: calc(100dvh - var(--topbar-height));
-  max-width: 46rem;
+  max-width: 52rem;
   margin: 0 auto;
   padding: var(--space-5) var(--space-container-mobile) var(--space-8);
 }
@@ -1050,11 +1050,19 @@
  * en dos de ellos, así que el acuse de recibo y lo que se puede hacer después se leían
  * como un solo párrafo largo. `--space-6` y una raya en medio dicen que son dos cosas.
  */
+/*
+ * Sin tarjeta, a propósito.
+ *
+ * <p>Iba dentro de un `Card`, y el borde convertía un final en un formulario más: la misma
+ * caja que llevan las cuatro pantallas anteriores, con lo cual la última no se distinguía
+ * de un paso. Aquí ya no se pide nada, así que no hay nada que encuadrar — el aire hace de
+ * marco y lo único con caja es lo que de verdad es un bloque aparte, los tres globos.
+ */
 .ready {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-6);
+  gap: var(--space-8);
   text-align: center;
 }
 
@@ -1062,11 +1070,57 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-4);
 }
 
+/*
+ * El visto, en un disco.
+ *
+ * <p>Era un icono de 40 px suelto sobre el fondo, del tamaño de cualquier otro de la app:
+ * lo primero que se ve al terminar el embudo no puede pesar lo mismo que el icono de una
+ * fila de lista. En un disco de acento tiene el peso de un sello, que es su trabajo.
+ */
 .readyIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 96px;
+  height: 96px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-accent-surface);
   color: var(--color-accent-strong);
+  animation: readyStamp 700ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/*
+ * Un rebote de entrada, y UNO SOLO.
+ *
+ * <p>Entra pequeño y se pasa de tamaño antes de asentarse — la curva lleva el overshoot, no
+ * hacen falta fotogramas intermedios. En bucle sería una pantalla que no para quieta
+ * mientras se lee lo que hay debajo; el rebote está para decir «hecho», y eso se dice una
+ * vez.
+ */
+@keyframes readyStamp {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/*
+ * Quien ha pedido menos movimiento no lo pide a medias: el disco aparece ya puesto. Se
+ * anula la animación entera y no solo su duración, porque `both` deja aplicado el
+ * fotograma inicial —opacidad cero— y sin animación que lo retire el visto no se vería.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .readyIcon {
+    animation: none;
+  }
 }
 
 .readyTitle {
@@ -1075,13 +1129,18 @@
   font-size: var(--font-size-xl);
   font-weight: 900;
   letter-spacing: -0.02em;
+  line-height: 1.15;
   color: var(--color-text);
+  text-wrap: balance;
 }
 
 .readyLead {
   margin: 0;
-  max-width: 55ch;
+  max-width: 46ch;
+  font-size: var(--font-size-lg);
+  line-height: 1.55;
   color: var(--color-text-secondary);
+  text-wrap: pretty;
 }
 
 .readyRule {
@@ -1242,6 +1301,25 @@
 
   .readyWrapper {
     padding: var(--space-6) var(--space-container-desktop) var(--space-10);
+  }
+
+  /*
+   * Aquí el final sí puede parecer un final. En el móvil el titular compite con el ancho
+   * de la pantalla y `--font-size-xl` es lo que cabe; con sitio, `display-xl` lo separa de
+   * los encabezados de los cuatro pasos, que son los que hay que dejar atrás.
+   */
+  .readyTitle {
+    font-size: var(--font-size-display-xl);
+    line-height: var(--line-height-display-xl);
+  }
+
+  .ready {
+    gap: var(--space-10);
+  }
+
+  .readyIcon {
+    width: 112px;
+    height: 112px;
   }
 }
 
