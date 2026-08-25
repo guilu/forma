@@ -18,6 +18,8 @@ import { expectNoHorizontalOverflow } from './layout';
 const PHONE = { width: 393, height: 852 };
 /** El móvil más estrecho que la cabecera aguanta a dos columnas. Ver la prueba del suelo. */
 const NARROW_PHONE = { width: 360, height: 800 };
+/** El móvil más estrecho que existe. Ver la prueba de la tarjeta pulsada. */
+const TINY_PHONE = { width: 320, height: 800 };
 const DESKTOP = { width: 1280, height: 900 };
 
 /** Rellena el paso 1 y espera a que llegue la cifra del servidor. */
@@ -187,6 +189,50 @@ test('la cabecera del paso 1 aguanta sus dos columnas en un móvil de 360', asyn
   expect(l.aside.right).toBeGreaterThan(l.value.right);
   expect(l.valueOverflows).toBe(false);
   expect(l.aside.right).toBeLessThanOrEqual(l.cardRight);
+});
+
+/**
+ * La tarjeta de objetivo se elige pulsándola, también a 320 px.
+ *
+ * <p>Esta prueba nace de un defecto que se dio por bueno durante meses: «a 320 px el
+ * radio Pérdida de peso no responde al pulsarlo». No es cierto, y el resto de este
+ * archivo explica por qué se llegó a creer. El `input` de `ChoiceCard` está oculto a la
+ * vista —1 px, `clip`— porque quien pinta la opción es su `label`; pedirle a Playwright
+ * que pulse ESE `input` es pedirle que pulse un punto de 1 px que cae bajo el icono de
+ * la tarjeta, y el clic se declara interceptado. Pasa igual a 320 que a 393: de ahí el
+ * `check({ force: true })` que se repite arriba. El ancho nunca tuvo nada que ver.
+ *
+ * <p>Así que lo que se afirma aquí es lo que hace una persona: pulsar la tarjeta, con
+ * el ratón y con el dedo, en el ancho más estrecho. Si algún día un adorno en posición
+ * absoluta se pone de verdad por delante de la tarjeta, esto se cae; el `force: true`
+ * de las otras pruebas, no.
+ */
+test('el objetivo se elige pulsando la tarjeta, con ratón y con dedo, a 320 px', async ({
+  browser,
+}) => {
+  const context = await browser.newContext({ viewport: TINY_PHONE, hasTouch: true });
+  const page = await context.newPage();
+  await stubApi(page);
+  await page.goto('/plan');
+
+  await completeStepOne(page);
+  await page.getByRole('button', { name: /Siguiente/ }).click();
+
+  const perdida = page.getByRole('radio', { name: /Pérdida de peso/ });
+  const tarjeta = page.locator('label').filter({ hasText: 'Pérdida de peso' }).first();
+  const mantenimiento = page.getByRole('radio', { name: /Mantenimiento/ });
+
+  // Con el ratón, sobre la tarjeta y sin `force`.
+  await tarjeta.click();
+  await expect(perdida).toBeChecked();
+
+  // Y con el dedo, que es como se usa un móvil de 320 px.
+  await mantenimiento.check({ force: true });
+  await expect(perdida).not.toBeChecked();
+  await tarjeta.tap();
+  await expect(perdida).toBeChecked();
+
+  await context.close();
 });
 
 /**
