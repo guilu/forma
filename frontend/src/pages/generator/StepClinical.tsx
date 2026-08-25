@@ -8,19 +8,24 @@ import styles from './PlanGenerator.module.css';
 /**
  * Paso 2: qué le pides al plan.
  *
- * <p>Solo el objetivo. Las patologías y las restricciones alimentarias van con candado,
- * como en el diseño de partida — y eso no es solo un gancho comercial: son datos de
- * salud, categoría especial del RGPD, y hoy nada en el modelo sabe convertir
- * «hipertensión» en «menos sodio». Recogerlos para no usarlos sería lo peor de las dos
- * opciones. Cuando existan las reglas, dejarán de tener candado.
+ * <p>Solo el objetivo. Las restricciones alimentarias van con candado, como en el diseño
+ * de partida — y eso no es solo un gancho comercial: hoy nada en el modelo sabe convertir
+ * «sin lactosa» en un menú distinto, y recogerlo para no usarlo sería lo peor de las dos
+ * opciones. Cuando existan las reglas, dejará de tener candado.
  *
- * <p><b>Por qué la cifra está arriba y no en cada tarjeta.</b> El diseño de FOR-190
+ * <p>El candado de las patologías se ha ido del todo. Anunciar «12 objetivos clínicos y
+ * patologías» prometía una capacidad clínica que este producto no tiene, y encima invitaba
+ * a pensar en datos de salud —categoría especial del RGPD— dentro de un embudo público que
+ * no los pide ni los quiere. Lo que no se va a preguntar tampoco hace falta enseñarlo.
+ *
+ * <p><b>Por qué la cifra es una sola y no una por tarjeta.</b> El diseño de FOR-190
  * quería que cada objetivo enseñara las kcal que produce, para que el número explicara
  * lo que explicaba la frase. No se puede sin copiar aquí la tabla de factores del
  * servidor, que es justo lo que prohíbe la cabecera de `api/planGenerator`: cuatro
  * cifras calculadas en React serían libres de separarse de la que construye el plan.
  * El servidor manda `objectiveFactor` del objetivo ELEGIDO, así que la consecuencia se
- * enseña una vez, arriba, y se mueve al cambiar de tarjeta.
+ * enseña una vez, al final del paso y encima de los botones, y se mueve al cambiar de
+ * tarjeta.
  */
 const OBJECTIVES: ReadonlyArray<{
   readonly value: PlanObjective;
@@ -85,23 +90,6 @@ export function StepClinical({ state, energy, onChange, onBack, onNext }: StepCl
         ¿Qué quieres conseguir?
       </h2>
 
-      <EnergyHeadline
-        eyebrow="Requerimiento del plan"
-        value={chosen ? NUM.format(energy.planKcal) : undefined}
-        unit="kcal"
-        pending="Elige un objetivo"
-        aside={
-          chosen ? (
-            <>
-              <span className={adjustmentClass(energy.objectiveFactor)}>
-                {adjustmentLabel(energy.objectiveFactor)}
-              </span>
-              <span className={styles.headlineFoot}>sobre {NUM.format(energy.dailyKcal)} kcal</span>
-            </>
-          ) : undefined
-        }
-      />
-
       <fieldset className={styles.group}>
         <legend className={styles.legend}>Objetivo principal</legend>
         <div className={styles.grid2}>
@@ -121,9 +109,25 @@ export function StepClinical({ state, energy, onChange, onBack, onNext }: StepCl
       </fieldset>
 
       <div className={styles.lockedGroup}>
-        <LockedTeaser title="12 objetivos clínicos y patologías" />
         <LockedTeaser title="Restricciones alimentarias y patrones dietéticos" />
       </div>
+
+      <EnergyHeadline
+        eyebrow="Requerimiento del plan"
+        value={chosen ? NUM.format(energy.planKcal) : undefined}
+        unit="kcal"
+        pending="Elige un objetivo"
+        aside={
+          chosen ? (
+            <>
+              <span className={adjustmentClass(energy.objectiveFactor)}>
+                {adjustmentLabel(energy.objectiveFactor)}
+              </span>
+              <span className={styles.headlineFoot}>de {NUM.format(energy.dailyKcal)} kcal</span>
+            </>
+          ) : undefined
+        }
+      />
 
       <div className={styles.actionsSplit}>
         <Button type="button" variant="ghost" onClick={onBack}>

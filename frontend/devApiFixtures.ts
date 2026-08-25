@@ -21,6 +21,21 @@ interface FixtureReply {
 }
 
 /**
+ * El sondeo que siembra la cookie CSRF.
+ *
+ * <p>`api/client.ts` pide `/actuator/health` antes de cualquier método no seguro y
+ * espera que la respuesta traiga `XSRF-TOKEN`; sin cookie aborta la petición sin
+ * llegar a hacerla. Fuera de `/api/v1/`, así que sin este caso la ruta caía en Vite
+ * y devolvía el index.html — 200, HTML, y ninguna cookie. El efecto era silencioso:
+ * el generador enseñaba «Rellena edad, peso y altura» con el formulario ya relleno,
+ * porque el POST del requerimiento fallaba antes de salir.
+ *
+ * <p>Es la misma siembra que hace `e2e/stubApi`, que es de donde salió el descuido:
+ * los fixtures se comparten, pero esta parte no viajaba con ellos.
+ */
+const CSRF_PROBE = '/actuator/health';
+
+/**
  * Serves the API from the e2e fixtures, in the dev server.
  *
  * <p>Why this exists: the signed-in app is unreachable from `npm run dev`
@@ -58,6 +73,17 @@ export function devApiFixtures(): Plugin {
        */
       server.middlewares.use((req, res, next) => {
         const url = (req as FixtureRequest).url ?? '';
+        const path = url.split('?')[0];
+
+        if (path === CSRF_PROBE) {
+          const reply = res as unknown as FixtureReply;
+          reply.statusCode = 200;
+          reply.setHeader('Content-Type', 'application/json');
+          reply.setHeader('Set-Cookie', 'XSRF-TOKEN=dev-token; Path=/; SameSite=Lax');
+          reply.end(JSON.stringify({ status: 'UP' }));
+          return;
+        }
+
         // The versioned prefix, not `/api`: the app's own source modules are
         // served from `/src/api/…` in dev, and a looser test would answer those
         // with JSON — the page then loads no JavaScript at all.
@@ -68,7 +94,7 @@ export function devApiFixtures(): Plugin {
 
         // Split rather than `new URL`: this file compiles under a Node-only
         // tsconfig with no DOM lib, where `URL` is a type and not a value.
-        const { status, body } = fixtureFor(url.split('?')[0]);
+        const { status, body } = fixtureFor(path);
         const reply = res as unknown as FixtureReply;
         reply.statusCode = status;
         reply.setHeader('Content-Type', 'application/json');

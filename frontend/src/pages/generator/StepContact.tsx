@@ -1,9 +1,11 @@
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
 import { Button } from '../../components/Button';
-import { TextField } from '../../components/FormField';
+import { SelectField, TextField } from '../../components/FormField';
 import { Icon } from '../../components/Icon';
+import { Modal } from '../../components/Modal';
+import { PrivacyNotice } from '../PrivacyNotice';
+import privacyStyles from '../PrivacyPage.module.css';
 import type { EnergyRequirement } from '../../api/planGenerator';
-import { ChoiceCard } from './GeneratorChrome';
 import { EATING_STYLE_LABELS, OBJECTIVE_LABELS, type FunnelState } from './funnelState';
 import styles from './PlanGenerator.module.css';
 
@@ -55,6 +57,8 @@ export function StepContact({
   onBack,
   onSubmit,
 }: StepContactProps) {
+  const [privacyOpen, setPrivacyOpen] = useState(false);
+
   const ready =
     state.fullName.trim() !== '' && state.email.trim() !== '' && state.acceptsPrivacyPolicy;
 
@@ -118,35 +122,25 @@ export function StepContact({
       </div>
 
       {/*
-       * Era un desplegable. Es opcional y son cinco opciones cortas: en el móvil un
-       * `select` abre una rueda del sistema para elegir entre cinco cosas que caben en
-       * dos filas. «Prefiero no decirlo» sigue siendo una opción de verdad y viene
-       * marcada, igual que era el valor vacío del desplegable.
+       * Un desplegable, y no seis pastillas. Es la pregunta MENOS importante del paso —
+       * opcional, y para nosotros, no para quien la contesta— y en pastillas ocupaba seis
+       * filas: más alto que el nombre y el correo juntos, que son los que hay que rellenar
+       * para terminar. Un `select` lo deja en una línea y devuelve esa altura a lo que
+       * importa. «Prefiero no decirlo» es el valor por defecto y una opción de verdad.
        */}
-      <fieldset className={styles.group}>
-        <legend className={styles.legend}>¿Cómo nos encontraste? (opcional)</legend>
-        <div className={styles.chips}>
-          <ChoiceCard
-            name="origen"
-            value=""
-            checked={state.heardAboutUs === ''}
-            onSelect={() => onChange({ heardAboutUs: '' })}
-            title="Prefiero no decirlo"
-            layout="compact"
-          />
-          {SOURCES.map((source) => (
-            <ChoiceCard
-              key={source}
-              name="origen"
-              value={source}
-              checked={state.heardAboutUs === source}
-              onSelect={(value) => onChange({ heardAboutUs: value })}
-              title={source}
-              layout="compact"
-            />
-          ))}
-        </div>
-      </fieldset>
+      <SelectField
+        id="gen-origen"
+        label="¿Cómo nos encontraste? (opcional)"
+        value={state.heardAboutUs}
+        onChange={(event) => onChange({ heardAboutUs: event.target.value })}
+      >
+        <option value="">Prefiero no decirlo</option>
+        {SOURCES.map((source) => (
+          <option key={source} value={source}>
+            {source}
+          </option>
+        ))}
+      </SelectField>
 
       <label className={styles.check}>
         <input
@@ -166,15 +160,33 @@ export function StepContact({
         />
         <span>
           {/*
-            `Link` y no `<a href>`: hasta V61 esto apuntaba a una ruta que NO EXISTÍA, así que la
-            casilla obligaba a aceptar un documento que devolvía un 404 — un consentimiento sobre
-            un texto ilegible no es un consentimiento. Con el router, además, leerlo no recarga la
-            página y no se pierde el embudo a medias.
+            Un botón que abre un modal, no un enlace que navega.
+            
+            Navegar a `/privacidad` desmontaba `PlanGeneratorPage`, y con ella el `useState` que
+            guarda las cuatro pantallas: quien leía el aviso volvía al paso 1 con todo en blanco.
+            Y lo volvía a leer justo en el momento de más fricción del embudo, con el correo ya
+            escrito. El comentario que había aquí afirmaba lo contrario —que con el router no se
+            perdía el embudo—; el router evita la RECARGA, no el desmontaje.
+            
+            En un modal el paso 4 no se va a ninguna parte, así que al cerrar sigue todo puesto.
+            La página en `/privacidad` se queda: es la dirección que se puede enlazar desde fuera
+            y guardar, y las dos leen el MISMO texto.
           */}
-          He leído y acepto el <Link to="/privacidad">aviso de privacidad</Link>. Solo para
-          generarte el plan y enviártelo.
+          He leído y acepto el{' '}
+          <button type="button" className={styles.inlineLink} onClick={() => setPrivacyOpen(true)}>
+            aviso de privacidad
+          </button>
+          . Solo para generarte el plan y enviártelo.
         </span>
       </label>
+
+      {privacyOpen && (
+        <Modal title="Aviso de privacidad" size="lg" onClose={() => setPrivacyOpen(false)}>
+          <div className={privacyStyles.doc}>
+            <PrivacyNotice />
+          </div>
+        </Modal>
+      )}
 
       <div className={styles.actionsSplit}>
         <Button type="button" variant="ghost" onClick={onBack} disabled={pending}>

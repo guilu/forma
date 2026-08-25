@@ -94,10 +94,18 @@
 
 /* --- Un paso -------------------------------------------------------------- */
 
+/*
+ * El aire entre bloques del paso.
+ *
+ * <p>`--space-4` los dejaba a 16 px, la misma distancia que separa las piezas DENTRO
+ * de un bloque: sin un salto que distinga «otra pregunta» de «más de lo mismo», los
+ * cuatro o cinco bloques del paso se leen como una lista corrida. `--space-5` da ese
+ * salto y sigue por debajo del que separa la tarjeta del pie de página.
+ */
 .step {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-5);
 }
 
 .stepTitle {
@@ -113,25 +121,62 @@
 
 /* --- La cifra viva -------------------------------------------------------- */
 
+/*
+ * Rótulo en su fila; cifra y costado repartiéndose la de abajo.
+ *
+ * <p>Los tres iban antes en una sola fila flexible, y el que no cabía era el rótulo:
+ * «REQUERIMIENTO DEL PLAN» en versalitas con `letter-spacing: 0.14em` mide 202 px de
+ * los 253 útiles de un móvil de 393. Compitiendo por ancho con la cifra no dejaba
+ * sitio al costado por ninguna de las dos vías: con `flex-wrap: wrap` el costado
+ * entero —pastilla incluida— caía a una fila propia, y con `nowrap` la cifra, que no
+ * tiene por dónde partirse, se desbordaba de su caja hasta pintarse debajo de él.
+ *
+ * <p>Sacado a su propia fila el rótulo tiene el ancho entero y deja de estorbar.
+ */
 .headline {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--space-3);
+  flex-direction: column;
+  /* Mismo motivo que en `.legend`: un rótulo en versalitas a 4 px de su cifra se lee
+     pegado a ella, y aquí encima la cifra es lo más grande de la pantalla. */
+  gap: var(--space-2);
   padding: var(--space-4) var(--space-5);
   border: 1px solid color-mix(in srgb, var(--color-accent) 28%, transparent);
   border-radius: var(--radius-lg);
   background-color: var(--color-accent-surface);
 }
 
-.headlineMain {
+/*
+ * La fila de abajo: la cifra a la izquierda, el costado a la derecha.
+ *
+ * <p>Se apila SOLO si de verdad no cabe, y eso es `flex-wrap` y no un punto de corte
+ * a propósito. Lo que hace falta depende del contenido —«2585 kcal» son 124 px y
+ * «Mifflin-St Jeor» otros 109, pero una cifra de cinco dígitos o una pastilla más
+ * larga cambian la cuenta—, así que un umbral en píxeles sería una respuesta fija a
+ * una pregunta que se mueve. A 393 px caben los dos (245 de 253); por debajo de ~385
+ * no, y entonces el costado baja en vez de solaparse con la cifra.
+ *
+ * <p>`margin-left: auto` en el costado y no `justify-content: space-between` en la
+ * fila: cuando el costado envuelve y se queda solo en su línea, `space-between` lo
+ * pegaría a la izquierda, justo debajo de la cifra y confundible con ella.
+ */
+.headlineRow {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-width: 0;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+  /*
+   * El hueco reservado para la cifra vive AQUÍ y no en la caja de la cifra.
+   *
+   * <p>Estaba en `.headlineValue`, que mide 32 px de alto y se estiraba a 40: los 8 px
+   * sobrantes quedaban por debajo del número, así que la fila alineaba al fondo una
+   * caja con el aire dentro y la pastilla acababa 8 px más baja que el número — dos
+   * piezas de la misma fila sin una línea común. En la fila, el hueco lo reserva el
+   * contenedor y las dos se apoyan en el mismo fondo.
+   */
+  min-height: 2.5rem;
 }
 
+/* Su propia fila: es lo más ancho de la cabecera y al lado de la cifra no cabe. */
 .headlineEyebrow {
   margin: 0;
   font-size: var(--font-size-label-sm);
@@ -146,7 +191,13 @@
   align-items: baseline;
   gap: var(--space-2);
   margin: 0;
-  min-height: 2.5rem;
+  /*
+   * NO encoge. Con `min-width: 0` la caja bajaba por debajo de lo que mide la cifra
+   * —87 px solo el número, que no tiene por dónde partirse— y el texto se salía de
+   * ella sin que nada lo dijera: a 393 px se veía bien y a 360 la cifra se pintaba ya
+   * encima de la pastilla. Al no encoger, cuando no cabe envuelve, que se ve.
+   */
+  flex: 0 0 auto;
 }
 
 .headlineNumber {
@@ -177,14 +228,29 @@
   flex-direction: column;
   align-items: flex-end;
   gap: var(--space-1);
+  margin-left: auto;
   text-align: right;
 }
 
+/*
+ * La pastilla de la procedencia («Mifflin-St Jeor»), a medida para que quepa.
+ *
+ * <p>Es la pieza más ancha de las dos columnas y la que decidía si se partían: a
+ * `--font-size-label-sm` medía 109 px, y con la cifra en 124 y el hueco en 12 hacían
+ * 245 de los 253 útiles de un móvil de 393. Ocho píxeles de margen, o sea ninguno —
+ * cualquier teléfono un pelo más estrecho la mandaba a una fila propia.
+ *
+ * <p>Los 24 px de relleno lateral pesaban tanto como el tipo, así que se recortan los
+ * dos: `--space-2` a los lados y `0.625rem` de letra. El tamaño va escrito y no en un
+ * token porque no hay `label-xs` en el sistema y no lo vale una pastilla: es una
+ * anotación de procedencia, la pieza más secundaria de la tarjeta, y quien la lee ya
+ * tiene la cifra delante.
+ */
 .headlineTag {
-  padding: var(--space-1) var(--space-3);
+  padding: var(--space-1) var(--space-2);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-full);
-  font-size: var(--font-size-label-sm);
+  font-size: 0.625rem;
   white-space: nowrap;
   color: var(--color-text-muted);
 }
@@ -229,20 +295,40 @@
 
 /* --- Grupos de opciones --------------------------------------------------- */
 
+/*
+ * OJO: este `gap` NO separa la leyenda de lo que rotula.
+ *
+ * <p>La leyenda renderizada de un `fieldset` no es un elemento flex. El navegador la
+ * coloca aparte y mete todo lo demás en una caja anónima, que es la que forma el
+ * contexto flex — así que el hueco solo cae ENTRE los hermanos posteriores, y medido
+ * da 0 px entre `legend` y el primero de ellos. Despegar el rótulo es trabajo del
+ * `padding-bottom` de `.legend`, aquí abajo.
+ *
+ * <p>Lo que sí separa: la escala de actividad de su pista («Ejercicio 3–5 días por
+ * semana»), que son los dos hermanos que `ActivityScale` deja sueltos en el grupo.
+ */
 .group {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-4);
   margin: 0;
   padding: 0;
   border: none;
 }
 
+/*
+ * El relleno inferior va en el rótulo y no en el hueco del grupo a propósito: `.group`
+ * separa por igual todo lo que lleva dentro, y aquí solo hay que despegar el rótulo de
+ * lo que rotula. Los 10 px se salen de la escala de `--space-*` (8 o 12) porque es un
+ * ajuste óptico: las versalitas dejan aire visual por debajo de su línea de base, y en
+ * el paso siguiente de la escala el rótulo empieza a flotar despegado de su grupo.
+ */
 .legend {
-  padding: 0;
+  padding: 0 0 10px;
   font-size: var(--font-size-label-sm);
   font-weight: 600;
   letter-spacing: 0.1em;
+  line-height: 1.4;
   text-transform: uppercase;
   color: var(--color-text-muted);
 }
@@ -272,12 +358,6 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-full);
   background-color: var(--color-surface-muted);
-}
-
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
 }
 
 /* --- Una opción ----------------------------------------------------------- */
@@ -325,8 +405,9 @@
 }
 
 /*
- * La pastilla: la opción de un segmentado o de una fila de chips. Conserva su
- * caja, porque suelta —en `.chips`— es lo único que la hace parecer pulsable.
+ * La pastilla: la opción de un segmentado. Conserva su caja porque es lo único que la
+ * hace parecer pulsable. `.chips`, la fila suelta que también la usaba, se fue con el
+ * desplegable de «¿Cómo nos encontraste?».
  */
 .choiceCompact {
   display: flex;
@@ -779,35 +860,64 @@
   list-style: none;
 }
 
+/*
+ * En verde, porque no son etiquetas neutras: son lo que se acaba de elegir, y la
+ * tarjeta entera es el acuse de recibo de esas cuatro respuestas. En gris sobre fondo
+ * oscuro se leían como metadatos apagados dentro de una tarjeta que sí está viva.
+ *
+ * <p>El fondo se queda oscuro y solo cambian borde y texto: la tarjeta ya usa
+ * `--color-accent-surface`, así que un relleno de acento encima no se distinguiría.
+ */
 .summaryChips li {
   padding: var(--space-1) var(--space-3);
-  border: 1px solid var(--color-border);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 40%, transparent);
   border-radius: var(--radius-full);
   background-color: var(--color-bg);
   font-size: var(--font-size-label-sm);
-  color: var(--color-text-secondary);
+  color: var(--color-accent-strong);
 }
 
+/*
+ * `padding` entero y no solo `padding-top`: es un `<ul>`, y la hoja del navegador le
+ * pone `padding-inline-start: 40px` para dejar sitio a las viñetas. Aquí no hay
+ * viñetas —`list-style: none`— pero el sangrado seguía puesto, así que las dos
+ * columnas empezaban 40 px dentro de la tarjeta: la lista se veía empujada a la
+ * derecha y sus textos partidos en dos líneas por falta de ancho. `margin: 0` sí
+ * estaba; el `padding` es el que se coló.
+ */
 .summaryList {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-2) var(--space-3);
   margin: 0;
-  padding-top: var(--space-4);
+  padding: var(--space-4) 0 0;
   border-top: 1px solid color-mix(in srgb, var(--color-accent) 20%, transparent);
   list-style: none;
 }
 
+/*
+ * El visto se apoya en la PRIMERA línea, no en el centro del bloque.
+ *
+ * <p>En un móvil de 402 px cada columna mide 125 y «Macros por comida» pide 155, así que
+ * tres de los cuatro ocupan dos líneas — dos columnas sin partir pedirían 322 px de
+ * contenido y hay 264. Centrado, el visto quedaba flotando entre las dos líneas y a media
+ * altura de su texto; en la primera línea lee como lo que es, la marca de un elemento de
+ * lista.
+ */
 .summaryList li {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-2);
   font-size: var(--font-size-label-md);
+  line-height: 1.35;
   color: var(--color-text-secondary);
 }
 
 .summaryList svg {
   flex-shrink: 0;
+  /* Ópticamente sobre la primera línea: el alto del glifo (15) es menor que el del
+     renglón, y sin el empujón el visto queda pegado al borde de arriba. */
+  margin-top: 2px;
   color: var(--color-accent-strong);
 }
 
@@ -831,6 +941,35 @@
   accent-color: var(--color-accent);
 }
 
+/*
+ * Un botón vestido de enlace: abre el aviso de privacidad en un modal, no navega.
+ *
+ * <p>Es un `button` y no un `a` porque no lleva a ninguna parte, y eso importa más de lo
+ * que parece: un lector de pantalla anuncia «enlace» y quien lo oye espera irse de la
+ * página. Vestirlo de enlace es lo correcto —subrayado y color, como cualquier otro texto
+ * pulsable dentro de un párrafo—; mentir sobre lo que es, no.
+ *
+ * <p>Va en verde de acento porque está DENTRO de la frase que hay que aceptar para poder
+ * terminar, y en gris era la única pieza pulsable del paso que no se veía pulsable.
+ *
+ * <p>Hereda tamaño y alto de línea del párrafo: sin eso, `button` trae los del navegador
+ * y la palabra se sale del renglón que la contiene.
+ */
+.inlineLink {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: var(--color-accent-strong);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.inlineLink:hover {
+  text-decoration-thickness: 2px;
+}
+
 .actions,
 .actionsSplit {
   display: flex;
@@ -851,6 +990,30 @@
 
 .actionsSplit > * {
   width: 100%;
+}
+
+/*
+ * Los botones del embudo, en pastilla.
+ *
+ * <p>`Button` es del sistema y redondea a `--radius-md`, que es lo correcto en el resto de
+ * la aplicación. Aquí no: el embudo está hecho de pastillas —los segmentados, las opciones
+ * de actividad, los chips del resumen, la etiqueta de la fórmula, el disco del visto— y con
+ * 8 px los botones eran la única esquina cuadrada de la pantalla. La consistencia que manda
+ * es la de lo que se ve junto.
+ *
+ * <p>Acotado a las tres filas de acciones y NO al componente: cambiarlo en `Button` movería
+ * los botones de los 33 ficheros que lo usan, que es justo lo contrario de lo que se busca.
+ * Por contenedor y no por una clase en cada llamada, para que un botón nuevo en estas filas
+ * nazca ya redondeado en vez de depender de que alguien se acuerde.
+ *
+ * <p>Gana por especificidad (0,1,1 contra el 0,1,0 de `.button`), no por orden de carga, que
+ * entre dos módulos de CSS no está garantizado.
+ */
+.actions button,
+.actionsSplit button,
+.readyActions button,
+.readyActions a {
+  border-radius: var(--radius-full);
 }
 
 .sendNote {
@@ -878,16 +1041,110 @@
 
 /* --- Pantalla final --------------------------------------------------------- */
 
+/*
+ * La pantalla final, centrada en lo que queda de viewport.
+ *
+ * <p>`.root` del marco global reserva la barra superior con `padding-top` dentro de sus
+ * 100dvh, así que lo que le queda a la vista enrutada es exactamente esa resta. Se dice
+ * con el mismo token que la reserva, no con un número: si la barra cambia de alto, esto
+ * la sigue.
+ *
+ * <p>`min-height` y no `height`, y de ahí que `justify-content: center` sea seguro aquí.
+ * Centrar recorta por arriba cuando el contenedor tiene alto FIJO: el sobrante se reparte a
+ * los dos lados y la mitad de arriba se sale por encima del origen del scroll. Con
+ * `min-height` el contenedor crece con el contenido —en un móvil la tarjeta mide 824 de 874
+ * y con el pie ya no cabe—, así que no hay espacio libre que repartir ni nada que recortar:
+ * la página simplemente scrollea. Comprobado a 393 y a 1280.
+ */
+.readyWrapper {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-4);
+  min-height: calc(100dvh - var(--topbar-height));
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-container-mobile) var(--space-8);
+}
+
+/*
+ * Dos bloques separados de verdad, no cuatro piezas seguidas.
+ *
+ * <p>Iban todos en la misma columna con `--space-3` entre ellos y `margin-top` suelto
+ * en dos de ellos, así que el acuse de recibo y lo que se puede hacer después se leían
+ * como un solo párrafo largo. `--space-6` y una raya en medio dicen que son dos cosas.
+ */
+/*
+ * Sin tarjeta, a propósito.
+ *
+ * <p>Iba dentro de un `Card`, y el borde convertía un final en un formulario más: la misma
+ * caja que llevan las cuatro pantallas anteriores, con lo cual la última no se distinguía
+ * de un paso. Aquí ya no se pide nada, así que no hay nada que encuadrar — el aire hace de
+ * marco y lo único con caja es lo que de verdad es un bloque aparte, los tres globos.
+ */
 .ready {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-8);
   text-align: center;
 }
 
+.readyHead {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+/*
+ * El visto, en un disco.
+ *
+ * <p>Era un icono de 40 px suelto sobre el fondo, del tamaño de cualquier otro de la app:
+ * lo primero que se ve al terminar el embudo no puede pesar lo mismo que el icono de una
+ * fila de lista. En un disco de acento tiene el peso de un sello, que es su trabajo.
+ */
 .readyIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 96px;
+  height: 96px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-accent-surface);
   color: var(--color-accent-strong);
+  animation: readyStamp 700ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/*
+ * Un rebote de entrada, y UNO SOLO.
+ *
+ * <p>Entra pequeño y se pasa de tamaño antes de asentarse — la curva lleva el overshoot, no
+ * hacen falta fotogramas intermedios. En bucle sería una pantalla que no para quieta
+ * mientras se lee lo que hay debajo; el rebote está para decir «hecho», y eso se dice una
+ * vez.
+ */
+@keyframes readyStamp {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/*
+ * Quien ha pedido menos movimiento no lo pide a medias: el disco aparece ya puesto. Se
+ * anula la animación entera y no solo su duración, porque `both` deja aplicado el
+ * fotograma inicial —opacidad cero— y sin animación que lo retire el visto no se vería.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .readyIcon {
+    animation: none;
+  }
 }
 
 .readyTitle {
@@ -896,24 +1153,37 @@
   font-size: var(--font-size-xl);
   font-weight: 900;
   letter-spacing: -0.02em;
+  line-height: 1.15;
   color: var(--color-text);
+  text-wrap: balance;
 }
 
 .readyLead {
   margin: 0;
-  max-width: 55ch;
+  max-width: 46ch;
+  font-size: var(--font-size-lg);
+  line-height: 1.55;
   color: var(--color-text-secondary);
+  text-wrap: pretty;
+}
+
+.readyRule {
+  width: 100%;
+  height: 1px;
+  margin: 0;
+  border: none;
+  background-color: var(--color-border);
 }
 
 .readyNext {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
   width: 100%;
-  max-width: 60ch;
-  margin-top: var(--space-4);
-  text-align: left;
 }
 
 .readyNextTitle {
-  margin: 0 0 var(--space-2);
+  margin: 0;
   font-size: var(--font-size-label-sm);
   font-weight: 600;
   letter-spacing: 0.1em;
@@ -921,23 +1191,68 @@
   color: var(--color-text-muted);
 }
 
-.readyList {
+/*
+ * Los tres pasos, en globos.
+ *
+ * <p>Eran una lista con viñetas y tres frases largas: en un móvil ocupaban media
+ * pantalla de texto corrido y ninguna se distinguía de la siguiente. En cajas, cada una
+ * es una cosa que se puede mirar por separado, y el titular de cada una se lee sin leer
+ * el resto.
+ *
+ * <p>Una columna aquí y tres en el bloque de anchos mayores: a lo ancho de un móvil, tres
+ * cajas serían tres rendijas.
+ */
+.readyBubbles {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.readyBubble {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-1);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface);
+  text-align: left;
+}
+
+.readyBubbleTitle {
   margin: 0;
-  padding-left: var(--space-4);
   font-size: var(--font-size-label-md);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.readyBubbleText {
+  margin: 0;
+  font-size: var(--font-size-label-md);
+  line-height: 1.45;
   color: var(--color-text-secondary);
 }
 
+/*
+ * Apilados en el móvil; en fila, y del mismo ancho, en cuanto hay sitio.
+ *
+ * <p>El mismo caso que `.actionsSplit`, medido: la fila da 312 px y los dos botones piden
+ * 427 —«Generar otro plan» 189 y «Crear mi cuenta gratis» 226—. Y no es el relleno: solo
+ * el texto son 141 y 178, o sea 319, que ya no caben. A la fuerza, los dos parten su texto
+ * en dos líneas, que es justo uno de los defectos que este rediseño vino a quitar.
+ *
+ * <p>`column-reverse` para que apilados suba el de crear cuenta, que es el que se quiere
+ * pulsar, sin invertir el orden del documento: en fila tiene que quedar a la derecha, y el
+ * de volver a empezar a la izquierda y primero en el recorrido del teclado.
+ */
 .readyActions {
   display: flex;
-  align-items: center;
+  flex-direction: column-reverse;
   gap: var(--space-3);
-  margin-top: var(--space-4);
-  flex-wrap: wrap;
-  justify-content: center;
+  width: 100%;
 }
 
 /* --- Anchos mayores ---------------------------------------------------------
@@ -988,6 +1303,48 @@
   .summaryList {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
+
+  /* Los tres globos, uno al lado del otro: aquí ya hay ancho para tres columnas de texto. */
+  .readyBubbles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  /*
+   * En fila y a partes iguales. `1 1 0` y no el ancho natural: «Crear mi cuenta gratis» es
+   * más largo que «Generar otro plan», y a lo natural la pareja quedaba descompensada sin
+   * que esa diferencia significara nada.
+   */
+  .readyActions {
+    flex-direction: row;
+  }
+
+  .readyActions > * {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .readyWrapper {
+    padding: var(--space-6) var(--space-container-desktop) var(--space-10);
+  }
+
+  /*
+   * Aquí el final sí puede parecer un final. En el móvil el titular compite con el ancho
+   * de la pantalla y `--font-size-xl` es lo que cabe; con sitio, `display-xl` lo separa de
+   * los encabezados de los cuatro pasos, que son los que hay que dejar atrás.
+   */
+  .readyTitle {
+    font-size: var(--font-size-display-xl);
+    line-height: var(--line-height-display-xl);
+  }
+
+  .ready {
+    gap: var(--space-10);
+  }
+
+  .readyIcon {
+    width: 112px;
+    height: 112px;
+  }
 }
 
 /*
@@ -1006,6 +1363,17 @@
    */
   .grid2 {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /*
+   * Menos relleno lateral en la cabecera, que aquí es ancho que se necesita.
+   * Los 24 px de `--space-5` a cada lado son 48 de los ~253 útiles de un móvil, y
+   * son justo lo que decide si la cifra y su pastilla comparten fila o no. Un
+   * respiro generoso alrededor de una tarjeta ya estrecha se paga en el reparto de
+   * lo que lleva dentro.
+   */
+  .headline {
+    padding: var(--space-4);
   }
 
   .scaleLabel {
