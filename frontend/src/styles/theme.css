@@ -156,6 +156,23 @@
   --color-violet-strong: #a78bfa;
 
   /*
+   * The two funding hues, for the landing footer's support links. They are not
+   * part of Forma's palette and are not meant to be: a GitHub Sponsors button
+   * that is green and a Buy Me a Coffee button that is green are two buttons
+   * the eye has to read before it can tell them apart, and both borrow their
+   * recognisability from a service the visitor already knows. The hue comes
+   * from the destination, not from here.
+   *
+   * Both values are picked for the tinted pill they sit on, not for the page
+   * background — `color-mix(... 12%, surface)` lifts a dark chip and drops a
+   * light one, and the first pink tried (#db61a2, GitHub's own on solid dark)
+   * measured 4.40:1 against its own chip. These clear 4.5:1 on both themes at
+   * the 12% tint the pills use.
+   */
+  --color-sponsor: #f778ba;
+  --color-coffee: #e3b341;
+
+  /*
    * FOR-185: the landing's secondary/tertiary accents. The template's palette
    * is a three-hue family — primary (emerald), secondary (lime), tertiary
    * (mint) — used to differentiate the three feature cards' icon tints. Only
@@ -504,6 +521,12 @@
    */
   --color-violet: #8b5cf6;
   --color-violet-strong: #6d28d9;
+
+  /* Re-derived for a light surface: the dark theme's pink and amber measure
+     3.68:1 and 3.62:1 on their own light chip, which is not a colour anyone
+     can read. See the dark block for why these two hues exist at all. */
+  --color-sponsor: #9c2a6b;
+  --color-coffee: #7d5300;
 
   /*
    * FOR-185: the template's secondary (#7dde38 lime) and tertiary (#7ed8b6

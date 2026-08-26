@@ -49,7 +49,8 @@ export type IconName =
   | 'female'
   | 'trendDown'
   | 'balance'
-  | 'leaf';
+  | 'leaf'
+  | 'coffee';
 
 const PATHS: Record<IconName, string> = {
   dashboard: 'M3 3h7v7H3zM14 3h7v4h-7zM14 10h7v11h-7zM3 13h7v8H3z',
@@ -69,6 +70,10 @@ const PATHS: Record<IconName, string> = {
   balance: 'M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4',
   /* An olive leaf, for the Mediterranean eating style (the funnel had 🫒). */
   leaf: 'M4 20c0-8 6-14 16-16 0 10-6 16-16 16zM4 20c4-6 8-8 12-9',
+  /* A cup with steam, for the landing footer's Buy Me a Coffee link. The steam
+     is what tells it apart from `nutrition` at 14px, where a plain mug and a
+     plain apple are the same rounded blob. */
+  coffee: 'M18 8h1a3 3 0 0 1 0 6h-1M3 8h15v7a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4zM7 2v3M11 2v3M15 2v3',
   measurements: 'M3 12h4l3 7 4-14 3 7h4',
   training: 'M6 6v12M18 6v12M4 9h2v6H4zM18 9h2v6h-2zM6 12h12',
   nutrition: 'M12 3c4 0 6 3 6 7a6 6 0 0 1-12 0c0-4 2-7 6-7zM12 3v6',

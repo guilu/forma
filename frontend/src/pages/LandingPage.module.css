@@ -1207,6 +1207,133 @@
   font-size: var(--font-size-label-sm);
 }
 
+/*
+ * The legal column. Centred while `.footerBottom` is stacked, left-aligned once
+ * it becomes a row at 769px — `text-align` follows the parent's `align-items`
+ * there, so both are set together rather than one silently disagreeing.
+ */
+.footerLegal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  text-align: center;
+}
+
+.support {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+/*
+ * The word «Apoyar», in the same versalitas as the footer's column headings.
+ * It is a real `h2` and not a `span`: it names the group of links under it, and
+ * the `nav` points its accessible name at this element rather than repeating
+ * the string in an `aria-label`.
+ */
+.supportHeading {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--font-size-label-sm);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.supportList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+/*
+ * The three pills.
+ *
+ * <p>`composes` and not a hand-drawn pill: `ui-guidelines.md` calls a
+ * button-like control redrawn in a page's own module a bug, and it is right —
+ * that is how the app once had the same pill under three names. These cannot be
+ * `ButtonLink`, which is a router `<Link to>`, and an external `<a href>` is the
+ * one case `Button.module.css` names as fair game for `composes`.
+ *
+ * <p>The doubled selectors below are load-bearing, not a typo. A plain
+ * `.supportLink` ties with the `.button` it composes at (0,1,0) and the winner
+ * would come down to which module the bundler happens to emit last; doubling
+ * ranks it above. Same for each tone, which has to outrank `.soft`'s green.
+ */
+.supportLink {
+  composes: button soft from '../components/Button.module.css';
+}
+
+/*
+ * 32px and not the `.button` 44: three pills in a footer are the dense row that
+ * `ui-guidelines.md` sizes at 32, and it is the same height as `Chip`'s `sm`.
+ * Comfortably past the 24px that WCAG 2.5.8 asks of a target this size.
+ */
+.supportLink.supportLink {
+  gap: var(--space-2);
+  min-height: 32px;
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--font-size-label-sm);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* The tints repeat `.soft`'s 12/35/22 percentages against a different hue, so a
+   support pill and an in-card soft button are the same object in two colours. */
+.supportSponsor.supportSponsor {
+  color: var(--color-sponsor);
+  background-color: color-mix(in srgb, var(--color-sponsor) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-sponsor) 35%, transparent);
+}
+
+/*
+ * The heart is filled, unlike every other glyph from `Icon`. It is the one
+ * place in the app where the drawing is quoting someone else's button — an
+ * outlined heart beside «Sponsor» reads as "unliked", the opposite of what the
+ * link is for. The path closes, so a fill is all it takes.
+ */
+.supportSponsor svg {
+  fill: currentColor;
+}
+
+.supportSponsor.supportSponsor:hover {
+  background-color: color-mix(in srgb, var(--color-sponsor) 22%, transparent);
+  border-color: var(--color-sponsor);
+}
+
+.supportCoffee.supportCoffee {
+  color: var(--color-coffee);
+  background-color: color-mix(in srgb, var(--color-coffee) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-coffee) 35%, transparent);
+}
+
+.supportCoffee.supportCoffee:hover {
+  background-color: color-mix(in srgb, var(--color-coffee) 22%, transparent);
+  border-color: var(--color-coffee);
+}
+
+/* Neutral, because «GitHub» is the one of the three that is not asking for
+   money and should not shout as loud as the two that are. */
+.supportCode.supportCode {
+  color: var(--color-text-secondary);
+  background-color: color-mix(in srgb, var(--color-text-secondary) 8%, transparent);
+  border-color: var(--color-border);
+}
+
+.supportCode.supportCode:hover {
+  background-color: color-mix(in srgb, var(--color-text-secondary) 14%, transparent);
+  border-color: var(--color-text-muted);
+}
+
 @keyframes pulse {
   50% {
     opacity: 0.5;
@@ -1389,7 +1516,13 @@
 
   .footerBottom {
     flex-direction: row;
+    align-items: center;
     justify-content: space-between;
+  }
+
+  .footerLegal {
+    align-items: flex-start;
+    text-align: left;
   }
 }
 

@@ -324,6 +324,74 @@ describe('LandingPage', () => {
     ).toBeInTheDocument();
   });
 
+  /*
+   * The footer bottom row. The disclaimer used to sit opposite the copyright,
+   * which read as a choice between the two; it now stacks under it, and the row
+   * it vacated carries the three support links.
+   */
+  it('stacks the medical disclaimer under the copyright, not opposite it', () => {
+    mockLanding({ status: 'anonymous' });
+    renderLanding();
+
+    const disclaimer = screen.getByText('FORMA no ofrece diagnóstico médico.');
+    const copyright = screen.getByText(/Todos los derechos reservados/);
+
+    // Same parent, in that order: the disclaimer is a footnote to the line above.
+    expect(disclaimer.parentElement).toBe(copyright.parentElement);
+    expect(copyright.compareDocumentPosition(disclaimer)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it('offers the three ways to support the project, each opening its own site', () => {
+    mockLanding({ status: 'anonymous' });
+    renderLanding();
+
+    const support = screen.getByRole('navigation', { name: 'Apoyar' });
+
+    /*
+     * Asserted through the accessible name and not the visible text: «Sponsor»
+     * and «GitHub» say nothing about where they lead when a screen reader reads
+     * the link out of its row, which is the state the whole list is read in.
+     */
+    const expected = [
+      ['Patrocinar a FORMA en GitHub Sponsors', 'https://github.com/sponsors/guilu'],
+      ['Invitar a un café en Buy Me a Coffee', 'https://buymeacoffee.com/diegobarrioh'],
+      ['Ver el código de FORMA en GitHub', 'https://github.com/guilu/forma'],
+    ] as const;
+
+    for (const [name, href] of expected) {
+      const link = within(support).getByRole('link', { name });
+      expect(link).toHaveAttribute('href', href);
+      expect(link).toHaveAttribute('target', '_blank');
+      // `noreferrer` too: no funding page needs to know where the visitor came from.
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    }
+
+    expect(within(support).getAllByRole('link')).toHaveLength(expected.length);
+  });
+
+  /*
+   * The tints, checked in the stylesheet rather than the DOM: jsdom applies no
+   * CSS module, so a rule that never matched would still leave the markup
+   * looking right. Doubling is what ranks these above the `.soft` green they
+   * compose — see the module for the full story — and it is exactly the part a
+   * later tidy-up would "simplify" away.
+   */
+  it.each([
+    ['supportSponsor', '--color-sponsor'],
+    ['supportCoffee', '--color-coffee'],
+  ] as const)(
+    'paints %s with its own funding hue, ranked above the composed green',
+    (cls, token) => {
+      expect(landingCss).toMatch(
+        new RegExp(`\\.${cls}\\.${cls}\\s*{[^}]*color:\\s*var\\(${token}\\)`, 's'),
+      );
+    },
+  );
+
+  it('gives the support pills the dense-row height, not the 44px button one', () => {
+    expect(landingCss).toMatch(/\.supportLink\.supportLink\s*{[^}]*min-height:\s*32px/s);
+  });
+
   it.each([
     ['anonymous', false],
     ['authenticated', false],
