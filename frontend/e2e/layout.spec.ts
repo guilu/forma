@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { fixtureFor } from './apiFixtures';
 import { stubApi } from './stubApi';
 import { expectGlassSurface, expectNoHorizontalOverflow, expectSinglePageScroller } from './layout';
@@ -265,22 +265,43 @@ test.describe('dashboard grid', () => {
     ).toBe(1);
   });
 
-  test('gives the combined nutrition card its rings and figures side by side', async ({ page }) => {
+  test('stacks the nutrition rings over their figures and centres them', async ({ page }) => {
     await gotoApp(page, '/app');
 
     const nutrition = widget(page, 'Nutrición');
     const rings = nutrition.getByRole('img', { name: /kcal\. Proteínas/ });
-
-    const [ringsBox, figuresLeft] = await Promise.all([
-      rings.evaluate((node) => {
+    const carbs = nutrition.getByText('Carbohidratos');
+    const box = (locator: Locator) =>
+      locator.evaluate((node) => {
         const rect = node.getBoundingClientRect();
-        return { left: Math.round(rect.left), width: Math.round(rect.width) };
-      }),
-      nutrition
-        .getByText('Carbohidratos')
-        .evaluate((node) => Math.round(node.getBoundingClientRect().left)),
+        return {
+          left: Math.round(rect.left),
+          right: Math.round(rect.right),
+          top: Math.round(rect.top),
+          height: Math.round(rect.height),
+        };
+      });
+
+    const [ringsBox, cardBox, carbsBox] = await Promise.all([
+      box(rings),
+      box(nutrition),
+      box(carbs),
     ]);
-    expect(figuresLeft).toBeGreaterThan(ringsBox.left + ringsBox.width - 1);
+
+    // The figures sit under the rings, one line each: side by side they got what the square left
+    // over, and "Carbohidratos" broke mid-word in it.
+    expect(carbsBox.top).toBeGreaterThan(ringsBox.top);
+    const lineHeight = await carbs.evaluate((node) =>
+      parseFloat(getComputedStyle(node).lineHeight),
+    );
+    expect(carbsBox.height, 'The carbs label wraps onto a second line').toBeLessThan(
+      lineHeight + 2,
+    );
+
+    // Centred: the card leaves the same gap on either side of the square.
+    expect(Math.abs(ringsBox.left - cardBox.left - (cardBox.right - ringsBox.right))).toBeLessThan(
+      2,
+    );
 
     // Four concentric rings, each with its unfilled track behind it.
     await expect(rings.locator('circle')).toHaveCount(8);

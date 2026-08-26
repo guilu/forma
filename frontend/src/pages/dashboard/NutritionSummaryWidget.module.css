@@ -1,13 +1,20 @@
 /*
- * Rings on the left, the same four figures as text on the right. They sit side by side from the
- * card's narrowest track upwards: the rings are a fixed square, the column of figures takes what
- * is left and may shrink, which is what keeps 320 px from overflowing.
+ * Rings above, the same four figures as text below, one line each. Side by side the figures got
+ * whatever the square left over — about 130 px in the card's own track — and "Carbohidratos" broke
+ * mid-word there. Stacked, every line owns the full width of the card at any size, so the layout
+ * has no narrow case to special-case.
  */
 .content {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: var(--space-4);
   min-width: 0;
+}
+
+/* The rings are a fixed square in a column of full-width rows, so they centre themselves rather
+   than sitting against the left edge with a field of card beside them. */
+.content > :first-child {
+  align-self: center;
 }
 
 .figures {
@@ -20,10 +27,13 @@
   min-width: 0;
 }
 
+/* Name on the left, figure on the right: the four numbers line up as a column, which is what makes
+   them comparable at a glance. */
 .figure {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
   min-width: 0;
 }
 
@@ -48,27 +58,7 @@
 .value {
   font-size: var(--font-size-sm);
   font-weight: 600;
+  white-space: nowrap;
   color: var(--color-text-muted);
   font-variant-numeric: tabular-nums;
-}
-
-/* Under 380 px the two columns leave the figures about 120 px, where "32,5 / 165 g" breaks
-   mid-number. The rings go above the list instead of being shaved thinner. */
-@media (max-width: 380px) {
-  .content {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-3);
-  }
-
-  .figures {
-    width: 100%;
-  }
-
-  .figure {
-    flex-direction: row;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: var(--space-2);
-  }
 }
