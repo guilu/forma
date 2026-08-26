@@ -33,6 +33,14 @@ interface LineChartProps {
    * value and caption already carry the numbers.
    */
   readonly variant?: 'detail' | 'spark';
+  /**
+   * The series colour, any CSS colour (defaults to the accent). Set it where
+   * several charts sit together and each stands for a different metric — the
+   * dashboard's body tiles, which borrow the nutrition rings' assignment so a
+   * metric keeps one colour across the whole panel. Never the only carrier of
+   * that distinction: every chart is titled and carries an `ariaLabel`.
+   */
+  readonly color?: string;
 }
 
 /** Up to this many x-axis ticks; beyond it the date labels start colliding. */
@@ -52,7 +60,13 @@ const MAX_TICKS = 7;
  * named by `ariaLabel` and by its card title, so the trend is never carried by
  * colour alone.
  */
-export function LineChart({ points, formatValue, ariaLabel, variant = 'detail' }: LineChartProps) {
+export function LineChart({
+  points,
+  formatValue,
+  ariaLabel,
+  variant = 'detail',
+  color = 'var(--color-accent)',
+}: LineChartProps) {
   // One gradient per instance: SVG ids are document-global and several charts
   // are on screen at once (one per metric tile).
   const gradientId = `chart-fill-${useId()}`;
@@ -71,8 +85,8 @@ export function LineChart({ points, formatValue, ariaLabel, variant = 'detail' }
         >
           <defs>
             <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--color-accent)" stopOpacity={0.24} />
-              <stop offset="100%" stopColor="var(--color-accent)" stopOpacity={0} />
+              <stop offset="0%" stopColor={color} stopOpacity={0.24} />
+              <stop offset="100%" stopColor={color} stopOpacity={0} />
             </linearGradient>
           </defs>
 
@@ -121,21 +135,21 @@ export function LineChart({ points, formatValue, ariaLabel, variant = 'detail' }
                   formatValue={formatValue}
                 />
               )}
-              cursor={{ stroke: 'var(--color-accent)', strokeOpacity: 0.35, strokeWidth: 1 }}
+              cursor={{ stroke: color, strokeOpacity: 0.35, strokeWidth: 1 }}
             />
           )}
 
           <Area
             type="monotone"
             dataKey="y"
-            stroke="var(--color-accent)"
+            stroke={color}
             strokeWidth={2}
             strokeLinecap="round"
             fill={`url(#${gradientId})`}
             /* A dot per measurement turns a dense series into beads on a
                string; only the hovered point gets one. */
             dot={false}
-            activeDot={spark ? false : { r: 4, strokeWidth: 0, fill: 'var(--color-accent)' }}
+            activeDot={spark ? false : { r: 4, strokeWidth: 0, fill: color }}
             isAnimationActive={false}
           />
         </AreaChart>
