@@ -145,8 +145,9 @@
  * 1100px two-column breakpoint, so it was getting the full desktop layout: six
  * metric tiles across left each one about 180px, too narrow for a headline
  * value next to its caption. Every row wraps at three columns here — the
- * metrics row as 3 + 3 (see `BodyWidget.module.css`, which dissolves its tiles
- * into this grid so they can wrap), the widget rows at three across.
+ * widget rows at three across. The body tiles keep their own four (see
+ * `BodyWidget.module.css`): they own a whole row of their own, and a tile of a
+ * quarter row is wider here than a widget of a third.
  *
  * The band is not keyed to a "tablet" device width: CSS cannot tell a 1280px
  * laptop from a 1180px tablet, and the row is equally cramped on either. It

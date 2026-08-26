@@ -368,8 +368,9 @@ test.describe('dashboard rows', () => {
 /**
  * On a tablet in landscape the metric tiles across a single row left each
  * one about 180px wide — too narrow for a headline value and its caption. The
- * band below the desktop layout (1101–1600px) wraps every row at three columns
- * instead.
+ * band below the desktop layout (1101–1600px) wraps the widget rows at three
+ * columns instead. The body tiles stay four across: they own a whole row now,
+ * so a quarter of it is wider than a third of a widget row.
  */
 // Both ends of the band: the tablet that prompted it and a laptop near the top
 // edge, where narrow tracks were still breaking headline figures across lines.
@@ -401,6 +402,29 @@ for (const viewport of [TABLET, LAPTOP]) {
         );
       });
     }
+
+    /*
+     * The body tiles keep their own four across this band while the widgets wrap at three. They
+     * wrapped 3 + 1 back when a hydration tile shared the row with them; with the row to
+     * themselves, wrapping only buys three tiles and a hole.
+     */
+    test('keeps the four body tiles on one row', async ({ page }) => {
+      await gotoApp(page, '/app');
+
+      const tiles = await page.locator('main [class*="body"] > section').evaluateAll((cards) =>
+        cards.map((card) => {
+          const rect = card.getBoundingClientRect();
+          return { left: Math.round(rect.left), top: Math.round(rect.top) };
+        }),
+      );
+
+      expect(tiles.length, 'The four body tiles were not found').toBe(4);
+      const tops = new Set(tiles.map((tile) => tile.top));
+      expect(tops.size, `The tiles wrap onto ${tops.size} rows (y: ${[...tops].join(', ')})`).toBe(
+        1,
+      );
+      expect(new Set(tiles.map((tile) => tile.left)).size).toBe(4);
+    });
   });
 }
 
