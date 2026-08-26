@@ -4,7 +4,7 @@ import { ErrorState } from '../../components/ErrorState';
 import { Icon } from '../../components/Icon';
 import { WidgetLoading } from '../../components/WidgetLoading';
 import { getShoppingList, type ShoppingList } from '../../api/shopping';
-import { unitLabel } from '../shoppingDisplay';
+import { shortUnitLabel, splitProductName } from '../shoppingDisplay';
 import { WidgetSection } from './WidgetSection';
 import styles from './ShoppingWidget.module.css';
 
@@ -13,6 +13,13 @@ import styles from './ShoppingWidget.module.css';
  * mockup): the first few items of this week's FOR-39 shopping list — real
  * product name + quantity + unit — with a "Ver lista completa" link. Renders
  * API values as returned (ADR-006).
+ *
+ * <p>Typography and row shape are the menu card's, which sits beside it in the
+ * same row: the product's head noun on top and its qualifiers under it, both
+ * clipped with an ellipsis rather than wrapped, so five rows are always five
+ * rows tall. The unit is abbreviated here and only here — "3 u" instead of "3
+ * unidades" — because in this width the word was costing the product name its
+ * last characters.
  */
 type State =
   | { readonly status: 'loading' }
@@ -72,17 +79,26 @@ function renderContent(state: State) {
   return (
     <>
       <ul className={styles.items}>
-        {state.list.items.slice(0, PREVIEW_COUNT).map((item) => (
-          <li key={item.id} className={styles.item}>
-            <span className={styles.itemIcon} aria-hidden="true">
-              <Icon name="shopping" size={16} />
-            </span>
-            <span className={styles.itemName}>{item.productName}</span>
-            <span className={styles.itemQty}>
-              {item.quantity} {unitLabel(item.unit)}
-            </span>
-          </li>
-        ))}
+        {state.list.items.slice(0, PREVIEW_COUNT).map((item) => {
+          const { head, rest } = splitProductName(item.productName);
+          return (
+            <li key={item.id} className={styles.item}>
+              <span className={styles.itemIcon} aria-hidden="true">
+                <Icon name="shopping" size={16} />
+              </span>
+              {/* Two lines like the menu card's meals, and for the same reason:
+                  what the product IS reads first, and which one it is follows
+                  underneath instead of pushing the quantity off the row. */}
+              <span className={styles.itemText}>
+                <span className={styles.itemName}>{head}</span>
+                {rest && <span className={styles.itemDescription}>{rest}</span>}
+              </span>
+              <span className={styles.itemQty}>
+                {item.quantity} {shortUnitLabel(item.unit)}
+              </span>
+            </li>
+          );
+        })}
       </ul>
       {remaining > 0 && <p className={styles.more}>+ {remaining} productos más</p>}
     </>

@@ -56,8 +56,25 @@ describe('ShoppingWidget (Lista de compra)', () => {
     renderWidget();
 
     expect(await screen.findByText('Avena')).toBeInTheDocument();
-    // UD renders as "unidades" (FOR-164 unit labels).
-    expect(screen.getByText('1 unidades')).toBeInTheDocument();
+    // Abreviado solo en esta tarjeta: "unidades" se comía el nombre del producto.
+    expect(screen.getByText('1 u')).toBeInTheDocument();
+  });
+
+  /*
+   * Como en la tarjeta de menú de al lado: arriba lo que el producto ES, debajo
+   * cuál de ellos. El catálogo no separa marca ni variedad — el nombre es un
+   * solo texto libre —, así que la partición es por la primera palabra.
+   */
+  it('splits a product name into its head word and the rest', async () => {
+    shoppingMock.mockResolvedValue({
+      ...list,
+      items: [{ ...list.items[0], productName: 'Atún claro al natural Hacendado' }],
+    });
+
+    renderWidget();
+
+    expect(await screen.findByText('Atún')).toBeInTheDocument();
+    expect(screen.getByText('claro al natural Hacendado')).toBeInTheDocument();
   });
 
   it('shows an empty state when the list has no items', async () => {

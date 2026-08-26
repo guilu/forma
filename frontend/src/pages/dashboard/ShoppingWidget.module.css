@@ -25,10 +25,31 @@
   border-radius: var(--radius-md);
 }
 
-.itemName {
+/* The menu card's two-line text block, same measurements: `NutritionWidget`'s
+   `.mealText` / `.mealName` / `.mealDescription`. */
+.itemText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   flex: 1;
   min-width: 0;
+}
+
+.itemName {
+  font-size: x-small;
+  font-weight: 500;
   color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.itemDescription {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .itemQty {
