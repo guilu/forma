@@ -92,3 +92,9 @@ export function groupMusclesForDisplay(
     load: loadByCanonical.get(canonical) as MuscleLoad,
   }));
 }
+
+/** "Músculos trabajados: Pecho, Tríceps, Hombro" — the same names the focus line prints. */
+export function muscleSummary(muscles: readonly MuscleWorked[]): string {
+  const labels = groupMusclesForDisplay(muscles).map((muscle) => muscle.label);
+  return `Músculos trabajados: ${labels.join(', ')}`;
+}
