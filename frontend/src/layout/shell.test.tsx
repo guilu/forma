@@ -80,22 +80,17 @@ function renderSidebar(initialEntries?: readonly string[]) {
 
 describe('application shell', () => {
   /*
-   * The public bar sits above the landing and the auth pages, so its controls
-   * wear the same pill they do. The application bar underneath is deliberately
-   * left alone: its chrome is dense and keeps the app radii, which is why these
-   * are scoped classes rather than a change to `IconButton` or `Button`.
+   * The one radius this bar still declares. Everything else in it is round
+   * because `Button` and `IconButton` are — the theme toggle, the bell and the
+   * hamburger are `IconButton`, the login action is `ButtonLink` — and those
+   * are guarded in their own component tests. This is a bare `<button>` with no
+   * component underneath, so nothing else would catch it going square.
+   *
+   * Single class, not doubled: there is no shared-module rule to outrank here.
    */
-  it.each(['loginLink', 'themeTogglePublic', 'menuButton'])(
-    'gives the public bar %s the pill radius',
-    (control) => {
-      expect(topbarCss, `${control} is not a pill`).toMatch(
-        new RegExp(
-          `\\.${control}\\.${control}\\s*{[^}]*border-radius:\\s*var\\(--radius-full\\);`,
-          's',
-        ),
-      );
-    },
-  );
+  it('rounds the account trigger, which has no component to inherit it from', () => {
+    expect(topbarCss).toMatch(/\.accountTrigger\s*{[^}]*border-radius:\s*var\(--radius-full\);/s);
+  });
 
   beforeEach(() => {
     logoutMock.mockReset();

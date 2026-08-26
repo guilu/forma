@@ -846,9 +846,7 @@ test.describe('landing hero CTA', () => {
         probe.remove();
 
         const content =
-          link.clientWidth -
-          parseFloat(style.paddingLeft) -
-          parseFloat(style.paddingRight);
+          link.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
         return { label: probe.textContent, textWidth, content };
       });
 
@@ -1146,6 +1144,66 @@ test.describe('page headers on a phone', () => {
  * every width. jsdom cannot catch this — it resolves neither the cascade across
  * modules nor the media query — which is exactly why the check lives here.
  */
+/**
+ * The public bar's gutters, measured against what it sits on.
+ *
+ * <p>The bar and the landing were two independent measures that happened to
+ * look alike: 1280px capped here against the sections' 1440, and the mobile
+ * 20px gutter kept at every width while the sections widen theirs at 769px.
+ * The two errors compounded — on a 1728px screen the brand started 100px right
+ * of the hero copy, and below 1280 it started 20px left of it.
+ *
+ * <p>Asserted against `.heroGrid`'s own box rather than a table of expected
+ * pixels: the numbers are whatever the landing's measure resolves to, and a
+ * test that restated them would keep passing after someone changed the landing
+ * and left the bar behind — which is the exact failure it exists to catch.
+ */
+test.describe('the public bar gutters', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route('**/api/v1/auth/me', (route) =>
+      route.fulfill({ status: 401, contentType: 'application/json', body: '{}' }),
+    );
+  });
+
+  /*
+   * 1728 and 1440 straddle the cap, 1024 sits between the cap and the gutter
+   * breakpoint, and 700 is below it — one width per branch of the two rules.
+   */
+  for (const width of [1728, 1440, 1024, 700]) {
+    test(`line up with the landing at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto('/');
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+
+      const edges = await page.evaluate(() => {
+        const box = (el: Element | null) => {
+          const b = el!.getBoundingClientRect();
+          return { left: Math.round(b.left), right: Math.round(b.right) };
+        };
+        const header = document.querySelector('header')!;
+        const hero = document.querySelector('#landing-title')!.closest('section')!;
+        return {
+          brand: box(header.querySelector('a[aria-label="FORMA, inicio"]')),
+          // The bar's third column: the theme toggle and the login pill.
+          actions: box(header.lastElementChild!.lastElementChild),
+          // The hero's own measure — the mesh above it is decorative and
+          // deliberately full-bleed, so it is skipped by the `aria-hidden`.
+          content: box(hero.querySelector(':scope > div:not([aria-hidden])')),
+        };
+      });
+
+      expect(
+        edges.brand.left,
+        `brand at ${edges.brand.left}, hero copy at ${edges.content.left}`,
+      ).toBe(edges.content.left);
+      expect(
+        edges.actions.right,
+        `actions end at ${edges.actions.right}, hero ends at ${edges.content.right}`,
+      ).toBe(edges.content.right);
+    });
+  }
+});
+
 test.describe('the public bar login action', () => {
   /**
    * The bar only wears its public face when nobody is signed in, and the shared
