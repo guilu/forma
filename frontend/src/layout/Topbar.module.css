@@ -73,10 +73,31 @@
  * action group change size (they do — the login pill shrinks below 480px).
  */
 .innerPublic {
-  max-width: 1280px;
+  /*
+   * The same measure and the same gutters as the landing underneath, so the
+   * brand starts exactly where the hero copy does and the login pill ends where
+   * the cards do. It used to be `max-width: 1280px` against the landing's 1440,
+   * and it kept the mobile 20px gutter at every width while the sections widen
+   * theirs at 769px — together that left the bar 100px short of the content on
+   * a 1728px screen, and 20px past it below 1280.
+   *
+   * The cap is written as content measure + gutters because the box is
+   * `border-box`: `max-width` swallows the padding, so a flat 1440 here would
+   * be 1440 *including* the gutters and land 40px inside the hero on each side.
+   */
+  max-width: calc(1440px + 2 * var(--space-container-mobile));
   margin: 0 auto;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
+}
+
+/* The landing widens its gutters here (`LandingPage.module.css`), and the bar
+   has to turn at the same width or it stops lining up with what it sits on. */
+@media (min-width: 769px) {
+  .innerPublic {
+    max-width: calc(1440px + 2 * var(--space-container-desktop));
+    padding-inline: var(--space-container-desktop);
+  }
 }
 
 /*
