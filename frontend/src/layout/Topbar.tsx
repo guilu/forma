@@ -54,13 +54,12 @@ export function Topbar() {
   }
 
   /*
-   * Takes a class per bar, the same shape `loginLink` below already has: the
-   * public bar's controls are pills like the landing's, while the application
-   * bar keeps the app radii for its dense chrome. One control, two dressings.
+   * It used to take a class per bar — pill in public, app radii in the
+   * application chrome. Both are the same control now, and the radius comes
+   * from `IconButton` itself, so there is nothing left to dress per bar.
    */
-  const themeToggle = (className?: string) => (
+  const themeToggle = () => (
     <IconButton
-      className={className}
       label={isDark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
       onClick={() => setMode(isDark ? 'light' : 'dark')}
     >
@@ -237,7 +236,7 @@ export function Topbar() {
               {loginLink(styles.loginLinkSheet)}
             </nav>
             <div className={styles.publicSide}>
-              {themeToggle(styles.themeTogglePublic)}
+              {themeToggle()}
               {loginLink(styles.loginLinkBar)}
               <IconButton
                 className={styles.menuButton}

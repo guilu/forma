@@ -149,7 +149,14 @@
   gap: var(--space-2);
   padding: var(--space-1) var(--space-2) var(--space-1) var(--space-1);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  /*
+   * The one control in this bar that has to say it. The theme toggle, the bell
+   * and the hamburger are `IconButton` and the login action is `ButtonLink`, so
+   * all four inherit the product's radius; this is a bare `<button>` with no
+   * component underneath. It carries an avatar that is already a circle, and a
+   * `--radius-lg` corner drew a rounded rectangle around a round thing.
+   */
+  border-radius: var(--radius-full);
   background-color: var(--color-card);
   font: inherit;
   color: inherit;
@@ -282,7 +289,6 @@
 .loginLink.loginLink {
   min-height: 40px;
   padding: 0 var(--space-5);
-  border-radius: var(--radius-full);
   font-size: var(--font-size-label-md);
   font-weight: 500;
   letter-spacing: var(--letter-spacing-label-md);
@@ -318,24 +324,6 @@
  */
 .menuButton.menuButton {
   display: none;
-  /* Rounded with the rest of the public bar. It sits beside the toggle at the
-     width where it exists at all, and one square control among pills reads as
-     an oversight rather than a distinction. */
-  border-radius: var(--radius-full);
-}
-
-/*
- * The public bar's copy of the theme toggle. Scoped to this bar rather than
- * changing `IconButton`, which dresses every icon control in the application:
- * the pill is the public face's treatment, not the product's.
- *
- * Doubled selector for the reason the hamburger above gives — this class is
- * handed to `IconButton`, whose own size rule sets `border-radius` at the same
- * (0,1,0) specificity, so between two CSS modules the winner would come down to
- * bundle order.
- */
-.themeTogglePublic.themeTogglePublic {
-  border-radius: var(--radius-full);
 }
 
 /*
