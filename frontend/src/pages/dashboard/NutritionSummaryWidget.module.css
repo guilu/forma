@@ -1,69 +1,74 @@
+/*
+ * Rings on the left, the same four figures as text on the right. They sit side by side from the
+ * card's narrowest track upwards: the rings are a fixed square, the column of figures takes what
+ * is left and may shrink, which is what keeps 320 px from overflowing.
+ */
 .content {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: var(--space-4);
   min-width: 0;
 }
 
-.content > :first-child {
-  justify-content: center;
-}
-
-.macros {
+.figures {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-2);
   min-width: 0;
 }
 
-.macro {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: baseline;
-  gap: var(--space-1) var(--space-2);
+.figure {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   min-width: 0;
 }
 
-.macro > :last-child {
-  grid-column: 1 / -1;
-}
-
-.macroLabel,
-.macroValue {
+.label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
   font-size: var(--font-size-sm);
-}
-
-.macroLabel {
-  min-width: 0;
   color: var(--color-text);
 }
 
-.macroValue {
-  font-weight: 600;
-  white-space: nowrap;
-  color: var(--color-text-muted);
+/* The dot is the ring's colour, next to the ring's name: the pairing is what makes the arcs
+   readable, and it is decoration on top of a label that already says the same thing. */
+.dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
-/* Phones use the width gained by combining the cards: calories on the left,
-   macro progress on the right. Both tracks may shrink, preventing overflow at
-   375 px while keeping one semantic widget and one data state. */
-@media (max-width: 580px) {
+.value {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Under 380 px the two columns leave the figures about 120 px, where "32,5 / 165 g" breaks
+   mid-number. The rings go above the list instead of being shaved thinner. */
+@media (max-width: 380px) {
   .content {
-    grid-template-columns: minmax(0, 8rem) minmax(0, 1fr);
-    display: grid;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
     gap: var(--space-3);
   }
 
-  .macro {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 2px;
+  .figures {
+    width: 100%;
   }
 
-  .macroValue {
-    white-space: normal;
+  .figure {
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-2);
   }
 }

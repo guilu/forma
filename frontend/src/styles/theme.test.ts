@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import foodFormCss from '../pages/admin/FoodForm.module.css?raw';
 import planGeneratorCss from '../pages/generator/PlanGenerator.module.css?raw';
 import nutritionCss from '../pages/NutritionPage.module.css?raw';
-import nutritionPageSource from '../pages/NutritionPage.tsx?raw';
+import nutritionRingsSource from '../components/NutritionRings.tsx?raw';
 import trainingDetailSource from '../pages/TrainingDetailPage.tsx?raw';
 import trainingCss from '../pages/TrainingPage.module.css?raw';
 import trainingPageSource from '../pages/TrainingPage.tsx?raw';
@@ -363,7 +363,8 @@ describe('theme.css design tokens (FOR-163 reconciliation)', () => {
     });
 
     it('keeps fat series and training dots on the orange graphic role', () => {
-      expect(nutritionPageSource).toContain(
+      // Los cuatro aros y los puntos que los nombran salen de la misma constante.
+      expect(nutritionRingsSource).toContain(
         "label: 'Grasas', color: 'var(--color-warning-graphic)'",
       );
       expect(trainingPageSource).toContain('conic-gradient(var(--color-warning-graphic)');

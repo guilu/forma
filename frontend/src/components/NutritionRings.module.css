@@ -1,0 +1,29 @@
+/*
+ * The block never shrinks below its asked-for size and never grows past its column: it is a
+ * square of figures, and a squashed ring stops reading as a proportion.
+ */
+.rings {
+  flex-shrink: 0;
+  max-width: 100%;
+  overflow: visible;
+}
+
+/* The unfilled part of each ring: the same hue, dimmed, so an empty ring still says which one it
+   is. `color-mix` against `transparent` keeps it honest on both the light and the dark surface,
+   which a fixed grey would not. */
+.track {
+  fill: none;
+  stroke: color-mix(in srgb, var(--ring-color) 20%, transparent);
+}
+
+.arc {
+  fill: none;
+  stroke: var(--ring-color);
+  transition: stroke-dashoffset 600ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arc {
+    transition: none;
+  }
+}

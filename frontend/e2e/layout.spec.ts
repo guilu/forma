@@ -265,18 +265,25 @@ test.describe('dashboard grid', () => {
     ).toBe(1);
   });
 
-  test('gives the combined nutrition card a donut and macros side by side', async ({ page }) => {
+  test('gives the combined nutrition card its rings and figures side by side', async ({ page }) => {
     await gotoApp(page, '/app');
 
     const nutrition = widget(page, 'Nutrición');
+    const rings = nutrition.getByRole('img', { name: /kcal\. Proteínas/ });
 
-    const ringLeft = await nutrition
-      .getByRole('img', { name: /kcal consumidas/ })
-      .evaluate((node) => Math.round(node.getBoundingClientRect().left));
-    const macrosLeft = await nutrition
-      .getByRole('progressbar', { name: /Proteínas/ })
-      .evaluate((node) => Math.round(node.getBoundingClientRect().left));
-    expect(macrosLeft).toBeGreaterThan(ringLeft);
+    const [ringsBox, figuresLeft] = await Promise.all([
+      rings.evaluate((node) => {
+        const rect = node.getBoundingClientRect();
+        return { left: Math.round(rect.left), width: Math.round(rect.width) };
+      }),
+      nutrition
+        .getByText('Carbohidratos')
+        .evaluate((node) => Math.round(node.getBoundingClientRect().left)),
+    ]);
+    expect(figuresLeft).toBeGreaterThan(ringsBox.left + ringsBox.width - 1);
+
+    // Four concentric rings, each with its unfilled track behind it.
+    await expect(rings.locator('circle')).toHaveCount(8);
   });
 });
 
@@ -609,19 +616,23 @@ test.describe('chart colours', () => {
     });
   }
 
-  test('paints the shared calorie progress donut with a filled arc and track', async ({ page }) => {
+  test('gives each nutrition ring its own colour over a dimmed track', async ({ page }) => {
     await gotoApp(page, '/app');
 
-    const ring = page.getByRole('img', { name: /kcal consumidas/ });
-    const background = await ring.evaluate((el) => getComputedStyle(el).backgroundImage);
+    const rings = page.getByRole('img', { name: /kcal\. Proteínas/ });
+    const strokes = (selector: string) =>
+      rings.locator(selector).evaluateAll((nodes) => nodes.map((n) => getComputedStyle(n).stroke));
 
-    expect(background, 'The donut is not painted with a conic gradient').toContain('conic');
-    // The shared nutrition donut has one progress colour and one track colour.
-    const stops = background.match(/rgba?\([^)]+\)/g) ?? [];
-    expect(
-      new Set(stops).size,
-      `Expected a filled arc plus a track, got ${stops.join(', ')}`,
-    ).toBeGreaterThanOrEqual(2);
+    const [arcs, tracks] = await Promise.all([strokes('[data-arc]'), strokes('[data-track]')]);
+
+    expect(arcs.length, 'The four rings were not found').toBe(4);
+    // Calories plus one colour per macro: an arc that shares its colour with another says nothing.
+    expect(new Set(arcs).size, `Rings share a colour: ${arcs.join(', ')}`).toBe(4);
+    expect(tracks.length).toBe(4);
+    // The unfilled part is the same hue dimmed, so it can never be read as the filled one.
+    for (const [index, track] of tracks.entries()) {
+      expect(track, `Ring ${index} draws its track like its arc`).not.toBe(arcs[index]);
+    }
   });
 });
 

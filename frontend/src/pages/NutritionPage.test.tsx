@@ -135,11 +135,9 @@ describe('NutritionPage', () => {
 
     // El separador de miles depende del ICU del entorno, así que el matcher lo hace opcional en
     // vez de fijar el del navegador o el del runner.
-    expect(
-      await screen.findByRole('img', { name: /2\.?150 de 2\.?850 kcal consumidas/ }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('img', { name: /2\.?150 de 2\.?850 kcal/ })).toBeInTheDocument();
     // Restantes: lo que falta, no lo que suma el plan.
-    expect(screen.getByText('700')).toBeInTheDocument();
+    expect(screen.getByText(/Te quedan 700 kcal/)).toBeInTheDocument();
   });
 
   it('shows each macro eaten against its target', async () => {
@@ -148,7 +146,9 @@ describe('NutritionPage', () => {
     expect(await screen.findByText('140 g')).toBeInTheDocument();
     expect(screen.getByText('/ 180 g')).toBeInTheDocument();
     expect(screen.getByText('250 g')).toBeInTheDocument();
+    expect(screen.getByText('/ 320 g')).toBeInTheDocument();
     expect(screen.getByText('55 g')).toBeInTheDocument();
+    expect(screen.getByText('/ 75 g')).toBeInTheDocument();
   });
 
   it('lists the meals with their macros and how many are done', async () => {
@@ -327,14 +327,15 @@ describe('NutritionPage', () => {
     expect(within(screen.getByRole('dialog')).getByText('Registrar comida')).toBeInTheDocument();
   });
 
-  /** A plan that sets no target draws no bar: the only ceiling available would be invented here. */
-  it('shows the figures without bars when the plan sets no target', async () => {
+  /** A plan that sets no target fills no ring: the only ceiling available would be invented here. */
+  it('shows the figures without a goal when the plan sets no target', async () => {
     getConsumptionMock.mockResolvedValue(consumption({ target: null, comparison: null }));
     renderPage();
 
     expect(await screen.findByText('140 g')).toBeInTheDocument();
     expect(screen.queryByText('/ 180 g')).not.toBeInTheDocument();
-    expect(screen.getByLabelText(/Tu plan no fija un objetivo/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Tu plan no fija objetivos/)).toBeInTheDocument();
+    expect(screen.getByText('Sin objetivo')).toBeInTheDocument();
   });
 
   it('points at the generator when there is no plan for today', async () => {

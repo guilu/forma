@@ -342,9 +342,7 @@ describe('DashboardPage', () => {
 
     renderDashboard();
 
-    expect(
-      await screen.findByRole('img', { name: /444 de 2300 kcal consumidas/ }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('img', { name: /444 de 2300 kcal\./ })).toBeInTheDocument();
     expect(screen.getByText('15,6 / 160 g')).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent('No se pudo cargar tu menú de hoy');
   });

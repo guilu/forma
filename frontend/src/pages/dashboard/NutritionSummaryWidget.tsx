@@ -1,16 +1,9 @@
-import { CalorieRing } from '../../components/CalorieRing';
 import { ErrorState } from '../../components/ErrorState';
+import { NutritionRings, RING_ARCS } from '../../components/NutritionRings';
 import { WidgetLoading } from '../../components/WidgetLoading';
 import type { TodayConsumptionState } from './todayNutrition';
-import { ProgressBar } from './ProgressBar';
 import { WidgetSection } from './WidgetSection';
 import styles from './NutritionSummaryWidget.module.css';
-
-const MACROS = [
-  { key: 'proteinG', label: 'Proteínas', color: 'var(--color-accent)' },
-  { key: 'carbsG', label: 'Carbohidratos', color: 'var(--color-warning-graphic)' },
-  { key: 'fatG', label: 'Grasas', color: 'var(--color-text-muted)' },
-] as const;
 
 const NUM = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1 });
 
@@ -34,27 +27,24 @@ function renderContent(state: TodayConsumptionState) {
   const { consumed, target } = state.consumption;
   return (
     <div className={styles.content}>
-      <CalorieRing consumed={consumed.kcal} target={target?.kcal ?? null} compact />
-      <ul className={styles.macros}>
-        {MACROS.map((macro) => {
-          const eaten = consumed[macro.key];
-          const goal = target?.[macro.key] ?? null;
+      {/* The rings carry the accessible summary; the list beside them repeats every figure as
+          text, so nothing here is said by colour alone. */}
+      <NutritionRings consumed={consumed} target={target} />
+      <ul className={styles.figures}>
+        {RING_ARCS.map((arc) => {
+          const eaten = consumed[arc.key];
+          const goal = target?.[arc.key] ?? null;
+          const unit = arc.key === 'kcal' ? 'kcal' : 'g';
           return (
-            <li key={macro.key} className={styles.macro}>
-              <span className={styles.macroLabel}>{macro.label}</span>
-              <span className={styles.macroValue}>
-                {NUM.format(eaten)}
-                {goal !== null ? ` / ${NUM.format(goal)} g` : ' g · Sin objetivo'}
+            <li key={arc.key} className={styles.figure}>
+              <span className={styles.label}>
+                <span className={styles.dot} style={{ background: arc.color }} aria-hidden="true" />
+                {arc.key === 'kcal' ? 'Calorías' : arc.label}
               </span>
-              {goal !== null && (
-                <ProgressBar
-                  value={eaten}
-                  max={goal}
-                  color={macro.color}
-                  label={`${macro.label}: ${eaten} de ${goal} gramos`}
-                  showPercent={false}
-                />
-              )}
+              <span className={styles.value}>
+                {NUM.format(eaten)}
+                {goal !== null ? ` / ${NUM.format(goal)} ${unit}` : ` ${unit} · Sin objetivo`}
+              </span>
             </li>
           );
         })}
