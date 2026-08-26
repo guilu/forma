@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext';
 import { Button } from '../components/Button';
 import { ButtonLink } from '../components/ButtonLink';
 import { Icon, type IconName } from '../components/Icon';
+import { GitHubMark } from '../components/GitHubMark';
 import { TextField } from '../components/FormField';
 import { MuscleSilhouette } from '../components/MuscleSilhouette';
 import type { MuscleCode, MuscleRole } from './trainingMuscleOverlay';
@@ -248,6 +249,40 @@ const FOOTER_SECTIONS = [
       { label: 'Crear un plan', href: '#plans' },
       { label: 'Preguntas frecuentes', href: '#faq' },
     ],
+  },
+] as const;
+
+/**
+ * Where to send someone who wants FORMA to keep existing.
+ *
+ * <p>Three destinations rather than one because they ask for different things:
+ * a recurring sponsorship, a one-off tip, and nothing at all beyond a look at
+ * the source. The third is not funding and is the one most visitors will use;
+ * dropping it would leave a support row that only asks for money.
+ *
+ * <p>The hue of each pill comes from its destination — see `--color-sponsor`
+ * and `--color-coffee` in `theme.css` for why they are not Forma's green.
+ */
+const SUPPORT_LINKS = [
+  {
+    href: 'https://github.com/sponsors/guilu',
+    label: 'Sponsor',
+    /* «Patrocinar a FORMA en GitHub» and not just «Sponsor»: read out of
+       context, a lone English verb says nothing about where it leads. */
+    srLabel: 'Patrocinar a FORMA en GitHub Sponsors',
+    tone: 'sponsor',
+  },
+  {
+    href: 'https://buymeacoffee.com/diegobarrioh',
+    label: 'Buy me a coffee',
+    srLabel: 'Invitar a un café en Buy Me a Coffee',
+    tone: 'coffee',
+  },
+  {
+    href: 'https://github.com/guilu/forma',
+    label: 'GitHub',
+    srLabel: 'Ver el código de FORMA en GitHub',
+    tone: 'code',
   },
 ] as const;
 
@@ -703,12 +738,67 @@ function SiteFooter() {
         ))}
       </div>
       <div className={styles.footerBottom}>
-        <p className={styles.footerCopyright}>
-          © {new Date().getFullYear()} FORMA. Todos los derechos reservados.
-        </p>
-        <p className={styles.footerCopyright}>FORMA no ofrece diagnóstico médico.</p>
+        {/*
+         * The two legal lines stack on the left, and the support row takes the
+         * right. They used to be the two ends of the same row, which read as a
+         * choice between them — the disclaimer is a footnote to the copyright,
+         * not its counterweight.
+         */}
+        <div className={styles.footerLegal}>
+          <p className={styles.footerCopyright}>
+            © {new Date().getFullYear()} FORMA. Todos los derechos reservados.
+          </p>
+          <p className={styles.footerCopyright}>FORMA no ofrece diagnóstico médico.</p>
+        </div>
+        <SupportLinks />
       </div>
     </footer>
+  );
+}
+
+const SUPPORT_TONE: Record<(typeof SUPPORT_LINKS)[number]['tone'], string> = {
+  sponsor: styles.supportSponsor,
+  coffee: styles.supportCoffee,
+  code: styles.supportCode,
+};
+
+function SupportLinks() {
+  return (
+    /*
+     * A `nav` with its own name: three links to other sites, grouped, is
+     * exactly what a landmark is for — and the visible «Apoyar» is the label,
+     * so a screen reader announces the same word a sighted visitor reads.
+     */
+    <nav className={styles.support} aria-labelledby="support-heading">
+      <h2 className={styles.supportHeading} id="support-heading">
+        Apoyar
+      </h2>
+      <ul className={styles.supportList}>
+        {SUPPORT_LINKS.map((link) => (
+          <li key={link.label}>
+            <a
+              className={[styles.supportLink, SUPPORT_TONE[link.tone]].join(' ')}
+              href={link.href}
+              /*
+               * `noreferrer` alongside `noopener`: these are the only outbound
+               * links on the page, and there is no reason to hand a funding
+               * page the URL the visitor came from.
+               */
+              rel="noopener noreferrer"
+              target="_blank"
+              aria-label={link.srLabel}
+            >
+              {link.tone === 'code' ? (
+                <GitHubMark />
+              ) : (
+                <Icon name={link.tone === 'sponsor' ? 'heart' : 'coffee'} size={14} />
+              )}
+              {link.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
   );
 }
 

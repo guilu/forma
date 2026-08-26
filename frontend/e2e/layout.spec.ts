@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { fixtureFor } from './apiFixtures';
 import { stubApi } from './stubApi';
 import { expectGlassSurface, expectNoHorizontalOverflow, expectSinglePageScroller } from './layout';
 
@@ -752,6 +753,149 @@ test.describe('glass chrome', () => {
     // blurred pill, then painted opaque by a later same-specificity rule.
     await page.getByRole('button', { name: 'Más' }).click();
     await expectGlassSurface(page, '[role="menu"]');
+  });
+});
+
+/**
+ * The landing footer's support links.
+ *
+ * <p>Two things only a browser can answer. The tints are declared as
+ * `color-mix(... N%, transparent)`, so what a visitor actually reads is the
+ * pill's text over a translucent wash over whatever surface is behind it — a
+ * ratio no stylesheet states and no jsdom test can compute. And the row holds
+ * three pills whose labels do not wrap, which is the shape that walks off the
+ * side of a narrow phone.
+ *
+ * <p>The pink first chosen here (#db61a2, GitHub's own on solid dark) measured
+ * 4.40:1 against its own chip and had to be replaced. Without this test the
+ * next person to pick "a nicer pink" gets no warning at all.
+ */
+test.describe('the landing support links', () => {
+  const AA = 4.5;
+
+  /** Flattens each pill onto the footer, then WCAG 2.x contrast. */
+  async function pillContrast(page: Page) {
+    return page.evaluate(() => {
+      /*
+       * Stacked on a 1x1 canvas rather than parsed and blended by hand. The
+       * first version of this helper read the computed values with a `[\d.]+`
+       * regex, and `color-mix(… , transparent)` computes to
+       * `color(srgb 0.49 0.33 0 / 0.12)` — 0-1 channels, which that regex fed
+       * into a 0-255 blend and turned a 4.43:1 pill into a passing number.
+       * `fillStyle` accepts whatever the stylesheet produced, whatever its
+       * notation, and the compositing is the browser's own.
+       */
+      const canvas = document.createElement('canvas');
+      canvas.width = 1;
+      canvas.height = 1;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+      const stack = (layers: readonly string[]): [number, number, number] => {
+        ctx.clearRect(0, 0, 1, 1);
+        for (const layer of layers) {
+          ctx.fillStyle = layer;
+          ctx.fillRect(0, 0, 1, 1);
+        }
+        const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+        return [r, g, b];
+      };
+      const luminance = ([r, g, b]: [number, number, number]) => {
+        const channel = (c: number) => {
+          const v = c / 255;
+          return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+        };
+        return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+      };
+
+      const footer = document.querySelector('footer')!;
+      const backdrop = getComputedStyle(footer).backgroundColor;
+
+      return Array.from(
+        document.querySelectorAll('footer nav[aria-labelledby="support-heading"] a'),
+      ).map((node) => {
+        const style = getComputedStyle(node);
+        const chip = stack([backdrop, style.backgroundColor]);
+        const text = stack([backdrop, style.backgroundColor, style.color]);
+        const [light, dark] = [luminance(text), luminance(chip)].sort((a, b) => b - a);
+        return {
+          label: (node as HTMLElement).innerText.trim(),
+          ratio: Number(((light + 0.05) / (dark + 0.05)).toFixed(2)),
+        };
+      });
+    });
+  }
+
+  /*
+   * Getting the page into a known theme takes both halves, and neither alone is
+   * enough.
+   *
+   * <p>`colorScheme` covers the first paint: with nothing stored, `index.html`'s
+   * pre-paint script resolves the system preference before React runs. But
+   * `ThemeProvider` then reconciles against the backend (FOR-120), and
+   * `apiFixtures` answers `/api/v1/profile` with `themeMode: 'DARK'` — so a
+   * page emulated light flipped back to dark the moment that fetch landed, and
+   * whether the measurement caught it depended on which won the race. Four runs
+   * in six measured the light values against the dark surface.
+   *
+   * <p>So the profile is overridden to agree with the emulated system. Both
+   * paths then resolve to the same theme and there is nothing left to race.
+   * Writing the attribute onto `<html>` by hand would not have worked either:
+   * the reconciliation overwrites that too.
+   */
+  for (const theme of ['dark', 'light'] as const) {
+    test.describe(`in the ${theme} theme`, () => {
+      test.use({ colorScheme: theme });
+
+      test('stay readable on their own tint', async ({ page }) => {
+        /*
+         * Registered after `stubApi`'s handler and therefore ahead of it, and
+         * built on the same fixture rather than a hand-written profile: the
+         * only field that matters here is the one being changed.
+         */
+        await page.route('**/api/v1/profile', async (route) => {
+          const { status, body } = fixtureFor('/api/v1/profile');
+          await route.fulfill({
+            status,
+            contentType: 'application/json',
+            body: JSON.stringify({ ...(body as object), themeMode: theme.toUpperCase() }),
+          });
+        });
+
+        await page.setViewportSize(DESKTOP);
+        await page.goto('/');
+        // Guards the setup itself: measuring the wrong theme would pass.
+        await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+
+        const measured = await pillContrast(page);
+
+        expect(measured.length, 'The three support pills were not found').toBe(3);
+        for (const { label, ratio } of measured) {
+          expect(
+            ratio,
+            `${label} reads at ${ratio}:1 on its own chip in ${theme}`,
+          ).toBeGreaterThanOrEqual(AA);
+        }
+      });
+    });
+  }
+
+  test('wrap instead of pushing the narrowest phone sideways', async ({ page }) => {
+    await page.setViewportSize(TINY);
+    await page.goto('/');
+
+    await expectNoHorizontalOverflow(page);
+
+    // And they really did wrap: three pills on one 320px line is the failure
+    // this guards, and a row that never wrapped would pass the check above only
+    // because something else clipped it.
+    const lines = await page.evaluate(
+      () =>
+        new Set(
+          Array.from(
+            document.querySelectorAll('footer nav[aria-labelledby="support-heading"] a'),
+          ).map((node) => node.getBoundingClientRect().top),
+        ).size,
+    );
+    expect(lines, 'The three pills all sat on one line at 320px').toBeGreaterThan(1);
   });
 });
 
