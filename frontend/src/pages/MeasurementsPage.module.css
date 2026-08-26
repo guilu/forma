@@ -258,8 +258,16 @@
  * active panel renders (GOTCHA: jsdom's desktop viewport keeps this rule
  * inactive, so tests query hidden panels with `{ hidden: true }`). */
 @media (max-width: 768px) {
+  /*
+   * Wrapping, not scrolling: at 320px the three labels want 351px of row and a
+   * chip is `white-space: nowrap`, so without this the page itself scrolled
+   * sideways. An `overflow-x` rail would have fixed the overflow too, but it
+   * hides a tab behind a gesture nothing announces — with three of them, a
+   * second line costs 44px and leaves all three where they can be seen.
+   */
   .tabs {
     display: flex;
+    flex-wrap: wrap;
   }
 
   .panel {

@@ -13,5 +13,10 @@
 # Agent tooling
 .atl/
 
+# Dependencies. Cada paquete tiene su propio .gitignore, pero la raíz también
+# necesita el suyo: sin él se coló node_modules/.vite/vitest/…/results.json,
+# la caché de resultados de vitest, versionada con fallos de hace meses dentro.
+node_modules/
+
 # Build output
 backend/bin/
