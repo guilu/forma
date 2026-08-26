@@ -205,9 +205,14 @@ target; `size="sm"` is for a group inside a card, next to the data it filters.
 
 ### Radii
 
-Every control in the two families above is fully round (`--radius-full`), at
-every size and variant. It is decided in `Button.module.css` and
-`IconButton.module.css` and nowhere else.
+Every control is fully round (`--radius-full`), at every size and variant:
+`Button`, `IconButton`, `Chip` and `Badge`. It is decided in those four
+modules and nowhere else.
+
+The corner says nothing about which family a control belongs to. A chip that
+reports a choice and a button that invites one are still told apart the way they
+always were — by the fill and by the accessible state (`aria-selected` /
+`aria-checked` / `aria-pressed`) — and never by how sharp the corner is.
 
 It used to be `--radius-md` inside the application and a pill only on the public
 face, which meant the landing CTAs, the auth submit and the top bar each carried

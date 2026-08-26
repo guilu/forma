@@ -197,10 +197,12 @@
   margin: var(--space-1) 0 0;
 }
 
+/* Round, like `Badge` — which is the same object, a label that reports a number
+   rather than inviting a tap, and which has been `--radius-full` all along. */
 .chip,
 .chipKcal {
   padding: 0.125rem var(--space-2);
-  border-radius: var(--radius-sm, 0.375rem);
+  border-radius: var(--radius-full);
   background-color: var(--color-surface-muted);
   font-size: var(--font-size-label-sm);
   font-weight: 600;

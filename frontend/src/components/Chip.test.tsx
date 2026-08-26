@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Chip } from './Chip';
+import chipCss from './Chip.module.css?raw';
 
 /**
  * Selection-control tests. A chip looks the same in all three groupings, but
@@ -11,6 +12,19 @@ import { Chip } from './Chip';
  * semantics, so these tests pin the mapping.
  */
 describe('Chip', () => {
+  /*
+   * Round in both sizes, like `Button`, `IconButton` and `Badge`. A chip is a
+   * different family — it reports a choice rather than inviting one — but that
+   * difference is carried by the fill and the accessible state, never by the
+   * corner. Each size separately so a later edit cannot round one and leave the
+   * other.
+   */
+  it.each(['md', 'sm'])('gives the %s size the pill radius', (size) => {
+    expect(chipCss, `${size} is not round`).toMatch(
+      new RegExp(`\\.${size}\\s*{[^}]*border-radius:\\s*var\\(--radius-full\\);`, 's'),
+    );
+  });
+
   it('publishes tab semantics as aria-selected', () => {
     render(
       <Chip semantics="tab" selected>
