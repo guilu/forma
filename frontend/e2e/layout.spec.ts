@@ -265,31 +265,10 @@ test.describe('dashboard grid', () => {
     ).toBe(1);
   });
 
-  test('places the combined nutrition card before water with donut and macros side by side', async ({
-    page,
-  }) => {
+  test('gives the combined nutrition card a donut and macros side by side', async ({ page }) => {
     await gotoApp(page, '/app');
 
     const nutrition = widget(page, 'Nutrición');
-    const water = page
-      .getByRole('heading', { name: 'Agua', exact: true })
-      .locator('xpath=ancestor::section[1]');
-    const [nutritionTop, waterTop] = await Promise.all([
-      nutrition.evaluate((card) => Math.round(card.getBoundingClientRect().top)),
-      water.evaluate((card) => Math.round(card.getBoundingClientRect().top)),
-    ]);
-    expect(nutritionTop).toBeLessThan(waterTop);
-
-    const nutritionPrecedesWaterInDom = await nutrition.evaluate((card) => {
-      const waterHeading = [...document.querySelectorAll('h3')].find(
-        (heading) => heading.textContent?.trim() === 'Agua',
-      );
-      const waterCard = waterHeading?.closest('section');
-      return Boolean(
-        waterCard && card.compareDocumentPosition(waterCard) & Node.DOCUMENT_POSITION_FOLLOWING,
-      );
-    });
-    expect(nutritionPrecedesWaterInDom).toBe(true);
 
     const ringLeft = await nutrition
       .getByRole('img', { name: /kcal consumidas/ })
@@ -370,10 +349,10 @@ for (const viewport of [TABLET, LAPTOP]) {
   test.describe(`dashboard grid at ${viewport.width}px`, () => {
     test.use({ viewport });
 
-    // The unified today grid uses three tracks; its body group, water, main
-    // three-card row and final trend occupy four explicit rows.
+    // The unified today grid uses three tracks; its body group, main three-card
+    // row and final trend occupy three explicit rows.
     for (const [row, columns, rows] of [
-      ['todayGrid', 3, 4],
+      ['todayGrid', 3, 3],
       // Two x positions, not three: Evolución took the column the retired
       // "Tu progreso" card left behind, so it starts at track 1 and spans two.
       ['rowThree', 2, 2],

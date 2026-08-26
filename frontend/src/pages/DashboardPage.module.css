@@ -56,8 +56,8 @@
 }
 
 /* One semantic grid owns every "today" card. DOM order follows the phone flow
-   (body, nutrition, water, training, menu, trend); wider layouts place that
-   single set of nodes explicitly without duplicating or hiding widgets. */
+   (body, nutrition, training, menu, trend); wider layouts place that single set
+   of nodes explicitly without duplicating or hiding widgets. */
 .todayGrid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
@@ -65,8 +65,10 @@
   align-items: stretch;
 }
 
+/* The body group owns the whole first row: the hydration tile that used to sit
+   beside it is gone, and half a row of empty tracks reads as a bug. */
 .todayGrid > :nth-child(1) {
-  grid-column: 1 / span 8;
+  grid-column: 1 / -1;
   grid-row: 1;
 }
 
@@ -76,21 +78,16 @@
 }
 
 .todayGrid > :nth-child(3) {
-  grid-column: 11 / span 2;
-  grid-row: 1;
-}
-
-.todayGrid > :nth-child(4) {
   grid-column: 1 / span 3;
   grid-row: 2;
 }
 
-.todayGrid > :nth-child(5) {
+.todayGrid > :nth-child(4) {
   grid-column: 4 / span 3;
   grid-row: 2;
 }
 
-.todayGrid > :nth-child(6) {
+.todayGrid > :nth-child(5) {
   grid-column: 10 / span 3;
   grid-row: 2;
 }
@@ -149,7 +146,7 @@
  * metric tiles across left each one about 180px, too narrow for a headline
  * value next to its caption. Every row wraps at three columns here — the
  * metrics row as 3 + 3 (see `BodyWidget.module.css`, which dissolves its tiles
- * into this grid so they can wrap), the two four-widget rows as 3 + 1.
+ * into this grid so they can wrap), the widget rows at three across.
  *
  * The band is not keyed to a "tablet" device width: CSS cannot tell a 1280px
  * laptop from a 1180px tablet, and the row is equally cramped on either. It
@@ -174,23 +171,18 @@
   }
 
   .todayGrid > :nth-child(4) {
-    grid-column: 1;
-    grid-row: 3;
-  }
-
-  .todayGrid > :nth-child(5) {
     grid-column: 2;
-    grid-row: 3;
+    grid-row: 2;
   }
 
   .todayGrid > :nth-child(2) {
     grid-column: 3;
-    grid-row: 3;
+    grid-row: 2;
   }
 
-  .todayGrid > :nth-child(6) {
+  .todayGrid > :nth-child(5) {
     grid-column: 1;
-    grid-row: 4;
+    grid-row: 3;
   }
 }
 
@@ -224,11 +216,6 @@
     grid-row: 3;
   }
 
-  .todayGrid > :nth-child(6) {
-    grid-column: 1;
-    grid-row: 4;
-  }
-
   .rowThree {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -249,8 +236,7 @@
   .todayGrid > :nth-child(2),
   .todayGrid > :nth-child(3),
   .todayGrid > :nth-child(4),
-  .todayGrid > :nth-child(5),
-  .todayGrid > :nth-child(6) {
+  .todayGrid > :nth-child(5) {
     grid-column: 1;
     grid-row: auto;
   }

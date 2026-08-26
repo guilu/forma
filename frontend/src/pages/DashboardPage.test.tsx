@@ -28,12 +28,6 @@ vi.mock('../api/training', () => ({ getTrainingWeek: vi.fn() }));
 vi.mock('../api/nutrition', () => ({
   getNutritionDay: vi.fn(),
   getDayConsumption: vi.fn(),
-  // The water tile reads real hydration now (FOR-130's endpoints, reachable at last). These tests
-  // are not about it, so it answers with an empty day and stays out of the way.
-  getHydration: vi
-    .fn()
-    .mockResolvedValue({ date: '2026-08-04', totalMl: 0, goalMl: 2000, progress: 0 }),
-  logWaterIntake: vi.fn(),
 }));
 vi.mock('../api/shopping', () => ({ getShoppingList: vi.fn() }));
 vi.mock('../api/profile', () => ({ getProfile: vi.fn() }));
@@ -200,7 +194,8 @@ describe('DashboardPage', () => {
     // never skips a level (FOR-112).
     expect(await screen.findByRole('heading', { name: 'Peso', level: 3 })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Calorias' })).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Agua', level: 3 })).toBeInTheDocument();
+    // The hydration tile is retired: the dashboard no longer tracks water.
+    expect(screen.queryByRole('heading', { name: 'Agua' })).not.toBeInTheDocument();
   });
 
   describe('date navigator', () => {

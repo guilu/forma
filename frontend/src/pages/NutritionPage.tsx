@@ -9,7 +9,6 @@ import { Icon } from '../components/Icon';
 import { LoadingState } from '../components/LoadingState';
 import { Modal } from '../components/Modal';
 import { useNotify } from '../components/NotificationProvider';
-import { WaterTracker } from '../components/WaterTracker';
 import {
   getDayConsumption,
   getNutritionDay,
@@ -229,7 +228,6 @@ function renderContent(
         <Card title="Macronutrientes" headingLevel={2}>
           <MacroProgress consumed={consumed} target={target} />
         </Card>
-        <WaterTracker headingLevel={2} />
       </section>
 
       <section className={styles.meals} aria-label="Comidas de hoy">

@@ -14,15 +14,6 @@ import {
 } from '../api/nutrition';
 
 vi.mock('../api/nutrition', () => ({
-  // La tarjeta de agua lee hidratación de verdad; estos tests no van de eso, así que responde un
-  // día vacío y se aparta.
-  getHydration: vi.fn().mockResolvedValue({
-    date: '2026-08-07',
-    totalMl: 0,
-    goalMl: 2000,
-    progress: 0,
-  }),
-  logWaterIntake: vi.fn(),
   getNutritionDay: vi.fn(),
   getDayConsumption: vi.fn(),
   logMeal: vi.fn(),
