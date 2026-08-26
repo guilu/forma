@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Button, type ButtonVariant } from './Button';
+import buttonCss from './Button.module.css?raw';
 
 /**
  * Design-system button tests (FOR-50): every variant renders as a native,
@@ -23,6 +24,17 @@ describe('Button', () => {
     render(<Button variant={variant}>Guardar</Button>);
 
     expect(screen.getByRole('button', { name: 'Guardar' })).toBeInTheDocument();
+  });
+
+  /*
+   * The pill is the product's house style, not a page's opt-in. Before this it
+   * was `--radius-md` here and a `--radius-full` override on every public
+   * surface — the landing CTAs, the auth submit, the top bar — which is a shape
+   * decided in four places and drifting in four directions. Asserted on the
+   * base rule so it stays decided in one.
+   */
+  it('is fully round, for every variant', () => {
+    expect(buttonCss).toMatch(/\.button\s*{[^}]*border-radius:\s*var\(--radius-full\);/s);
   });
 
   it('defaults to the primary variant', () => {

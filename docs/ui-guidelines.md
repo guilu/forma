@@ -169,8 +169,9 @@ cascade across modules nor media queries. The guards live in
 
 ### `IconButton` — actions with no label
 
-The square glyph control: topbar controls, modal close, table row actions, date
-and quantity steppers. `label` is required and becomes the accessible name,
+The icon-only control: topbar controls, modal close, table row actions, date
+and quantity steppers. Its box is square — the three sizes below are 32/40/44
+on both axes — but its corners are not: see Radii. `label` is required and becomes the accessible name,
 because an icon-only control has no text to name it. `tone="danger"` tints a
 row deletion — presentation only, it does not replace a confirmation.
 
@@ -201,6 +202,21 @@ The appearance is shared across groupings, the accessible state is not. Pass
 
 `size="md"` (default) is a page-level filter row and keeps the 44px touch
 target; `size="sm"` is for a group inside a card, next to the data it filters.
+
+### Radii
+
+Every control in the two families above is fully round (`--radius-full`), at
+every size and variant. It is decided in `Button.module.css` and
+`IconButton.module.css` and nowhere else.
+
+It used to be `--radius-md` inside the application and a pill only on the public
+face, which meant the landing CTAs, the auth submit and the top bar each carried
+a scoped override to opt out of the app radius — one shape decided in four
+places, free to drift in four directions. A page-level `border-radius` on
+something that composes `Button` is now almost always a mistake; the exceptions
+are controls that are not `Button` at all (the landing's `ctaSecondary` is a
+plain `<a>`) and rules that change the radius *along with* padding and type for
+a deliberately oversized call to action.
 
 ### Not in these families
 

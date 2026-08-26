@@ -17,7 +17,7 @@ import { useIntegrations } from './IntegrationsContext';
  * unknown — in flight, or the request failed — it stays absent for the same
  * reason the sidebar's status card does (FOR-189).
  *
- * <p>It is an {@link IconButton} — the app's icon-only square — rather than a
+ * <p>It is an {@link IconButton} — the app's icon-only control — rather than a
  * {@link Button} holding a glyph where its label belongs: the first draft was a
  * `secondary` Button with its label padding trimmed by hand, which is exactly
  * the per-caller re-declaration IconButton was consolidated to end. `lg` (44px)

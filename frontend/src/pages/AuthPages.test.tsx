@@ -5,21 +5,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { useAuth } from '../auth/AuthContext';
 import { LoginPage } from './LoginPage';
 import { RegisterPage } from './RegisterPage';
-import authCss from './AuthPage.module.css?raw';
 
 vi.mock('../auth/AuthContext', () => ({ useAuth: vi.fn() }));
 
 describe('auth pages', () => {
-  /*
-   * Login and register are the public face of the product, like the landing and
-   * the bar above them, and the public face wears pills. `Button` itself keeps
-   * `--radius-md` for everything inside the application, so this is a scoped
-   * override that a later edit could silently drop — hence the guard.
-   */
-  it('gives the submit action the public pill radius', () => {
-    expect(authCss).toMatch(/\.submit\.submit\s*{[^}]*border-radius:\s*var\(--radius-full\);/s);
-  });
-
   it('logs in from the Spanish form', async () => {
     const login = vi.fn().mockResolvedValue(undefined);
     vi.mocked(useAuth).mockReturnValue(authState({ login }));

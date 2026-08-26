@@ -7,7 +7,14 @@
   font: inherit;
   font-weight: 700;
   border: 1px solid transparent;
-  border-radius: var(--radius-md);
+  /*
+   * Fully round, everywhere. It was `--radius-md` inside the application and a
+   * pill only on the public face, which left the app and its own landing page
+   * looking like two products — and every public surface (the landing CTAs, the
+   * auth submit, the top bar) carrying a scoped override to opt out of the app
+   * radius. The pill is the house style now, here rather than caller by caller.
+   */
+  border-radius: var(--radius-full);
   /* Comfortable touch target on mobile (ui-guidelines mobile priority #2). */
   min-height: 44px;
   /* For `ButtonLink` and the `composes:` callers: an underline under a filled
