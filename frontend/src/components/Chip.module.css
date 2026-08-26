@@ -36,18 +36,25 @@
  * target. `sm` is for a group living inside a card (the evolution chart's
  * ranges, the measurements range picker), where a 44px row would take more of
  * the card than the chart it filters.
+ *
+ * The size decides the box, not the corner: both are fully round, like
+ * `Button`, `IconButton` and `Badge`. A chip reports a choice rather than
+ * inviting one and stays its own family for that reason — but the family
+ * difference is carried by the fill and the accessible state, never by a
+ * corner, and a square selector inside a card of round controls read as the
+ * one thing nobody had finished.
  */
 .md {
   padding: var(--space-2) var(--space-4);
   min-height: 44px;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
 }
 
 .sm {
   padding: var(--space-1) var(--space-3);
   min-height: 32px;
   font-size: var(--font-size-sm);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-full);
 }
 
 .unselected {

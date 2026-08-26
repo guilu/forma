@@ -43,22 +43,28 @@
  * `min-*` rather than `width`/`height` so a control that must sit in a fixed
  * grid cell can still be stretched by its caller's layout.
  */
+/*
+ * All three are round, and the size only decides how big. They used to step
+ * `--radius-sm` / `--radius-md` with the box, which made a dense row of icons
+ * read as a different family from the buttons beside them — see the note in
+ * `Button.module.css` for why the pill is now the house style.
+ */
 .sm {
   min-width: 32px;
   min-height: 32px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-full);
 }
 
 .md {
   min-width: 40px;
   min-height: 40px;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
 }
 
 .lg {
   min-width: 44px;
   min-height: 44px;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
 }
 
 /*

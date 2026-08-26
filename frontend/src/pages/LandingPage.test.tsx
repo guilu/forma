@@ -15,12 +15,13 @@ describe('LandingPage', () => {
       /\.accentText\s*{[^}]*background-image:\s*linear-gradient\(to right, rgb\(18 122 95\), #ff9800, rgb\(125 237 92\)\);[^}]*background-clip:\s*text;[^}]*color:\s*transparent;/s,
     );
     /*
-     * The buttons are pills. FOR-185 gave them `--radius-lg` to match the app's
-     * primary button; the redesign parts with that on this page alone, because
-     * the landing's controls sit on open space rather than inside the dense
-     * chrome the app radius was picked for. All four are asserted together so a
-     * later edit cannot leave one of them square among three pills — which is
-     * exactly how the login submit was nearly missed.
+     * The buttons are pills. They were the first ones to be — the page parted
+     * with the app's `--radius-lg` on its own, and every other public surface
+     * then carried its own override to opt out of the app radius. `Button` is
+     * fully round for the whole product now, so three of these four inherit it
+     * and only restate it; `ctaSecondary` is a plain `<a>` with no `Button`
+     * underneath and is the reason to keep asserting all four together, so a
+     * later edit cannot leave one square among three pills.
      */
     for (const cta of ['ctaPrimary', 'ctaSecondary', 'ctaPill', 'loginSubmit']) {
       expect(landingCss, `${cta} is not a pill`).toMatch(

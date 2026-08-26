@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Icon } from './Icon';
 import { IconButton, type IconButtonVariant } from './IconButton';
+import iconButtonCss from './IconButton.module.css?raw';
 
 /**
  * Icon-only action tests. The point of the component is that a control with no
@@ -13,6 +14,18 @@ import { IconButton, type IconButtonVariant } from './IconButton';
  */
 describe('IconButton', () => {
   const variants: IconButtonVariant[] = ['surface', 'soft', 'ghost'];
+
+  /*
+   * All three sizes are round; the size decides how big, not how square. They
+   * used to step `--radius-sm` / `--radius-md` with the box, which put a dense
+   * row of icons in a different family from the buttons beside them. Each size
+   * is asserted separately so a later edit cannot round two and leave one.
+   */
+  it.each(['sm', 'md', 'lg'])('gives the %s size the pill radius', (size) => {
+    expect(iconButtonCss, `${size} is not round`).toMatch(
+      new RegExp(`\\.${size}\\s*{[^}]*border-radius:\\s*var\\(--radius-full\\);`, 's'),
+    );
+  });
 
   it('exposes its label as the accessible name', () => {
     render(

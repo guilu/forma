@@ -63,17 +63,6 @@
   font-family: var(--font-heading);
 }
 
-/*
- * Login and register are the public face of the product, like the landing and
- * the bar above them, so their action wears the same pill. Doubled selector,
- * not a change to `Button`: `--radius-md` is still right for every control
- * inside the application, and `.submit` sits at the same (0,1,0) as the
- * `.button` rule it has to beat.
- */
-.submit.submit {
-  border-radius: var(--radius-full);
-}
-
 .error {
   margin: 0;
   color: var(--color-danger);
