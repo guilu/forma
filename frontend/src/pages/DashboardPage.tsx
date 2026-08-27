@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Icon } from '../components/Icon';
-import { IconButton } from '../components/IconButton';
 import { BodyWidget, type BodyState } from './dashboard/BodyWidget';
+import { MeasurementNavigator } from './dashboard/MeasurementNavigator';
 import type { MeasurementsState } from './dashboard/measurementsState';
 import { TrainingWidget } from './dashboard/TrainingWidget';
 import { NutritionWidget } from './dashboard/NutritionWidget';
@@ -17,7 +16,6 @@ import { getDayConsumption, getNutritionDay } from '../api/nutrition';
 import type { TodayConsumptionState, TodayMenuState } from './dashboard/todayNutrition';
 import { localIsoDate } from './localIsoDate';
 import { listBodyMeasurements, type BodyMeasurement } from '../api/bodyMeasurements';
-import { formatShortDate } from './dateLabel';
 import styles from './DashboardPage.module.css';
 
 /**
@@ -157,30 +155,11 @@ export function DashboardPage() {
           control that cannot do anything.
         */}
         {body.status === 'ready' && (
-          <div className={styles.dateNav}>
-            <IconButton
-              variant="ghost"
-              size="sm"
-              label="Medición anterior"
-              // `history` is newest-first, so "previous" walks the index up.
-              disabled={body.selected >= body.history.length - 1}
-              onClick={() => setSelected((index) => index + 1)}
-            >
-              <Icon name="chevron" size={16} className={styles.dateArrowPrev} />
-            </IconButton>
-            <span className={styles.date}>
-              {formatShortDate(new Date(body.history[body.selected].measuredAt))}
-            </span>
-            <IconButton
-              variant="ghost"
-              size="sm"
-              label="Medición siguiente"
-              disabled={body.selected <= 0}
-              onClick={() => setSelected((index) => index - 1)}
-            >
-              <Icon name="chevron" size={16} />
-            </IconButton>
-          </div>
+          <MeasurementNavigator
+            history={body.history}
+            selected={body.selected}
+            onSelect={setSelected}
+          />
         )}
       </header>
 

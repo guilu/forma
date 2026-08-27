@@ -28,33 +28,6 @@
   color: var(--color-text-muted);
 }
 
-/* Visual-only date navigator. */
-.dateNav {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-}
-
-/* Real buttons since FOR-189 — they step through the measurement history, so
-   they need a target size, a disabled state at each end and the browser's own
-   button chrome stripped back. */
-/* The shared chevron only points one way; the "previous" arrow is that same
-   glyph turned around. */
-.dateArrowPrev {
-  transform: rotate(180deg);
-}
-
-.date {
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  white-space: nowrap;
-  color: var(--color-text);
-}
-
 /* One semantic grid owns every "today" card. DOM order follows the phone flow
    (body, nutrition, training, menu, trend); wider layouts place that single set
    of nodes explicitly without duplicating or hiding widgets. */
