@@ -1,4 +1,5 @@
 import type { ShoppingCategory } from '../../api/storeProducts';
+import { euro } from '../../format/measures';
 
 /** The grocery aisles, shared with the shopping list's own grouping (V7). */
 export const SHOPPING_CATEGORY_LABELS: Record<ShoppingCategory, string> = {
@@ -27,11 +28,10 @@ const CATEGORY_GLYPHS: Record<ShoppingCategory, string> = {
 export const shoppingCategoryGlyph = (category: ShoppingCategory) => CATEGORY_GLYPHS[category];
 
 /**
- * Prices are money: two decimals, comma separator, euro sign — never a bare
- * number. An absent price stays absent; a product nobody has priced is a real
- * state and a 0 € would be a claim about it.
+ * Prices are money: two decimals and a euro sign — never a bare number. How
+ * they are written is `format/measures`' business, not this file's. An absent
+ * price stays absent; a product nobody has priced is a real state and a 0 €
+ * would be a claim about it.
  */
 export const priceLabel = (priceEur?: number) =>
-  priceEur === undefined || priceEur === null
-    ? '—'
-    : `${priceEur.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+  priceEur === undefined || priceEur === null ? '—' : euro(priceEur);

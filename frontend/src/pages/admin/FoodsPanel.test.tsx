@@ -105,7 +105,7 @@ describe('AdminPage — importing a store product for a food', () => {
     await waitFor(() => expect(suggestMock).toHaveBeenCalledWith('oats', 'MERCADONA'));
     const picker = await screen.findByRole('dialog', { name: /Importar de Mercadona/ });
     expect(within(picker).getByText('Copos de avena Brüggen')).toBeInTheDocument();
-    expect(within(picker).getByText(/1,55/)).toBeInTheDocument();
+    expect(within(picker).getByText(/1\.55/)).toBeInTheDocument();
     // The shop's photo, asked of their CDN at the size it is drawn.
     expect(within(picker).getByRole('presentation', { hidden: true })).toHaveAttribute(
       'src',

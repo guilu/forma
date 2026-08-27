@@ -18,9 +18,8 @@
  * <p>Esto es formato, no dominio: aquí no se redondea para decidir nada ni se
  * deriva ningún valor (ADR-006), sólo se escribe el número que llega.
  *
- * <p>Lo que NO pasa por aquí: el dinero. «12,50 €» es moneda, no medida, y en
- * castellano se escribe con coma — ver `ShoppingPage`. Y las fechas, que
- * siguen en `es-ES` porque el idioma sí es castellano; lo que cambia es el
+ * <p>El dinero también, con `euro`. Lo que NO pasa por aquí son las fechas:
+ * siguen en `es-ES` porque el idioma sí es castellano. Lo que cambia es el
  * separador de los números, no la lengua.
  */
 const LOCALE = 'en-US';
@@ -60,6 +59,20 @@ export function fixed(value: number, decimals = 1): string {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   }).format(value);
+}
+
+/**
+ * Un precio: `12.50 €`, `0.00 €`. Siempre con céntimos — «3.9 €» parece a medio
+ * escribir.
+ *
+ * <p>Se compone a mano en vez de pedirle `style: 'currency'` a `Intl`, porque
+ * el formateador de moneda trae la colocación del símbolo pegada al idioma: en
+ * un locale inglés lo pondría delante y sin espacio («€12.50»), que es otra
+ * convención. Aquí sólo se cambia el separador; el símbolo se queda donde lo
+ * pone el castellano, detrás y separado.
+ */
+export function euro(value: number): string {
+  return `${fixed(value, 2)} €`;
 }
 
 /**

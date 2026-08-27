@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { change, fixed, measure } from './measures';
+import { change, euro, fixed, measure } from './measures';
 
 describe('measure formatting', () => {
   it('separates decimals with a point', () => {
@@ -38,6 +38,28 @@ describe('measure formatting', () => {
       expect(fixed(15)).toBe('15.0');
       expect(fixed(15.06)).toBe('15.1');
       expect(fixed(15, 2)).toBe('15.00');
+    });
+  });
+
+  describe('euro', () => {
+    /**
+     * El símbolo va detrás y separado, como en castellano; lo que cambia es el
+     * separador. Escribirlo con `style: 'currency'` en un locale inglés lo
+     * pondría delante («€12.50»), que es otra convención, no la nuestra.
+     */
+    it('writes money the Spanish way but with a decimal point', () => {
+      expect(euro(12.5)).toBe('12.50 €');
+      expect(euro(0)).toBe('0.00 €');
+    });
+
+    /** Dos decimales siempre: un precio de «3.9 €» parece a medio escribir. */
+    it('always shows the cents', () => {
+      expect(euro(3.9)).toBe('3.90 €');
+      expect(euro(24)).toBe('24.00 €');
+    });
+
+    it('does not group thousands either', () => {
+      expect(euro(1234.5)).toBe('1234.50 €');
     });
   });
 

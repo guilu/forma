@@ -44,7 +44,7 @@ interface CatalogAdminOptions<T> {
  *
  * <p>Numbers compare as numbers and text with `localeCompare`, so "Ñ" and
  * accented names land where a Spanish reader expects. An absent value sorts last
- * whichever way the column is pointing: "unknown" is not smaller than 1,55 €, it
+ * whichever way the column is pointing: "unknown" is not smaller than 1.55 €, it
  * is simply not a position.
  */
 function sortRows<T>(
