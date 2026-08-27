@@ -226,11 +226,17 @@ describe('DashboardPage', () => {
 
   describe('date navigator', () => {
     /**
-     * Scoped to the metrics row: the same numbers and the same "no measurements"
-     * copy also appear in Evolución, so a page-wide query matches twice and says
-     * nothing about which widget it found.
+     * Acotado a UNA ficha, no a la fila entera. Estaba acotado a la región
+     * «Resumen de hoy», que bastaba mientras esa región eran sólo las fichas;
+     * desde que Evolución vive dentro de ella, sus mismas cifras y su misma
+     * copia de «sin mediciones» caen en el mismo saco y la búsqueda encuentra
+     * dos. La ficha se identifica por su propio encabezado, que es lo único que
+     * la distingue de sus vecinas.
      */
-    const tiles = () => within(screen.getByRole('region', { name: 'Resumen de hoy' }));
+    const tile = (label: string) =>
+      within(
+        screen.getByRole('heading', { name: label, level: 3 }).closest('section') as HTMLElement,
+      );
 
     const dated = (measuredAt: string, weightKg: number): BodyMeasurement => ({
       ...measurement,
@@ -256,7 +262,7 @@ describe('DashboardPage', () => {
       renderDashboard();
 
       expect(await screen.findByText('5 jul 2026')).toBeInTheDocument();
-      expect(tiles().getByText('75.0')).toBeInTheDocument();
+      expect(tile('Peso').getByText('75.0')).toBeInTheDocument();
     });
 
     it('steps back to the previous measurement and re-reads the tiles', async () => {
@@ -273,8 +279,8 @@ describe('DashboardPage', () => {
       await user.click(screen.getByRole('button', { name: 'Medición anterior' }));
 
       expect(screen.getByText('1 jul 2026')).toBeInTheDocument();
-      expect(tiles().getByText('78.0')).toBeInTheDocument();
-      expect(tiles().queryByText('75.0')).not.toBeInTheDocument();
+      expect(tile('Peso').getByText('78.0')).toBeInTheDocument();
+      expect(tile('Peso').queryByText('75.0')).not.toBeInTheDocument();
     });
 
     it('stops at both ends of the history', async () => {
@@ -303,7 +309,11 @@ describe('DashboardPage', () => {
 
       renderDashboard();
 
-      await waitFor(() => expect(tiles().getByText(/Aún no hay mediciones/)).toBeInTheDocument());
+      // La copia de la fila de fichas, no la de Evolución: las dos empiezan por
+      // «Aún no hay mediciones» y sólo esta ofrece registrar la primera.
+      await waitFor(() =>
+        expect(screen.getByText(/Registra tu primera medición/)).toBeInTheDocument(),
+      );
       expect(screen.queryByRole('button', { name: 'Medición anterior' })).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Medición siguiente' })).not.toBeInTheDocument();
     });
