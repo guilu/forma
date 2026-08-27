@@ -17,6 +17,32 @@
   color: var(--color-text-muted);
 }
 
+/*
+ * La variación respecto a la medición anterior. En cuerpo pequeño y tinta
+ * apagada: acompaña al número titular, no compite con él. Sin color de estado —
+ * bajar de peso no es «bueno» ni «malo» hasta que alguien decide qué busca.
+ */
+.delta {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .caption {
   margin: var(--space-1) 0 0;
   font-size: var(--font-size-sm);

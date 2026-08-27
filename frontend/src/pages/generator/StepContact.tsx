@@ -8,6 +8,7 @@ import privacyStyles from '../PrivacyPage.module.css';
 import type { EnergyRequirement } from '../../api/planGenerator';
 import { EATING_STYLE_LABELS, OBJECTIVE_LABELS, type FunnelState } from './funnelState';
 import styles from './PlanGenerator.module.css';
+import { measure } from '../../format/measures';
 
 /**
  * Paso 4: dónde te lo mandamos.
@@ -37,8 +38,6 @@ const SOURCES = [
 
 /** Lo que se lleva quien termina el embudo. Cuatro, cortos, con su marca de visto. */
 const DELIVERABLES = ['Menú completo', 'Macros por comida', 'Lista de la compra', 'Equivalencias'];
-
-const NUM = new Intl.NumberFormat('es-ES');
 
 interface StepContactProps {
   readonly state: FunnelState;
@@ -75,7 +74,7 @@ export function StepContact({
             <p className={styles.headlineValue}>
               {energy ? (
                 <>
-                  <span className={styles.headlineNumber}>{NUM.format(energy.planKcal)}</span>
+                  <span className={styles.headlineNumber}>{measure(energy.planKcal)}</span>
                   <span className={styles.headlineUnit}>kcal/día</span>
                 </>
               ) : (

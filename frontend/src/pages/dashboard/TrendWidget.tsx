@@ -2,6 +2,7 @@ import { ErrorState } from '../../components/ErrorState';
 import { LineChart, type ChartPoint } from '../../components/LineChart';
 import { WidgetLoading } from '../../components/WidgetLoading';
 import type { BodyMeasurement } from '../../api/bodyMeasurements';
+import { change as formatChange, fixed } from '../../format/measures';
 import type { MeasurementsState } from './measurementsState';
 import { WidgetSection } from './WidgetSection';
 import styles from './TrendWidget.module.css';
@@ -61,22 +62,6 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** Two charts can't be compared if one of them is a single point. */
 const MIN_POINTS = 2;
-
-const VALUE = new Intl.NumberFormat('es-ES', {
-  minimumFractionDigits: 1,
-  maximumFractionDigits: 1,
-});
-
-/**
- * The change carries an explicit sign and no unit: it is in the units of the
- * value beside it, and writing "%" after the body-fat delta would read as a
- * percentage OF a percentage — which −1,8 points is not.
- */
-const DELTA = new Intl.NumberFormat('es-ES', {
-  minimumFractionDigits: 1,
-  maximumFractionDigits: 1,
-  signDisplay: 'exceptZero',
-});
 
 /*
  * Colour per metric, and the assignment is the nutrition rings': weight green,
@@ -191,9 +176,14 @@ function renderContent(state: State) {
                 </span>
                 <span className={styles.figures}>
                   <span className={styles.value}>
-                    {VALUE.format(last)} {metric.unit}
+                    {fixed(last)} {metric.unit}
                   </span>
-                  <span className={styles.delta}>{DELTA.format(last - first)}</span>
+                  {/*
+                   * La variación no lleva unidad: va en la del valor que tiene
+                   * al lado, y escribir «%» detrás de la de grasa se leería
+                   * como un porcentaje DE un porcentaje, que -1.8 puntos no es.
+                   */}
+                  <span className={styles.delta}>{formatChange(last - first)}</span>
                 </span>
               </div>
               <LineChart
@@ -201,8 +191,8 @@ function renderContent(state: State) {
                 points={points}
                 color={metric.color}
                 xDomain={[firstAt, lastAt]}
-                formatValue={(value) => `${VALUE.format(value)} ${metric.unit}`}
-                ariaLabel={`${metric.label} en los últimos ${WINDOW_DAYS} días: de ${VALUE.format(first)} ${metric.unit} a ${VALUE.format(last)} ${metric.unit}. ${points.length} mediciones.`}
+                formatValue={(value) => `${fixed(value)} ${metric.unit}`}
+                ariaLabel={`${metric.label} en los últimos ${WINDOW_DAYS} días: de ${fixed(first)} ${metric.unit} a ${fixed(last)} ${metric.unit}. ${points.length} mediciones.`}
               />
             </li>
           );

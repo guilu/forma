@@ -15,13 +15,13 @@ describe('NutritionSummaryWidget', () => {
     expect(screen.getByRole('heading', { name: 'Nutrición' })).toBeInTheDocument();
     expect(
       screen.getByRole('img', {
-        name: /1264 de 2320 kcal\. Proteínas 111,4 de 165 g, carbohidratos 156 de 270 g, grasas 22,4 de 65 g\./,
+        name: /1264 de 2320 kcal\. Proteínas 111.4 de 165 g, carbohidratos 156 de 270 g, grasas 22.4 de 65 g\./,
       }),
     ).toBeInTheDocument();
     expect(screen.getByText('1264 / 2320 kcal')).toBeInTheDocument();
-    expect(screen.getByText('111,4 / 165 g')).toBeInTheDocument();
+    expect(screen.getByText('111.4 / 165 g')).toBeInTheDocument();
     expect(screen.getByText('156 / 270 g')).toBeInTheDocument();
-    expect(screen.getByText('22,4 / 65 g')).toBeInTheDocument();
+    expect(screen.getByText('22.4 / 65 g')).toBeInTheDocument();
   });
 
   it('keeps consumption visible and avoids fake progress when there is no target', () => {

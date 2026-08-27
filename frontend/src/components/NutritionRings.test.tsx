@@ -20,7 +20,7 @@ describe('NutritionRings', () => {
 
     expect(
       screen.getByRole('img', {
-        name: '446 de 2320 kcal. Proteínas 32,5 de 165 g, carbohidratos 66 de 270 g, grasas 6,4 de 65 g.',
+        name: '446 de 2320 kcal. Proteínas 32.5 de 165 g, carbohidratos 66 de 270 g, grasas 6.4 de 65 g.',
       }),
     ).toBeInTheDocument();
   });
@@ -59,7 +59,7 @@ describe('NutritionRings', () => {
 
     expect(
       screen.getByRole('img', {
-        name: '446 kcal. Proteínas 32,5 g, carbohidratos 66 g, grasas 6,4 g. Tu plan no fija objetivos.',
+        name: '446 kcal. Proteínas 32.5 g, carbohidratos 66 g, grasas 6.4 g. Tu plan no fija objetivos.',
       }),
     ).toBeInTheDocument();
     for (const arc of RING_ARCS) expect(sweep(container, arc.key)).toBe(0);

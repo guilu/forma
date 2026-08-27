@@ -128,12 +128,12 @@ const SAMPLE_SHOPPING: readonly SampleShoppingItem[] = [
   {
     product: 'Pechuga de pollo · 1 kg',
     aisle: 'Pasillo 12 · Carnicería',
-    price: '6,95 €',
+    price: '6.95 €',
     done: true,
   },
-  { product: 'Arroz basmati · 1 kg', aisle: 'Pasillo 4 · Arroz y pasta', price: '2,15 €' },
-  { product: 'Yogur griego natural · 4 uds', aisle: 'Pasillo 18 · Refrigerados', price: '2,40 €' },
-  { product: 'Brócoli fresco · 500 g', aisle: 'Pasillo 1 · Fruta y verdura', price: '1,79 €' },
+  { product: 'Arroz basmati · 1 kg', aisle: 'Pasillo 4 · Arroz y pasta', price: '2.15 €' },
+  { product: 'Yogur griego natural · 4 uds', aisle: 'Pasillo 18 · Refrigerados', price: '2.40 €' },
+  { product: 'Brócoli fresco · 500 g', aisle: 'Pasillo 1 · Fruta y verdura', price: '1.79 €' },
 ];
 
 interface SampleMetric {
@@ -539,7 +539,7 @@ function Nutrition() {
       <div className={styles.panel}>
         <div className={styles.panelHeader}>
           <p className={styles.panelTitle}>Lista de la compra · Semana 12</p>
-          <span className={styles.panelTotal}>42,85 €</span>
+          <span className={styles.panelTotal}>42.85 €</span>
         </div>
         <ul className={styles.rowList}>
           {SAMPLE_SHOPPING.map((item) => (

@@ -474,6 +474,34 @@ test.describe('dashboard widget internals', () => {
   });
 
   /**
+   * Las sparklines no tienen ejes ni rejilla —a 44 px no se leen—, así que el
+   * tooltip es lo único que puede decir la cifra exacta de un punto. Se
+   * comprueba en navegador y no en jsdom: el tooltip lo coloca Recharts a
+   * partir de coordenadas de ratón reales, que jsdom no tiene.
+   */
+  for (const card of [
+    { title: 'Peso', unidad: 'kg' },
+    { title: 'Tendencia 30 días', unidad: 'kg' },
+  ]) {
+    test(`the ${card.title} sparkline names a point on hover`, async ({ page }) => {
+      await gotoApp(page, '/app');
+
+      const chart = widget(page, card.title).locator('[role="img"]').first();
+      // `hover` y no `mouse.move`: la tarjeta de tendencia cae por debajo del
+      // pliegue a esta altura de ventana, y las coordenadas del ratón son de
+      // ventana — sin desplazar antes, el puntero aterriza fuera de la página.
+      await chart.hover();
+
+      // El tooltip de ESA gráfica: la tarjeta de tendencia tiene tres.
+      const tooltip = chart.locator('.recharts-tooltip-wrapper');
+      await expect(tooltip).toBeVisible();
+      // El valor con su unidad y, debajo, la fecha de esa medición.
+      await expect(tooltip).toContainText(card.unidad);
+      await expect(tooltip).toContainText(/\d{1,2} \w{3}/);
+    });
+  }
+
+  /**
    * The chart had a fixed 140px height, so in a card stretched to its row it
    * left a dead band underneath and squeezed the plot into a strip.
    */

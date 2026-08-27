@@ -109,7 +109,7 @@ describe('AdminPage — the shopping catalog tab', () => {
     expect(within(table).getAllByText('Mercadona')).toHaveLength(2);
     // Labels, not the stored tokens.
     expect(within(table).getByText('Cereales y legumbres')).toBeInTheDocument();
-    expect(within(table).getByText('1,55 €')).toBeInTheDocument();
+    expect(within(table).getByText('1.55 €')).toBeInTheDocument();
     expect(within(table).getByText('500 g')).toBeInTheDocument();
   });
 

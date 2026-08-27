@@ -28,9 +28,11 @@ interface LineChartProps {
   readonly ariaLabel: string;
   /**
    * `detail` (default) is the full card chart: axes, grid and hover tooltip.
-   * `spark` is the bare trend line inside a metric tile — no axes, no grid, no
-   * hover, because at ~40px tall none of them are legible and the tile's own
-   * value and caption already carry the numbers.
+   * `spark` is the bare trend line inside a metric tile or a trend row — no
+   * axes and no grid, because at ~40px tall neither is legible. The hover
+   * tooltip stays: it is drawn over the line rather than inside the plot, so it
+   * costs no height, and it is the only way a sparkline can name the exact
+   * value and date of a point.
    */
   readonly variant?: 'detail' | 'spark';
   /**
@@ -135,18 +137,21 @@ export function LineChart({
             width={64}
           />
 
-          {!spark && (
-            <Tooltip
-              content={({ active, payload }) => (
-                <ChartTooltip
-                  active={active}
-                  point={payload?.[0]?.payload as ChartPoint | undefined}
-                  formatValue={formatValue}
-                />
-              )}
-              cursor={{ stroke: color, strokeOpacity: 0.35, strokeWidth: 1 }}
-            />
-          )}
+          <Tooltip
+            content={({ active, payload }) => (
+              <ChartTooltip
+                active={active}
+                point={payload?.[0]?.payload as ChartPoint | undefined}
+                formatValue={formatValue}
+              />
+            )}
+            cursor={{ stroke: color, strokeOpacity: 0.35, strokeWidth: 1 }}
+            /* A tile's plot is shorter than the tooltip it opens, so on the
+               small variant the box is allowed out of the chart's own box
+               vertically — clamped horizontally, where there is room. */
+            allowEscapeViewBox={spark ? { x: false, y: true } : undefined}
+            wrapperStyle={{ zIndex: 1, outline: 'none' }}
+          />
 
           <Area
             type="monotone"
@@ -158,7 +163,7 @@ export function LineChart({
             /* A dot per measurement turns a dense series into beads on a
                string; only the hovered point gets one. */
             dot={false}
-            activeDot={spark ? false : { r: 4, strokeWidth: 0, fill: color }}
+            activeDot={{ r: spark ? 3 : 4, strokeWidth: 0, fill: color }}
             isAnimationActive={false}
           />
         </AreaChart>

@@ -194,7 +194,7 @@ describe('ShoppingPage', () => {
     expect(within(avenaRow).getByText('2')).toBeInTheDocument();
     expect(within(avenaRow).getByText('kg')).toBeInTheDocument();
     expect(within(avenaRow).getByText('4 raciones')).toBeInTheDocument();
-    expect(within(avenaRow).getByText(/3,90/)).toBeInTheDocument();
+    expect(within(avenaRow).getByText(/3\.90/)).toBeInTheDocument();
 
     // Detergente (non-food, servings: null) shows quantity + unit only, no
     // servings detail (tests.md edge case). UD renders as "unidades" (FOR-164).
@@ -217,7 +217,7 @@ describe('ShoppingPage', () => {
     // Budget summary: product count + weekly total (EUR, es-ES comma).
     expect(screen.getByText('Productos')).toBeInTheDocument();
     expect(screen.getByText(/productos únicos/)).toBeInTheDocument();
-    expect(screen.getByText(/24,60/)).toBeInTheDocument();
+    expect(screen.getByText(/24\.60/)).toBeInTheDocument();
 
     // The budget tiles are direct siblings of the page <h1> (no intervening
     // <h2>), so per FOR-112 they must render as <h2>.
@@ -414,7 +414,7 @@ describe('ShoppingPage', () => {
 
     await waitFor(() => expect(updateQuantityMock).toHaveBeenCalledWith('i1', 3));
     expect(await within(avenaRow).findByText('3')).toBeInTheDocument();
-    expect(within(avenaRow).getByText(/5,85/)).toBeInTheDocument();
+    expect(within(avenaRow).getByText(/5\.85/)).toBeInTheDocument();
   });
 
   it('disables "-" at quantity 1, sending no request (FOR-118)', async () => {
@@ -462,7 +462,7 @@ describe('ShoppingPage', () => {
     const row = checkbox.closest('li') as HTMLElement;
 
     expect(within(row).getByText('Sin precio')).toBeInTheDocument();
-    expect(within(row).queryByText(/0,00/)).not.toBeInTheDocument();
+    expect(within(row).queryByText(/0\.00/)).not.toBeInTheDocument();
     expect(
       within(row).queryByRole('button', { name: /cantidad de quinoa/i }),
     ).not.toBeInTheDocument();
@@ -606,7 +606,7 @@ describe('ShoppingPage', () => {
     expect(getListMock).toHaveBeenCalledTimes(2);
   });
 
-  it('shows a clear empty state with a 0,00 € total when there is no list this week', async () => {
+  it('shows a clear empty state with a 0.00 € total when there is no list this week', async () => {
     getListMock.mockResolvedValue({
       weekStartDate: '2026-07-06',
       status: 'ACTIVE',
@@ -627,7 +627,7 @@ describe('ShoppingPage', () => {
     expect(screen.getAllByRole('button', { name: 'Generar nueva lista' }).length).toBeGreaterThan(
       0,
     );
-    expect(screen.getAllByText(/0,00/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/0\.00/).length).toBeGreaterThan(0);
     expect(screen.getByRole('heading', { name: 'Generada', level: 2 })).toBeInTheDocument();
     expect(screen.getByText(formatGeneratedAt('2026-07-06T00:00:00Z'))).toBeInTheDocument();
   });

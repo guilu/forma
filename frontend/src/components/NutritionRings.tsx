@@ -1,4 +1,5 @@
 import type { DayConsumption } from '../api/nutrition';
+import { measure } from '../format/measures';
 import styles from './NutritionRings.module.css';
 
 /**
@@ -43,8 +44,6 @@ export const RING_ARCS = [
   { key: 'carbsG', label: 'Carbohidratos', color: 'var(--color-accent)', r: 26, width: 7 },
   { key: 'fatG', label: 'Grasas', color: 'var(--color-warning-graphic)', r: 16, width: 7 },
 ] as const;
-
-const NUM = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1 });
 
 export function NutritionRings({ consumed, target, size = '8rem' }: NutritionRingsProps) {
   return (
@@ -100,16 +99,16 @@ function summarize(consumed: DayConsumption['consumed'], target: DayConsumption[
     const figures = macros
       .map((arc, index) => {
         const label = index === 0 ? arc.label : arc.label.toLowerCase();
-        return `${label} ${NUM.format(consumed[arc.key])} g`;
+        return `${label} ${measure(consumed[arc.key])} g`;
       })
       .join(', ');
-    return `${NUM.format(consumed.kcal)} kcal. ${figures}. Tu plan no fija objetivos.`;
+    return `${measure(consumed.kcal)} kcal. ${figures}. Tu plan no fija objetivos.`;
   }
   const figures = macros
     .map((arc, index) => {
       const label = index === 0 ? arc.label : arc.label.toLowerCase();
-      return `${label} ${NUM.format(consumed[arc.key])} de ${NUM.format(target[arc.key])} g`;
+      return `${label} ${measure(consumed[arc.key])} de ${measure(target[arc.key])} g`;
     })
     .join(', ');
-  return `${NUM.format(consumed.kcal)} de ${NUM.format(target.kcal)} kcal. ${figures}.`;
+  return `${measure(consumed.kcal)} de ${measure(target.kcal)} kcal. ${figures}.`;
 }

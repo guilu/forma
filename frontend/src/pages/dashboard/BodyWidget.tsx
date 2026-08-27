@@ -5,6 +5,7 @@ import { MetricCard } from '../../components/MetricCard';
 import { LineChart, type ChartPoint } from '../../components/LineChart';
 import { WidgetLoading } from '../../components/WidgetLoading';
 import { type BodyMeasurement } from '../../api/bodyMeasurements';
+import { change as formatChange, fixed } from '../../format/measures';
 import styles from './BodyWidget.module.css';
 
 /**
@@ -30,10 +31,14 @@ import styles from './BodyWidget.module.css';
  * amber, muscle their blue and BMI their violet. The colour is decoration on
  * top of a tile that already prints its own name, value and unit.
  *
- * <p>The mockup's per-tile "vs semana pasada" delta ("–Sin cambios") is the
- * FOR-21 `WeeklyBodySummary` computation, which is not exposed over HTTP;
- * recomputing it in the UI would duplicate a domain rule (ADR-001), so the
- * caption honestly shows the measurement count instead of an invented delta.
+ * <p>Each tile carries the change from the measurement before the selected one,
+ * bracketed beside the value: "73.6 kg (-0.5)". That is a subtraction of two
+ * numbers the API already returned, not the mockup's "vs semana pasada" — which
+ * is the FOR-21 `WeeklyBodySummary` computation, a domain rule that is not
+ * exposed over HTTP and would be duplicated by recomputing it here (ADR-001).
+ * The caption keeps saying how many measurements there are. With nothing before
+ * the selected one, or with the metric missing from it, the tile shows no change
+ * rather than an invented zero (ADR-006).
  */
 /**
  * The measurement list is owned by {@link DashboardPage}, not fetched here
@@ -57,7 +62,7 @@ export type BodyState =
 const SPARKLINE_WINDOW = 8;
 
 function format(value: number | undefined): string {
-  return value === undefined ? '—' : value.toFixed(1);
+  return value === undefined ? '—' : fixed(value);
 }
 
 function formatDate(iso: string): string {
@@ -82,6 +87,21 @@ function sparkline(
         ? []
         : [{ t: Date.parse(m.measuredAt), y, dateLabel: formatDate(m.measuredAt) }];
     });
+}
+
+/** `undefined` where there is nothing to compare against — never a zero. */
+function difference(current: number | undefined, previous: number | undefined) {
+  return current === undefined || previous === undefined ? undefined : current - previous;
+}
+
+/** «0.5 kg menos que la medición anterior» — lo que «(-0.5)» no dice en voz alta. */
+function describe(change: number, unit: string | undefined): string {
+  const size = fixed(Math.abs(change));
+  const magnitude = unit === undefined ? size : `${size} ${unit}`;
+  if (change === 0) {
+    return 'Igual que la medición anterior';
+  }
+  return `${magnitude} ${change > 0 ? 'más' : 'menos'} que la medición anterior`;
 }
 
 function renderContent(state: BodyState) {
@@ -129,11 +149,23 @@ function renderContent(state: BodyState) {
   const upToSelected = history.slice(selected);
   const caption = `${upToSelected.length} ${upToSelected.length === 1 ? 'medición' : 'mediciones'}`;
 
+  /*
+   * La medición inmediatamente anterior a la seleccionada. El historial viene de
+   * más nueva a más vieja, así que «la anterior» es la siguiente de la lista.
+   */
+  const previous = history[selected + 1];
+
   const tiles = [
     {
       label: 'Peso',
       value: format(current.weightKg),
       unit: 'kg',
+      /*
+       * La unidad con la que se narra la diferencia, que no siempre es la del
+       * valor: la grasa se mide en %, pero su variación son PUNTOS de ese
+       * porcentaje — decir «0.5 % menos» sería un porcentaje de un porcentaje.
+       */
+      deltaUnit: 'kg',
       color: 'var(--color-accent)',
       select: (m: BodyMeasurement) => m.weightKg,
     },
@@ -141,6 +173,7 @@ function renderContent(state: BodyState) {
       label: 'Grasa',
       value: format(current.bodyFatPercentage),
       unit: '%',
+      deltaUnit: 'puntos',
       color: 'var(--color-warning-graphic)',
       select: (m: BodyMeasurement) => m.bodyFatPercentage,
     },
@@ -148,6 +181,7 @@ function renderContent(state: BodyState) {
       label: 'Músculo',
       value: format(current.leanMassKg),
       unit: 'kg',
+      deltaUnit: 'kg',
       color: 'var(--color-info)',
       select: (m: BodyMeasurement) => m.leanMassKg,
     },
@@ -155,6 +189,7 @@ function renderContent(state: BodyState) {
       label: 'IMC',
       value: format(current.bmi),
       unit: undefined,
+      deltaUnit: undefined,
       color: 'var(--color-violet)',
       select: (m: BodyMeasurement) => m.bmi,
     },
@@ -164,12 +199,15 @@ function renderContent(state: BodyState) {
     <>
       {tiles.map((tile) => {
         const points = sparkline(upToSelected, tile.select);
+        const change = difference(tile.select(current), previous && tile.select(previous));
         return (
           <MetricCard
             key={tile.label}
             label={tile.label}
             value={tile.value}
             unit={tile.unit}
+            delta={change === undefined ? undefined : `(${formatChange(change)})`}
+            deltaDescription={change === undefined ? undefined : describe(change, tile.deltaUnit)}
             caption={caption}
             trend={
               points.length >= 2 ? (
@@ -177,7 +215,7 @@ function renderContent(state: BodyState) {
                   variant="spark"
                   points={points}
                   color={tile.color}
-                  formatValue={(v) => `${v.toFixed(1)}${tile.unit ? ` ${tile.unit}` : ''}`}
+                  formatValue={(v) => `${fixed(v)}${tile.unit ? ` ${tile.unit}` : ''}`}
                   ariaLabel={`Evolución de ${tile.label.toLowerCase()}: ${points.length} mediciones recientes.`}
                 />
               ) : undefined

@@ -7,6 +7,7 @@ import { usePlannedMealToggle } from '../usePlannedMealToggle';
 import type { TodayMenuState } from './todayNutrition';
 import { WidgetSection } from './WidgetSection';
 import { ProgressBar } from './ProgressBar';
+import { measure } from '../../format/measures';
 import styles from './NutritionWidget.module.css';
 
 /**
@@ -16,7 +17,6 @@ import styles from './NutritionWidget.module.css';
  * Meal kcal and food descriptions come from the plan; daily progress comes from
  * persisted consumption. The server-provided day type selects the plan day.
  */
-const KCAL = new Intl.NumberFormat('es-ES');
 
 const MEAL_LABELS: Record<string, string> = {
   BREAKFAST: 'Desayuno',
@@ -149,17 +149,24 @@ function renderContent(
                 <span className={styles.mealDescription}>{descriptionOf(meal)}</span>
               )}
             </span>
-            <span className={styles.mealKcal}>{KCAL.format(meal.totals.calories)} kcal</span>
+            <span className={styles.mealKcal}>{measure(meal.totals.calories)} kcal</span>
           </li>
         ))}
       </ul>
       <div className={styles.total}>
         <span className={styles.totalLabel}>
-          {KCAL.format(consumedKcal)} kcal{' '}
-          {targetKcal !== null ? `/ ${KCAL.format(targetKcal)} kcal` : '· Sin objetivo'}
+          {measure(consumedKcal)} kcal{' '}
+          {targetKcal !== null ? `/ ${measure(targetKcal)} kcal` : '· Sin objetivo'}
         </span>
         {targetKcal !== null && (
-          <ProgressBar value={consumedKcal} max={targetKcal} label="Calorías del plan de hoy" />
+          /* Violeta, que es el color de las calorías en los aros de nutrición:
+             esta barra mide justo eso. */
+          <ProgressBar
+            value={consumedKcal}
+            max={targetKcal}
+            label="Calorías del plan de hoy"
+            color="var(--color-violet)"
+          />
         )}
       </div>
     </div>

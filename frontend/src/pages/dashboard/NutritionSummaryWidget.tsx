@@ -1,11 +1,10 @@
 import { ErrorState } from '../../components/ErrorState';
 import { NutritionRings, RING_ARCS } from '../../components/NutritionRings';
+import { measure } from '../../format/measures';
 import { WidgetLoading } from '../../components/WidgetLoading';
 import type { TodayConsumptionState } from './todayNutrition';
 import { WidgetSection } from './WidgetSection';
 import styles from './NutritionSummaryWidget.module.css';
-
-const NUM = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1 });
 
 /** One view of today's consumption: calories and macros share the same read state. */
 export function NutritionSummaryWidget({ state }: { readonly state: TodayConsumptionState }) {
@@ -45,8 +44,8 @@ function renderContent(state: TodayConsumptionState) {
                 {arc.key === 'kcal' ? 'Calorías' : arc.label}
               </span>
               <span className={styles.value}>
-                {NUM.format(eaten)}
-                {goal !== null ? ` / ${NUM.format(goal)} ${unit}` : ` ${unit} · Sin objetivo`}
+                {measure(eaten)}
+                {goal !== null ? ` / ${measure(goal)} ${unit}` : ` ${unit} · Sin objetivo`}
               </span>
             </li>
           );

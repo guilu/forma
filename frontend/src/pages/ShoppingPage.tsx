@@ -35,6 +35,7 @@ import {
 } from './shoppingCategories';
 import { formatGeneratedAt, totalServings, unitLabel } from './shoppingDisplay';
 import styles from './ShoppingPage.module.css';
+import { euro } from '../format/measures';
 
 /**
  * Shopping page (FOR-39 checklist + budget, built out to the mockup by FOR-55:
@@ -82,7 +83,6 @@ type State =
   | { readonly status: 'error' }
   | { readonly status: 'ready'; readonly list: ShoppingList };
 
-const EUR = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' });
 const MARK_ERROR = 'No se pudo actualizar el artículo. Inténtalo de nuevo.';
 const QUANTITY_ERROR = 'No se pudo actualizar la cantidad. Inténtalo de nuevo.';
 const REGENERATE_ERROR = 'No se pudo regenerar la lista. Inténtalo de nuevo.';
@@ -328,7 +328,7 @@ function renderContent(
           label="Total estimado"
           headingLevel={2}
           icon="goals"
-          value={EUR.format(budget.weeklyEur)}
+          value={euro(budget.weeklyEur)}
           unit="precio aproximado"
         />
         {/* "Porciones" aggregate tile (FOR-164 mockup): sums the per-item
@@ -467,9 +467,7 @@ function renderContent(
                     <span className={styles.unit}>{unitLabel(item.unit)}</span>
 
                     <span className={styles.cost}>
-                      {item.estimatedCostEur === null
-                        ? 'Sin precio'
-                        : EUR.format(item.estimatedCostEur)}
+                      {item.estimatedCostEur === null ? 'Sin precio' : euro(item.estimatedCostEur)}
                     </span>
 
                     <span className={styles.itemActions}>

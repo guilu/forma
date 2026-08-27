@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { NutritionRings, RING_ARCS } from '../components/NutritionRings';
+import { measure } from '../format/measures';
 import { NoPlanEmptyState } from '../components/NoPlanEmptyState';
 import { ErrorState } from '../components/ErrorState';
 import { Icon } from '../components/Icon';
@@ -253,8 +254,6 @@ function renderContent(
   );
 }
 
-const NUM = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1 });
-
 /** Nothing eaten yet reads as zeroes, not as a missing card: the day starts at zero. */
 const NOTHING_EATEN = { kcal: 0, proteinG: 0, carbsG: 0, fatG: 0 };
 
@@ -297,11 +296,11 @@ function DayProgress({
                 {arc.key === 'kcal' ? 'Calorías' : arc.label}
               </span>
               <span className={styles.macroValue}>
-                {NUM.format(eaten[arc.key])} {unit}
+                {measure(eaten[arc.key])} {unit}
                 {goal !== null && (
                   <span className={styles.macroGoal}>
                     {' '}
-                    / {NUM.format(goal)} {unit}
+                    / {measure(goal)} {unit}
                   </span>
                 )}
               </span>
@@ -309,7 +308,7 @@ function DayProgress({
                   que no es lo mismo que no quedar nada. */}
               {arc.key === 'kcal' && (
                 <span className={styles.macroNote}>
-                  {remaining === null ? 'Sin objetivo' : `Te quedan ${NUM.format(remaining)} kcal`}
+                  {remaining === null ? 'Sin objetivo' : `Te quedan ${measure(remaining)} kcal`}
                 </span>
               )}
             </li>
