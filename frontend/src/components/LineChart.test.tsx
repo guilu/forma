@@ -45,6 +45,40 @@ describe('LineChart', () => {
     expect(screen.queryByText('1 jul')).not.toBeInTheDocument();
   });
 
+  /**
+   * Stacked charts only compare if they share an x scale. Left to itself each
+   * one spans its own first and last measurement, so two metrics recorded on
+   * different days would draw the same week at two different widths — and the
+   * card's single pair of date labels would be a lie for at least one of them.
+   */
+  it('pins the x axis to the given window instead of to the data', () => {
+    const from = Date.parse('2026-06-01T00:00:00Z');
+    const to = Date.parse('2026-08-01T00:00:00Z');
+
+    const { container: loose } = render(
+      <LineChart points={points} formatValue={(v) => v.toFixed(1)} ariaLabel="Peso" />,
+    );
+    const { container: pinned } = render(
+      <LineChart
+        points={points}
+        xDomain={[from, to]}
+        formatValue={(v) => v.toFixed(1)}
+        ariaLabel="Peso"
+      />,
+    );
+
+    const startX = (container: HTMLElement) =>
+      Number(
+        /^M([\d.]+),/.exec(
+          container.querySelector('.recharts-area-curve')?.getAttribute('d') ?? '',
+        )?.[1],
+      );
+
+    // Without a window the first point sits on the plot's left edge; with one it
+    // starts a month in, where 1 July actually falls inside June–August.
+    expect(startX(pinned)).toBeGreaterThan(startX(loose));
+  });
+
   it('labels the first and last dates and the y range', () => {
     render(<LineChart points={points} formatValue={(v) => v.toFixed(1)} ariaLabel="Peso" />);
 

@@ -34,6 +34,18 @@ const base: BodyMeasurement = {
   bmi: 22.7,
 };
 
+/** Newest first, as the API returns it. */
+const dosMediciones = () => [
+  base,
+  {
+    ...base,
+    measuredAt: daysAgo(21),
+    weightKg: 75.2,
+    bodyFatPercentage: 16.5,
+    leanMassKg: 62.0,
+  },
+];
+
 describe('TrendWidget', () => {
   it('shows honest copy when the window holds fewer than two measurements', async () => {
     conMediciones([base]);
@@ -42,32 +54,80 @@ describe('TrendWidget', () => {
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
   });
 
-  it('plots the trend line once there are at least two measurements', async () => {
-    conMediciones([base, { ...base, measuredAt: daysAgo(3), weightKg: 74.1 }]);
+  /**
+   * Una gráfica por métrica y no tres líneas en la misma caja: kilos y puntos
+   * porcentuales no comparten escala, y superponerlos obligaba a normalizar cada
+   * serie contra su propio máximo — tres ejes invisibles pintados como si fueran
+   * uno. Cada fila tiene ahora su escala real y su unidad.
+   */
+  it('draws one chart per metric, each named on its own', async () => {
+    conMediciones(dosMediciones());
 
-    expect(await screen.findByRole('img', { name: /Tendencia de peso/ })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('img', { name: /^Peso en los últimos 30 días/ }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /^Grasa en los últimos 30 días/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole('img', { name: /^Músculo en los últimos 30 días/ }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole('img')).toHaveLength(3);
   });
 
   /**
-   * The assignment the design asks for: weight green, body fat blue, lean mass
-   * amber. It shipped with fat on the warning token and muscle on info, which
-   * read as "body fat is a warning". Asserted on the legend dots, which are the
-   * one place the colour reaches the DOM as an inline value.
+   * Los valores absolutos no estaban en ninguna parte de esta tarjeta: la
+   * normalización los borraba y la leyenda solo decía la unidad.
    */
-  it('paints each series in its assigned token', async () => {
-    conMediciones([base, { ...base, measuredAt: daysAgo(3), weightKg: 74.1 }]);
+  it('puts the latest value and the 30-day change beside each chart', async () => {
+    conMediciones(dosMediciones());
 
-    await screen.findByRole('img', { name: /Tendencia de peso/ });
+    await screen.findByRole('img', { name: /^Peso en los últimos 30 días/ });
+
+    expect(screen.getByText('73,6 kg')).toBeInTheDocument();
+    expect(screen.getByText('-1,6')).toBeInTheDocument();
+    expect(screen.getByText('14,7 %')).toBeInTheDocument();
+    expect(screen.getByText('-1,8')).toBeInTheDocument();
+    expect(screen.getByText('62,8 kg')).toBeInTheDocument();
+    expect(screen.getByText('+0,8')).toBeInTheDocument();
+  });
+
+  /** El resumen hablado dice de dónde a dónde va cada métrica, con su unidad. */
+  it('spells the whole row out for whoever is not looking at it', async () => {
+    conMediciones(dosMediciones());
+
+    expect(
+      await screen.findByRole('img', {
+        name: 'Peso en los últimos 30 días: de 75,2 kg a 73,6 kg. 2 mediciones.',
+      }),
+    ).toBeInTheDocument();
+  });
+
+  /** Una métrica que nadie ha medido no dibuja una fila vacía. */
+  it('drops a metric the window never recorded', async () => {
+    conMediciones(dosMediciones().map((m) => ({ ...m, bodyFatPercentage: undefined })));
+
+    await screen.findByRole('img', { name: /^Peso en los últimos 30 días/ });
+    expect(screen.getAllByRole('img')).toHaveLength(2);
+    expect(screen.queryByRole('img', { name: /^Grasa/ })).not.toBeInTheDocument();
+  });
+
+  /**
+   * The assignment the design asks for: weight green, body fat amber, lean mass
+   * blue — the same three the nutrition rings and the body tiles use, so a
+   * metric keeps one colour across the whole panel. Asserted on the row dots,
+   * which are the one place the colour reaches the DOM as an inline value.
+   */
+  it('paints each metric in its assigned token', async () => {
+    conMediciones(dosMediciones());
+
+    await screen.findByRole('img', { name: /^Peso en los últimos 30 días/ });
     const colourFor = (label: string) => {
-      const item = screen.getByText(label).closest('li') as HTMLElement;
-      return item.querySelector('span')?.getAttribute('style');
+      const row = screen.getByText(label).closest('li') as HTMLElement;
+      return row.querySelector('span[style]')?.getAttribute('style');
     };
 
-    // La misma asignación que los aros de nutrición y que las fichas de arriba:
-    // grasa en ámbar, músculo en azul.
-    expect(colourFor('Peso (kg)')).toContain('--color-accent');
-    expect(colourFor('Grasa (%)')).toContain('--color-warning-graphic');
-    expect(colourFor('Músculo (kg)')).toContain('--color-info');
+    expect(colourFor('Peso')).toContain('--color-accent');
+    expect(colourFor('Grasa')).toContain('--color-warning-graphic');
+    expect(colourFor('Músculo')).toContain('--color-info');
   });
 
   /**
@@ -88,16 +148,25 @@ describe('TrendWidget', () => {
         on(260),
       ]);
 
-      expect(await screen.findByRole('img', { name: /2 mediciones/ })).toBeInTheDocument();
+      // Cuatro mediciones en el historial, dos dentro de la ventana. Cada fila
+      // cuenta las suyas, así que basta con preguntarle a una.
+      expect(
+        await screen.findByRole('img', { name: /^Peso .*2 mediciones\.$/ }),
+      ).toBeInTheDocument();
     });
 
-    it('labels the axis with the window, not with the data', async () => {
-      conMediciones([on(1), on(2)]);
+    /**
+     * Las fechas dicen lo que hay dibujado, no lo que promete el título. Antes
+     * decían la ventana entera mientras el trazo abarcaba sólo las mediciones
+     * que cayeran dentro: una semana pintada de borde a borde bajo un par de
+     * fechas que anunciaban un mes. La ventana la dice el título de la tarjeta.
+     */
+    it('labels the axis with the span it actually plots', async () => {
+      conMediciones([on(1), on(6)]);
 
-      // The window is fixed: 30 days back from today, to today — regardless of
-      // where the first and last measurements happen to sit inside it.
-      expect(await screen.findByText(shortDate(30))).toBeInTheDocument();
-      expect(screen.getByText(shortDate(0))).toBeInTheDocument();
+      expect(await screen.findByText(shortDate(6))).toBeInTheDocument();
+      expect(screen.getByText(shortDate(1))).toBeInTheDocument();
+      expect(screen.queryByText(shortDate(30))).not.toBeInTheDocument();
     });
 
     it('says the window is empty when every measurement predates it', async () => {

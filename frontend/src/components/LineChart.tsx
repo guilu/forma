@@ -41,6 +41,14 @@ interface LineChartProps {
    * that distinction: every chart is titled and carries an `ariaLabel`.
    */
   readonly color?: string;
+  /**
+   * Pins the x axis to a window instead of letting it span the data's own first
+   * and last point. Set it where several charts are stacked and have to be read
+   * against each other — the dashboard's trend card, whose three metrics are
+   * three charts sharing one pair of date labels. Left unset the axis spans the
+   * points it was given, which is what a chart on its own wants.
+   */
+  readonly xDomain?: readonly [number, number];
 }
 
 /** Up to this many x-axis ticks; beyond it the date labels start colliding. */
@@ -66,6 +74,7 @@ export function LineChart({
   ariaLabel,
   variant = 'detail',
   color = 'var(--color-accent)',
+  xDomain,
 }: LineChartProps) {
   // One gradient per instance: SVG ids are document-global and several charts
   // are on screen at once (one per metric tile).
@@ -103,7 +112,7 @@ export function LineChart({
             dataKey="t"
             type="number"
             scale="time"
-            domain={['dataMin', 'dataMax']}
+            domain={xDomain ?? ['dataMin', 'dataMax']}
             hide={spark}
             ticks={axisTicks(points)}
             tickFormatter={(t: number) => labelFor(points, t)}
