@@ -179,7 +179,17 @@ function renderContent(
         <span className={styles.completionLabel}>
           {completed} de {total} sesiones completadas
         </span>
-        <ProgressBar value={completed} max={total} label="Sesiones completadas esta semana" />
+        {/*
+         * Azul, el mismo tono que las proteínas en los aros de nutrición: cada
+         * barra del panel dice de qué habla por su color, y el verde de acento
+         * las dejaba a las dos iguales.
+         */}
+        <ProgressBar
+          value={completed}
+          max={total}
+          label="Sesiones completadas esta semana"
+          color="var(--color-info)"
+        />
       </div>
     </div>
   );

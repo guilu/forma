@@ -159,7 +159,14 @@ function renderContent(
           {targetKcal !== null ? `/ ${measure(targetKcal)} kcal` : '· Sin objetivo'}
         </span>
         {targetKcal !== null && (
-          <ProgressBar value={consumedKcal} max={targetKcal} label="Calorías del plan de hoy" />
+          /* Violeta, que es el color de las calorías en los aros de nutrición:
+             esta barra mide justo eso. */
+          <ProgressBar
+            value={consumedKcal}
+            max={targetKcal}
+            label="Calorías del plan de hoy"
+            color="var(--color-violet)"
+          />
         )}
       </div>
     </div>
