@@ -38,6 +38,20 @@ interface MetricCardProps {
    * Rendered above `trend` when present.
    */
   readonly caption?: string;
+  /**
+   * Optional change beside the value, already formatted and bracketed by the
+   * caller — "(-0,2)". Small and muted so the headline figure keeps the tile;
+   * the caller decides what it is measured against, and omits it when there is
+   * nothing to compare with rather than printing a zero.
+   */
+  readonly delta?: string;
+  /**
+   * What `delta` means, as a sentence: "0,2 kg menos que la medición anterior".
+   * "(-0,2)" on its own is unreadable out loud, so the bracketed form is hidden
+   * from the accessibility tree and this replaces it. Without it the change is
+   * announced as written, which is worse than saying nothing.
+   */
+  readonly deltaDescription?: string;
 }
 
 export function MetricCard({
@@ -48,6 +62,8 @@ export function MetricCard({
   headingLevel,
   icon,
   caption,
+  delta,
+  deltaDescription,
 }: MetricCardProps) {
   return (
     <Card
@@ -58,6 +74,15 @@ export function MetricCard({
       <p className={styles.value}>
         {value}
         {unit && <span className={styles.unit}> {unit}</span>}
+        {delta && (
+          <>
+            <span className={styles.delta} aria-hidden="true">
+              {' '}
+              {delta}
+            </span>
+            {deltaDescription && <span className={styles.srOnly}> {deltaDescription}</span>}
+          </>
+        )}
       </p>
       {caption && <p className={styles.caption}>{caption}</p>}
       {trend && <div className={styles.trend}>{trend}</div>}

@@ -230,7 +230,7 @@ describe('DashboardPage', () => {
       renderDashboard();
 
       expect(await screen.findByText('5 jul 2026')).toBeInTheDocument();
-      expect(tiles().getByText('75.0')).toBeInTheDocument();
+      expect(tiles().getByText('75,0')).toBeInTheDocument();
     });
 
     it('steps back to the previous measurement and re-reads the tiles', async () => {
@@ -247,8 +247,8 @@ describe('DashboardPage', () => {
       await user.click(screen.getByRole('button', { name: 'Medición anterior' }));
 
       expect(screen.getByText('1 jul 2026')).toBeInTheDocument();
-      expect(tiles().getByText('78.0')).toBeInTheDocument();
-      expect(tiles().queryByText('75.0')).not.toBeInTheDocument();
+      expect(tiles().getByText('78,0')).toBeInTheDocument();
+      expect(tiles().queryByText('75,0')).not.toBeInTheDocument();
     });
 
     it('stops at both ends of the history', async () => {
