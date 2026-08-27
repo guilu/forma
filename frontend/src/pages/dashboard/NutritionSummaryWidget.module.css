@@ -11,10 +11,19 @@
   min-width: 0;
 }
 
-/* The rings are a fixed square in a column of full-width rows, so they centre themselves rather
-   than sitting against the left edge with a field of card beside them. */
-.content > :first-child {
-  align-self: center;
+/*
+ * The card splits in two: the rings take every pixel the row's tallest card gave this one, the
+ * legend sits on the floor. Before this the rings were a fixed square pinned under the header and
+ * the four lines followed straight after, leaving half a card of nothing beneath them.
+ *
+ * `min-height: 0` because the rings are a square with a fixed side: without it this box refuses
+ * to shrink under its content in a short card and pushes the legend past the card's edge.
+ */
+.chart {
+  display: grid;
+  place-items: center;
+  flex: 1;
+  min-height: 0;
 }
 
 .figures {

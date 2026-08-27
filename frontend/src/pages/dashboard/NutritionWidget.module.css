@@ -119,10 +119,18 @@
   white-space: nowrap;
 }
 
+/*
+ * The day's total sits on the card's floor, not right under the last meal: this
+ * card shares a row with taller ones, so a short menu used to leave the total
+ * and its bar floating with a field of empty card below them. `margin-top: auto`
+ * eats the leftover height above the rule — the same footer treatment the
+ * training card gives its weekly progress.
+ */
 .total {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  margin-top: auto;
   padding-top: var(--space-3);
   border-top: 1px solid var(--color-border);
 }

@@ -27,9 +27,12 @@ function renderContent(state: TodayConsumptionState) {
   const { consumed, target } = state.consumption;
   return (
     <div className={styles.content}>
-      {/* The rings carry the accessible summary; the list beside them repeats every figure as
-          text, so nothing here is said by colour alone. */}
-      <NutritionRings consumed={consumed} target={target} />
+      {/* The rings carry the accessible summary; the list below them repeats every figure as
+          text, so nothing here is said by colour alone. They take the card's leftover height and
+          centre in it, which is what lets them be drawn at the nutrition page's size. */}
+      <div className={styles.chart}>
+        <NutritionRings consumed={consumed} target={target} size="11rem" />
+      </div>
       <ul className={styles.figures}>
         {RING_ARCS.map((arc) => {
           const eaten = consumed[arc.key];
