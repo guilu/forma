@@ -439,27 +439,38 @@ test.describe('dashboard widget internals', () => {
   test.use({ viewport: DESKTOP });
 
   /**
-   * The three series names used to wrap onto a second and third line, which
-   * reads as three legends stacked under the plot instead of one.
+   * The card used to overlay the three metrics on one 140px plot with a legend
+   * under it, and the plot took a third of the card. It is now one chart per
+   * metric, stacked, each spanning the card's full width — so the drawing is
+   * most of the card and no two series share a box.
    */
-  test('the trend legend keeps its three series on one line', async ({ page }) => {
+  test('the trend card stacks one full-width plot per metric', async ({ page }) => {
     await gotoApp(page, '/app');
 
-    const items = await widget(page, 'Tendencia 30 días')
-      .locator('ul li')
-      .evaluateAll((entries) =>
-        entries.map((entry) => ({
-          text: entry.textContent?.trim() ?? '',
-          top: Math.round(entry.getBoundingClientRect().top),
-        })),
-      );
+    const box = await widget(page, 'Tendencia 30 días').evaluate((card) => {
+      const charts = [...card.querySelectorAll('[role="img"]')];
+      const style = getComputedStyle(card);
+      return {
+        count: charts.length,
+        cardHeight: card.getBoundingClientRect().height,
+        // Content box: `clientWidth` already excludes the border.
+        cardInnerWidth:
+          card.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight),
+        widths: charts.map((chart) => Math.round(chart.getBoundingClientRect().width)),
+        tops: charts.map((chart) => Math.round(chart.getBoundingClientRect().top)),
+        plotted: charts.reduce((total, chart) => total + chart.getBoundingClientRect().height, 0),
+      };
+    });
 
-    expect(items.length, 'The trend legend was not found').toBe(3);
-    const tops = new Set(items.map((item) => item.top));
+    expect(box.count, 'One chart per metric').toBe(3);
+    expect(new Set(box.tops).size, 'The three plots stack, they do not overlap').toBe(3);
+    for (const width of box.widths) {
+      expect(width).toBe(Math.round(box.cardInnerWidth));
+    }
     expect(
-      tops.size,
-      `The legend wraps onto ${tops.size} lines: ${items.map((i) => `${i.text}@${i.top}`).join(', ')}`,
-    ).toBe(1);
+      box.plotted,
+      `Only ${Math.round(box.plotted)}px of plot in a ${Math.round(box.cardHeight)}px card`,
+    ).toBeGreaterThan(box.cardHeight * 0.45);
   });
 
   /**

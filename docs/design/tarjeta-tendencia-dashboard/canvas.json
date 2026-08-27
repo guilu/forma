@@ -1,0 +1,104 @@
+{
+  "pages": [
+    {
+      "id": "page-1",
+      "name": "Hoy y la propuesta"
+    },
+    {
+      "id": "page-2",
+      "name": "Alternativas"
+    }
+  ],
+  "artboards": [
+    {
+      "file": "Actual.dc.html",
+      "title": "Hoy · tres escalas escondidas",
+      "page": "page-1",
+      "x": 0,
+      "y": 0,
+      "w": 366,
+      "h": 461
+    },
+    {
+      "file": "Main.dc.html",
+      "title": "A · Tres series, tres ejes (propuesta)",
+      "page": "page-1",
+      "x": 486,
+      "y": 0,
+      "w": 366,
+      "h": 461
+    },
+    {
+      "file": "OpcionB.dc.html",
+      "title": "B · Cambio relativo en %",
+      "page": "page-2",
+      "x": 0,
+      "y": 0,
+      "w": 366,
+      "h": 461
+    },
+    {
+      "file": "OpcionC.dc.html",
+      "title": "C · Variación a 30 días",
+      "page": "page-2",
+      "x": 486,
+      "y": 0,
+      "w": 366,
+      "h": 461
+    }
+  ],
+  "annotations": [
+    {
+      "id": "nota-problema",
+      "page": "page-1",
+      "x": 0,
+      "y": -660,
+      "w": 640,
+      "text": "LA GRÁFICA NO SALE RARA POR LOS DATOS\n\nMultiLineChart normaliza CADA serie contra su propio mínimo y máximo y las pinta en la misma caja. No es un eje doble: son TRES ejes invisibles superpuestos.\n\nEfecto 1 — miente sobre la magnitud. En 30 días el peso se mueve 1,7 kg y la grasa 1,8 puntos; la normalización estira las dos a la altura completa, así que un ruido de báscula dibuja la misma montaña que una bajada real de grasa.\n\nEfecto 2 — inventa correlación. Dos líneas que suben juntas no comparten escala, así que el cruce que ves no significa nada.\n\nEfecto 3 — el gráfico ocupa 140 px de los 330 que tiene libres la tarjeta. Dos tercios del alto se los llevan la leyenda, las fechas y el hueco.\n\nLos dos arreglos legítimos para magnitudes con unidades distintas son exactamente estos dos: una gráfica por serie (A), o indexar todas a una base común (B)."
+    },
+    {
+      "id": "nota-daltonismo",
+      "page": "page-1",
+      "x": 720,
+      "y": -660,
+      "w": 640,
+      "text": "Y HAY UN SEGUNDO PROBLEMA, MEDIBLE\n\nEl verde de acento (#63e662) y el ámbar de grasa (#ffab70) están a ΔE 0,8 en deuteranopía. El umbral para poder distinguir dos series adyacentes es 8. Es decir: para una de cada doce personas con ojos masculinos, la línea de peso y la de grasa son EL MISMO COLOR — y los puntos de la leyenda también, porque son esos mismos dos colores.\n\nNo se arregla repintando: probé verde+violeta, verde+ámbar+violeta y verde+lila+azul y ninguna combinación de los tonos que ya usa el panel pasa. La única que pasa mete el rojo de peligro, que está reservado para estados.\n\nY repintar tampoco tocaría: peso=verde, grasa=ámbar, músculo=azul es la convención de TODO el panel (las cuatro casillas de arriba, los aros de nutrición). Una métrica que cambia de color entre dos tarjetas de la misma pantalla enseña algo falso.\n\nAsí que la salida no es el color: es que dos líneas que chocan no compartan caja."
+    },
+    {
+      "id": "nota-a",
+      "page": "page-1",
+      "x": 940,
+      "y": 0,
+      "w": 560,
+      "text": "A · TRES SERIES, TRES EJES (propuesta)\n\nUna gráfica por métrica, apiladas. Cada una con su escala real y su unidad, cada una con su valor de hoy y su variación absoluta al lado.\n\nA favor:\n· Cada escala es honesta porque no la comparte con nadie.\n· El problema de daltonismo desaparece solo: dos tonos que chocan ya no coinciden nunca en la misma caja.\n· Aparecen los valores absolutos, que hoy no están en ninguna parte de esta tarjeta.\n· El dibujo pasa de 140 px a 210 px de trazo, y la tarjeta entera es la gráfica.\n\nEn contra:\n· Comparar la FORMA de dos métricas exige mover el ojo entre dos cajas.\n· Cada gráfica es más baja (70 px), así que el detalle fino se pierde.\n\nEn código: MultiLineChart deja de normalizar y pasa a ser tres LineChart apilados; el componente que ya existe (`LineChart.tsx`) hace justo eso."
+    },
+    {
+      "id": "nota-b",
+      "page": "page-2",
+      "x": 0,
+      "y": 560,
+      "w": 620,
+      "text": "B · CAMBIO RELATIVO EN % (tu idea)\n\nTodo indexado al primer valor de la ventana: un solo eje, en tanto por ciento, con el cero como referencia real. Kilos y puntos porcentuales se vuelven comparables sin trampa.\n\nA favor:\n· Un eje de verdad, con números y rejilla — hoy no hay ninguno.\n· Se mantienen las tres líneas en una imagen, que es lo que hace reconocible a esta tarjeta.\n· Cuenta la historia que los kilos esconden: la grasa se mueve un −10,7 % mientras el peso baja un −2,1 %. En valor absoluto son casi lo mismo (1,8 contra 1,6); en relativo, cinco veces más.\n\nEn contra:\n· El choque verde/ámbar SIGUE ahí. Se tapa con el nombre de cada línea escrito en su extremo, que es encoding secundario de verdad, pero es un parche, no una solución — si dos líneas se cruzan al final, las etiquetas se pisan.\n· Desaparecen los valores absolutos: 74,0 kg no está en ninguna parte.\n· «−10,7 %» de grasa corporal es un porcentaje DE un porcentaje. Fácil de leer mal."
+    },
+    {
+      "id": "nota-c",
+      "page": "page-2",
+      "x": 700,
+      "y": 560,
+      "w": 620,
+      "text": "C · VARIACIÓN A 30 DÍAS\n\nSe deja de dibujar el tiempo. Tres barras divergentes desde el cero: cuánto se ha movido cada métrica en la ventana, con el antes y el después en texto.\n\nA favor:\n· Contesta «¿qué ha pasado este mes?» de un vistazo, sin que nadie tenga que interpretar una curva.\n· No hay escalas que reconciliar: la magnitud ES la longitud de la barra.\n· Sobrevive a cualquier número de mediciones, incluso a dos.\n\nEn contra:\n· Tira a la basura la forma de la tendencia. No se ve CUÁNDO se movió, ni si bajó de golpe o poco a poco, ni si se ha estancado la última semana.\n· Deja de llamarse «Tendencia»: es otra tarjeta.\n\nHay una cuarta opción que descarto sin dibujarla: una métrica en foco con selector. Ya existe y está en esta misma pantalla — es la tarjeta «Evolución», con sus mismas tres métricas y sus pestañas de rango. Repetirla aquí sería tener dos veces la misma tarjeta."
+    },
+    {
+      "id": "nota-datos",
+      "page": "page-2",
+      "x": 0,
+      "y": -400,
+      "w": 700,
+      "text": "LOS NÚMEROS SON DE MUESTRA\n\n16 mediciones cada dos días, peso 75,6 → 74,0 kg, grasa 16,8 → 15,0 %, músculo 62,1 → 62,9 kg. Elegidos para que se vea el caso interesante: recomposición, en la que el peso apenas se mueve y el reparto sí.\n\nLo que NO es de muestra: la tarjeta mide 318 × 413 px, que es lo que mide en el panel a 1680; los tokens salen de `theme.css`; la caja es la de `WidgetSection` (24 px de aire, radio 12, borde #30363d); y la curva es cúbica monótona, la misma que dibuja `type=\"monotone\"` de Recharts, así que la forma es la que saldrá."
+    }
+  ],
+  "launch": {
+    "view": "canvas",
+    "page": "page-1"
+  }
+}

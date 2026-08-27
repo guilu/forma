@@ -1,3 +1,104 @@
+/*
+ * Tres filas y las fechas apoyadas en el suelo. La tarjeta comparte fila con
+ * otras más altas, así que el cuerpo se estira hasta el alto que le den y las
+ * gráficas se reparten lo que sobra — que es justo lo que antes se quedaba en
+ * blanco bajo la leyenda.
+ */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.metrics {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  flex-grow: 1;
+  min-width: 0;
+}
+
+/*
+ * Cada fila es una gráfica entera con su escala y su unidad. La altura del
+ * trazo la fija esta variable, que `LineChart` lee en su variante `spark`: 44px
+ * es lo que le toca dentro de una ficha de métrica, y aquí hay sitio de sobra
+ * para leer una forma.
+ */
+.metric {
+  --spark-height: 70px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+/* El punto es el color de la línea de abajo, junto al nombre que ya la dice:
+   decoración encima de una etiqueta, nunca lo único que distingue una fila. */
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.figures {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+
+.value {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* La variación va en tinta secundaria, no en el color de la serie: un número en
+   verde o en ámbar diría «bien» o «mal», y bajar de peso no es lo uno ni lo
+   otro hasta que alguien decide qué busca. */
+.delta {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Un solo par de fechas para las tres gráficas: comparten ventana y comparten
+   eje x, así que repetirlas tres veces sería ruido. */
+.axisRow {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: auto;
+}
+
+.axis {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
 .empty {
   margin: 0;
   color: var(--color-text-muted);

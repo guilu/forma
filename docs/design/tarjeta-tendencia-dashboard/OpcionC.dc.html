@@ -1,0 +1,98 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+    a { color: #63e662; } a:hover { color: #8bef8a; }
+  </style>
+</helmet>
+<div style="width: 366px; height: 461px; box-sizing: border-box; padding: 24px; background: #10141a; display: flex; align-items: flex-start; justify-content: flex-start">
+  <div style="width: 318px; height: 413px; box-sizing: border-box; padding: 24px; background: #1c2026; border: 1px solid #30363d; border-radius: 12px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); display: flex; flex-direction: column; gap: 16px">
+
+    <h2 style="margin: 0; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #8b949e">Variación 30 días</h2>
+
+    <div style="display: flex; flex-direction: column; gap: 12px; flex-grow: 1">
+
+      <svg width="268" height="270" viewBox="0 0 268 270" fill="none" style="display: block">
+        <!-- El cero recorre las tres barras: es lo único contra lo que se leen. -->
+        <line x1="214" y1="36" x2="214" y2="250" stroke="#454c55" stroke-width="1"></line>
+        <text x="214" y="264" text-anchor="middle" font-size="10" fill="#8b949e">0</text>
+
+        <text x="0" y="14" font-size="13" fill="#bbcabe">Peso</text>
+        <text x="268" y="14" text-anchor="end" font-size="13" font-weight="600" fill="#dfe2eb">−2,1 %</text>
+        <text x="0" y="32" font-size="12" fill="#8b949e">75,6 → 74,0 kg</text>
+        <path d="{{ pesoBar }}" fill="#63e662"></path>
+
+        <text x="0" y="106" font-size="13" fill="#bbcabe">Grasa</text>
+        <text x="268" y="106" text-anchor="end" font-size="13" font-weight="600" fill="#dfe2eb">−10,7 %</text>
+        <text x="0" y="124" font-size="12" fill="#8b949e">16,8 → 15,0 %</text>
+        <path d="{{ grasaBar }}" fill="#ffab70"></path>
+
+        <text x="0" y="198" font-size="13" fill="#bbcabe">Músculo</text>
+        <text x="268" y="198" text-anchor="end" font-size="13" font-weight="600" fill="#dfe2eb">+1,3 %</text>
+        <text x="0" y="216" font-size="12" fill="#8b949e">62,1 → 62,9 kg</text>
+        <path d="{{ musculoBar }}" fill="#3b82f6"></path>
+      </svg>
+
+      <p style="margin: 0; margin-top: auto; font-size: 12px; color: #8b949e">Últimos 30 días · 16 mediciones</p>
+
+    </div>
+  </div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview": {"width": 366, "height": 461}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      pesoBar: bar(-2.12, 42),
+      grasaBar: bar(-10.71, 134),
+      musculoBar: bar(1.29, 226),
+    };
+  }
+}
+
+/*
+ * Escala asimétrica a propósito: el dominio va de −12 % a +3 % porque eso es lo
+ * que hay en los datos, no un rango redondo inventado alrededor del cero. El
+ * cero se queda donde le toca, a 214 px.
+ */
+const MIN = -12;
+const MAX = 3;
+const ZERO_X = 214;
+const PX_PER_PCT = (268 - 0) / (MAX - MIN);
+const H = 20;
+const R = 4;
+
+function bar(pct, y) {
+  const end = ZERO_X + pct * PX_PER_PCT;
+  const top = y;
+  const bottom = y + H;
+  // La esquina redonda va sólo en el extremo que lleva el dato; el que se apoya
+  // en el cero se queda a escuadra.
+  if (pct < 0) {
+    return 'M' + ZERO_X + ' ' + top +
+      ' L' + (end + R).toFixed(2) + ' ' + top +
+      ' Q' + end.toFixed(2) + ' ' + top + ' ' + end.toFixed(2) + ' ' + (top + R) +
+      ' L' + end.toFixed(2) + ' ' + (bottom - R) +
+      ' Q' + end.toFixed(2) + ' ' + bottom + ' ' + (end + R).toFixed(2) + ' ' + bottom +
+      ' L' + ZERO_X + ' ' + bottom + ' Z';
+  }
+  return 'M' + ZERO_X + ' ' + top +
+    ' L' + (end - R).toFixed(2) + ' ' + top +
+    ' Q' + end.toFixed(2) + ' ' + top + ' ' + end.toFixed(2) + ' ' + (top + R) +
+    ' L' + end.toFixed(2) + ' ' + (bottom - R) +
+    ' Q' + end.toFixed(2) + ' ' + bottom + ' ' + (end - R).toFixed(2) + ' ' + bottom +
+    ' L' + ZERO_X + ' ' + bottom + ' Z';
+}
+</script>
+</body>
+</html>

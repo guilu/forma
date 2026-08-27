@@ -376,10 +376,12 @@ describe('theme.css design tokens (FOR-163 reconciliation)', () => {
       );
       expect(bodyWidgetSource).toMatch(/label: 'Músculo',[\s\S]{0,120}var\(--color-info\)/);
       expect(bodyWidgetSource).toMatch(/label: 'IMC',[\s\S]{0,120}var\(--color-violet\)/);
+      // La tarjeta de tendencia ya no lleva la unidad en la etiqueta: cada
+      // métrica es una gráfica con su eje, y la unidad viaja al lado del valor.
       expect(trendWidgetSource).toMatch(
-        /label: 'Grasa \(%\)',\s*color: 'var\(--color-warning-graphic\)'/,
+        /label: 'Grasa',[\s\S]{0,120}var\(--color-warning-graphic\)/,
       );
-      expect(trendWidgetSource).toMatch(/label: 'Músculo \(kg\)',\s*color: 'var\(--color-info\)'/);
+      expect(trendWidgetSource).toMatch(/label: 'Músculo',[\s\S]{0,120}var\(--color-info\)/);
     });
 
     it('keeps fat series and training dots on the orange graphic role', () => {
