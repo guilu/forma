@@ -1,0 +1,184 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+    a { color: #63e662; } a:hover { color: #8bef8a; }
+  </style>
+</helmet>
+<div style="width: 366px; height: 461px; box-sizing: border-box; padding: 24px; background: #10141a; display: flex; align-items: flex-start; justify-content: flex-start">
+  <div style="width: 318px; height: 413px; box-sizing: border-box; padding: 24px; background: #1c2026; border: 1px solid #30363d; border-radius: 12px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); display: flex; flex-direction: column; gap: 16px">
+
+    <h2 style="margin: 0; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #8b949e">Tendencia 30 días</h2>
+
+    <div style="display: flex; flex-direction: column; gap: 14px; flex-grow: 1">
+
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px">
+          <span style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: #bbcabe">
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: #63e662; flex-shrink: 0"></span>Peso
+          </span>
+          <span style="display: flex; align-items: baseline; gap: 8px">
+            <span style="font-size: 13px; font-weight: 600; color: #dfe2eb; font-variant-numeric: tabular-nums">74,0 kg</span>
+            <span style="font-size: 12px; color: #8b949e; font-variant-numeric: tabular-nums">−1,6</span>
+          </span>
+        </div>
+        <svg width="268" height="70" viewBox="0 0 268 70" fill="none" style="display: block">
+          <defs>
+            <linearGradient id="fadePeso" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#63e662" stop-opacity="0.22"></stop>
+              <stop offset="100%" stop-color="#63e662" stop-opacity="0"></stop>
+            </linearGradient>
+          </defs>
+          <path d="{{ pesoArea }}" fill="url(#fadePeso)"></path>
+          <path d="{{ pesoLine }}" stroke="#63e662" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
+          <circle cx="{{ pesoEndX }}" cy="{{ pesoEndY }}" r="3.5" fill="#63e662" stroke="#1c2026" stroke-width="2"></circle>
+        </svg>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px">
+          <span style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: #bbcabe">
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: #ffab70; flex-shrink: 0"></span>Grasa
+          </span>
+          <span style="display: flex; align-items: baseline; gap: 8px">
+            <span style="font-size: 13px; font-weight: 600; color: #dfe2eb; font-variant-numeric: tabular-nums">15,0 %</span>
+            <span style="font-size: 12px; color: #8b949e; font-variant-numeric: tabular-nums">−1,8</span>
+          </span>
+        </div>
+        <svg width="268" height="70" viewBox="0 0 268 70" fill="none" style="display: block">
+          <defs>
+            <linearGradient id="fadeGrasa" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#ffab70" stop-opacity="0.22"></stop>
+              <stop offset="100%" stop-color="#ffab70" stop-opacity="0"></stop>
+            </linearGradient>
+          </defs>
+          <path d="{{ grasaArea }}" fill="url(#fadeGrasa)"></path>
+          <path d="{{ grasaLine }}" stroke="#ffab70" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
+          <circle cx="{{ grasaEndX }}" cy="{{ grasaEndY }}" r="3.5" fill="#ffab70" stroke="#1c2026" stroke-width="2"></circle>
+        </svg>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px">
+          <span style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: #bbcabe">
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: #3b82f6; flex-shrink: 0"></span>Músculo
+          </span>
+          <span style="display: flex; align-items: baseline; gap: 8px">
+            <span style="font-size: 13px; font-weight: 600; color: #dfe2eb; font-variant-numeric: tabular-nums">62,9 kg</span>
+            <span style="font-size: 12px; color: #8b949e; font-variant-numeric: tabular-nums">+0,8</span>
+          </span>
+        </div>
+        <svg width="268" height="70" viewBox="0 0 268 70" fill="none" style="display: block">
+          <defs>
+            <linearGradient id="fadeMusculo" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.22"></stop>
+              <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"></stop>
+            </linearGradient>
+          </defs>
+          <path d="{{ musculoArea }}" fill="url(#fadeMusculo)"></path>
+          <path d="{{ musculoLine }}" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
+          <circle cx="{{ musculoEndX }}" cy="{{ musculoEndY }}" r="3.5" fill="#3b82f6" stroke="#1c2026" stroke-width="2"></circle>
+        </svg>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; gap: 12px; margin-top: auto">
+        <span style="font-size: 12px; color: #8b949e">28 jul</span>
+        <span style="font-size: 12px; color: #8b949e">27 ago</span>
+      </div>
+
+    </div>
+  </div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview": {"width": 366, "height": 461}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const peso = [75.6, 75.4, 75.5, 75.1, 74.9, 75.0, 74.7, 74.6, 74.8, 74.4, 74.3, 74.4, 74.1, 74.2, 73.9, 74.0];
+    const grasa = [16.8, 16.7, 16.5, 16.5, 16.2, 16.1, 16.0, 15.8, 15.9, 15.6, 15.5, 15.3, 15.4, 15.1, 15.1, 15.0];
+    const musculo = [62.1, 62.2, 62.1, 62.3, 62.4, 62.3, 62.5, 62.6, 62.5, 62.7, 62.6, 62.8, 62.7, 62.9, 62.8, 62.9];
+
+    const p = plot(peso);
+    const g = plot(grasa);
+    const m = plot(musculo);
+
+    return {
+      pesoLine: p.line, pesoArea: p.area, pesoEndX: p.endX, pesoEndY: p.endY,
+      grasaLine: g.line, grasaArea: g.area, grasaEndX: g.endX, grasaEndY: g.endY,
+      musculoLine: m.line, musculoArea: m.area, musculoEndX: m.endX, musculoEndY: m.endY,
+    };
+  }
+}
+
+const W = 268;
+const H = 70;
+const PAD = 8;
+
+/**
+ * Cada serie contra su propio mínimo y máximo, que aquí SÍ es honesto: la fila
+ * tiene su propio eje y no comparte caja con nadie. Es la misma normalización
+ * que hoy hace mentir al gráfico cuando las tres líneas se superponen.
+ */
+function plot(values) {
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const inner = H - PAD * 2;
+  const pts = values.map((v, i) => [
+    (i / (values.length - 1)) * W,
+    PAD + inner - ((v - min) / range) * inner,
+  ]);
+  const line = monotone(pts);
+  const last = pts[pts.length - 1];
+  return {
+    line: line,
+    area: line + ' L' + W.toFixed(2) + ' ' + H + ' L0 ' + H + ' Z',
+    endX: Number(last[0].toFixed(2)) - 2,
+    endY: Number(last[1].toFixed(2)),
+  };
+}
+
+/** Cúbica monótona (Fritsch-Carlson) — la misma curva que dibuja `type="monotone"` de Recharts. */
+function monotone(pts) {
+  const n = pts.length;
+  if (n < 2) return '';
+  const xs = pts.map((p) => p[0]);
+  const ys = pts.map((p) => p[1]);
+  const dxs = [];
+  const ms = [];
+  for (let i = 0; i < n - 1; i++) {
+    dxs[i] = xs[i + 1] - xs[i];
+    ms[i] = (ys[i + 1] - ys[i]) / dxs[i];
+  }
+  const c = [ms[0]];
+  for (let i = 1; i < n - 1; i++) {
+    if (ms[i - 1] * ms[i] <= 0) {
+      c[i] = 0;
+    } else {
+      const w1 = 2 * dxs[i] + dxs[i - 1];
+      const w2 = dxs[i] + 2 * dxs[i - 1];
+      c[i] = (w1 + w2) / (w1 / ms[i - 1] + w2 / ms[i]);
+    }
+  }
+  c[n - 1] = ms[n - 2];
+  let d = 'M' + xs[0].toFixed(2) + ' ' + ys[0].toFixed(2);
+  for (let i = 0; i < n - 1; i++) {
+    const t = dxs[i] / 3;
+    d += ' C' + (xs[i] + t).toFixed(2) + ' ' + (ys[i] + c[i] * t).toFixed(2) +
+         ' ' + (xs[i + 1] - t).toFixed(2) + ' ' + (ys[i + 1] - c[i + 1] * t).toFixed(2) +
+         ' ' + xs[i + 1].toFixed(2) + ' ' + ys[i + 1].toFixed(2);
+  }
+  return d;
+}
+</script>
+</body>
+</html>
