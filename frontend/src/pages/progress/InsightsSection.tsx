@@ -11,7 +11,7 @@ import styles from './InsightsSection.module.css';
  * it, any `secondary` recommendations and a non-medical disclaimer. Lives
  * inside the Progreso page — the nav has no dedicated "Insights" section
  * (`frontend/src/app/navigation.ts` only has Progreso/Objetivos) — alongside
- * the dashboard's compact `InsightWidget` (FOR-51), which only renders the
+ * the dashboard's compact `TipWidget` (FOR-51), which only renders the
  * main message/reason. This documents the FOR-56 spec's Open Question: no new
  * nav item/route is added for the MVP.
  *

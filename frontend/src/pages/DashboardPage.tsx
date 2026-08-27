@@ -196,20 +196,19 @@ export function DashboardPage() {
             consumption={consumption.status === 'ready' ? consumption.consumption : undefined}
           />
           <TrendWidget state={measurements} />
+          <div className={styles.rowThree}>
+            {/* Evolución takes two tracks: it inherited the width the retired
+                "Tu progreso" card left behind, and a chart is what actually uses
+                it (see DashboardPage.module.css `.rowThreeWide`). */}
+            <EvolutionWidget measurements={measurements} />
+            <ShoppingWidget />
+            <div className={styles.tipColumn}>
+              <TipWidget />
+              <PlanBanner />
+            </div>
+          </div>
         </div>
       </WidgetSection>
-
-      <div className={styles.rowThree}>
-        {/* Evolución takes two tracks: it inherited the width the retired
-            "Tu progreso" card left behind, and a chart is what actually uses
-            it (see DashboardPage.module.css `.rowThreeWide`). */}
-        <EvolutionWidget measurements={measurements} />
-        <ShoppingWidget />
-        <div className={styles.tipColumn}>
-          <TipWidget />
-          <PlanBanner />
-        </div>
-      </div>
     </div>
   );
 }
