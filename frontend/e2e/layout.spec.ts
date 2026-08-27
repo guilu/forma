@@ -536,6 +536,40 @@ test.describe('dashboard widget internals', () => {
   }
 
   /**
+   * Los saltos rápidos de la cabecera existen porque con cientos de mediciones
+   * llegar a la de hace un año eran cientos de pulsaciones en las flechas. Se
+   * comprueba de punta a punta porque lo que importa no es el botón, sino que
+   * mueva la selección que leen las fichas.
+   */
+  test('the header jumps move the selection the body tiles read', async ({ page }) => {
+    await gotoApp(page, '/app');
+
+    const header = page.getByRole('heading', { level: 1 }).locator('xpath=ancestor::header[1]');
+    const dateText = header.locator('time, span').filter({ hasText: /\d{1,2} \w{3} \d{4}/ });
+    const before = await dateText.first().innerText();
+
+    await page.getByRole('button', { name: '-30 d' }).click();
+
+    // Las fixtures cubren una semana, así que un mes atrás cae en la más
+    // antigua: cambia la fecha y ya no hay nada más atrás a lo que saltar.
+    await expect(dateText.first()).not.toHaveText(before);
+    await expect(page.getByRole('button', { name: '-30 d' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Medición anterior' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Última' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+
+    await page.getByRole('button', { name: 'Última' }).click();
+
+    await expect(dateText.first()).toHaveText(before);
+    await expect(page.getByRole('button', { name: 'Última' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  });
+
+  /**
    * The chart had a fixed 140px height, so in a card stretched to its row it
    * left a dead band underneath and squeezed the plot into a strip.
    */

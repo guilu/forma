@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Selector de Métricas Responsive</title>
+    <style>
+      :root {
+        --primary: #10b981;
+        --primary-light: #ecfdf5;
+        --text-main: #0f172a;
+        --text-muted: #64748b;
+        --border-subtle: #e2e8f0;
+        --bg-surface: #ffffff;
+        --bg-base: #f8fafc;
+        --radius: 14px;
+        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 4px 16px -2px rgba(0, 0, 0, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background-color: var(--bg-base);
+        color: var(--text-main);
+        padding: 24px 16px;
+        display: flex;
+        justify-content: center;
+      }
+
+      .container {
+        width: 100%;
+        max-width: 1100px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      /* --- CABECERA Y SELECTOR --- */
+      .dashboard-header {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        justify-content: space-between;
+        align-items: flex-start;
+      }
+
+      @media (min-width: 768px) {
+        .dashboard-header {
+          flex-direction: row;
+          align-items: center;
+        }
+      }
+
+      .user-greeting h1 {
+        font-size: 24px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .user-greeting p {
+        color: var(--text-muted);
+        font-size: 14px;
+        margin-top: 2px;
+      }
+
+      /* Controles de selección */
+      .date-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        justify-content: space-between;
+      }
+
+      @media (min-width: 768px) {
+        .date-controls {
+          width: auto;
+          justify-content: flex-end;
+        }
+      }
+
+      /* Botonera de navegación */
+      .stepper {
+        display: inline-flex;
+        align-items: center;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: 40px;
+        padding: 4px;
+        box-shadow: var(--shadow-sm);
+      }
+
+      .nav-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border: none;
+        background: transparent;
+        color: var(--text-muted);
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+
+      .nav-btn:hover:not(:disabled) {
+        background: #f1f5f9;
+        color: var(--text-main);
+      }
+
+      .nav-btn:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
+
+      .date-trigger-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: transparent;
+        border: none;
+        padding: 6px 14px;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-main);
+        cursor: pointer;
+        border-radius: 20px;
+        transition: background 0.15s ease;
+      }
+
+      .date-trigger-btn:hover {
+        background: #f8fafc;
+      }
+
+      .date-trigger-btn svg {
+        color: var(--text-muted);
+      }
+
+      /* Quick jump / Chips */
+      .chips-group {
+        display: flex;
+        gap: 6px;
+        overflow-x: auto;
+        padding-bottom: 2px;
+      }
+
+      .chip {
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-muted);
+        cursor: pointer;
+        white-space: nowrap;
+        transition: all 0.15s ease;
+      }
+
+      .chip:hover,
+      .chip.active {
+        background: var(--primary-light);
+        color: var(--primary);
+        border-color: rgba(16, 185, 129, 0.3);
+      }
+
+      /* --- CARDS GRID --- */
+      .cards-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+
+      @media (min-width: 600px) {
+        .cards-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+
+      @media (min-width: 1024px) {
+        .cards-grid {
+          grid-template-columns: repeat(4, 1fr);
+        }
+      }
+
+      .card {
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius);
+        padding: 20px;
+        box-shadow: var(--shadow-sm);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      .card-title {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.8px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        margin-bottom: 8px;
+      }
+
+      .card-value {
+        font-size: 26px;
+        font-weight: 700;
+        color: var(--text-main);
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+      }
+
+      .card-delta {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-muted);
+      }
+
+      .card-meta {
+        font-size: 12px;
+        color: #94a3b8;
+        margin-top: 4px;
+        margin-bottom: 12px;
+      }
+
+      .sparkline-placeholder {
+        height: 36px;
+        width: 100%;
+        border-bottom: 2px solid #10b981;
+        border-radius: 0 0 4px 4px;
+        background: linear-gradient(
+          180deg,
+          rgba(16, 185, 129, 0.08) 0%,
+          rgba(16, 185, 129, 0) 100%
+        );
+      }
+
+      /* Modal / Popover picker nativo simplificado */
+      .hidden-picker {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="container">
+      <!-- Cabecera y Controles de Fecha -->
+      <header class="dashboard-header">
+        <div class="user-greeting">
+          <h1>Hola Diego 👋</h1>
+          <p>Este es tu resumen</p>
+        </div>
+
+        <div class="date-controls">
+          <div
+            class="chips-group"
+            role="group"
+            aria-label="Filtros de periodo rápido"
+          >
+            <button
+              class="chip active"
+              id="chip-latest"
+              onclick="selectPreset('latest', event)"
+            >
+              Última
+            </button>
+            <button class="chip" onclick="selectPreset('30d', event)">
+              -30d
+            </button>
+            <button class="chip" onclick="selectPreset('1y', event)">
+              -1 año
+            </button>
+          </div>
+
+          <div
+            class="stepper"
+            role="region"
+            aria-label="Navegador de mediciones"
+          >
+            <button
+              class="nav-btn"
+              id="prev-btn"
+              aria-label="Medición anterior"
+              onclick="navigateOffset(-1)"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="15 18 9 12 15 6"></polyline>
+              </svg>
+            </button>
+
+            <button
+              class="date-trigger-btn"
+              id="date-label-btn"
+              aria-label="Elegir fecha específica"
+              onclick="openDatePicker()"
+            >
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              <span id="current-date-text" aria-live="polite">18 ago 2026</span>
+            </button>
+
+            <button
+              class="nav-btn"
+              id="next-btn"
+              aria-label="Medición siguiente"
+              onclick="navigateOffset(1)"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
+
+            <!-- Input nativo oculto accesible que abre el calendario del sistema -->
+            <input
+              type="date"
+              id="native-date"
+              class="hidden-picker"
+              onchange="onNativeDateChange(this.value)"
+            />
+          </div>
+        </div>
+      </header>
+
+      <!-- Grid de Métricas -->
+      <section class="cards-grid">
+        <article class="card">
+          <div>
+            <h2 class="card-title">Peso</h2>
+            <div class="card-value">
+              73.7
+              <span class="card-delta">kg (+0.1)</span>
+            </div>
+            <div class="card-meta">911 mediciones</div>
+          </div>
+          <div class="sparkline-placeholder"></div>
+        </article>
+
+        <article class="card">
+          <div>
+            <h2 class="card-title">Grasa</h2>
+            <div class="card-value">
+              17.2
+              <span class="card-delta">% (-0.3)</span>
+            </div>
+            <div class="card-meta">911 mediciones</div>
+          </div>
+          <div
+            class="sparkline-placeholder"
+            style="
+              border-color: #f59e0b;
+              background: linear-gradient(
+                180deg,
+                rgba(245, 158, 11, 0.08) 0%,
+                rgba(245, 158, 11, 0) 100%
+              );
+            "
+          ></div>
+        </article>
+
+        <article class="card">
+          <div>
+            <h2 class="card-title">Músculo</h2>
+            <div class="card-value">
+              61.1
+              <span class="card-delta">kg (+0.3)</span>
+            </div>
+            <div class="card-meta">911 mediciones</div>
+          </div>
+          <div
+            class="sparkline-placeholder"
+            style="
+              border-color: #3b82f6;
+              background: linear-gradient(
+                180deg,
+                rgba(59, 130, 246, 0.08) 0%,
+                rgba(59, 130, 246, 0) 100%
+              );
+            "
+          ></div>
+        </article>
+
+        <article class="card">
+          <div>
+            <h2 class="card-title">IMC</h2>
+            <div class="card-value">
+              22.2
+              <span class="card-delta">(0.0)</span>
+            </div>
+            <div class="card-meta">911 mediciones</div>
+          </div>
+          <div
+            class="sparkline-placeholder"
+            style="
+              border-color: #8b5cf6;
+              background: linear-gradient(
+                180deg,
+                rgba(139, 92, 246, 0.08) 0%,
+                rgba(139, 92, 246, 0) 100%
+              );
+            "
+          ></div>
+        </article>
+      </section>
+    </main>
+
+    <script>
+      // Generación simulada de 911 fechas hacia atrás
+      const totalEntries = 911;
+      const measurementDates = [];
+      const base = new Date(2026, 7, 18);
+
+      for (let i = 0; i < totalEntries; i++) {
+        const d = new Date(base);
+        d.setDate(d.getDate() - (totalEntries - 1 - i));
+        measurementDates.push(d);
+      }
+
+      let currentIndex = totalEntries - 1; // Posición actual (última medición)
+
+      const dateText = document.getElementById("current-date-text");
+      const prevBtn = document.getElementById("prev-btn");
+      const nextBtn = document.getElementById("next-btn");
+      const nativePicker = document.getElementById("native-date");
+      const chipLatest = document.getElementById("chip-latest");
+
+      function updateUI() {
+        const current = measurementDates[currentIndex];
+        dateText.textContent = current.toLocaleDateString("es-ES", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        });
+
+        prevBtn.disabled = currentIndex === 0;
+        nextBtn.disabled = currentIndex === measurementDates.length - 1;
+
+        // Sincronizar input nativo
+        nativePicker.value = current.toISOString().split("T")[0];
+
+        // Activar chip 'Última' solo si estamos en la última fecha
+        if (currentIndex === measurementDates.length - 1) {
+          chipLatest.classList.add("active");
+        } else {
+          chipLatest.classList.remove("active");
+        }
+      }
+
+      function navigateOffset(direction) {
+        const targetIndex = currentIndex + direction;
+        if (targetIndex >= 0 && targetIndex < measurementDates.length) {
+          currentIndex = targetIndex;
+          updateUI();
+        }
+      }
+
+      function selectPreset(type, e) {
+        if (type === "latest") {
+          currentIndex = measurementDates.length - 1;
+        } else {
+          const currentSelectedDate = new Date(measurementDates[currentIndex]);
+
+          if (type === "30d") {
+            currentSelectedDate.setDate(currentSelectedDate.getDate() - 30);
+          } else if (type === "1y") {
+            currentSelectedDate.setFullYear(
+              currentSelectedDate.getFullYear() - 1,
+            );
+          }
+
+          const targetTime = currentSelectedDate.getTime();
+          let closestIdx = 0;
+          let minDiff = Infinity;
+
+          measurementDates.forEach((d, idx) => {
+            const diff = Math.abs(d.getTime() - targetTime);
+            if (diff < minDiff) {
+              minDiff = diff;
+              closestIdx = idx;
+            }
+          });
+
+          currentIndex = closestIdx;
+
+          // Feedback táctil/visual de pulsación
+          const btn = e.currentTarget;
+          btn.classList.add("active");
+          setTimeout(() => btn.classList.remove("active"), 200);
+        }
+
+        updateUI();
+      }
+
+      function openDatePicker() {
+        try {
+          nativePicker.showPicker();
+        } catch (err) {
+          nativePicker.focus();
+        }
+      }
+
+      function onNativeDateChange(val) {
+        if (!val) return;
+        const targetTime = new Date(val).getTime();
+
+        let closestIdx = 0;
+        let minDiff = Infinity;
+
+        measurementDates.forEach((d, idx) => {
+          const diff = Math.abs(d.getTime() - targetTime);
+          if (diff < minDiff) {
+            minDiff = diff;
+            closestIdx = idx;
+          }
+        });
+
+        currentIndex = closestIdx;
+        updateUI();
+      }
+
+      window.addEventListener("keydown", (e) => {
+        if (e.target.tagName === "INPUT") return;
+        if (e.key === "ArrowLeft") navigateOffset(-1);
+        if (e.key === "ArrowRight") navigateOffset(1);
+      });
+
+      updateUI();
+    </script>
+  </body>
+</html>
