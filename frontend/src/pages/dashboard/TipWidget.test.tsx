@@ -1,76 +1,74 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { InsightWidget } from './InsightWidget';
 import { getWeeklyInsights, type WeeklyInsights } from '../../api/insights';
+import { TipWidget } from './TipWidget';
 
 vi.mock('../../api/insights', () => ({ getWeeklyInsights: vi.fn() }));
 
 const insightsMock = vi.mocked(getWeeklyInsights);
 
+const insights: WeeklyInsights = {
+  checkIn: {
+    weekStartDate: '2026-08-24',
+    plannedRunningSessions: 3,
+    completedRunningSessions: 2,
+    plannedStrengthSessions: 2,
+    completedStrengthSessions: 1,
+  },
+  main: {
+    category: 'TRAINING',
+    severity: 'ACTION',
+    message: 'Reserva dos huecos concretos para completar tu entrenamiento.',
+    reason: 'Has completado 3 de las 5 sesiones planificadas esta semana.',
+    createdAt: '2026-08-27T08:00:00Z',
+  },
+  secondary: [],
+  generatedAt: '2026-08-27T08:00:00Z',
+};
+
 function renderWidget() {
   return render(
     <MemoryRouter>
-      <InsightWidget />
+      <TipWidget />
     </MemoryRouter>,
   );
 }
 
-const insights: WeeklyInsights = {
-  checkIn: {
-    weekStartDate: '2026-07-06',
-    plannedRunningSessions: 3,
-    completedRunningSessions: 3,
-    plannedStrengthSessions: 3,
-    completedStrengthSessions: 2,
-  },
-  main: {
-    category: 'BODY',
-    severity: 'ACTION',
-    message: 'El peso baja rápido; considera aumentar un poco las calorías.',
-    reason: 'El peso baja 1.5 kg en 7 días, por encima del 1% semanal recomendado.',
-    createdAt: '2026-07-10T08:00:00Z',
-  },
-  secondary: [],
-  generatedAt: '2026-07-10T08:00:00Z',
-};
-
-describe('InsightWidget', () => {
+describe('TipWidget', () => {
   beforeEach(() => {
     insightsMock.mockReset();
   });
 
-  it('shows a loading state while the request resolves', () => {
+  it('shows an honest loading state while the recommendation is requested', () => {
     insightsMock.mockReturnValue(new Promise(() => {}));
 
     renderWidget();
 
+    expect(screen.getByRole('heading', { name: 'Recomendación destacada' })).toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent('Cargando tu recomendación');
   });
 
-  it('renders the main recommendation message, reason and severity', async () => {
+  it('renders the backend-prioritized main recommendation and its explanation', async () => {
     insightsMock.mockResolvedValue(insights);
 
     renderWidget();
 
-    expect(
-      await screen.findByText('El peso baja rápido; considera aumentar un poco las calorías.'),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText('El peso baja 1.5 kg en 7 días, por encima del 1% semanal recomendado.'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(insights.main.message)).toBeInTheDocument();
+    expect(screen.getByText(insights.main.reason)).toBeInTheDocument();
     expect(screen.getByText('Acción')).toBeInTheDocument();
+    expect(document.querySelector('[aria-hidden="true"]')).not.toBeInTheDocument();
   });
 
-  it('renders an insufficient-data INFO recommendation the same way (backend always returns a main)', async () => {
+  it('uses the backend insufficient-data recommendation as its fallback', async () => {
     insightsMock.mockResolvedValue({
       ...insights,
       main: {
+        ...insights.main,
         category: 'BODY',
         severity: 'INFO',
         message: 'Aún no hay suficientes datos para una recomendación.',
         reason: 'Necesitamos al menos una medición y una semana de entrenamiento.',
-        createdAt: '2026-07-10T08:00:00Z',
       },
     });
 
@@ -82,7 +80,7 @@ describe('InsightWidget', () => {
     expect(screen.getByText('Info')).toBeInTheDocument();
   });
 
-  it('shows an error state when the request fails', async () => {
+  it('shows an error state when the recommendation cannot be loaded', async () => {
     insightsMock.mockRejectedValue(new Error('network'));
 
     renderWidget();

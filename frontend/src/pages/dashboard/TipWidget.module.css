@@ -2,32 +2,18 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+  align-items: flex-start;
 }
 
-.illustration {
-  color: var(--color-accent-strong);
-}
-
-.tip {
+.recommendation {
   margin: 0;
   color: var(--color-text);
   line-height: 1.5;
 }
 
-.dots {
-  display: flex;
-  gap: var(--space-2);
-  margin-top: auto;
-}
-
-.dot,
-.dotActive {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: var(--color-border);
-}
-
-.dotActive {
-  background-color: var(--color-accent);
+.reason {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
 }

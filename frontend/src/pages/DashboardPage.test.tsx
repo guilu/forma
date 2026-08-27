@@ -14,6 +14,7 @@ import {
 } from '../api/nutrition';
 import { getShoppingList, type ShoppingList } from '../api/shopping';
 import { getProfile } from '../api/profile';
+import { getWeeklyInsights, type WeeklyInsights } from '../api/insights';
 import { axe } from '../test/axe';
 
 /**
@@ -31,6 +32,7 @@ vi.mock('../api/nutrition', () => ({
 }));
 vi.mock('../api/shopping', () => ({ getShoppingList: vi.fn() }));
 vi.mock('../api/profile', () => ({ getProfile: vi.fn() }));
+vi.mock('../api/insights', () => ({ getWeeklyInsights: vi.fn() }));
 
 const listMock = vi.mocked(listBodyMeasurements);
 const trainingMock = vi.mocked(getTrainingWeek);
@@ -38,6 +40,7 @@ const nutritionMock = vi.mocked(getNutritionDay);
 const consumptionMock = vi.mocked(getDayConsumption);
 const shoppingMock = vi.mocked(getShoppingList);
 const profileMock = vi.mocked(getProfile);
+const insightsMock = vi.mocked(getWeeklyInsights);
 
 const measurement: BodyMeasurement = {
   measuredAt: '2026-07-05T08:00:00Z',
@@ -118,6 +121,25 @@ const shoppingList: ShoppingList = {
   budget: { weeklyEur: 103.8, monthlyEur: 451.2 },
 };
 
+const weeklyInsights: WeeklyInsights = {
+  checkIn: {
+    weekStartDate: '2026-08-03',
+    plannedRunningSessions: 3,
+    completedRunningSessions: 2,
+    plannedStrengthSessions: 2,
+    completedStrengthSessions: 1,
+  },
+  main: {
+    category: 'TRAINING',
+    severity: 'ACTION',
+    message: 'Reserva dos huecos concretos para completar tu entrenamiento.',
+    reason: 'Has completado 3 de las 5 sesiones planificadas esta semana.',
+    createdAt: '2026-08-08T08:00:00Z',
+  },
+  secondary: [],
+  generatedAt: '2026-08-08T08:00:00Z',
+};
+
 function renderDashboard() {
   /* Mirrors App.tsx, which wraps every route in the provider: the menu widget's
      meal checks report a failed write through it. */
@@ -150,6 +172,8 @@ describe('DashboardPage', () => {
     consumptionMock.mockResolvedValue(dayConsumption);
     shoppingMock.mockReset();
     profileMock.mockReset();
+    insightsMock.mockReset();
+    insightsMock.mockResolvedValue(weeklyInsights);
     // A saved profile with a name → the greeting personalises to it.
     profileMock.mockResolvedValue({ name: 'Diego', firstRunCompleted: true } as never);
   });
@@ -188,7 +212,9 @@ describe('DashboardPage', () => {
       screen.queryByRole('heading', { name: 'Tu progreso', level: 2 }),
     ).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Lista de compra', level: 2 })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Consejo del día', level: 2 })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Recomendación destacada', level: 2 }),
+    ).toBeInTheDocument();
 
     // Metrics-row tiles are <h3> under the (sr-only) row <h2>, so heading order
     // never skips a level (FOR-112).

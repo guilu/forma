@@ -25,7 +25,7 @@ import styles from './ProgressPage.module.css';
  * fuller insights view lives for the MVP — the nav has no dedicated "Insights"
  * route (`frontend/src/app/navigation.ts`), per the FOR-56 spec's Open
  * Question (preserved by FOR-124), so no new nav item/route was added; the
- * dashboard keeps its own compact summary (FOR-51 `InsightWidget`). Each
+ * dashboard keeps its own compact summary (FOR-51 `TipWidget`). Each
  * section fetches independently, so a measurements, photos, current-week or
  * history failure never blocks the others.
  */
