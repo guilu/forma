@@ -46,6 +46,25 @@ describe('LineChart', () => {
   });
 
   /**
+   * El tooltip sí sobrevive a la variante pequeña. Los ejes y la rejilla se
+   * quitan porque a 44 px no se leen; el tooltip no vive dentro del trazo, se
+   * dibuja encima al pasar el ratón, así que ahí es donde una ficha de métrica
+   * puede decir la cifra exacta de un punto sin gastar altura en decirla.
+   */
+  it('keeps the hover layer in the sparkline variant', () => {
+    const { container } = render(
+      <LineChart
+        variant="spark"
+        points={points}
+        formatValue={(v) => v.toFixed(1)}
+        ariaLabel="Peso"
+      />,
+    );
+
+    expect(container.querySelector('.recharts-tooltip-wrapper')).not.toBeNull();
+  });
+
+  /**
    * Stacked charts only compare if they share an x scale. Left to itself each
    * one spans its own first and last measurement, so two metrics recorded on
    * different days would draw the same week at two different widths — and the
