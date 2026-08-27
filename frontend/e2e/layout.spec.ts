@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { fixtureFor } from './apiFixtures';
 import { stubApi } from './stubApi';
 import { expectGlassSurface, expectNoHorizontalOverflow, expectSinglePageScroller } from './layout';
@@ -265,39 +265,46 @@ test.describe('dashboard grid', () => {
     ).toBe(1);
   });
 
-  test('places the combined nutrition card before water with donut and macros side by side', async ({
-    page,
-  }) => {
+  test('stacks the nutrition rings over their figures and centres them', async ({ page }) => {
     await gotoApp(page, '/app');
 
     const nutrition = widget(page, 'Nutrición');
-    const water = page
-      .getByRole('heading', { name: 'Agua', exact: true })
-      .locator('xpath=ancestor::section[1]');
-    const [nutritionTop, waterTop] = await Promise.all([
-      nutrition.evaluate((card) => Math.round(card.getBoundingClientRect().top)),
-      water.evaluate((card) => Math.round(card.getBoundingClientRect().top)),
+    const rings = nutrition.getByRole('img', { name: /kcal\. Proteínas/ });
+    const carbs = nutrition.getByText('Carbohidratos');
+    const box = (locator: Locator) =>
+      locator.evaluate((node) => {
+        const rect = node.getBoundingClientRect();
+        return {
+          left: Math.round(rect.left),
+          right: Math.round(rect.right),
+          top: Math.round(rect.top),
+          height: Math.round(rect.height),
+        };
+      });
+
+    const [ringsBox, cardBox, carbsBox] = await Promise.all([
+      box(rings),
+      box(nutrition),
+      box(carbs),
     ]);
-    expect(nutritionTop).toBeLessThan(waterTop);
 
-    const nutritionPrecedesWaterInDom = await nutrition.evaluate((card) => {
-      const waterHeading = [...document.querySelectorAll('h3')].find(
-        (heading) => heading.textContent?.trim() === 'Agua',
-      );
-      const waterCard = waterHeading?.closest('section');
-      return Boolean(
-        waterCard && card.compareDocumentPosition(waterCard) & Node.DOCUMENT_POSITION_FOLLOWING,
-      );
-    });
-    expect(nutritionPrecedesWaterInDom).toBe(true);
+    // The figures sit under the rings, one line each: side by side they got what the square left
+    // over, and "Carbohidratos" broke mid-word in it.
+    expect(carbsBox.top).toBeGreaterThan(ringsBox.top);
+    const lineHeight = await carbs.evaluate((node) =>
+      parseFloat(getComputedStyle(node).lineHeight),
+    );
+    expect(carbsBox.height, 'The carbs label wraps onto a second line').toBeLessThan(
+      lineHeight + 2,
+    );
 
-    const ringLeft = await nutrition
-      .getByRole('img', { name: /kcal consumidas/ })
-      .evaluate((node) => Math.round(node.getBoundingClientRect().left));
-    const macrosLeft = await nutrition
-      .getByRole('progressbar', { name: /Proteínas/ })
-      .evaluate((node) => Math.round(node.getBoundingClientRect().left));
-    expect(macrosLeft).toBeGreaterThan(ringLeft);
+    // Centred: the card leaves the same gap on either side of the square.
+    expect(Math.abs(ringsBox.left - cardBox.left - (cardBox.right - ringsBox.right))).toBeLessThan(
+      2,
+    );
+
+    // Four concentric rings, each with its unfilled track behind it.
+    await expect(rings.locator('circle')).toHaveCount(8);
   });
 });
 
@@ -361,8 +368,9 @@ test.describe('dashboard rows', () => {
 /**
  * On a tablet in landscape the metric tiles across a single row left each
  * one about 180px wide — too narrow for a headline value and its caption. The
- * band below the desktop layout (1101–1600px) wraps every row at three columns
- * instead.
+ * band below the desktop layout (1101–1600px) wraps the widget rows at three
+ * columns instead. The body tiles stay four across: they own a whole row now,
+ * so a quarter of it is wider than a third of a widget row.
  */
 // Both ends of the band: the tablet that prompted it and a laptop near the top
 // edge, where narrow tracks were still breaking headline figures across lines.
@@ -370,10 +378,10 @@ for (const viewport of [TABLET, LAPTOP]) {
   test.describe(`dashboard grid at ${viewport.width}px`, () => {
     test.use({ viewport });
 
-    // The unified today grid uses three tracks; its body group, water, main
-    // three-card row and final trend occupy four explicit rows.
+    // The unified today grid uses three tracks; its body group, main three-card
+    // row and final trend occupy three explicit rows.
     for (const [row, columns, rows] of [
-      ['todayGrid', 3, 4],
+      ['todayGrid', 3, 3],
       // Two x positions, not three: Evolución took the column the retired
       // "Tu progreso" card left behind, so it starts at track 1 and spans two.
       ['rowThree', 2, 2],
@@ -394,6 +402,29 @@ for (const viewport of [TABLET, LAPTOP]) {
         );
       });
     }
+
+    /*
+     * The body tiles keep their own four across this band while the widgets wrap at three. They
+     * wrapped 3 + 1 back when a hydration tile shared the row with them; with the row to
+     * themselves, wrapping only buys three tiles and a hole.
+     */
+    test('keeps the four body tiles on one row', async ({ page }) => {
+      await gotoApp(page, '/app');
+
+      const tiles = await page.locator('main [class*="body"] > section').evaluateAll((cards) =>
+        cards.map((card) => {
+          const rect = card.getBoundingClientRect();
+          return { left: Math.round(rect.left), top: Math.round(rect.top) };
+        }),
+      );
+
+      expect(tiles.length, 'The four body tiles were not found').toBe(4);
+      const tops = new Set(tiles.map((tile) => tile.top));
+      expect(tops.size, `The tiles wrap onto ${tops.size} rows (y: ${[...tops].join(', ')})`).toBe(
+        1,
+      );
+      expect(new Set(tiles.map((tile) => tile.left)).size).toBe(4);
+    });
   });
 }
 
@@ -630,19 +661,23 @@ test.describe('chart colours', () => {
     });
   }
 
-  test('paints the shared calorie progress donut with a filled arc and track', async ({ page }) => {
+  test('gives each nutrition ring its own colour over a dimmed track', async ({ page }) => {
     await gotoApp(page, '/app');
 
-    const ring = page.getByRole('img', { name: /kcal consumidas/ });
-    const background = await ring.evaluate((el) => getComputedStyle(el).backgroundImage);
+    const rings = page.getByRole('img', { name: /kcal\. Proteínas/ });
+    const strokes = (selector: string) =>
+      rings.locator(selector).evaluateAll((nodes) => nodes.map((n) => getComputedStyle(n).stroke));
 
-    expect(background, 'The donut is not painted with a conic gradient').toContain('conic');
-    // The shared nutrition donut has one progress colour and one track colour.
-    const stops = background.match(/rgba?\([^)]+\)/g) ?? [];
-    expect(
-      new Set(stops).size,
-      `Expected a filled arc plus a track, got ${stops.join(', ')}`,
-    ).toBeGreaterThanOrEqual(2);
+    const [arcs, tracks] = await Promise.all([strokes('[data-arc]'), strokes('[data-track]')]);
+
+    expect(arcs.length, 'The four rings were not found').toBe(4);
+    // Calories plus one colour per macro: an arc that shares its colour with another says nothing.
+    expect(new Set(arcs).size, `Rings share a colour: ${arcs.join(', ')}`).toBe(4);
+    expect(tracks.length).toBe(4);
+    // The unfilled part is the same hue dimmed, so it can never be read as the filled one.
+    for (const [index, track] of tracks.entries()) {
+      expect(track, `Ring ${index} draws its track like its arc`).not.toBe(arcs[index]);
+    }
   });
 });
 

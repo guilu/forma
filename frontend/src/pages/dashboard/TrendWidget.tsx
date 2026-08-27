@@ -78,12 +78,16 @@ function renderContent(state: State) {
   }
 
   /*
-   * Colour per series, matching the design's assignment (FOR-188): weight green,
-   * body fat blue, lean mass amber. Blue and amber swapped from what shipped —
-   * fat was on the warning token and muscle on info, which read as "fat is a
-   * warning" and left the brand green next to a blue nobody had chosen.
-   * Every series is also named in the legend and in the chart's `ariaLabel`, so
-   * none of this is carried by colour alone.
+   * Colour per series, and the assignment is the nutrition rings': weight green,
+   * body fat amber, muscle blue — the same three the body tiles above now use,
+   * so a metric keeps one colour wherever the panel draws it.
+   *
+   * This flips the FOR-188 pairing, which put fat on info and muscle on the
+   * warning token to avoid reading as "fat is a warning". Consistency across the
+   * panel won: amber is the rings' fat colour, and a metric that changes colour
+   * between two cards on the same screen teaches the wrong thing far more
+   * reliably than a warm hue does. Every series is also named in the legend and
+   * in the chart's `ariaLabel`, so none of this is carried by colour alone.
    */
   const series: Series[] = [
     {
@@ -93,12 +97,12 @@ function renderContent(state: State) {
     },
     {
       label: 'Grasa (%)',
-      color: 'var(--color-info)',
+      color: 'var(--color-warning-graphic)',
       points: toPoints(window, (m) => m.bodyFatPercentage),
     },
     {
       label: 'Músculo (kg)',
-      color: 'var(--color-warning-graphic)',
+      color: 'var(--color-info)',
       points: toPoints(window, (m) => m.leanMassKg),
     },
   ].filter((s) => s.points.length > 0);

@@ -63,9 +63,11 @@ describe('TrendWidget', () => {
       return item.querySelector('span')?.getAttribute('style');
     };
 
+    // La misma asignación que los aros de nutrición y que las fichas de arriba:
+    // grasa en ámbar, músculo en azul.
     expect(colourFor('Peso (kg)')).toContain('--color-accent');
-    expect(colourFor('Grasa (%)')).toContain('--color-info');
-    expect(colourFor('Músculo (kg)')).toContain('--color-warning-graphic');
+    expect(colourFor('Grasa (%)')).toContain('--color-warning-graphic');
+    expect(colourFor('Músculo (kg)')).toContain('--color-info');
   });
 
   /**

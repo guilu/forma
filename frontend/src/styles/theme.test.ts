@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import foodFormCss from '../pages/admin/FoodForm.module.css?raw';
 import planGeneratorCss from '../pages/generator/PlanGenerator.module.css?raw';
 import nutritionCss from '../pages/NutritionPage.module.css?raw';
-import nutritionPageSource from '../pages/NutritionPage.tsx?raw';
+import nutritionRingsSource from '../components/NutritionRings.tsx?raw';
 import trainingDetailSource from '../pages/TrainingDetailPage.tsx?raw';
 import trainingCss from '../pages/TrainingPage.module.css?raw';
 import trainingPageSource from '../pages/TrainingPage.tsx?raw';
+import bodyWidgetSource from '../pages/dashboard/BodyWidget.tsx?raw';
+import trendWidgetSource from '../pages/dashboard/TrendWidget.tsx?raw';
 import themeCss from './theme.css?raw';
 
 /**
@@ -362,8 +364,27 @@ describe('theme.css design tokens (FOR-163 reconciliation)', () => {
       expect(trainingDetailSource).toMatch(/MUSCLE_SLICE_COLORS/);
     });
 
+    /*
+     * One colour per metric across the whole panel: the nutrition rings pin
+     * amber to fat, blue to protein and violet to calories, and the body tiles
+     * and the 30-day trend borrow that same assignment. A metric that changes
+     * colour between two cards of the same screen is a lesson in nothing.
+     */
+    it('gives each body metric the colour the nutrition rings gave it', () => {
+      expect(bodyWidgetSource).toMatch(
+        /label: 'Grasa',[\s\S]{0,120}var\(--color-warning-graphic\)/,
+      );
+      expect(bodyWidgetSource).toMatch(/label: 'Músculo',[\s\S]{0,120}var\(--color-info\)/);
+      expect(bodyWidgetSource).toMatch(/label: 'IMC',[\s\S]{0,120}var\(--color-violet\)/);
+      expect(trendWidgetSource).toMatch(
+        /label: 'Grasa \(%\)',\s*color: 'var\(--color-warning-graphic\)'/,
+      );
+      expect(trendWidgetSource).toMatch(/label: 'Músculo \(kg\)',\s*color: 'var\(--color-info\)'/);
+    });
+
     it('keeps fat series and training dots on the orange graphic role', () => {
-      expect(nutritionPageSource).toContain(
+      // Los cuatro aros y los puntos que los nombran salen de la misma constante.
+      expect(nutritionRingsSource).toContain(
         "label: 'Grasas', color: 'var(--color-warning-graphic)'",
       );
       expect(trainingPageSource).toContain('conic-gradient(var(--color-warning-graphic)');

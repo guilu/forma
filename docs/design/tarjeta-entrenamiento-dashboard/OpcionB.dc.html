@@ -1,0 +1,285 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Montserrat:wght@600;700;800;900&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #16801f; text-decoration: none; }
+    a:hover { color: #0f5e16; }
+    *, *::before, *::after { box-sizing: border-box; }
+
+    .app {
+      --bg: #f4f7f5;
+      --card: #ffffff;
+      --surface: #ffffff;
+      --border: #dfe7e2;
+      --text: #0f1a13;
+      --muted: #5c6b62;
+      --secondary: #3c4a42;
+      --accent: #63e662;
+      --accent-strong: #16801f;
+      --shadow: 0 1px 3px rgba(15, 26, 19, 0.08);
+      --body-tint: none;
+      --ring: rgba(22, 128, 31, 0.35);
+
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      font-size: 16px;
+      overflow: hidden;
+    }
+
+    .app[data-theme="dark"] {
+      --bg: #10141a;
+      --card: #1c2026;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #dfe2eb;
+      --muted: #8b949e;
+      --secondary: #bbcabe;
+      --accent-strong: #63e662;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+      --body-tint: invert(1) brightness(1.6) contrast(0.85);
+      --ring: rgba(99, 230, 98, 0.28);
+    }
+
+    /* --- La tarjeta del panel, con las medidas reales de WidgetSection --- */
+    .card {
+      width: 318px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 24px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+    }
+
+    /* Toda la tarjeta abre el detalle: por eso el cursor y el foco viven en la
+       tarjeta entera, no en un boton de dentro. */
+    .card--clickable { cursor: pointer; }
+
+    .card--hover {
+      border-color: var(--accent);
+      box-shadow: 0 6px 18px -6px var(--ring);
+      transform: translateY(-1px);
+    }
+
+    .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .card-title {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .card-link {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent-strong);
+      white-space: nowrap;
+    }
+
+    .session { display: flex; flex-direction: column; gap: 4px; }
+
+    .session-title {
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'Montserrat', 'Be Vietnam Pro', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 1.25;
+    }
+
+    .session-icon { color: var(--accent-strong); flex-shrink: 0; }
+
+    .session-day { margin: 0; font-size: 13px; color: var(--muted); }
+    .session-detail { margin: 0; font-size: 16px; color: var(--muted); }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 12px;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.2;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 9999px;
+      white-space: nowrap;
+    }
+
+    .pill[data-tone="accent"] { color: var(--accent-strong); border-color: var(--accent); }
+
+    /* --- Siluetas: misma tecnica que MuscleSilhouette (mascara + bloque de color) --- */
+    .figures { display: flex; justify-content: center; gap: 12px; }
+
+    .figure {
+      position: relative;
+      aspect-ratio: 854 / 1840;
+      flex: 0 0 auto;
+    }
+
+    .figure img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: fill;
+      filter: var(--body-tint);
+    }
+
+    .muscle {
+      position: absolute;
+      inset: 0;
+      background-color: var(--accent);
+      -webkit-mask-repeat: no-repeat;
+      mask-repeat: no-repeat;
+      -webkit-mask-size: 100% 100%;
+      mask-size: 100% 100%;
+    }
+
+    .muscle[data-role="primary"] { opacity: 0.92; }
+    .muscle[data-role="secondary"] { opacity: 0.38; }
+
+    .m-pectoral { -webkit-mask-image: url(./PECTORAL.svg); mask-image: url(./PECTORAL.svg); }
+    .m-deltoid { -webkit-mask-image: url(./DELTOID_FRONT.svg); mask-image: url(./DELTOID_FRONT.svg); }
+    .m-abs { -webkit-mask-image: url(./ABS.svg); mask-image: url(./ABS.svg); }
+    .m-triceps { -webkit-mask-image: url(./TRICEPS.svg); mask-image: url(./TRICEPS.svg); }
+
+    /* --- Progreso semanal: ProgressBar tal cual esta hoy --- */
+    .completion { display: flex; flex-direction: column; gap: 8px; }
+    .completion-label { font-size: 13px; color: var(--muted); }
+    .bar { display: flex; align-items: center; gap: 12px; }
+
+    .track {
+      flex: 1;
+      height: 8px;
+      background-color: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .fill { height: 100%; background-color: var(--accent); border-radius: 4px; }
+
+    .pct {
+      flex-shrink: 0;
+      min-width: 40px;
+      text-align: right;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    /* --- Etiquetas de la maqueta, fuera del producto --- */
+    .stage { display: flex; gap: 40px; padding: 40px; align-items: flex-start; }
+    .slot { display: flex; flex-direction: column; gap: 12px; }
+
+    .slot-label {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .session-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+    .split { display: flex; gap: 16px; align-items: flex-start; }
+    .split .col { display: flex; flex-direction: column; gap: 8px; min-width: 0; flex: 1; }
+    .muscle-list { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+  </style>
+</helmet>
+<div class="app" data-theme="{{theme}}" style="width: 760px; height: 620px">
+  <div class="stage">
+    <div class="slot">
+      <span class="slot-label">Reposo</span>
+      <section class="card card--clickable">
+      <div class="card-head">
+        <h2 class="card-title">Entrenamiento</h2>
+        <a class="card-link" href="#">Ver plan</a>
+      </div>
+      <div class="split">
+        <div class="col">
+          <p class="session-title"><svg class="session-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6v12M18 6v12M4 9h2v6H4zM18 9h2v6h-2zM6 12h12"></path></svg>Fuerza · Empuje</p>
+          <p class="session-day">Hoy · Martes</p>
+          <span class="pill" style="align-self: flex-start">Planificado</span>
+          <p class="muscle-list">Pecho, tríceps,<br>hombro, core</p>
+        </div>
+        <div class="figure" style="height: 210px; aspect-ratio: 854 / 1840">
+          <img src="body-front.png" alt="">
+          <span class="muscle m-pectoral" data-role="primary"></span>
+          <span class="muscle m-deltoid" data-role="secondary"></span>
+          <span class="muscle m-abs" data-role="secondary"></span>
+        </div>
+      </div>
+      <div class="completion">
+        <span class="completion-label">2 de 6 sesiones completadas</span>
+        <div class="bar">
+          <div class="track"><div class="fill" style="width: 33%"></div></div>
+          <span class="pct">33%</span>
+        </div>
+      </div>
+    </section>
+    </div>
+    <div class="slot">
+      <span class="slot-label">Puntero encima</span>
+      <section class="card card--clickable card--hover">
+      <div class="card-head">
+        <h2 class="card-title">Entrenamiento</h2>
+        <a class="card-link" href="#">Ver plan</a>
+      </div>
+      <div class="split">
+        <div class="col">
+          <p class="session-title"><svg class="session-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6v12M18 6v12M4 9h2v6H4zM18 9h2v6h-2zM6 12h12"></path></svg>Fuerza · Empuje</p>
+          <p class="session-day">Hoy · Martes</p>
+          <span class="pill" style="align-self: flex-start">Planificado</span>
+          <p class="muscle-list">Pecho, tríceps,<br>hombro, core</p>
+        </div>
+        <div class="figure" style="height: 210px; aspect-ratio: 854 / 1840">
+          <img src="body-front.png" alt="">
+          <span class="muscle m-pectoral" data-role="primary"></span>
+          <span class="muscle m-deltoid" data-role="secondary"></span>
+          <span class="muscle m-abs" data-role="secondary"></span>
+        </div>
+      </div>
+      <div class="completion">
+        <span class="completion-label">2 de 6 sesiones completadas</span>
+        <div class="bar">
+          <div class="track"><div class="fill" style="width: 33%"></div></div>
+          <span class="pct">33%</span>
+        </div>
+      </div>
+    </section>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light","section":"Tema"},"$preview":{"width":760,"height":620}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { theme: this.props.theme ?? 'light' };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,113 @@
+{
+  "pages": [
+    {
+      "id": "page-1",
+      "name": "Dirección A · la silueta manda"
+    },
+    {
+      "id": "page-2",
+      "name": "Alternativas"
+    }
+  ],
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "title": "A · Día de fuerza (elegida)",
+      "page": "page-1",
+      "x": 0,
+      "y": 0,
+      "w": 760,
+      "h": 620
+    },
+    {
+      "file": "Estados.dc.html",
+      "title": "A · Carrera, descanso y completada",
+      "page": "page-1",
+      "x": 880,
+      "y": 0,
+      "w": 1180,
+      "h": 620
+    },
+    {
+      "file": "Modal.dc.html",
+      "title": "Lo que abre el clic (sin cambios)",
+      "page": "page-1",
+      "x": 0,
+      "y": 780,
+      "w": 1040,
+      "h": 800
+    },
+    {
+      "file": "OpcionB.dc.html",
+      "title": "B · Silueta al lado del texto",
+      "page": "page-2",
+      "x": 0,
+      "y": 0,
+      "w": 760,
+      "h": 620
+    },
+    {
+      "file": "OpcionC.dc.html",
+      "title": "C · Silueta a sangre",
+      "page": "page-2",
+      "x": 880,
+      "y": 0,
+      "w": 760,
+      "h": 620
+    }
+  ],
+  "annotations": [
+    {
+      "id": "nota-a",
+      "page": "page-1",
+      "x": 0,
+      "y": -560,
+      "w": 620,
+      "text": "A · LA SILUETA MANDA (propuesta)\n\nEl par frente + espalda entra entero en los 318 px que mide hoy la tarjeta en el panel, con los músculos trabajados encendidos igual que en la página de entrenamiento: máscara SVG sobre bloque de color, así que el verde es el token y sigue al tema.\n\nLa tarjeta crece de 329 a ~400 px de alto. La fila del panel estira a todas las tarjetas a la misma altura, así que ese alto lo pagan también Menú y Nutrición.\n\nSe mantiene la barra de progreso con su % y el «2 de 6 sesiones completadas»."
+    },
+    {
+      "id": "nota-clic",
+      "page": "page-1",
+      "x": 0,
+      "y": -300,
+      "w": 620,
+      "text": "EL CLIC SE COME EL BOTÓN\n\nSi toda la tarjeta abre el detalle, «Ver plan completo» dentro de ella sería un control dentro de otro control: el ratón funciona, el teclado y el lector de pantalla no.\n\nPropuesta: ese botón se va y su destino sube a la cabecera como enlace «Ver plan» — que es lo que WidgetSection ya sabe hacer (`linkTo`), y lo que hacen el resto de widgets.\n\nEn código la tarjeta pasa a ser un <button> que envuelve el contenido, no un div con onClick: así trae foco, Enter y Espacio de serie."
+    },
+    {
+      "id": "nota-estados",
+      "page": "page-1",
+      "x": 880,
+      "y": -560,
+      "w": 620,
+      "text": "LOS TRES ESTADOS QUE EXISTEN HOY\n\nCARRERA · no tiene músculos ni ejercicios: la API solo da título, tipo y distancia. Se dibuja el corredor del pack, que es la misma arte que usa la página de entrenamiento.\n\nDESCANSO · no hay sesión que abrir, así que la tarjeta no es pinchable y no finge serlo: sin cursor, sin realce al pasar por encima.\n\nCOMPLETADA · la píldora pasa a tono acento y los músculos bajan a énfasis secundario. Es la señal más barata de «esto ya está hecho»."
+    },
+    {
+      "id": "nota-modal",
+      "page": "page-1",
+      "x": 1100,
+      "y": 780,
+      "w": 560,
+      "text": "EL MODAL NO CAMBIA\n\nEs el mismo diálogo de la página de entrenamiento (`SessionDetailModal`), dibujado aquí sólo para ver a dónde lleva el clic: silueta y leyenda a la izquierda, identidad, desglose y acciones a la derecha.\n\nLo que sí hay que decidir al implementarlo: hoy vive dentro de `TrainingPage.tsx` con `mark`, `move` y el estado de la semana colgando de esa página. Para abrirlo desde el panel hay que sacarlo a un componente propio junto con esas dos acciones — mover y marcar tienen que seguir funcionando desde aquí, o el diálogo miente."
+    },
+    {
+      "id": "nota-b",
+      "page": "page-2",
+      "x": 0,
+      "y": -420,
+      "w": 620,
+      "text": "B · SILUETA AL LADO DEL TEXTO\n\nUn solo cuerpo, de frente, en una columna a la derecha; a la izquierda el título, el día, el estado y la lista de músculos en texto.\n\nA favor: la tarjeta se queda en el alto de hoy y el nombre de los músculos se lee sin interpretar el dibujo.\n\nEn contra: a 130 px de ancho la silueta pierde la mitad del cuerpo trabajado — en un empuje, el tríceps vive en la espalda y aquí no se ve."
+    },
+    {
+      "id": "nota-c",
+      "page": "page-2",
+      "x": 880,
+      "y": -420,
+      "w": 620,
+      "text": "C · SILUETA A SANGRE\n\nEl cuerpo ocupa el ancho entero y se funde con el fondo de la tarjeta; el progreso se apoya encima del degradado.\n\nA favor: es la tarjeta más reconocible del panel de un vistazo.\n\nEn contra: el degradado tapa las piernas, así que un día de pierna se leería peor que uno de empuje — el dibujo dejaría de ser información y pasaría a ser decoración."
+    }
+  ],
+  "launch": {
+    "view": "canvas",
+    "page": "page-1"
+  }
+}

@@ -4,54 +4,127 @@
   gap: var(--space-4);
 }
 
-.next {
-  margin: 0;
+/*
+ * The clickable half of the card: everything that describes today's session.
+ * The weekly progress below stays outside it — it is about the week, not about
+ * the session the click opens.
+ */
+.today {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-3);
+  flex: 1;
+  min-width: 0;
+}
+
+/*
+ * One transparent button laid over the block instead of a button wrapping it:
+ * the block holds a `role="img"` figure and, right below, a progress bar — and
+ * a control is not allowed to contain either. This way the hit area is the
+ * whole card, the accessible name is a real one, and the content stays outside
+ * the button's own semantics.
+ *
+ * The negative inset reaches the card's padding edge on three sides; the top
+ * stops short of the section header so its "Ver plan" link keeps its own clicks.
+ */
+.open {
+  position: absolute;
+  inset: calc(var(--space-2) * -1) calc(var(--space-5) * -1) calc(var(--space-5) * -1);
+  z-index: 1;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+}
+
+.open:hover {
+  border-color: var(--color-accent);
+  background-color: color-mix(in srgb, var(--color-accent) 5%, transparent);
+}
+
+.open:focus-visible {
+  outline: 2px solid var(--color-accent-strong);
+  outline-offset: -2px;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .session {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+  min-width: 0;
 }
 
-.nextDay {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
-}
-
-.nextTitle {
+.sessionTitle {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   font-family: var(--font-heading);
   font-size: var(--font-size-lg);
   font-weight: 700;
+  line-height: 1.25;
 }
 
-.nextIcon {
+.sessionIcon {
   color: var(--color-accent-strong);
   flex-shrink: 0;
 }
 
-.nextDetail {
+/* The day and the status share a line; the status is what wraps if the day's
+   own line (weekday plus the session's own detail) runs long. */
+.sessionMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  min-width: 0;
+}
+
+.sessionDay {
+  min-width: 0;
+  font-size: var(--font-size-sm);
   color: var(--color-text-muted);
 }
 
 /*
- * Only the widget's own measurements and placement: the accent wash comes from
- * `<ButtonLink variant="soft">` — this widget is where that variant came from.
- *
- * Doubled selector rather than `composes`, so these beat the shared button's
- * own padding and min-height regardless of bundle order. See PlanBanner.
+ * The two sheets, sized by height: the silhouette carries its own aspect ratio,
+ * so a height is the one dimension that keeps both bodies the same size
+ * whatever the card's width. They centre in the leftover space rather than
+ * stretching — the art is a proportion, not a fill.
  */
-.cta.cta {
-  align-self: flex-start;
-  padding: var(--space-2) var(--space-4);
+.figures {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
   min-height: 0;
-  font-weight: 600;
+}
+
+.figure {
+  height: 200px;
+  max-width: calc(50% - var(--space-2));
+}
+
+/* A single body (a run, a rest day) has the whole width to itself and can
+   afford to be taller. */
+.figures > .figure:only-child {
+  height: 220px;
+  max-width: 100%;
 }
 
 .completion {
@@ -69,3 +142,10 @@
   margin: 0;
   color: var(--color-text-muted);
 }
+
+/*
+ * No taller on a phone, though the card is wider there: what a phone is short
+ * of is height, not width. At 240px the bodies pushed the card past 490px —
+ * most of a 320x700 screen for one widget — for a picture that is already
+ * legible at 200.
+ */

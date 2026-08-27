@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
-import { WaterTracker } from '../components/WaterTracker';
 import { BodyWidget, type BodyState } from './dashboard/BodyWidget';
 import type { MeasurementsState } from './dashboard/measurementsState';
 import { TrainingWidget } from './dashboard/TrainingWidget';
@@ -28,11 +27,11 @@ import styles from './DashboardPage.module.css';
  * the nutrition views intentionally share one date-based read here; otherwise
  * each could render a different moment after a meal is logged.
  *
- * <p>Layout mirrors the mockup: a metrics row (body-composition tiles +
- * hydration), a second row (today's training / today's menu / nutrition summary /
- * 30-day trend), and a third row (first-summary / shopping preview / tip + plan
- * banner). Nutrition and hydration render persisted daily read models; no
- * placeholder consumption figures remain.
+ * <p>Layout mirrors the mockup: a metrics row (body-composition tiles), a second
+ * row (today's training / today's menu / nutrition summary / 30-day trend), and a
+ * third row (first-summary / shopping preview / tip + plan banner). Nutrition
+ * renders persisted daily read models; no placeholder consumption figures
+ * remain.
  */
 export function DashboardPage() {
   const [today] = useState(() => new Date());
@@ -189,7 +188,6 @@ export function DashboardPage() {
         <div className={styles.todayGrid}>
           <BodyWidget state={body} />
           <NutritionSummaryWidget state={consumption} />
-          <WaterTracker date={todayIso} />
           <TrainingWidget date={today} />
           <NutritionWidget
             menu={menu}

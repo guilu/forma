@@ -9,21 +9,19 @@ const consumption = {
 } as DayConsumption;
 
 describe('NutritionSummaryWidget', () => {
-  it('combines the calorie donut and the three real macro progress bars', () => {
+  it('draws the four rings and repeats every figure as text', () => {
     render(<NutritionSummaryWidget state={{ status: 'ready', consumption }} />);
 
     expect(screen.getByRole('heading', { name: 'Nutrición' })).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: /1264 de 2320 kcal consumidas/ })).toBeInTheDocument();
-    expect(screen.getByText('/ 2320 kcal')).toBeInTheDocument();
     expect(
-      screen.getByRole('progressbar', { name: /Proteínas: 111.4 de 165 gramos/ }),
+      screen.getByRole('img', {
+        name: /1264 de 2320 kcal\. Proteínas 111,4 de 165 g, carbohidratos 156 de 270 g, grasas 22,4 de 65 g\./,
+      }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('progressbar', { name: /Carbohidratos: 156 de 270 gramos/ }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('progressbar', { name: /Grasas: 22.4 de 65 gramos/ }),
-    ).toBeInTheDocument();
+    expect(screen.getByText('1264 / 2320 kcal')).toBeInTheDocument();
+    expect(screen.getByText('111,4 / 165 g')).toBeInTheDocument();
+    expect(screen.getByText('156 / 270 g')).toBeInTheDocument();
+    expect(screen.getByText('22,4 / 65 g')).toBeInTheDocument();
   });
 
   it('keeps consumption visible and avoids fake progress when there is no target', () => {
@@ -33,9 +31,8 @@ describe('NutritionSummaryWidget', () => {
       />,
     );
 
-    expect(screen.getByRole('img', { name: /Tu plan no fija un objetivo/ })).toBeInTheDocument();
-    expect(screen.getAllByText(/Sin objetivo/)).toHaveLength(3);
-    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /Tu plan no fija objetivos/ })).toBeInTheDocument();
+    expect(screen.getAllByText(/Sin objetivo/)).toHaveLength(4);
   });
 
   it('has one honest loading or error state for the whole card', () => {

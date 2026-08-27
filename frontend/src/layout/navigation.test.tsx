@@ -25,16 +25,6 @@ vi.mock('../api/training', () => ({
   getTrainingWeek: vi.fn().mockResolvedValue({ days: [] }),
 }));
 vi.mock('../api/nutrition', () => ({
-  // The water tile reads real hydration now (FOR-130's endpoints, reachable at last). These tests
-  // are not about it, so it answers with an empty day and stays out of the way.
-  getHydration: vi.fn().mockResolvedValue({
-    date: '2026-08-04',
-    totalMl: 0,
-    goalMl: 2000,
-    progress: 0,
-  }),
-  logWaterIntake: vi.fn(),
-  removeWaterGlass: vi.fn(),
   getDayConsumption: vi.fn().mockResolvedValue({
     dayType: null,
     consumed: { kcal: 0, proteinG: 0, carbsG: 0, fatG: 0 },

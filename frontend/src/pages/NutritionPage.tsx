@@ -1,15 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../components/Button';
-import { CalorieRing } from '../components/CalorieRing';
 import { Card } from '../components/Card';
+import { NutritionRings, RING_ARCS } from '../components/NutritionRings';
 import { NoPlanEmptyState } from '../components/NoPlanEmptyState';
 import { ErrorState } from '../components/ErrorState';
 import { Icon } from '../components/Icon';
 import { LoadingState } from '../components/LoadingState';
 import { Modal } from '../components/Modal';
 import { useNotify } from '../components/NotificationProvider';
-import { WaterTracker } from '../components/WaterTracker';
 import {
   getDayConsumption,
   getNutritionDay,
@@ -19,7 +18,6 @@ import {
   type PlannedMealState,
 } from '../api/nutrition';
 import { LogMealForm } from './nutrition/LogMealForm';
-import { ProgressBar } from './dashboard/ProgressBar';
 import { formatShortDate } from './dateLabel';
 import { localIsoDate } from './localIsoDate';
 import { usePlannedMealToggle } from './usePlannedMealToggle';
@@ -223,13 +221,12 @@ function renderContent(
   return (
     <>
       <section className={styles.summary} aria-label="Resumen del día">
-        <Card title="Calorías" headingLevel={2}>
-          <CalorieRing consumed={consumed?.kcal ?? 0} target={target?.kcal ?? null} />
+        {/* One card, because one set of rings answers both halves: the outer ring is the day's
+            calories and the three inside are the macros. Two cards meant drawing the same day
+            twice and letting the two drawings drift apart. */}
+        <Card title="Calorías y macros" headingLevel={2}>
+          <DayProgress consumed={consumed} target={target} />
         </Card>
-        <Card title="Macronutrientes" headingLevel={2}>
-          <MacroProgress consumed={consumed} target={target} />
-        </Card>
-        <WaterTracker headingLevel={2} />
       </section>
 
       <section className={styles.meals} aria-label="Comidas de hoy">
@@ -256,60 +253,70 @@ function renderContent(
   );
 }
 
-/**
- * Un color por macro, y el mismo en todas partes: el punto de la leyenda, la barra y la etiqueta
- * de cada comida. Proteína y carbohidratos compartían verde, así que la barra distinguía dos cosas
- * con el mismo color mientras el texto de al lado decía que eran distintas.
- */
-const MACROS = [
-  { key: 'proteinG', label: 'Proteína', color: 'var(--color-info)' },
-  { key: 'carbsG', label: 'Carbohidratos', color: 'var(--color-accent)' },
-  { key: 'fatG', label: 'Grasas', color: 'var(--color-warning-graphic)' },
-] as const;
+const NUM = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1 });
+
+/** Nothing eaten yet reads as zeroes, not as a missing card: the day starts at zero. */
+const NOTHING_EATEN = { kcal: 0, proteinG: 0, carbsG: 0, fatG: 0 };
 
 /**
- * Eaten against target, per macro.
+ * Today's calories and macros, eaten against target.
  *
- * <p>Both figures are the server's. A target of `null` means the plan sets none, and then the bar
- * is dropped rather than drawn against an invented maximum — a bar needs a ceiling, and the only
- * one available would have been made up here (FOR-134).
+ * <p>Both figures are the server's. A target of `null` means the plan sets none, and then the ring
+ * stays empty rather than being drawn against an invented maximum — a ring needs a ceiling, and
+ * the only one available would have been made up here (FOR-134).
+ *
+ * <p>The colour beside each name is the colour of its ring, and it only ever repeats what the
+ * label already says: the name in text is what holds when colour does not arrive (colour
+ * blindness, high contrast, print).
  */
-function MacroProgress({
+function DayProgress({
   consumed,
   target,
 }: {
   readonly consumed: DayConsumption['consumed'] | undefined;
   readonly target: DayConsumption['target'];
 }) {
+  const eaten = consumed ?? NOTHING_EATEN;
+  const remaining = target === null ? null : Math.max(target.kcal - eaten.kcal, 0);
+
   return (
-    <ul className={styles.macros}>
-      {MACROS.map((macro) => {
-        const eaten = consumed?.[macro.key] ?? 0;
-        const goal = target?.[macro.key] ?? null;
-        return (
-          <li key={macro.key} className={styles.macro}>
-            <div className={styles.macroHead}>
+    <div className={styles.dayProgress}>
+      <NutritionRings consumed={eaten} target={target} size="11rem" />
+      <ul className={styles.macros}>
+        {RING_ARCS.map((arc) => {
+          const goal = target?.[arc.key] ?? null;
+          const unit = arc.key === 'kcal' ? 'kcal' : 'g';
+          return (
+            <li key={arc.key} className={styles.macro}>
               <span className={styles.macroName}>
-                <span className={styles.macroDot} style={{ background: macro.color }} />
-                {macro.label}
+                <span
+                  className={styles.macroDot}
+                  style={{ background: arc.color }}
+                  aria-hidden="true"
+                />
+                {arc.key === 'kcal' ? 'Calorías' : arc.label}
               </span>
               <span className={styles.macroValue}>
-                {eaten} g{goal !== null && <span className={styles.macroGoal}> / {goal} g</span>}
+                {NUM.format(eaten[arc.key])} {unit}
+                {goal !== null && (
+                  <span className={styles.macroGoal}>
+                    {' '}
+                    / {NUM.format(goal)} {unit}
+                  </span>
+                )}
               </span>
-            </div>
-            {goal !== null && (
-              <ProgressBar
-                value={eaten}
-                max={goal}
-                label={`${macro.label} consumida`}
-                color={macro.color}
-                showPercent={false}
-              />
-            )}
-          </li>
-        );
-      })}
-    </ul>
+              {/* Lo que falta, no lo que suma el plan. Un guion cuando nadie ha fijado objetivo,
+                  que no es lo mismo que no quedar nada. */}
+              {arc.key === 'kcal' && (
+                <span className={styles.macroNote}>
+                  {remaining === null ? 'Sin objetivo' : `Te quedan ${NUM.format(remaining)} kcal`}
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 

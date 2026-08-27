@@ -38,12 +38,25 @@
   gap: var(--space-4);
 }
 
-/* --- Macronutrientes --- */
+/* --- Calorías y macros --- */
+
+/*
+ * Rings on the left, the four figures on the right. The card is the full width of the page here,
+ * so the figures spread into as many columns as fit rather than leaving a field of empty card.
+ */
+.dayProgress {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-5);
+}
 
 .macros {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
   gap: var(--space-4);
+  flex: 1;
+  min-width: 0;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -52,14 +65,8 @@
 .macro {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-}
-
-.macroHead {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-3);
+  gap: var(--space-1);
+  min-width: 0;
 }
 
 .macroName {
@@ -70,7 +77,7 @@
   color: var(--color-text);
 }
 
-/* El punto de color repite lo que ya dice la barra; el nombre en texto es lo que lo sostiene
+/* El punto de color repite lo que ya dice el aro; el nombre en texto es lo que lo sostiene
    cuando el color no llega (daltonismo, alto contraste, impresión). */
 .macroDot {
   width: 0.5rem;
@@ -80,16 +87,22 @@
 }
 
 .macroValue {
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-lg);
   font-weight: 600;
   color: var(--color-text);
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
 }
 
 .macroGoal {
+  font-size: var(--font-size-sm);
   font-weight: 400;
   color: var(--color-text-muted);
+}
+
+.macroNote {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 /* --- Comidas de hoy --- */

@@ -25,6 +25,11 @@ import styles from './BodyWidget.module.css';
  * so the page provides the (sr-only) row heading and each {@link MetricCard}
  * keeps its own tile title.
  *
+ * <p>One colour per metric, borrowed from the nutrition rings so the panel
+ * speaks with one voice: weight keeps the brand green, fat takes the rings'
+ * amber, muscle their blue and BMI their violet. The colour is decoration on
+ * top of a tile that already prints its own name, value and unit.
+ *
  * <p>The mockup's per-tile "vs semana pasada" delta ("–Sin cambios") is the
  * FOR-21 `WeeklyBodySummary` computation, which is not exposed over HTTP;
  * recomputing it in the UI would duplicate a domain rule (ADR-001), so the
@@ -129,24 +134,28 @@ function renderContent(state: BodyState) {
       label: 'Peso',
       value: format(current.weightKg),
       unit: 'kg',
+      color: 'var(--color-accent)',
       select: (m: BodyMeasurement) => m.weightKg,
     },
     {
       label: 'Grasa',
       value: format(current.bodyFatPercentage),
       unit: '%',
+      color: 'var(--color-warning-graphic)',
       select: (m: BodyMeasurement) => m.bodyFatPercentage,
     },
     {
       label: 'Músculo',
       value: format(current.leanMassKg),
       unit: 'kg',
+      color: 'var(--color-info)',
       select: (m: BodyMeasurement) => m.leanMassKg,
     },
     {
       label: 'IMC',
       value: format(current.bmi),
       unit: undefined,
+      color: 'var(--color-violet)',
       select: (m: BodyMeasurement) => m.bmi,
     },
   ];
@@ -167,6 +176,7 @@ function renderContent(state: BodyState) {
                 <LineChart
                   variant="spark"
                   points={points}
+                  color={tile.color}
                   formatValue={(v) => `${v.toFixed(1)}${tile.unit ? ` ${tile.unit}` : ''}`}
                   ariaLabel={`Evolución de ${tile.label.toLowerCase()}: ${points.length} mediciones recientes.`}
                 />

@@ -1,0 +1,475 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Montserrat:wght@600;700;800;900&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #16801f; text-decoration: none; }
+    a:hover { color: #0f5e16; }
+    *, *::before, *::after { box-sizing: border-box; }
+
+    .app {
+      --bg: #f4f7f5;
+      --card: #ffffff;
+      --surface: #ffffff;
+      --border: #dfe7e2;
+      --text: #0f1a13;
+      --muted: #5c6b62;
+      --secondary: #3c4a42;
+      --accent: #63e662;
+      --accent-strong: #16801f;
+      --shadow: 0 1px 3px rgba(15, 26, 19, 0.08);
+      --body-tint: none;
+      --ring: rgba(22, 128, 31, 0.35);
+
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      font-size: 16px;
+      overflow: hidden;
+    }
+
+    .app[data-theme="dark"] {
+      --bg: #10141a;
+      --card: #1c2026;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #dfe2eb;
+      --muted: #8b949e;
+      --secondary: #bbcabe;
+      --accent-strong: #63e662;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+      --body-tint: invert(1) brightness(1.6) contrast(0.85);
+      --ring: rgba(99, 230, 98, 0.28);
+    }
+
+    /* --- La tarjeta del panel, con las medidas reales de WidgetSection --- */
+    .card {
+      width: 318px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 24px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+    }
+
+    /* Toda la tarjeta abre el detalle: por eso el cursor y el foco viven en la
+       tarjeta entera, no en un boton de dentro. */
+    .card--clickable { cursor: pointer; }
+
+    .card--hover {
+      border-color: var(--accent);
+      box-shadow: 0 6px 18px -6px var(--ring);
+      transform: translateY(-1px);
+    }
+
+    .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .card-title {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .card-link {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent-strong);
+      white-space: nowrap;
+    }
+
+    .session { display: flex; flex-direction: column; gap: 4px; }
+
+    .session-title {
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'Montserrat', 'Be Vietnam Pro', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 1.25;
+    }
+
+    .session-icon { color: var(--accent-strong); flex-shrink: 0; }
+
+    .session-day { margin: 0; font-size: 13px; color: var(--muted); }
+    .session-detail { margin: 0; font-size: 16px; color: var(--muted); }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 12px;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.2;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 9999px;
+      white-space: nowrap;
+    }
+
+    .pill[data-tone="accent"] { color: var(--accent-strong); border-color: var(--accent); }
+
+    /* --- Siluetas: misma tecnica que MuscleSilhouette (mascara + bloque de color) --- */
+    .figures { display: flex; justify-content: center; gap: 12px; }
+
+    .figure {
+      position: relative;
+      aspect-ratio: 854 / 1840;
+      flex: 0 0 auto;
+    }
+
+    .figure img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: fill;
+      filter: var(--body-tint);
+    }
+
+    .muscle {
+      position: absolute;
+      inset: 0;
+      background-color: var(--accent);
+      -webkit-mask-repeat: no-repeat;
+      mask-repeat: no-repeat;
+      -webkit-mask-size: 100% 100%;
+      mask-size: 100% 100%;
+    }
+
+    .muscle[data-role="primary"] { opacity: 0.92; }
+    .muscle[data-role="secondary"] { opacity: 0.38; }
+
+    .m-pectoral { -webkit-mask-image: url(./PECTORAL.svg); mask-image: url(./PECTORAL.svg); }
+    .m-deltoid { -webkit-mask-image: url(./DELTOID_FRONT.svg); mask-image: url(./DELTOID_FRONT.svg); }
+    .m-abs { -webkit-mask-image: url(./ABS.svg); mask-image: url(./ABS.svg); }
+    .m-triceps { -webkit-mask-image: url(./TRICEPS.svg); mask-image: url(./TRICEPS.svg); }
+
+    /* --- Progreso semanal: ProgressBar tal cual esta hoy --- */
+    .completion { display: flex; flex-direction: column; gap: 8px; }
+    .completion-label { font-size: 13px; color: var(--muted); }
+    .bar { display: flex; align-items: center; gap: 12px; }
+
+    .track {
+      flex: 1;
+      height: 8px;
+      background-color: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .fill { height: 100%; background-color: var(--accent); border-radius: 4px; }
+
+    .pct {
+      flex-shrink: 0;
+      min-width: 40px;
+      text-align: right;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    /* --- Etiquetas de la maqueta, fuera del producto --- */
+    .stage { display: flex; gap: 40px; padding: 40px; align-items: flex-start; }
+    .slot { display: flex; flex-direction: column; gap: 12px; }
+
+    .slot-label {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .session-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+    .backdrop {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      place-items: center;
+      padding: 16px;
+      background: rgba(0, 0, 0, 0.6);
+    }
+
+    .panel {
+      width: 720px;
+      padding: 24px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .panel-title {
+      margin: 0;
+      font-family: 'Montserrat', 'Be Vietnam Pro', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .close {
+      display: grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      border: 1px solid var(--border);
+      border-radius: 9999px;
+      color: var(--muted);
+      background: transparent;
+    }
+
+    .detail-layout { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 24px; }
+
+    .muscle-column {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+
+    .muscle-figures { display: flex; flex: 1 1 auto; align-items: center; justify-content: center; gap: 24px; }
+
+    .muscle-legend {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-items: start;
+      gap: 12px 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .legend-title {
+      margin: 0 0 8px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .legend-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .legend-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+    .legend-dot[data-role="secondary"] { opacity: 0.38; }
+
+    .detail-main { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+    .detail-heading { display: flex; flex-direction: column; gap: 8px; }
+
+    .detail-title {
+      margin: 0;
+      font-family: 'Montserrat', 'Be Vietnam Pro', sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .detail-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+
+    .exercise-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 16px; }
+    .exercise-item { display: flex; align-items: flex-start; gap: 12px; }
+
+    .exercise-order {
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: color-mix(in srgb, var(--accent) 15%, transparent);
+      color: var(--accent-strong);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .exercise-lines { display: flex; flex-direction: column; gap: 2px; }
+    .exercise-name { font-size: 14px; font-weight: 600; }
+    .exercise-dose { font-size: 12px; color: var(--muted); }
+
+    .detail-footer {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .move-field { display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: var(--muted); }
+
+    .move-select {
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--surface);
+      color: var(--text);
+      font: inherit;
+      font-size: 14px;
+      min-width: 150px;
+    }
+
+    .btn-row { display: flex; gap: 12px; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      min-height: 44px;
+      padding: 0 20px;
+      border-radius: 9999px;
+      font-size: 14px;
+      font-weight: 600;
+      border: 1px solid transparent;
+    }
+
+    .btn--secondary { border-color: var(--border); color: var(--text); background: transparent; }
+    .btn--primary { background: linear-gradient(135deg, #0b755f 0%, #85f55c 100%); color: #10141a; }
+
+  </style>
+</helmet>
+
+<div class="app" data-theme="{{theme}}" style="width: 1040px; height: 800px">
+  <div class="backdrop">
+    <div class="panel">
+      <div class="panel-head">
+        <p class="panel-title">Martes · Fuerza</p>
+        <span class="close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+        </span>
+      </div>
+
+      <div class="detail-layout">
+        <aside class="muscle-column">
+          <div class="muscle-figures">
+            <div class="figure" style="height: 302px; aspect-ratio: 854 / 1840">
+          <img src="body-front.png" alt="">
+          <span class="muscle m-pectoral" data-role="primary"></span>
+          <span class="muscle m-deltoid" data-role="secondary"></span>
+          <span class="muscle m-abs" data-role="secondary"></span>
+        </div>
+            <div class="figure" style="height: 302px; aspect-ratio: 854 / 1842">
+          <img src="body-back.png" alt="">
+          <span class="muscle m-triceps" data-role="primary"></span>
+        </div>
+          </div>
+          <div class="muscle-legend">
+            <div>
+          <p class="legend-title">Frente</p>
+          <ul class="legend-list">
+            <li class="legend-row"><span class="legend-dot" data-role="primary"></span>Pecho</li>
+            <li class="legend-row"><span class="legend-dot" data-role="secondary"></span>Hombro anterior</li>
+            <li class="legend-row"><span class="legend-dot" data-role="secondary"></span>Core</li>
+          </ul>
+        </div>
+            <div>
+          <p class="legend-title">Espalda</p>
+          <ul class="legend-list">
+            <li class="legend-row"><span class="legend-dot" data-role="primary"></span>Tríceps</li>
+          </ul>
+        </div>
+          </div>
+        </aside>
+
+        <div class="detail-main">
+          <div class="detail-heading">
+            <p class="detail-title">Empuje</p>
+            <div class="detail-meta">
+              <span class="pill">Planificado</span>
+              <span class="session-detail">5 ejercicios</span>
+            </div>
+          </div>
+
+          <ol class="exercise-list">
+          <li class="exercise-item">
+            <span class="exercise-order">1</span>
+            <span class="exercise-lines">
+              <span class="exercise-name">Press banca</span>
+              <span class="exercise-dose">4 × 8 · 60 s</span>
+            </span>
+          </li>
+          <li class="exercise-item">
+            <span class="exercise-order">2</span>
+            <span class="exercise-lines">
+              <span class="exercise-name">Press militar</span>
+              <span class="exercise-dose">4 × 10 · 60 s</span>
+            </span>
+          </li>
+          <li class="exercise-item">
+            <span class="exercise-order">3</span>
+            <span class="exercise-lines">
+              <span class="exercise-name">Fondos en paralelas</span>
+              <span class="exercise-dose">3 × 12 · 45 s</span>
+            </span>
+          </li>
+          <li class="exercise-item">
+            <span class="exercise-order">4</span>
+            <span class="exercise-lines">
+              <span class="exercise-name">Elevaciones laterales</span>
+              <span class="exercise-dose">3 × 15 · 45 s</span>
+            </span>
+          </li>
+          <li class="exercise-item">
+            <span class="exercise-order">5</span>
+            <span class="exercise-lines">
+              <span class="exercise-name">Plancha</span>
+              <span class="exercise-dose">3 × 45 s</span>
+            </span>
+          </li>
+          </ol>
+
+          <div class="detail-footer">
+            <label class="move-field">
+              Mover a otro día
+              <span class="move-select">Martes</span>
+            </label>
+            <div class="btn-row">
+              <span class="btn btn--secondary">Saltar</span>
+              <span class="btn btn--primary">Completar</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light","section":"Tema"},"$preview":{"width":1040,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { theme: this.props.theme ?? 'light' };
+  }
+}
+</script>
+</body>
+</html>

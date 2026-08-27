@@ -61,3 +61,40 @@ export function formatGeneratedAt(iso: string): string {
 export function totalServings(items: readonly { readonly servings: number | null }[]): number {
   return items.reduce((sum, item) => sum + (item.servings ?? 0), 0);
 }
+
+/**
+ * Short unit labels for the dashboard's preview card, where the name of a
+ * product and its quantity share one narrow row.
+ *
+ * <p>Only the two long ones shrink: "unidades" and "paquetes" are the labels
+ * that pushed a product name into an ellipsis for a word that says nothing the
+ * number beside it did not. Grams, kilos and litres are already abbreviations,
+ * so they stay exactly as the full list prints them — the same value in two
+ * spellings would be worse than a long word.
+ */
+const SHORT_UNIT_LABELS: ReadonlyMap<string, string> = new Map([
+  ['UD', 'u'],
+  ['PAQUETE', 'paq.'],
+]);
+
+/** Display label for a `unit` where the row is narrow. Falls back to {@link unitLabel}. */
+export function shortUnitLabel(unit: string): string {
+  return SHORT_UNIT_LABELS.get(unit) ?? unitLabel(unit);
+}
+
+/**
+ * Splits a product name into the word it is called and everything qualifying it:
+ * "Atún claro al natural Hacendado" is an atún, and the rest is which one.
+ *
+ * <p>Crude on purpose — the catalog has no brand or variety fields, only one
+ * free-text name — but it holds for how those names are actually written, which
+ * is head noun first. A single-word name leaves no qualifier and renders as one
+ * line rather than as a name with an empty second row under it.
+ */
+export function splitProductName(name: string): { readonly head: string; readonly rest: string } {
+  const trimmed = name.trim();
+  const firstSpace = trimmed.indexOf(' ');
+  return firstSpace === -1
+    ? { head: trimmed, rest: '' }
+    : { head: trimmed.slice(0, firstSpace), rest: trimmed.slice(firstSpace + 1) };
+}
