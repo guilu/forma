@@ -248,12 +248,15 @@ const FIXTURES: ReadonlyArray<readonly [string, unknown]> = [
    */
   [
     '/api/v1/public/plan-generator/energy-requirement',
-    { basalKcal: 1668, activityFactor: 1.55, dailyKcal: 2585, objectiveFactor: 0.8, planKcal: 2068 },
+    {
+      basalKcal: 1668,
+      activityFactor: 1.55,
+      dailyKcal: 2585,
+      objectiveFactor: 0.8,
+      planKcal: 2068,
+    },
   ],
-  [
-    '/api/v1/public/plan-generator',
-    { email: 'e2e@forma.test', planKcal: 2068, mealsPerDay: 5 },
-  ],
+  ['/api/v1/public/plan-generator', { email: 'e2e@forma.test', planKcal: 2068, mealsPerDay: 5 }],
   [
     '/api/v1/profile',
     {
@@ -284,9 +287,11 @@ const FIXTURES: ReadonlyArray<readonly [string, unknown]> = [
       },
       main: {
         category: 'BODY',
-        severity: 'INFO',
-        message: 'Mantienes el peso con una ligera bajada de grasa corporal.',
-        reason: 'Siete mediciones en la última semana con tendencia estable.',
+        severity: 'ACTION',
+        message:
+          'La grasa corporal sube varias semanas seguidas; recorta unas 100 kcal al día como ajuste mínimo.',
+        reason:
+          'La grasa corporal sube de forma sostenida durante 2 semanas seguidas (semana 10: 14.7% → semana 11: 15.3% → semana 12: 15.9%).',
         createdAt: '2026-07-26T08:00:00Z',
       },
       secondary: [],
@@ -369,8 +374,43 @@ const FIXTURES: ReadonlyArray<readonly [string, unknown]> = [
       status: 'ACTIVE',
       generatedAt: '2026-07-20T06:00:00Z',
       items: [
-        { id: 's1', productName: 'Pechuga de pollo', quantity: '1.2 kg', checked: false },
-        { id: 's2', productName: 'Arroz integral', quantity: '1 kg', checked: false },
+        {
+          id: 's1',
+          productName: 'Atún claro al natural Hacendado',
+          quantity: 1,
+          unit: 'UD',
+          checked: false,
+        },
+        {
+          id: 's2',
+          productName: 'Almendra natural Hacendado',
+          quantity: 1,
+          unit: 'UD',
+          checked: false,
+        },
+        {
+          id: 's3',
+          productName: 'Claras de huevo líquidas pasteurizadas',
+          quantity: 1,
+          unit: 'UD',
+          checked: false,
+        },
+        {
+          id: 's4',
+          productName: 'Ensalada mezcla 4 estaciones lavada',
+          quantity: 1,
+          unit: 'UD',
+          checked: false,
+        },
+        {
+          id: 's5',
+          productName: 'Spaghetti integral Hacendado',
+          quantity: 1,
+          unit: 'UD',
+          checked: false,
+        },
+        { id: 's6', productName: 'Salmón fresco', quantity: 2, unit: 'UD', checked: false },
+        { id: 's7', productName: 'Huevos camperos', quantity: 6, unit: 'UD', checked: false },
       ],
       budget: { estimatedTotal: 48.5, currency: 'EUR' },
     },

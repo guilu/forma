@@ -378,13 +378,13 @@ for (const viewport of [TABLET, LAPTOP]) {
   test.describe(`dashboard grid at ${viewport.width}px`, () => {
     test.use({ viewport });
 
-    // The unified today grid uses three tracks; its body group, main three-card
-    // row and final trend occupy three explicit rows.
+    // The intermediate layout uses six underlying tracks: the first widget row
+    // reads as three columns, while the lower rows combine 1/3 + 2/3 and 1/2 +
+    // 1/2 widths. Count distinct starts here; the geometry test below pins the
+    // semantic pairings explicitly.
     for (const [row, columns, rows] of [
-      ['todayGrid', 3, 3],
-      // Two x positions, not three: Evolución took the column the retired
-      // "Tu progreso" card left behind, so it starts at track 1 and spans two.
-      ['rowThree', 2, 2],
+      ['todayGrid', 4, 4],
+      ['rowThree', 3, 2],
     ] as const) {
       test(`lays the ${row} row out as ${columns} columns over ${rows} rows`, async ({ page }) => {
         await gotoApp(page, '/app');
@@ -424,6 +424,40 @@ for (const viewport of [TABLET, LAPTOP]) {
         1,
       );
       expect(new Set(tiles.map((tile) => tile.left)).size).toBe(4);
+    });
+
+    test('pairs trend with evolution and shopping with the recommendation column', async ({
+      page,
+    }) => {
+      await gotoApp(page, '/app');
+
+      const boxes = await Promise.all(
+        ['Tendencia 30 días', 'Evolución', 'Lista de compra', 'Recomendación destacada'].map(
+          async (name) => {
+            const heading = page.getByRole('heading', { name, exact: true });
+            const section = heading.locator('xpath=ancestor::section[1]');
+            const box = await section.boundingBox();
+            expect(box, `${name} is not rendered`).not.toBeNull();
+            return box!;
+          },
+        ),
+      );
+      const [trend, evolution, shopping, recommendation] = boxes;
+      const plan = await page.getByRole('region', { name: 'Tu plan está en marcha' }).boundingBox();
+      expect(plan).not.toBeNull();
+
+      expect(Math.round(evolution.y)).toBe(Math.round(trend.y));
+      expect(evolution.x).toBeGreaterThan(trend.x + trend.width - 2);
+      // The gap between both cards makes the rendered ratio slightly larger
+      // than exactly 2:1. Allow subpixel rounding but reject equal or 1:3 tracks.
+      expect(evolution.width / trend.width).toBeGreaterThan(1.9);
+      expect(evolution.width / trend.width).toBeLessThan(2.2);
+      expect(Math.round(recommendation.y)).toBe(Math.round(shopping.y));
+      expect(recommendation.x).toBeGreaterThan(shopping.x + shopping.width - 2);
+      expect(Math.abs(recommendation.width - shopping.width)).toBeLessThanOrEqual(2);
+      expect(Math.round(plan!.x)).toBe(Math.round(recommendation.x));
+      expect(plan!.y).toBeGreaterThan(recommendation.y + recommendation.height - 2);
+      expect(shopping.y).toBeGreaterThan(trend.y + trend.height - 2);
     });
   });
 }
