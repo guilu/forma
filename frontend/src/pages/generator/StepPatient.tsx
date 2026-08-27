@@ -3,6 +3,7 @@ import type { ActivityLevel, EnergyRequirement, Sex } from '../../api/planGenera
 import { ActivityScale, ChoiceCard, EnergyHeadline } from './GeneratorChrome';
 import { canCalculate, type FunnelState } from './funnelState';
 import styles from './PlanGenerator.module.css';
+import { measure } from '../../format/measures';
 
 /**
  * Paso 1: quién eres, y qué gastas.
@@ -23,8 +24,6 @@ const ACTIVITY: ReadonlyArray<{
   { value: 'ACTIVE', label: 'Activo', description: 'Ejercicio 6–7 días por semana' },
   { value: 'VERY_ACTIVE', label: 'Atleta', description: 'Entrenamiento intenso diario' },
 ];
-
-const NUM = new Intl.NumberFormat('es-ES');
 
 /**
  * Una medida, con las dos formas de darla.
@@ -90,7 +89,7 @@ function Metric({
         step={step}
         value={numeric}
         aria-label={`${label} (deslizador)`}
-        aria-valuetext={filled ? `${NUM.format(numeric)} ${unit}` : 'sin definir'}
+        aria-valuetext={filled ? `${measure(numeric)} ${unit}` : 'sin definir'}
         onChange={(event) => onChange(event.target.value)}
       />
     </div>
@@ -188,7 +187,7 @@ export function StepPatient({ state, energy, onChange, onNext }: StepPatientProp
       */}
       <EnergyHeadline
         eyebrow="Tu gasto diario"
-        value={energy ? `${NUM.format(energy.dailyKcal)}` : undefined}
+        value={energy ? `${measure(energy.dailyKcal)}` : undefined}
         unit="kcal"
         pending="Rellena edad, peso y altura"
         aside={<span className={styles.headlineTag}>Mifflin-St Jeor</span>}

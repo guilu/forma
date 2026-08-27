@@ -5,6 +5,7 @@ import { MetricCard } from '../../components/MetricCard';
 import { LineChart, type ChartPoint } from '../../components/LineChart';
 import { WidgetLoading } from '../../components/WidgetLoading';
 import { type BodyMeasurement } from '../../api/bodyMeasurements';
+import { change as formatChange, fixed } from '../../format/measures';
 import styles from './BodyWidget.module.css';
 
 /**
@@ -31,7 +32,7 @@ import styles from './BodyWidget.module.css';
  * top of a tile that already prints its own name, value and unit.
  *
  * <p>Each tile carries the change from the measurement before the selected one,
- * bracketed beside the value: "73,6 kg (-0,5)". That is a subtraction of two
+ * bracketed beside the value: "73.6 kg (-0.5)". That is a subtraction of two
  * numbers the API already returned, not the mockup's "vs semana pasada" — which
  * is the FOR-21 `WeeklyBodySummary` computation, a domain rule that is not
  * exposed over HTTP and would be duplicated by recomputing it here (ADR-001).
@@ -60,20 +61,8 @@ export type BodyState =
 
 const SPARKLINE_WINDOW = 8;
 
-const VALUE = new Intl.NumberFormat('es-ES', {
-  minimumFractionDigits: 1,
-  maximumFractionDigits: 1,
-});
-
-/** Always signed: "(+0,7)" and "(-0,5)" only read as a change if the sign is there. */
-const DELTA = new Intl.NumberFormat('es-ES', {
-  minimumFractionDigits: 1,
-  maximumFractionDigits: 1,
-  signDisplay: 'exceptZero',
-});
-
 function format(value: number | undefined): string {
-  return value === undefined ? '—' : VALUE.format(value);
+  return value === undefined ? '—' : fixed(value);
 }
 
 function formatDate(iso: string): string {
@@ -105,9 +94,9 @@ function difference(current: number | undefined, previous: number | undefined) {
   return current === undefined || previous === undefined ? undefined : current - previous;
 }
 
-/** «0,5 kg menos que la medición anterior» — lo que «(-0,5)» no dice en voz alta. */
+/** «0.5 kg menos que la medición anterior» — lo que «(-0.5)» no dice en voz alta. */
 function describe(change: number, unit: string | undefined): string {
-  const size = VALUE.format(Math.abs(change));
+  const size = fixed(Math.abs(change));
   const magnitude = unit === undefined ? size : `${size} ${unit}`;
   if (change === 0) {
     return 'Igual que la medición anterior';
@@ -174,7 +163,7 @@ function renderContent(state: BodyState) {
       /*
        * La unidad con la que se narra la diferencia, que no siempre es la del
        * valor: la grasa se mide en %, pero su variación son PUNTOS de ese
-       * porcentaje — decir «0,5 % menos» sería un porcentaje de un porcentaje.
+       * porcentaje — decir «0.5 % menos» sería un porcentaje de un porcentaje.
        */
       deltaUnit: 'kg',
       color: 'var(--color-accent)',
@@ -217,7 +206,7 @@ function renderContent(state: BodyState) {
             label={tile.label}
             value={tile.value}
             unit={tile.unit}
-            delta={change === undefined ? undefined : `(${DELTA.format(change)})`}
+            delta={change === undefined ? undefined : `(${formatChange(change)})`}
             deltaDescription={change === undefined ? undefined : describe(change, tile.deltaUnit)}
             caption={caption}
             trend={
@@ -226,7 +215,7 @@ function renderContent(state: BodyState) {
                   variant="spark"
                   points={points}
                   color={tile.color}
-                  formatValue={(v) => `${VALUE.format(v)}${tile.unit ? ` ${tile.unit}` : ''}`}
+                  formatValue={(v) => `${fixed(v)}${tile.unit ? ` ${tile.unit}` : ''}`}
                   ariaLabel={`Evolución de ${tile.label.toLowerCase()}: ${points.length} mediciones recientes.`}
                 />
               ) : undefined

@@ -82,12 +82,12 @@ describe('TrendWidget', () => {
 
     await screen.findByRole('img', { name: /^Peso en los últimos 30 días/ });
 
-    expect(screen.getByText('73,6 kg')).toBeInTheDocument();
-    expect(screen.getByText('-1,6')).toBeInTheDocument();
-    expect(screen.getByText('14,7 %')).toBeInTheDocument();
-    expect(screen.getByText('-1,8')).toBeInTheDocument();
-    expect(screen.getByText('62,8 kg')).toBeInTheDocument();
-    expect(screen.getByText('+0,8')).toBeInTheDocument();
+    expect(screen.getByText('73.6 kg')).toBeInTheDocument();
+    expect(screen.getByText('-1.6')).toBeInTheDocument();
+    expect(screen.getByText('14.7 %')).toBeInTheDocument();
+    expect(screen.getByText('-1.8')).toBeInTheDocument();
+    expect(screen.getByText('62.8 kg')).toBeInTheDocument();
+    expect(screen.getByText('+0.8')).toBeInTheDocument();
   });
 
   /** El resumen hablado dice de dónde a dónde va cada métrica, con su unidad. */
@@ -96,7 +96,7 @@ describe('TrendWidget', () => {
 
     expect(
       await screen.findByRole('img', {
-        name: 'Peso en los últimos 30 días: de 75,2 kg a 73,6 kg. 2 mediciones.',
+        name: 'Peso en los últimos 30 días: de 75.2 kg a 73.6 kg. 2 mediciones.',
       }),
     ).toBeInTheDocument();
   });

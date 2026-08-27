@@ -4,6 +4,7 @@ import type { IconName } from '../../components/Icon';
 import { ChoiceCard, EnergyHeadline, LockedTeaser } from './GeneratorChrome';
 import { OBJECTIVE_LABELS, type FunnelState } from './funnelState';
 import styles from './PlanGenerator.module.css';
+import { measure } from '../../format/measures';
 
 /**
  * Paso 2: qué le pides al plan.
@@ -59,8 +60,6 @@ const OBJECTIVES: ReadonlyArray<{
   },
 ];
 
-const NUM = new Intl.NumberFormat('es-ES');
-
 /** El ajuste por objetivo, como porcentaje. Lo dice el servidor; aquí solo se formatea. */
 function adjustmentLabel(factor: number): string {
   const percent = Math.round((factor - 1) * 100);
@@ -114,7 +113,7 @@ export function StepClinical({ state, energy, onChange, onBack, onNext }: StepCl
 
       <EnergyHeadline
         eyebrow="Requerimiento del plan"
-        value={chosen ? NUM.format(energy.planKcal) : undefined}
+        value={chosen ? measure(energy.planKcal) : undefined}
         unit="kcal"
         pending="Elige un objetivo"
         aside={
@@ -123,7 +122,7 @@ export function StepClinical({ state, energy, onChange, onBack, onNext }: StepCl
               <span className={adjustmentClass(energy.objectiveFactor)}>
                 {adjustmentLabel(energy.objectiveFactor)}
               </span>
-              <span className={styles.headlineFoot}>de {NUM.format(energy.dailyKcal)} kcal</span>
+              <span className={styles.headlineFoot}>de {measure(energy.dailyKcal)} kcal</span>
             </>
           ) : undefined
         }
