@@ -8,12 +8,13 @@
 .recommendation {
   margin: 0;
   color: var(--color-text);
+  font-size: var(--font-size-label-md);
   line-height: 1.5;
 }
 
 .reason {
   margin: 0;
   color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-label-sm);
   line-height: 1.5;
 }
