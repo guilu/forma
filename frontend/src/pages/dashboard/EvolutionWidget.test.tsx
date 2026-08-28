@@ -63,6 +63,28 @@ describe('EvolutionWidget', () => {
     expect(screen.getByRole('img', { name: /Evolución de grasa/ })).toBeInTheDocument();
   });
 
+  /**
+   * The assignment the rest of the panel already uses: weight green, body fat
+   * amber, muscle blue — the nutrition rings' three, so a metric keeps one
+   * colour wherever the dashboard draws it. Asserted on the series stroke,
+   * which is where the colour reaches the DOM here.
+   */
+  it('paints each metric in its assigned token', async () => {
+    const user = userEvent.setup();
+
+    const { container } = conMediciones(history);
+    const stroke = () => container.querySelector('.recharts-area-curve')?.getAttribute('stroke');
+
+    await screen.findByText('69.2');
+    expect(stroke()).toBe('var(--color-accent)');
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Métrica' }), 'fat');
+    expect(stroke()).toBe('var(--color-warning-graphic)');
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Métrica' }), 'lean');
+    expect(stroke()).toBe('var(--color-info)');
+  });
+
   it('shows an empty state when there are no measurements', async () => {
     conMediciones([]);
 
