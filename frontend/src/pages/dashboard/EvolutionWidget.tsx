@@ -30,13 +30,36 @@ type State =
 
 type MetricKey = 'weight' | 'fat' | 'lean';
 
+/*
+ * Colour per metric, and the assignment is the panel's own: weight green, body
+ * fat amber, muscle blue — the same three the body tiles and the trend rows
+ * use, so a metric keeps one colour wherever the dashboard draws it. The chart
+ * used to be accent-green whatever was selected, which said "peso" while
+ * plotting grasa. Never the only carrier: the selector names the metric and the
+ * chart carries its own `ariaLabel`.
+ */
 const METRICS: Record<
   MetricKey,
-  { label: string; unit: string; select: (m: BodyMeasurement) => number | undefined }
+  {
+    label: string;
+    unit: string;
+    color: string;
+    select: (m: BodyMeasurement) => number | undefined;
+  }
 > = {
-  weight: { label: 'Peso', unit: 'kg', select: (m) => m.weightKg },
-  fat: { label: 'Grasa', unit: '%', select: (m) => m.bodyFatPercentage },
-  lean: { label: 'Músculo', unit: 'kg', select: (m) => m.leanMassKg },
+  weight: { label: 'Peso', unit: 'kg', color: 'var(--color-accent)', select: (m) => m.weightKg },
+  fat: {
+    label: 'Grasa',
+    unit: '%',
+    color: 'var(--color-warning-graphic)',
+    select: (m) => m.bodyFatPercentage,
+  },
+  lean: {
+    label: 'Músculo',
+    unit: 'kg',
+    color: 'var(--color-info)',
+    select: (m) => m.leanMassKg,
+  },
 };
 
 /**
@@ -112,7 +135,7 @@ function renderContent(
     );
   }
 
-  const { label, unit, select } = METRICS[metric];
+  const { label, unit, color, select } = METRICS[metric];
   const chrono = [...state.history].reverse();
 
   const allPoints: ChartPoint[] = chrono.flatMap((m) => {
@@ -142,6 +165,7 @@ function renderContent(
         <div className={styles.chartArea}>
           <LineChart
             points={points}
+            color={color}
             formatValue={(v) => `${v.toFixed(1)} ${unit}`}
             ariaLabel={`Evolución de ${label.toLowerCase()}: ${points.length} mediciones.`}
           />
