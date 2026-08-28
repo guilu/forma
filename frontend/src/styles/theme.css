@@ -156,6 +156,19 @@
   --color-violet-strong: #a78bfa;
 
   /*
+   * Cyan, and it exists for one reason: the "Distribución corporal" legend
+   * needs Agua to sit next to Músculo without being it. Músculo is
+   * `--color-info` everywhere the app draws it, and Agua had been painted that
+   * same blue — two of four legend dots in one colour, telling the reader they
+   * were the same thing. A neighbouring hue keeps the row's water reading while
+   * still separating: 9:1 on the card here, and a 2:1 luminance gap from
+   * `--color-info` that survives any colour-vision deficiency, since luminance
+   * does. Graphical mark only — the dot is 10px and carries a text label, so
+   * there is no `-strong` text counterpart until something needs one.
+   */
+  --color-cyan: #22d3ee;
+
+  /*
    * The two funding hues, for the landing footer's support links. They are not
    * part of Forma's palette and are not meant to be: a GitHub Sponsors button
    * that is green and a Buy Me a Coffee button that is green are two buttons
@@ -521,6 +534,15 @@
    */
   --color-violet: #8b5cf6;
   --color-violet-strong: #6d28d9;
+
+  /*
+   * Re-derived for a light surface: the dark theme's #22d3ee measures 1.81:1 on
+   * white, which is no mark at all. This one is 5.36:1 — comfortably over the
+   * 3:1 a legend dot needs — and keeps a 2.2:1 gap from this theme's
+   * `--color-info`, which is the light blue #53adf3. Light and dark on the same
+   * hue: the two dots stay told apart by luminance, not only by colour.
+   */
+  --color-cyan: #0e7490;
 
   /* Re-derived for a light surface: the dark theme's pink and amber measure
      3.68:1 and 3.62:1 on their own light chip, which is not a colour anyone

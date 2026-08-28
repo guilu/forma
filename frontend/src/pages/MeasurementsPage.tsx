@@ -94,16 +94,49 @@ interface MetricConfig {
   readonly key: string;
   readonly label: string;
   readonly unit?: string;
+  /** The series colour — see {@link METRICS}. */
+  readonly color: string;
   readonly value: (m: BodyMeasurement) => number | undefined;
 }
 
-/** The four latest-metric cards the FOR-17 API actually supports (no water %). */
+/**
+ * The four latest-metric cards the FOR-17 API actually supports (no water %).
+ *
+ * <p>Colour per metric, and the assignment is the dashboard's: peso verde,
+ * grasa ámbar, músculo azul, IMC violeta — the same four the body tiles and the
+ * trend rows use, so a metric keeps one colour wherever the app draws it. The
+ * four sparklines used to share the accent green they got by default, which
+ * said "peso" on top of the grasa and the IMC tiles. Never the only carrier of
+ * the distinction: every card is titled and every chart has its own
+ * `ariaLabel`.
+ */
 const METRICS: readonly MetricConfig[] = [
-  { key: 'weight', label: 'Peso', unit: 'kg', value: (m) => m.weightKg },
-  { key: 'fat', label: 'Grasa corporal', unit: '%', value: (m) => m.bodyFatPercentage },
-  { key: 'lean', label: 'Masa muscular', unit: 'kg', value: (m) => m.leanMassKg },
-  { key: 'bmi', label: 'IMC', value: (m) => m.bmi },
+  {
+    key: 'weight',
+    label: 'Peso',
+    unit: 'kg',
+    color: 'var(--color-accent)',
+    value: (m) => m.weightKg,
+  },
+  {
+    key: 'fat',
+    label: 'Grasa corporal',
+    unit: '%',
+    color: 'var(--color-warning-graphic)',
+    value: (m) => m.bodyFatPercentage,
+  },
+  {
+    key: 'lean',
+    label: 'Masa muscular',
+    unit: 'kg',
+    color: 'var(--color-info)',
+    value: (m) => m.leanMassKg,
+  },
+  { key: 'bmi', label: 'IMC', color: 'var(--color-violet)', value: (m) => m.bmi },
 ];
+
+/** The metric the "Evolución de peso" chart plots — named, not `METRICS[0]`. */
+const WEIGHT = METRICS[0];
 
 const RANGE_OPTIONS: readonly RangeOption[] = [
   { key: '7D', label: '7D', days: 7 },
@@ -303,6 +336,7 @@ function MeasurementsDashboard({ measurements, activeTab, setActiveTab, reload }
                     <LineChart
                       variant="spark"
                       points={points}
+                      color={metric.color}
                       formatValue={(v) => v.toFixed(1)}
                       ariaLabel={`Evolución reciente de ${metric.label.toLowerCase()}`}
                     />
@@ -429,7 +463,7 @@ function BodyDistributionCard({ latest }: { readonly latest: BodyMeasurement }) 
 }
 
 function WeightEvolutionChart({ measurements }: { readonly measurements: BodyMeasurement[] }) {
-  const allPoints = seriesFor(measurements, METRICS[0]);
+  const allPoints = seriesFor(measurements, WEIGHT);
   const ranges = narrowingRanges(allPoints, RANGE_OPTIONS);
   const [selectedRange, setSelectedRange] = useState('ALL');
   const active = ranges.find((r) => r.key === selectedRange) ?? ranges[ranges.length - 1];
@@ -471,6 +505,7 @@ function WeightEvolutionChart({ measurements }: { readonly measurements: BodyMea
           )}
           <LineChart
             points={points}
+            color={WEIGHT.color}
             formatValue={(v) => `${v.toFixed(1)} kg`}
             ariaLabel={`Evolución de peso: ${points.length} mediciones, de ${points[0].y.toFixed(1)} kg a ${latestPoint.y.toFixed(1)} kg.`}
           />
