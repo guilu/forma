@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ProgressPage } from './ProgressPage';
 import { NotificationProvider } from '../components/NotificationProvider';
@@ -111,6 +111,30 @@ describe('ProgressPage', () => {
     expect(
       screen.getByRole('heading', { name: 'Evolución de masa magra', level: 2 }),
     ).toBeInTheDocument();
+  });
+
+  /**
+   * The assignment the rest of the app already uses — peso verde, grasa ámbar,
+   * masa magra azul — so a metric keeps one colour wherever it is drawn. The
+   * three charts were all taking the accent green `LineChart` falls back to,
+   * which said "peso" on top of the other two.
+   */
+  it('paints each metric chart in its assigned token', async () => {
+    listMock.mockResolvedValue(measurements(4));
+
+    renderProgress();
+
+    await screen.findByRole('img', { name: /Evolución de peso/ });
+    const stroke = (metric: RegExp) =>
+      screen
+        .getByRole('img', { name: metric })
+        .querySelector('.recharts-area-curve')
+        ?.getAttribute('stroke');
+
+    await waitFor(() => expect(stroke(/Evolución de peso/)).toBeDefined());
+    expect(stroke(/Evolución de peso/)).toBe('var(--color-accent)');
+    expect(stroke(/Evolución de grasa corporal/)).toBe('var(--color-warning-graphic)');
+    expect(stroke(/Evolución de masa magra/)).toBe('var(--color-info)');
   });
 
   it('plots only the recent window (last 12 points)', async () => {

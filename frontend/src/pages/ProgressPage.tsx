@@ -40,13 +40,38 @@ const RECENT_WINDOW = 12;
 interface MetricConfig {
   readonly label: string;
   readonly unit: string;
+  /** The series colour — see {@link METRICS}. */
+  readonly color: string;
   readonly value: (m: BodyMeasurement) => number | undefined;
 }
 
+/**
+ * Colour per metric, and the assignment is the one the rest of the app draws:
+ * peso verde, grasa ámbar, masa magra azul — the dashboard's body tiles and
+ * trend rows, and the measurements page's charts, all use these three. The
+ * cards here were taking the accent green `LineChart` falls back to when no
+ * colour is given, so all three said "peso". Never the only carrier of the
+ * distinction: each card is titled and each chart has its own `ariaLabel`.
+ */
 const METRICS: readonly MetricConfig[] = [
-  { label: 'Evolución de peso', unit: 'kg', value: (m) => m.weightKg },
-  { label: 'Evolución de grasa corporal', unit: '%', value: (m) => m.bodyFatPercentage },
-  { label: 'Evolución de masa magra', unit: 'kg', value: (m) => m.leanMassKg },
+  {
+    label: 'Evolución de peso',
+    unit: 'kg',
+    color: 'var(--color-accent)',
+    value: (m) => m.weightKg,
+  },
+  {
+    label: 'Evolución de grasa corporal',
+    unit: '%',
+    color: 'var(--color-warning-graphic)',
+    value: (m) => m.bodyFatPercentage,
+  },
+  {
+    label: 'Evolución de masa magra',
+    unit: 'kg',
+    color: 'var(--color-info)',
+    value: (m) => m.leanMassKg,
+  },
 ];
 
 function formatDate(iso: string): string {
@@ -159,6 +184,7 @@ function MetricChart({
           </p>
           <LineChart
             points={points}
+            color={metric.color}
             formatValue={(v) => v.toFixed(1)}
             ariaLabel={`${metric.label}: ${points.length} mediciones, de ${formatValue(
               points[0].y,
