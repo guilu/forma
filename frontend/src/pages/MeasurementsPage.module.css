@@ -135,8 +135,14 @@
   border-radius: 50%;
 }
 
+/*
+ * Músculo is blue, not the accent green it used to be. Green is PESO
+ * everywhere else the app draws a metric — the dashboard's body tiles, its
+ * trend rows, the sparklines above — so a green muscle dot on this legend was
+ * naming the wrong quantity. `--color-info` is muscle's colour in all of them.
+ */
 .dotMuscle {
-  background-color: var(--color-accent);
+  background-color: var(--color-info);
 }
 
 .dotFat {
@@ -152,15 +158,18 @@
 }
 
 /*
- * Water is blue rather than the second grey it used to be: `--color-info` is
- * already this app's water, over on the hydration tracker, so a second colour
- * here would have meant two blues for one substance. The token is the one meant
- * for data marks; in the light theme it sits under the 3:1 a load-bearing
- * graphic would need, which is fine only because this dot is decorative
- * (`aria-hidden`) and the row spells out "Agua" beside it.
+ * Water moves off `--color-info` and onto the cyan next to it. It had been that
+ * exact blue, which stopped working the moment Músculo took the blue it carries
+ * across the rest of the app: two of four dots in one colour say the two rows
+ * are the same thing. Cyan keeps the row reading as water — a neighbouring hue,
+ * not an unrelated one — while the luminance gap from `--color-info` (about
+ * 2:1, in both themes) does the separating even where hue cannot. Grey was the
+ * other option, and the one this card's own rule would suggest for a
+ * placeholder row; cyan was chosen instead so the legend keeps four legible
+ * marks rather than two colours and two greys.
  */
 .dotWater {
-  background-color: var(--color-info);
+  background-color: var(--color-cyan);
 }
 
 .distributionLabel {

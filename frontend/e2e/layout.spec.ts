@@ -768,6 +768,63 @@ test.describe('chart colours', () => {
     });
   }
 
+  /**
+   * The composition legend, which is the one place in the app where four data
+   * hues sit in a single column an inch apart. Músculo used to be the accent
+   * green — peso's colour everywhere else — and Agua used to be `--color-info`,
+   * which is músculo's. Recoloured, the pair that needs watching is Músculo and
+   * Agua: neighbouring hues, so the check is that the browser resolves them to
+   * different colours AND that they stay apart by luminance, which is what
+   * survives a colour-vision deficiency.
+   */
+  for (const theme of ['dark', 'light'] as const) {
+    test(`gives the body-composition legend four distinct dots in the ${theme} theme`, async ({
+      page,
+    }) => {
+      await gotoApp(page, '/app/measurements');
+      await page.evaluate((value) => {
+        document.documentElement.setAttribute('data-theme', value);
+      }, theme);
+
+      // No tab to click: above the breakpoint the three panels are all on
+      // screen at once and the chip row is `display: none` (see the page's
+      // stylesheet), which is why this suite reads the card directly.
+      const card = page
+        .getByRole('heading', { name: 'Distribución corporal', exact: true })
+        .locator('xpath=ancestor::section[1]');
+      const dots = await card
+        .locator('li span[aria-hidden="true"]')
+        .evaluateAll((nodes) => nodes.map((node) => getComputedStyle(node).backgroundColor));
+
+      expect(dots.length, 'The four legend dots were not found').toBe(4);
+      expect(new Set(dots).size, `Legend rows share a colour: ${dots.join(', ')}`).toBe(4);
+
+      // Which token each row actually resolves to, read the way the browser
+      // resolves it rather than compared against a hex string: the two themes
+      // give the same token different values.
+      const [muscle, fat, bone, water] = await resolveTokens(page, [
+        '--color-info',
+        '--color-warning-graphic',
+        '--color-text-muted',
+        '--color-cyan',
+      ]);
+
+      // Músculo is the blue the dashboard paints it with, not the accent green
+      // it used to be — green is peso everywhere else in the app.
+      expect(dots[0], 'Músculo is not the muscle token').toBe(muscle);
+      expect(dots[1], 'Grasa is not the warning token').toBe(fat);
+      expect(dots[2], 'Hueso is not the muted token').toBe(bone);
+      expect(dots[3], 'Agua is not the cyan token').toBe(water);
+
+      // Músculo against Agua: the two blues, and the pair a colour-vision
+      // deficiency could collapse. Luminance is what still separates them.
+      expect(
+        contrast(dots[0], dots[3]),
+        `Músculo and Agua are too close to tell apart: ${dots[0]} vs ${dots[3]}`,
+      ).toBeGreaterThan(1.5);
+    });
+  }
+
   test('gives each nutrition ring its own colour over a dimmed track', async ({ page }) => {
     await gotoApp(page, '/app');
 
@@ -787,6 +844,25 @@ test.describe('chart colours', () => {
     }
   });
 });
+
+/**
+ * The `rgb(...)` each custom property resolves to in the theme currently on the
+ * document — painted through a throwaway element rather than read as a raw
+ * token value, so the comparison is against what the browser would actually
+ * draw and not against a hex string the stylesheet happens to spell.
+ */
+async function resolveTokens(page: Page, tokens: readonly string[]): Promise<string[]> {
+  return page.evaluate((names) => {
+    const probe = document.createElement('span');
+    document.body.append(probe);
+    const resolved = names.map((name) => {
+      probe.style.backgroundColor = `var(${name})`;
+      return getComputedStyle(probe).backgroundColor;
+    });
+    probe.remove();
+    return resolved;
+  }, tokens);
+}
 
 /** WCAG relative luminance of an `rgb(r, g, b)` string. */
 function luminance(color: string): number {

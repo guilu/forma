@@ -304,6 +304,46 @@ describe('MeasurementsPage', () => {
     expect(within(rangeGroup).queryByRole('button', { name: '7D' })).not.toBeInTheDocument();
   });
 
+  /**
+   * The same assignment the dashboard uses — peso verde, grasa ámbar, músculo
+   * azul, IMC violeta — so a metric keeps one colour across the whole app. The
+   * four sparklines were all drawing in the accent green, which said "peso" on
+   * top of the grasa and the IMC tiles.
+   */
+  it('paints each metric sparkline in its assigned token', async () => {
+    listMock.mockResolvedValue(MULTI);
+    renderPage();
+
+    await screen.findByRole('heading', { name: 'Peso', level: 2 });
+    const stroke = (metric: string) =>
+      screen
+        .getByRole('img', { name: `Evolución reciente de ${metric}` })
+        .querySelector('.recharts-area-curve')
+        ?.getAttribute('stroke');
+
+    await waitFor(() => expect(stroke('peso')).toBeDefined());
+    expect(stroke('peso')).toBe('var(--color-accent)');
+    expect(stroke('grasa corporal')).toBe('var(--color-warning-graphic)');
+    expect(stroke('masa muscular')).toBe('var(--color-info)');
+    expect(stroke('imc')).toBe('var(--color-violet)');
+  });
+
+  /** The big evolution chart plots weight, so it takes weight's own colour. */
+  it('paints the weight evolution chart in the weight token', async () => {
+    listMock.mockResolvedValue(MULTI);
+    renderPage();
+
+    await screen.findByRole('heading', { name: 'Evolución de peso', level: 2 });
+    const stroke = () =>
+      screen
+        .getByRole('img', { name: /^Evolución de peso: / })
+        .querySelector('.recharts-area-curve')
+        ?.getAttribute('stroke');
+
+    await waitFor(() => expect(stroke()).toBeDefined());
+    expect(stroke()).toBe('var(--color-accent)');
+  });
+
   it('lists recent measurements in the history table with the expected columns', async () => {
     listMock.mockResolvedValue(MULTI);
     renderPage();
