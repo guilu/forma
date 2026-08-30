@@ -106,7 +106,13 @@
  * would then drop the action group into the middle column and leave it
  * stranded beside the brand instead of pinned right.
  */
-.innerPublic .brand {
+.brandGroup {
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+.innerPublic .brandGroup {
   grid-column: 1;
   justify-self: start;
 }

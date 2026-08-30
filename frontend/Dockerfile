@@ -16,6 +16,12 @@ RUN npm ci
 ARG VITE_API_BASE_URL=
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
+# Commit desplegado, para la banda de preproducción. Va como argumento porque
+# dentro de la imagen no hay forma de averiguarlo: `.git/` está en el
+# .dockerignore y node:alpine no trae git. Vacío = la banda avisa sin versión.
+ARG VITE_BUILD_SHA=
+ENV VITE_BUILD_SHA=$VITE_BUILD_SHA
+
 COPY . .
 RUN npm run build
 
