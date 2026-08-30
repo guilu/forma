@@ -16,8 +16,31 @@ RUN npm ci
 ARG VITE_API_BASE_URL=
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
+# Commit desplegado, para la banda de preproducción.
+#
+# Va como argumento porque dentro de la imagen no hay forma de averiguarlo: el
+# contexto de build es `./frontend` y `.git/` vive en la raíz del repositorio,
+# así que ni siquiera está en el contexto — no es cuestión del .dockerignore.
+# Quien construye lo pasa:
+#
+#   VITE_BUILD_SHA=$(git rev-parse --short HEAD) docker compose up --build -d
+#
+# Sin él la banda cae a la fecha del build (ver más abajo), que es un dato que
+# la imagen sí conoce de sí misma.
+ARG VITE_BUILD_SHA=
+ENV VITE_BUILD_SHA=$VITE_BUILD_SHA
+
 COPY . .
-RUN npm run build
+
+# Sin sha, la banda de preproducción caía a la cadena vacía y se quedaba sin
+# segunda línea — que es exactamente lo que pasaba en cada despliegue, porque
+# `docker compose up --build` no pasa el argumento. La fecha del build no es el
+# commit, pero es un hecho cierto que la imagen conoce de sí misma y responde a
+# la pregunta que uno se hace mirando una preproducción: cómo de fresco es esto.
+RUN if [ -z "$VITE_BUILD_SHA" ]; then \
+      export VITE_BUILD_SHA="$(date -u +%m-%d\ %H:%M)"; \
+    fi; \
+    npm run build
 
 # --- Runtime stage -------------------------------------------------------
 FROM nginxinc/nginx-unprivileged:alpine AS runtime

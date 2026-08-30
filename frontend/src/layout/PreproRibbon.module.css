@@ -1,0 +1,85 @@
+/*
+ * Banda de preproducción.
+ *
+ * El paralelogramo se hace sesgando el contenedor y contra-sesgando el
+ * contenido, en vez de con un `clip-path`: así el fondo sigue siendo una caja
+ * normal que hereda el color del tema y responde al cambio claro/oscuro sin
+ * recalcular nada.
+ */
+.ribbon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /*
+   * Alto completo de la barra: la banda corta el navbar de arriba abajo, que es
+   * lo que la hace leerse como un sello sobre la interfaz y no como otro chip
+   * más de la fila.
+   */
+  align-self: stretch;
+  height: var(--topbar-height);
+  padding-inline: var(--space-5, 20px);
+  margin-inline-start: var(--space-4, 16px);
+
+  /*
+   * Los colores del tema, cambiados de sitio. `--color-text` sobre
+   * `--color-bg` es el contraste que el tema ya garantiza en ambos modos; al
+   * invertirlos se conserva esa garantía y el aviso queda en negativo respecto
+   * a la barra que lo rodea.
+   */
+  background: var(--color-text);
+  color: var(--color-bg);
+
+  transform: skewX(-18deg);
+  user-select: none;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transform: skewX(18deg);
+}
+
+.label {
+  font-size: var(--font-size-label-md, 14px);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1;
+}
+
+.sha {
+  font-size: var(--font-size-label-sm, 12px);
+  line-height: 1;
+  /*
+   * Sin monoespaciada a propósito: el producto no carga ninguna y el sistema
+   * de diseño solo declara `--font-sans` y `--font-heading`. Meter una familia
+   * nueva por un sha sería ensanchar la paleta tipográfica para un caso. El
+   * poco de `letter-spacing` compensa la legibilidad del hexadecimal.
+   */
+  letter-spacing: 0.04em;
+  opacity: 0.85;
+}
+
+/*
+ * En pantallas estrechas la barra va justa y el sha es el dato prescindible:
+ * el aviso —que esto no es producción— cabe siempre.
+ */
+@media (max-width: 480px) {
+  .ribbon {
+    padding-inline: var(--space-3, 12px);
+  }
+
+  .sha {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ribbon {
+    transition:
+      background-color 0.2s ease,
+      color 0.2s ease;
+  }
+}

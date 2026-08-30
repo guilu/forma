@@ -10,8 +10,26 @@ import { devApiFixtures } from './devApiFixtures';
  */
 declare const process: { readonly env: Record<string, string | undefined> };
 
+/**
+ * Short commit of the build, for the preproduction ribbon.
+ *
+ * Read from the environment and never computed here: asking git would mean
+ * importing `node:child_process`, and this file already explains why
+ * `@types/node` is deliberately absent — Node's globals leaking into the
+ * application sources is a trap worth not setting. The git call lives in the
+ * `build` script instead, where a shell is the natural tool.
+ *
+ * Empty when nobody supplied it, and the ribbon then shows the warning with no
+ * version line. Inventing a placeholder would put a value on screen that
+ * corresponds to no commit at all.
+ */
+const BUILD_SHA = process.env.VITE_BUILD_SHA ?? '';
+
 // Vite + React config for the FORMA frontend skeleton (FOR-81).
 export default defineConfig({
+  define: {
+    __BUILD_SHA__: JSON.stringify(BUILD_SHA),
+  },
   /*
    * The fixture server is opt-in and dev-only (`npm run dev:fixtures`): a plain
    * `npm run dev` keeps proxying to a real backend, and a build never sees it.

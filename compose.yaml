@@ -87,6 +87,10 @@ services:
         # works whether the app is reached on localhost or a public domain,
         # so no fixed backend host is baked into the bundle.
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
+        # Commit desplegado, para la banda de preproducción. Quien construye lo
+        # pasa con `VITE_BUILD_SHA=$(git rev-parse --short HEAD) docker compose
+        # build frontend`; sin él la banda avisa igual, sólo que sin versión.
+        VITE_BUILD_SHA: ${VITE_BUILD_SHA:-}
     container_name: forma-frontend
     restart: unless-stopped
     depends_on:

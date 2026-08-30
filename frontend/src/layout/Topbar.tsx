@@ -7,6 +7,7 @@ import { IconButton } from '../components/IconButton';
 import { ThemeToggleIcon } from '../components/ThemeToggleIcon';
 import { useTheme } from '../theme/ThemeContext';
 import { useAuth } from '../auth/AuthContext';
+import { PreproRibbon } from './PreproRibbon';
 import styles from './Topbar.module.css';
 
 /**
@@ -104,9 +105,24 @@ export function Topbar() {
          * while signed in would leave a signed-in user with no route to the
          * landing at all.
          */}
-        <Link className={styles.brand} to="/" aria-label="FORMA, inicio">
-          <Brand />
-        </Link>
+        {/*
+         * Marca y banda van en el mismo grupo porque la barra pública es un
+         * grid de tres columnas con posiciones explícitas: suelta, la banda
+         * caía como ítem sin colocar en la columna del medio y acababa
+         * centrada en la barra en vez de pegada al logo.
+         */}
+        <div className={styles.brandGroup}>
+          <Link className={styles.brand} to="/" aria-label="FORMA, inicio">
+            <Brand />
+          </Link>
+
+          {/*
+           * Sólo aparece bajo los dominios de preproducción, y lo decide el
+           * propio componente mirando el host: el día que FORMA tenga dominio
+           * propio se apaga sin tocar nada.
+           */}
+          <PreproRibbon />
+        </div>
 
         {isAuthenticated ? (
           <div className={styles.actions}>
