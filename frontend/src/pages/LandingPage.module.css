@@ -1526,7 +1526,61 @@
   }
 }
 
+/*
+ * The stacked hero's muscle map, from the tablet gutters up to the two-column
+ * breakpoint.
+ *
+ * <p>Full width is right on a phone and wrong the moment the page is wider than
+ * the drawing needs: the silhouette is 854x1840, so every pixel of card width
+ * buys more than two of card height. At 1080px — a monitor stood on its side,
+ * below the two-column breakpoint — the card came out ~1190px tall under
+ * ~450px of copy, and the illustration stopped illustrating the argument and
+ * became the page.
+ *
+ * <p>34rem is where a well is about 220px across, which is the same order as
+ * the figures in the two-column layout above. Centred, because a capped card
+ * hanging off the left margin reads as a column that failed to fill.
+ */
+@media (min-width: 769px) and (max-width: 1279px) {
+  .sessionMap {
+    width: 100%;
+    max-width: 34rem;
+    margin-inline: auto;
+  }
+}
+
 @media (min-width: 1025px) {
+  .sectionTitle {
+    font-size: 2.75rem;
+    line-height: 1.08;
+  }
+
+  /* The FAQ's heading sits in a side column, not across the page, so it keeps
+     the standard headline size — at display size it wrapped onto five lines. */
+  .faqIntro .sectionTitle {
+    font-size: var(--font-size-headline-lg);
+    line-height: var(--line-height-headline-lg);
+  }
+}
+
+/*
+ * The two-column hero, and the display type that only fits inside it.
+ *
+ * <p>1280 and not 1025, and the difference is a monitor stood on its side.
+ * The right column is sized for the drawing — two silhouettes side by side
+ * need about 32rem before they stop being figures and start being
+ * thumbnails — so the copy gets whatever is left: `100vw - 32rem` minus the
+ * gutters and the gap. At 1080px wide that is ~440px, and "Entrenamiento" at
+ * 60px is ~512px of unbreakable Montserrat 900, which `.hero` then clipped
+ * rather than scrolled. A 1080x1920 portrait monitor cleared the old
+ * breakpoint and rendered the headline as "Entrenam".
+ *
+ * <p>1280 is the first width where the copy column (~625px) clears that run
+ * with room to spare. Below it the hero stacks, which is the same layout an
+ * iPad already got and a better trade than two columns neither of which
+ * fits: full-width copy at the fluid `.title` size, card underneath.
+ */
+@media (min-width: 1280px) {
   .heroGrid {
     /*
      * The right column is sized for the drawing, not split down the middle.
@@ -1585,17 +1639,5 @@
      * typography anyway — 60px type wants a short line.
      */
     max-width: 38rem;
-  }
-
-  .sectionTitle {
-    font-size: 2.75rem;
-    line-height: 1.08;
-  }
-
-  /* The FAQ's heading sits in a side column, not across the page, so it keeps
-     the standard headline size — at display size it wrapped onto five lines. */
-  .faqIntro .sectionTitle {
-    font-size: var(--font-size-headline-lg);
-    line-height: var(--line-height-headline-lg);
   }
 }
