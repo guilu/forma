@@ -29,6 +29,13 @@ const DESKTOP = { width: 1280, height: 900 };
 const LAPTOP = { width: 1440, height: 900 };
 /** Above the mid-width band, where the dashboard rows are at their widest. */
 const WIDE = { width: 1680, height: 900 };
+/**
+ * A 1080x1920 monitor stood on its side. Wide enough to clear the 1025px
+ * desktop breakpoint — so the hero lays out in two columns — and narrow enough
+ * that the column left for the copy is not. It is the width where "desktop
+ * layout" and "desktop room" stop being the same thing.
+ */
+const PORTRAIT = { width: 1080, height: 1920 };
 
 const APP_ROUTES = ['/app', '/app/measurements', '/app/progress'] as const;
 
@@ -1244,6 +1251,76 @@ test.describe('landing hero CTA', () => {
       widest,
       `The headline reaches ${Math.round(widest)}px in a ${PHONE.width}px viewport`,
     ).toBeLessThanOrEqual(PHONE.width);
+  });
+});
+
+test.describe('landing hero on a portrait monitor', () => {
+  test.use({ viewport: PORTRAIT });
+
+  /**
+   * The same failure the phone test guards, one breakpoint up and for the
+   * opposite reason: there the headline was too big for the viewport, here the
+   * viewport is fine and the *column* is too narrow, because the two-column
+   * hero hands the copy whatever is left after a 32rem card. `.hero` clips
+   * horizontal overflow, so the headline does not announce it with a scrollbar
+   * — it comes out with its right-hand letters shaved off.
+   *
+   * <p>Measured against the heading's own content box rather than the viewport:
+   * the block obediently stops at its column while the glyphs inside it do not,
+   * and the column is the constraint that actually bites at this width.
+   */
+  test('never renders the headline past its own column', async ({ page }) => {
+    await page.goto('/');
+    const title = page.getByRole('heading', { level: 1 });
+    await expect(title).toBeVisible();
+    await page.evaluate(() => document.fonts.ready);
+
+    const measured = await title.evaluate((heading) => {
+      const range = document.createRange();
+      range.selectNodeContents(heading);
+      const widest = Math.max(...[...range.getClientRects()].map((line) => line.right));
+      const style = getComputedStyle(heading);
+      const box = heading.getBoundingClientRect();
+      return { widest, columnRight: box.right - parseFloat(style.paddingRight) };
+    });
+
+    expect(
+      measured.widest,
+      `The headline reaches ${Math.round(measured.widest)}px in a column that ends at ${Math.round(measured.columnRight)}px`,
+    ).toBeLessThanOrEqual(measured.columnRight + 1);
+  });
+
+  /**
+   * Stacking the hero hands the muscle map the full width of the page, and the
+   * silhouette is 854x1840 — every pixel of card width buys more than two of
+   * card height. Uncapped at 1080px that is a ~1150px illustration sitting
+   * under ~500px of copy: the drawing stops illustrating the argument and
+   * becomes the page, and the section below it is pushed off a 1920px screen.
+   *
+   * <p>Measured as a ratio against the copy rather than a pixel budget, for the
+   * same reason the desktop check beside it is: the numbers move the first time
+   * the paragraph gains a line, the relationship does not.
+   */
+  test('keeps the stacked muscle map in proportion to the copy', async ({ page }) => {
+    await page.goto('/');
+    const card = page.getByRole('region', { name: /Mapa muscular/ });
+    const badge = page.getByText('Sin cuenta · sin tarjeta · 4 pasos');
+    const trust = page.getByText('Tus datos son tuyos y puedes borrarlos');
+    await expect(card).toBeVisible();
+    await page.evaluate(() => document.fonts.ready);
+
+    const cardBox = await card.boundingBox();
+    const badgeBox = await badge.boundingBox();
+    const trustBox = await trust.boundingBox();
+    expect(cardBox && badgeBox && trustBox, 'The hero did not lay out').not.toBeNull();
+
+    const copyHeight = trustBox!.y + trustBox!.height - badgeBox!.y;
+    const ratio = cardBox!.height / copyHeight;
+
+    expect(
+      ratio,
+      `The muscle map is ${Math.round(cardBox!.height)}px tall under ${Math.round(copyHeight)}px of copy (${ratio.toFixed(2)}x)`,
+    ).toBeLessThanOrEqual(1.6);
   });
 });
 
