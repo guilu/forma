@@ -87,17 +87,22 @@ public class UserService {
    * that, creates a new Google-only account. Never called with an unverified email — Google's own
    * account-recovery/verification is the only thing this trusts to prove ownership of the address.
    *
-   * @throws UnauthorizedException if {@code identity.emailVerified()} is false, the resolved
-   *     account is not active, or the account found by email is already linked to a
-   *     <em>different</em> Google subject (re-link takeover guard — an existing link is never
-   *     silently reassigned)
+   * @throws UnauthorizedException if {@code identity.emailVerified()} is false, {@code
+   *     identity.email()} is null/blank, the resolved account is not active, or the account found
+   *     by email is already linked to a <em>different</em> Google subject (re-link takeover guard —
+   *     an existing link is never silently reassigned)
    */
   public User loginWithGoogle(GoogleIdentity identity) {
     if (!identity.emailVerified()) {
       throw new UnauthorizedException("El email de Google no está verificado");
     }
-    String normalizedEmail =
-        identity.email() == null ? null : identity.email().trim().toLowerCase();
+    // "email_verified: true" says nothing about an email actually being present — a null/blank
+    // claim would otherwise sail through into a lookup/insert against an unusable normalized
+    // email. Checked before any repository call, same as the emailVerified check above.
+    if (identity.email() == null || identity.email().isBlank()) {
+      throw new UnauthorizedException("Google no envió un email para esta cuenta");
+    }
+    String normalizedEmail = identity.email().trim().toLowerCase();
     return resolveGoogleUser(identity.subject(), normalizedEmail, true);
   }
 

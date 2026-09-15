@@ -121,6 +121,34 @@ class UserServiceTest {
     verify(repository, never()).findByEmail(anyString());
   }
 
+  /**
+   * Regression test (finding #6 of the fresh-review fixes on ADR-014, SUGGESTION): a null or blank
+   * email must be rejected even when Google claims it is verified — {@code email_verified: true}
+   * says nothing about the email being present at all, and every downstream step (normalizing,
+   * looking up, inserting) assumes a real address. Checked before any repository call.
+   */
+  @Test
+  void loginWithGoogleRejectsANullEmailEvenWhenVerifiedWithoutTouchingTheRepository() {
+    GoogleIdentity identity = new GoogleIdentity("google-sub-blank-1", null, true);
+
+    assertThatThrownBy(() -> service.loginWithGoogle(identity))
+        .isInstanceOf(UnauthorizedException.class);
+
+    verify(repository, never()).findByGoogleSubject(anyString());
+    verify(repository, never()).findByEmail(anyString());
+  }
+
+  @Test
+  void loginWithGoogleRejectsABlankEmailEvenWhenVerifiedWithoutTouchingTheRepository() {
+    GoogleIdentity identity = new GoogleIdentity("google-sub-blank-2", "   ", true);
+
+    assertThatThrownBy(() -> service.loginWithGoogle(identity))
+        .isInstanceOf(UnauthorizedException.class);
+
+    verify(repository, never()).findByGoogleSubject(anyString());
+    verify(repository, never()).findByEmail(anyString());
+  }
+
   @Test
   void loginWithGoogleReturnsTheAccountAlreadyLinkedToThatSubject() {
     GoogleIdentity identity = new GoogleIdentity("google-sub-2", "a@x.com", true);
