@@ -71,8 +71,37 @@ forma:
   bootstrap:
     legacy-user-password: ${FORMA_BOOTSTRAP_LEGACY_USER_PASSWORD:}
 
+  # Login with Google (ADR-012 addendum). Empty by default — SecurityConfig builds the
+  # ClientRegistrationRepository by hand from these and only registers oauth2Login() when both are
+  # set (Boot's own spring.security.oauth2.client.registration.* binding fails startup on an empty
+  # client-id, which would break every environment that has not configured Google yet). With no
+  # value, GET /api/oauth2/authorization/google redirects to the frontend login page with
+  # ?error=google instead of 404ing (GoogleOAuth2FallbackController). Register the OAuth client in
+  # Google Cloud Console with authorized redirect URIs
+  # https://forma.diegobarrioh.dev/api/login/oauth2/code/google (prod) and
+  # http://localhost:8080/api/login/oauth2/code/google (local, direct backend — see
+  # docs/configuration.md for the compose/nginx-proxied case).
+  oauth2:
+    google:
+      client-id: ${GOOGLE_CLIENT_ID:}
+      client-secret: ${GOOGLE_CLIENT_SECRET:}
+
+  # Where the backend redirects the browser after a Google login (ADR-012 addendum) and where an
+  # unconfigured/failed attempt sends it back with ?error=google. Defaults to plain local dev
+  # (`npm run dev`, Vite on :5173); Docker Compose overrides it to the compose frontend's published
+  # origin (compose.yaml). A real deployment MUST set this to its own origin (e.g.
+  # https://forma.diegobarrioh.dev) — same-origin behind nginx, exactly like every other same-origin
+  # API call the SPA makes.
+  frontend-url: ${FORMA_FRONTEND_URL:http://localhost:5173}
+
 server:
   port: ${SERVER_PORT:8080}
+  # Login with Google (ADR-012 addendum): trust X-Forwarded-Proto/Host/Port from the reverse proxy
+  # (frontend/nginx.conf sets them) to reconstruct the request's public URL. Without this, the
+  # Google OAuth redirect-uri's {baseUrl} placeholder would resolve to the backend's own
+  # plain-http, container-internal view of itself instead of the public https host — building a
+  # redirect_uri Google was never registered with.
+  forward-headers-strategy: framework
   # API error safety baseline (FOR-88, ADR-005): never leak stack traces or raw
   # exception messages to clients. The GlobalExceptionHandler owns the response
   # shape; these settings harden the container's default error path too.

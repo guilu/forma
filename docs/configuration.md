@@ -40,6 +40,9 @@ to override locally; `.env` is gitignored.
 | `WITHINGS_REDIRECT_URI` | backend | `https://forma.diegobarrioh.dev/auth` | no | Must match the URI registered with Withings exactly. |
 | `WITHINGS_TOKEN_ENC_KEY` | backend | (empty) | **yes** | Key for encrypting stored provider tokens. `openssl rand -base64 32`. |
 | `FORMA_BOOTSTRAP_LEGACY_USER_PASSWORD` | backend | (empty) | **yes** | Activates the pre-auth placeholder account (FOR-145). |
+| `GOOGLE_CLIENT_ID` | backend | (empty) | no | Google OAuth client id. Empty disables `oauth2Login()`; `/api/oauth2/authorization/google` redirects to `/login?error=google` instead of 404/500ing. |
+| `GOOGLE_CLIENT_SECRET` | backend | (empty) | **yes** | Google OAuth client secret. |
+| `FORMA_FRONTEND_URL` | backend | `http://localhost:5173` | no | Where the backend redirects the browser after a Google login (or a failed one, with `?error=google`). Compose overrides it to `http://localhost:3000` (its published frontend port); a real deployment MUST set it to its own origin, e.g. `https://forma.diegobarrioh.dev` — same-origin behind nginx. |
 
 ### Getting a variable into the backend container
 

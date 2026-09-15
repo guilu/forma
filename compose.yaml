@@ -67,6 +67,14 @@ services:
       # Activates the pre-auth placeholder account (FOR-145, ADR-012). Same
       # pass-through gap as the Withings block above.
       FORMA_BOOTSTRAP_LEGACY_USER_PASSWORD: ${FORMA_BOOTSTRAP_LEGACY_USER_PASSWORD:-}
+      # Login with Google (ADR-012 addendum). Same pass-through gap as the Withings block above —
+      # empty by default so a fresh checkout boots and every test/CI run passes with no setup
+      # (SecurityConfig only registers oauth2Login() when both are set). FORMA_FRONTEND_URL
+      # overrides application.yml's plain-local-dev default to this compose deployment's own
+      # published frontend origin, since the backend and frontend are different host ports here.
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      FORMA_FRONTEND_URL: ${FORMA_FRONTEND_URL:-http://localhost:3000}
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     healthcheck:

@@ -36,7 +36,7 @@ class UserServiceTest {
   @BeforeEach
   void setUp() {
     repository = Mockito.mock(UserRepository.class);
-    passwordEncoder = new SecurityConfig().passwordEncoder();
+    passwordEncoder = new SecurityConfig("", "", "http://localhost:5173").passwordEncoder();
     service = new UserService(repository, passwordEncoder);
   }
 

@@ -4,9 +4,11 @@ import dev.diegobarrioh.forma.delivery.ApiPaths;
 import dev.diegobarrioh.forma.delivery.security.ApiAccessDeniedHandler;
 import dev.diegobarrioh.forma.delivery.security.ApiAuthenticationEntryPoint;
 import dev.diegobarrioh.forma.delivery.security.CsrfCookieFilter;
+import dev.diegobarrioh.forma.delivery.security.GoogleOAuth2SuccessHandler;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.HashMap;
 import java.util.Map;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -17,11 +19,14 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.config.oauth2.client.CommonOAuth2Provider;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.DelegatingPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.client.registration.ClientRegistration;
+import org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
@@ -40,6 +45,54 @@ import org.springframework.web.cors.CorsConfigurationSource;
 @EnableMethodSecurity
 @EnableWebSecurity
 public class SecurityConfig {
+
+  private final String googleClientId;
+  private final String googleClientSecret;
+  private final String frontendUrl;
+
+  /**
+   * Google login credentials (ADR-012 addendum) and the SPA's own origin, for the failure redirect
+   * and for {@link #googleConfigured()}. Read here — not via Boot's {@code
+   * spring.security.oauth2.client.registration.*} autoconfiguration — because that
+   * autoconfiguration fails application startup when {@code client-id} is an empty string (a real
+   * environment that has not configured Google yet would otherwise never boot); {@link
+   * #googleClientRegistration()} builds the {@link ClientRegistration} by hand instead, only when
+   * both are non-blank ({@link #googleConfigured()}).
+   */
+  public SecurityConfig(
+      @Value("${forma.oauth2.google.client-id:}") String googleClientId,
+      @Value("${forma.oauth2.google.client-secret:}") String googleClientSecret,
+      @Value("${forma.frontend-url:http://localhost:5173}") String frontendUrl) {
+    this.googleClientId = googleClientId;
+    this.googleClientSecret = googleClientSecret;
+    this.frontendUrl = frontendUrl;
+  }
+
+  private boolean googleConfigured() {
+    return googleClientId != null
+        && !googleClientId.isBlank()
+        && googleClientSecret != null
+        && !googleClientSecret.isBlank();
+  }
+
+  /**
+   * Built by hand from {@link CommonOAuth2Provider#GOOGLE}'s defaults (authorization/token/userinfo
+   * endpoints, {@code openid,profile,email} scope) plus this environment's client id/secret. The
+   * {@code redirect-uri} template mirrors akademia: mounted under {@code /api} so the single nginx
+   * proxy rule for {@code /api/} already covers it and the SPA's client-side router never sees it
+   * (README of this decision: ADR-012 addendum). {@code {baseUrl}} expands against the *inbound*
+   * request at authorization time — {@code server.forward-headers-strategy=framework}
+   * (application.yml) is what makes that resolve to the public https host behind nginx rather than
+   * the container's own plain-http view of itself.
+   */
+  private ClientRegistration googleClientRegistration() {
+    return CommonOAuth2Provider.GOOGLE
+        .getBuilder("google")
+        .clientId(googleClientId)
+        .clientSecret(googleClientSecret)
+        .redirectUri("{baseUrl}/api/login/oauth2/code/{registrationId}")
+        .build();
+  }
 
   /**
    * Argon2id password hashing wrapped in a {@link DelegatingPasswordEncoder} for algorithm agility
@@ -94,7 +147,8 @@ public class SecurityConfig {
       CorsConfigurationSource corsConfigurationSource,
       ApiAuthenticationEntryPoint authenticationEntryPoint,
       ApiAccessDeniedHandler accessDeniedHandler,
-      CsrfCookieFilter csrfCookieFilter)
+      CsrfCookieFilter csrfCookieFilter,
+      GoogleOAuth2SuccessHandler googleOAuth2SuccessHandler)
       throws Exception {
     http.cors(cors -> cors.configurationSource(corsConfigurationSource))
         // Cookie-based CSRF (ADR-012): the SPA reads the JS-readable XSRF-TOKEN cookie and echoes
@@ -128,6 +182,14 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers(HttpMethod.GET, "/actuator/health")
                     .permitAll()
+                    // Google login (ADR-012 addendum): both the authorization-start and the
+                    // provider-callback paths are unauthenticated by nature — permitAll here is
+                    // what
+                    // lets an anonymous visitor reach them at all. Mounted under /api for the same
+                    // reason akademia mounts them there: one nginx proxy rule covers /api/, so the
+                    // SPA's client-side router never intercepts these.
+                    .requestMatchers("/api/oauth2/**", "/api/login/oauth2/**")
+                    .permitAll()
                     .anyRequest()
                     .authenticated())
         .exceptionHandling(
@@ -145,6 +207,28 @@ public class SecurityConfig {
                     .logoutSuccessHandler(
                         (request, response, authentication) ->
                             response.setStatus(HttpServletResponse.SC_NO_CONTENT)));
+
+    // oauth2Login() is only registered when both credentials are configured (constructor javadoc):
+    // an InMemoryClientRegistrationRepository refuses to be built with zero registrations, so there
+    // is nothing valid to pass it otherwise. When unconfigured, GoogleOAuth2FallbackController
+    // answers /api/oauth2/authorization/google instead (its own javadoc explains why that never
+    // conflicts with this branch).
+    if (googleConfigured()) {
+      http.oauth2Login(
+          oauth2 ->
+              oauth2
+                  .clientRegistrationRepository(
+                      new InMemoryClientRegistrationRepository(googleClientRegistration()))
+                  .authorizationEndpoint(
+                      authorization -> authorization.baseUri("/api/oauth2/authorization"))
+                  .redirectionEndpoint(
+                      redirection -> redirection.baseUri("/api/login/oauth2/code/*"))
+                  .successHandler(googleOAuth2SuccessHandler)
+                  .failureHandler(
+                      (request, response, exception) ->
+                          response.sendRedirect(frontendUrl + "/login?error=google")));
+    }
+
     return http.build();
   }
 }
