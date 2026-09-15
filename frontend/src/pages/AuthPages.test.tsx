@@ -244,6 +244,52 @@ describe('auth pages', () => {
     );
     expect(screen.queryByText('database details')).not.toBeInTheDocument();
   });
+
+  it.each([
+    ['/login', <LoginPage />],
+    ['/register', <RegisterPage />],
+  ])(
+    'offers a Google sign-in link pointing at the backend authorization endpoint on %s',
+    (path, page) => {
+      vi.mocked(useAuth).mockReturnValue(authState({}));
+      render(
+        <MemoryRouter initialEntries={[path]}>
+          <Routes>
+            <Route path={path} element={page} />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+      expect(screen.getByRole('link', { name: 'Continuar con Google' })).toHaveAttribute(
+        'href',
+        '/api/oauth2/authorization/google',
+      );
+    },
+  );
+
+  it('shows a Spanish error when redirected back with ?error=google', () => {
+    vi.mocked(useAuth).mockReturnValue(authState({}));
+    render(
+      <MemoryRouter initialEntries={['/login?error=google']}>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('alert')).toHaveTextContent('No se pudo iniciar sesión con Google.');
+  });
+
+  it('shows no Google error when the login page loads without the error flag', () => {
+    vi.mocked(useAuth).mockReturnValue(authState({}));
+    render(
+      <MemoryRouter initialEntries={['/login']}>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByText('No se pudo iniciar sesión con Google.')).not.toBeInTheDocument();
+  });
 });
 
 function LocationPath() {

@@ -3,6 +3,7 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { Button } from '../components/Button';
 import { TextField } from '../components/FormField';
+import { GoogleAuthButton, OrDivider } from '../components/GoogleAuthButton';
 import styles from './AuthPage.module.css';
 import { resolveAuthDestination, type AuthDestination } from '../auth/authDestination';
 
@@ -50,6 +51,8 @@ export function RegisterPage() {
             Crear cuenta
           </h1>
         </header>
+        <GoogleAuthButton />
+        <OrDivider />
         <form className={styles.form} onSubmit={submit}>
           <TextField
             id="register-email"

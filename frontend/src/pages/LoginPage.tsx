@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from 'react';
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { Button } from '../components/Button';
 import { TextField } from '../components/FormField';
+import { GoogleAuthButton, OrDivider } from '../components/GoogleAuthButton';
 import styles from './AuthPage.module.css';
 import { resolveAuthDestination, type AuthDestination } from '../auth/authDestination';
 
@@ -10,16 +11,21 @@ interface AuthLocationState {
   readonly from?: AuthDestination;
 }
 
+const GOOGLE_ERROR_MESSAGE = 'No se pudo iniciar sesión con Google.';
+
 export function LoginPage() {
   const auth = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const destination = (location.state as AuthLocationState | null)?.from;
   const target = resolveAuthDestination(destination);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string>();
+  const [error, setError] = useState<string | undefined>(
+    searchParams.get('error') === 'google' ? GOOGLE_ERROR_MESSAGE : undefined,
+  );
 
   if (auth.status === 'authenticated') return <Navigate to={target} replace />;
 
@@ -47,6 +53,8 @@ export function LoginPage() {
             Iniciar sesión
           </h1>
         </header>
+        <GoogleAuthButton />
+        <OrDivider />
         <form className={styles.form} onSubmit={submit}>
           <TextField
             id="login-email"
