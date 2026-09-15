@@ -3,7 +3,9 @@ package dev.diegobarrioh.forma.application;
 import dev.diegobarrioh.forma.domain.User;
 import dev.diegobarrioh.forma.domain.UserRole;
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -76,5 +78,77 @@ public class UserService {
   /** Records a successful login's timestamp (spec: "last_login_at MUST update"). */
   public void recordSuccessfulLogin(UUID id) {
     repository.updateLastLoginAt(id, Instant.now());
+  }
+
+  /**
+   * Resolves a Google OIDC login into a FORMA account (ADR-012 addendum, migration V62): finds the
+   * account already linked to the Google subject; failing that, links the subject to an existing
+   * account found by email (self-registered previously, now also signing in with Google); failing
+   * that, creates a new Google-only account. Never called with an unverified email — Google's own
+   * account-recovery/verification is the only thing this trusts to prove ownership of the address.
+   *
+   * @throws UnauthorizedException if {@code identity.emailVerified()} is false, or the resolved
+   *     account is not active
+   */
+  public User loginWithGoogle(GoogleIdentity identity) {
+    if (!identity.emailVerified()) {
+      throw new UnauthorizedException("El email de Google no está verificado");
+    }
+    String normalizedEmail =
+        identity.email() == null ? null : identity.email().trim().toLowerCase();
+    return resolveGoogleUser(identity.subject(), normalizedEmail, true);
+  }
+
+  /**
+   * @param allowRetry whether a unique-constraint race (two concurrent first Google logins for the
+   *     same account) may retry once by re-resolving instead of propagating — akademia's documented
+   *     pattern for this exact race (see task notes), since the loser's insert/link failing means
+   *     the winner's row now exists to find.
+   */
+  private User resolveGoogleUser(String subject, String normalizedEmail, boolean allowRetry) {
+    Optional<User> bySubject = repository.findByGoogleSubject(subject);
+    if (bySubject.isPresent()) {
+      return requireActive(bySubject.get());
+    }
+
+    Optional<User> byEmail = repository.findByEmail(normalizedEmail);
+    if (byEmail.isPresent()) {
+      User existing = requireActive(byEmail.get());
+      try {
+        repository.linkGoogleSubject(existing.id(), subject);
+      } catch (DataIntegrityViolationException ex) {
+        if (!allowRetry) {
+          throw ex;
+        }
+        return resolveGoogleUser(subject, normalizedEmail, false);
+      }
+      return new User(
+          existing.id(),
+          existing.email(),
+          existing.passwordHash(),
+          existing.createdAt(),
+          existing.lastLoginAt(),
+          existing.active(),
+          existing.role(),
+          subject);
+    }
+
+    UUID id = UUID.randomUUID();
+    try {
+      repository.insertWithGoogleSubject(id, normalizedEmail, subject);
+    } catch (DataIntegrityViolationException ex) {
+      if (!allowRetry) {
+        throw ex;
+      }
+      return resolveGoogleUser(subject, normalizedEmail, false);
+    }
+    return new User(id, normalizedEmail, null, Instant.now(), null, true, UserRole.USER, subject);
+  }
+
+  private User requireActive(User user) {
+    if (!user.active()) {
+      throw new UnauthorizedException("Invalid credentials");
+    }
+    return user;
   }
 }

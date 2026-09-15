@@ -109,4 +109,127 @@ class UserServiceTest {
 
     verify(repository, times(1)).updateLastLoginAt(eq(id), any());
   }
+
+  @Test
+  void loginWithGoogleRejectsAnUnverifiedEmailWithoutTouchingTheRepository() {
+    GoogleIdentity identity = new GoogleIdentity("google-sub-1", "a@x.com", false);
+
+    assertThatThrownBy(() -> service.loginWithGoogle(identity))
+        .isInstanceOf(UnauthorizedException.class);
+
+    verify(repository, never()).findByGoogleSubject(anyString());
+    verify(repository, never()).findByEmail(anyString());
+  }
+
+  @Test
+  void loginWithGoogleReturnsTheAccountAlreadyLinkedToThatSubject() {
+    GoogleIdentity identity = new GoogleIdentity("google-sub-2", "a@x.com", true);
+    UUID id = UUID.randomUUID();
+    User linked = new User(id, "a@x.com", null, null, null, true, UserRole.USER, "google-sub-2");
+    when(repository.findByGoogleSubject("google-sub-2")).thenReturn(Optional.of(linked));
+
+    User result = service.loginWithGoogle(identity);
+
+    assertThat(result).isEqualTo(linked);
+    verify(repository, never()).findByEmail(anyString());
+    verify(repository, never()).insertWithGoogleSubject(any(), anyString(), anyString());
+    verify(repository, never()).linkGoogleSubject(any(), anyString());
+  }
+
+  @Test
+  void loginWithGoogleLinksTheSubjectToAnExistingAccountFoundByEmail() {
+    GoogleIdentity identity = new GoogleIdentity("google-sub-3", "existing@x.com", true);
+    UUID id = UUID.randomUUID();
+    User existing =
+        new User(id, "existing@x.com", "{argon2}hash", null, null, true, UserRole.USER, null);
+    when(repository.findByGoogleSubject("google-sub-3")).thenReturn(Optional.empty());
+    when(repository.findByEmail("existing@x.com")).thenReturn(Optional.of(existing));
+
+    User result = service.loginWithGoogle(identity);
+
+    verify(repository, times(1)).linkGoogleSubject(id, "google-sub-3");
+    assertThat(result.id()).isEqualTo(id);
+    assertThat(result.googleSubject()).isEqualTo("google-sub-3");
+    // Linking never touches the password an account already had.
+    assertThat(result.passwordHash()).isEqualTo("{argon2}hash");
+  }
+
+  @Test
+  void loginWithGoogleCreatesANewActiveUserRoleAccountWhenNoneExists() {
+    GoogleIdentity identity = new GoogleIdentity("google-sub-4", "new@x.com", true);
+    when(repository.findByGoogleSubject("google-sub-4")).thenReturn(Optional.empty());
+    when(repository.findByEmail("new@x.com")).thenReturn(Optional.empty());
+
+    User result = service.loginWithGoogle(identity);
+
+    verify(repository, times(1))
+        .insertWithGoogleSubject(eq(result.id()), eq("new@x.com"), eq("google-sub-4"));
+    assertThat(result.email()).isEqualTo("new@x.com");
+    assertThat(result.passwordHash()).isNull();
+    assertThat(result.active()).isTrue();
+    assertThat(result.role()).isEqualTo(UserRole.USER);
+    assertThat(result.googleSubject()).isEqualTo("google-sub-4");
+  }
+
+  @Test
+  void loginWithGoogleRejectsAnInactiveAccountFoundBySubject() {
+    GoogleIdentity identity = new GoogleIdentity("google-sub-5", "inactive@x.com", true);
+    User inactive =
+        new User(
+            UUID.randomUUID(),
+            "inactive@x.com",
+            null,
+            null,
+            null,
+            false,
+            UserRole.USER,
+            "google-sub-5");
+    when(repository.findByGoogleSubject("google-sub-5")).thenReturn(Optional.of(inactive));
+
+    assertThatThrownBy(() -> service.loginWithGoogle(identity))
+        .isInstanceOf(UnauthorizedException.class);
+  }
+
+  @Test
+  void loginWithGoogleRejectsAnInactiveAccountFoundByEmail() {
+    GoogleIdentity identity = new GoogleIdentity("google-sub-6", "inactive2@x.com", true);
+    User inactive =
+        new User(
+            UUID.randomUUID(),
+            "inactive2@x.com",
+            "{argon2}hash",
+            null,
+            null,
+            false,
+            UserRole.USER,
+            null);
+    when(repository.findByGoogleSubject("google-sub-6")).thenReturn(Optional.empty());
+    when(repository.findByEmail("inactive2@x.com")).thenReturn(Optional.of(inactive));
+
+    assertThatThrownBy(() -> service.loginWithGoogle(identity))
+        .isInstanceOf(UnauthorizedException.class);
+
+    verify(repository, never()).linkGoogleSubject(any(), anyString());
+  }
+
+  @Test
+  void loginWithGoogleRetriesOnceWhenACreateRaceLosesTheUniqueConstraint() {
+    GoogleIdentity identity = new GoogleIdentity("google-sub-7", "race@x.com", true);
+    UUID winnerId = UUID.randomUUID();
+    User winner =
+        new User(winnerId, "race@x.com", null, null, null, true, UserRole.USER, "google-sub-7");
+    when(repository.findByGoogleSubject("google-sub-7"))
+        .thenReturn(Optional.empty())
+        .thenReturn(Optional.of(winner));
+    when(repository.findByEmail("race@x.com")).thenReturn(Optional.empty());
+    org.mockito.Mockito.doThrow(new org.springframework.dao.DataIntegrityViolationException("dup"))
+        .when(repository)
+        .insertWithGoogleSubject(any(), eq("race@x.com"), eq("google-sub-7"));
+
+    User result = service.loginWithGoogle(identity);
+
+    assertThat(result).isEqualTo(winner);
+    verify(repository, times(1))
+        .insertWithGoogleSubject(any(), eq("race@x.com"), eq("google-sub-7"));
+  }
 }
