@@ -9,6 +9,8 @@ import dev.diegobarrioh.forma.delivery.security.GoogleOAuth2SuccessHandler;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.HashMap;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -47,6 +49,8 @@ import org.springframework.web.cors.CorsConfigurationSource;
 @EnableWebSecurity
 public class SecurityConfig {
 
+  private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
+
   private final String googleClientId;
   private final String googleClientSecret;
 
@@ -57,19 +61,40 @@ public class SecurityConfig {
    * real environment that has not configured Google yet would otherwise never boot); {@link
    * #googleClientRegistration()} builds the {@link ClientRegistration} by hand instead, only when
    * both are non-blank ({@link #googleConfigured()}).
+   *
+   * <p>Logs (never the values themselves) when exactly one of the two is set — that is always a
+   * misconfiguration (a copy-paste of one var without the other), and oauth2Login() silently
+   * staying disabled with no signal anywhere would otherwise be a confusing way to discover it.
    */
   public SecurityConfig(
       @Value("${forma.oauth2.google.client-id:}") String googleClientId,
       @Value("${forma.oauth2.google.client-secret:}") String googleClientSecret) {
     this.googleClientId = googleClientId;
     this.googleClientSecret = googleClientSecret;
+    if (googlePartiallyConfigured()) {
+      log.warn(
+          "Google login misconfigured: exactly one of GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET is"
+              + " set. oauth2Login() stays disabled until both are provided.");
+    }
   }
 
   private boolean googleConfigured() {
-    return googleClientId != null
-        && !googleClientId.isBlank()
-        && googleClientSecret != null
-        && !googleClientSecret.isBlank();
+    return hasGoogleClientId() && hasGoogleClientSecret();
+  }
+
+  /**
+   * @return whether exactly one of client id/secret is set — always a misconfiguration.
+   */
+  private boolean googlePartiallyConfigured() {
+    return hasGoogleClientId() != hasGoogleClientSecret();
+  }
+
+  private boolean hasGoogleClientId() {
+    return googleClientId != null && !googleClientId.isBlank();
+  }
+
+  private boolean hasGoogleClientSecret() {
+    return googleClientSecret != null && !googleClientSecret.isBlank();
   }
 
   /**
