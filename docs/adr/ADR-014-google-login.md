@@ -76,10 +76,14 @@ token to hand the browser at all — the existing session machinery does the who
    `/api/oauth2/authorization/google` with a redirect to the login page (point 8) instead of a bare
    404 — the two paths never conflict, because Spring Security's authorization-redirect filter
    (present only when configured) always intercepts the request before it reaches that controller.
-7. **`{baseUrl}` behind nginx**: `server.forward-headers-strategy=framework` plus
-   `frontend/nginx.conf` forwarding `X-Forwarded-Proto`/`X-Forwarded-Host` is what lets the
-   redirect-uri template resolve to the public `https://forma.diegobarrioh.dev` host rather than
-   the backend container's own plain-http, internal view of itself.
+7. **`{baseUrl}` behind a proxy**: `server.forward-headers-strategy=framework` makes the
+   redirect-uri template resolve `{baseUrl}` from `X-Forwarded-Proto`/`X-Forwarded-Host` instead of
+   the backend's own plain-http, internal view of itself — `frontend/nginx.conf` sends both in prod
+   and Compose, and `frontend/vite.config.ts`'s dev proxy sends both for plain `npm run dev` (point
+   12). Register **one Google Cloud Console redirect URI per origin the SPA is actually served
+   from** (docs/configuration.md has the current list: prod, Compose's `:3000`, and Vite's `:5173`)
+   — the backend builds `redirect_uri` from whichever origin the request actually arrived through,
+   so each one needs to be registered, not just the production one.
 8. **Post-login/error destination and `forma.frontend-url`** (revised by the fresh-review fix
    below): redirects to the SPA's existing default authenticated destination (`/app`,
    `authDestination.ts`) on success, or `/login?error=google` on any rejection. The pre-login "from"
@@ -94,14 +98,15 @@ token to hand the browser at all — the existing session machinery does the who
    that forgot to set it would send every user's browser to `localhost` after login, a silent
    footgun with no fail-fast signal. Checked before choosing the fix: `frontend/nginx.conf` proxies
    `/api/` to this backend behind one origin in **both** production and Docker Compose
-   (`compose.yaml`'s frontend service), and `vite.config.ts`'s `server.proxy['/api']` does the same
-   for plain `npm run dev` — in all three supported flows the browser only ever talks to the
-   frontend's own origin, so a relative `Location` header is correct with zero configuration. An
-   absolute `forma.frontend-url` is needed only for the one flow that genuinely differs: hitting
-   this backend directly, bypassing every proxy (e.g. `./gradlew bootRun` with no frontend running)
-   — not a supported way to exercise Google login, so it stays opt-in rather than becoming a new
-   required-in-prod variable (which would have reintroduced the same class of footgun this fix
-   removes: a required var is only as safe as remembering to set it).
+   (`compose.yaml`'s frontend service). An absolute `forma.frontend-url` is needed only for the one
+   flow that genuinely differs: hitting this backend directly, bypassing every proxy (e.g. `./gradlew
+   bootRun` with no frontend running) — not a supported way to exercise Google login, so it stays
+   opt-in rather than becoming a new required-in-prod variable (which would have reintroduced the
+   same class of footgun this fix removes: a required var is only as safe as remembering to set it).
+
+   Plain `npm run dev` needed a *second* fix before this held for it too (point 12) — its Vite dev
+   proxy was not forwarding `X-Forwarded-Host` at all, so the relative-redirect claim above was not
+   actually true for that flow until that fix landed.
 9. **A business-rule rejection inside the success handler must not surface as a 500** (fresh-review
    fix): `AbstractAuthenticationProcessingFilter` only catches `AuthenticationException` around the
    call into `GoogleOAuth2SuccessHandler` — an `UnauthorizedException` from
@@ -128,6 +133,32 @@ token to hand the browser at all — the existing session machinery does the who
     `SecurityContextRepository` bean to reload the context from the same session — the exact
     operation a follow-up request's `SecurityContextHolderFilter` performs — which is the closest
     practical proof available that `/auth/me` would in fact see that principal.
+12. **Plain `npm run dev` was still broken after point 8's fix** (fresh-review follow-up): Vite's
+    dev proxy (`vite.config.ts`) had `changeOrigin: true` but nothing forwarding `X-Forwarded-*` at
+    all, so the backend saw a plain `Host: localhost:8080` with no `X-Forwarded-Host` — `{baseUrl}`
+    (point 7) resolved to the backend's own port, Google was asked for
+    `http://localhost:8080/api/login/oauth2/code/google`, and the post-login relative redirect
+    (point 8) landed the browser on the *backend* (which serves no SPA) instead of Vite's `:5173`.
+    Fixed with `xfwd: true` on the proxy entry — verified empirically, not by reading Vite's docs:
+    a throwaway Node HTTP echo server was pointed at by the proxy target, and a `curl` through Vite
+    showed `x-forwarded-host: localhost:5173`, `x-forwarded-proto: http` and
+    `x-forwarded-port: 5173` on the request the echo server actually received; no extra `configure`
+    hook was needed. `GoogleOAuth2ConfiguredIntegrationTest`'s new
+    `authorizationPathBuildsTheRedirectUriFromXForwardedHost` regression-tests the backend half:
+    sends `X-Forwarded-Host: localhost:5173` and asserts the resulting `redirect_uri` query param
+    sent to Google is exactly `http://localhost:5173/api/login/oauth2/code/google`.
+
+    **Trust boundary this relies on**: with `forward-headers-strategy=framework`, the backend
+    trusts `X-Forwarded-*` from *whoever reaches it* — it has no way to tell a header set by
+    `nginx`/Vite's proxy apart from one set by an attacker with direct access to the backend port.
+    The impact here is limited: Google validates `redirect_uri` against the exact list registered
+    for the client (point 7), so a forged header can at most redirect the *initial* authorization
+    request to an unregistered URI, which Google itself then refuses; and every redirect this app
+    issues off the back of it is a same-origin *relative* path (point 8), never an attacker-supplied
+    absolute one. The mitigation is deployment hygiene, not application code: **the backend port
+    must not be publicly reachable in production** — only the proxy that legitimately sets these
+    headers should ever be able to reach it. This ADR does not change the deployment to enforce
+    that; it is a precondition the decision above assumes.
 
 ## Consequences
 

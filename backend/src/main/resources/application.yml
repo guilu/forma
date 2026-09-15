@@ -77,10 +77,11 @@ forma:
   # client-id, which would break every environment that has not configured Google yet). With no
   # value, GET /api/oauth2/authorization/google redirects to the frontend login page with
   # ?error=google instead of 404ing (GoogleOAuth2FallbackController). Register the OAuth client in
-  # Google Cloud Console with authorized redirect URIs
-  # https://forma.diegobarrioh.dev/api/login/oauth2/code/google (prod) and
-  # http://localhost:8080/api/login/oauth2/code/google (local, direct backend — see
-  # docs/configuration.md for the compose/nginx-proxied case).
+  # Google Cloud Console with one authorized redirect URI per origin the SPA is actually served
+  # from — see env.example/docs/configuration.md for the full list (prod, compose, npm run dev).
+  # SecurityConfig#googleClientRegistration's {baseUrl} template is built from
+  # X-Forwarded-Host/-Proto (server.forward-headers-strategy=framework below), which
+  # vite.config.ts's dev proxy and frontend/nginx.conf both set.
   oauth2:
     google:
       client-id: ${GOOGLE_CLIENT_ID:}

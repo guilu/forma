@@ -59,4 +59,42 @@ class GoogleOAuth2ConfiguredIntegrationTest {
     assertThat(response.getStatusCode())
         .isEqualTo(org.springframework.http.HttpStatus.UNAUTHORIZED);
   }
+
+  /**
+   * Regression test (fresh-review follow-up on ADR-014): {@code server.forward-headers-strategy=
+   * framework} (application.yml) must build the OAuth {@code redirect_uri} — the {@code {baseUrl}}
+   * half of {@code SecurityConfig#googleClientRegistration}'s template — from {@code
+   * X-Forwarded-Host}/{@code X-Forwarded-Proto} rather than from this test server's own real `Host`
+   * header (a random port on localhost). This is exactly what {@code frontend/vite.config.ts}'s dev
+   * proxy now sends (verified empirically with a throwaway echo server — see its commit) and what
+   * {@code frontend/nginx.conf} sends in prod/compose: without it, Google would be asked to
+   * redirect back to this backend's own port instead of whichever origin the browser is actually
+   * on, landing the user on a page that never serves the SPA.
+   */
+  @Test
+  void authorizationPathBuildsTheRedirectUriFromXForwardedHost() throws Exception {
+    HttpClient httpClient =
+        HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).build();
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(restTemplate.getRootUri() + "/api/oauth2/authorization/google"))
+            .header("X-Forwarded-Host", "localhost:5173")
+            .header("X-Forwarded-Proto", "http")
+            .GET()
+            .build();
+
+    HttpResponse<Void> response = httpClient.send(request, HttpResponse.BodyHandlers.discarding());
+
+    assertThat(response.statusCode()).isBetween(300, 399);
+    String location = response.headers().firstValue("Location").orElseThrow();
+    String redirectUri =
+        java.util.Arrays.stream(URI.create(location).getRawQuery().split("&"))
+            .filter(param -> param.startsWith("redirect_uri="))
+            .map(param -> param.substring("redirect_uri=".length()))
+            .map(
+                value -> java.net.URLDecoder.decode(value, java.nio.charset.StandardCharsets.UTF_8))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("No redirect_uri param in: " + location));
+    assertThat(redirectUri).isEqualTo("http://localhost:5173/api/login/oauth2/code/google");
+  }
 }

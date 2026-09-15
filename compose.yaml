@@ -71,10 +71,14 @@ services:
       # above — empty by default so a fresh checkout boots and every test/CI run passes with no
       # setup (SecurityConfig only registers oauth2Login() when both are set). FORMA_FRONTEND_URL
       # is ALSO left empty here on purpose: the frontend container's own nginx (nginx.conf) proxies
-      # /api/ to this backend behind one origin, so the backend's default (a same-origin relative
-      # redirect — see application.yml) is already correct for compose, exactly as it is for a real
-      # deployment. Only set it if a compose override ever serves the frontend from a genuinely
-      # different origin than the one browsers reach it at.
+      # /api/ to this backend behind one origin AND forwards X-Forwarded-Host, so the backend's
+      # default (a same-origin relative redirect — see application.yml) is already correct for
+      # compose, exactly as it is for a real deployment. Only set it if a compose override ever
+      # serves the frontend from a genuinely different origin than the one browsers reach it at.
+      # The Google Cloud Console client must have this compose deployment's own authorized
+      # redirect URI registered: http://localhost:${BACKEND_PORT:-8080} is NOT it — it is
+      # http://localhost:${FRONTEND_PORT:-3000}/api/login/oauth2/code/google, the published
+      # frontend origin nginx forwards as X-Forwarded-Host (see docs/configuration.md).
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       FORMA_FRONTEND_URL: ${FORMA_FRONTEND_URL:-}
