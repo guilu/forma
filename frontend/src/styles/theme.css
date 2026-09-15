@@ -250,6 +250,17 @@
   --shadow-accent-glow: 0 8px 24px -4px rgb(133 245 92 / 35%);
 
   /*
+   * The landing headline's accent ramp (`.accentText` in
+   * LandingPage.module.css), promoted to a token so the login page's
+   * "vuelta" accent can share it instead of a second hardcoded copy of the
+   * same three stops. Identical in both themes, so it is declared once here
+   * on `:root` and not repeated in the light block below: a custom property
+   * left unset on `:root[data-theme='light']` still resolves from this rule
+   * for that element, the same mechanism `--glass-bg` relies on above.
+   */
+  --gradient-accent-text: linear-gradient(to right, rgb(18 122 95), #ff9800, rgb(125 237 92));
+
+  /*
    * The danger counterpart of the ramp above, for the confirm action of a
    * destructive dialog: the same shape of treatment as the primary CTA, in red,
    * so "this is the button that does it" reads the same way in both.

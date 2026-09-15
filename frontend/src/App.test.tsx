@@ -131,7 +131,7 @@ describe('App', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole('heading', { name: 'Iniciar sesión' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Bienvenido de vuelta' })).toBeInTheDocument();
   });
 
   it.each([

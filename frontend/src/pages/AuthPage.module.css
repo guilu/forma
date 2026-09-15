@@ -63,6 +63,19 @@
   font-family: var(--font-heading);
 }
 
+/* Same treatment as the landing headline's `.accentText`, through the shared
+   `--gradient-accent-text` token instead of a second copy of the ramp. */
+.titleAccent {
+  background-image: var(--gradient-accent-text);
+  background-clip: text;
+  color: transparent;
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
 .error {
   margin: 0;
   color: var(--color-danger);

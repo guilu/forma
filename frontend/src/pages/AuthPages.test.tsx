@@ -5,10 +5,42 @@ import { describe, expect, it, vi } from 'vitest';
 import { useAuth } from '../auth/AuthContext';
 import { LoginPage } from './LoginPage';
 import { RegisterPage } from './RegisterPage';
+import authStyles from './AuthPage.module.css';
+import authCss from './AuthPage.module.css?raw';
 
 vi.mock('../auth/AuthContext', () => ({ useAuth: vi.fn() }));
 
 describe('auth pages', () => {
+  /*
+   * The login card used to open with the generic "Iniciar sesión" — the same
+   * string as the submit button beneath it, so a screen reader announced the
+   * heading and the button as if they were the same thing. "vuelta" carries
+   * the landing headline's accent gradient so the returning-user welcome
+   * reads as the same brand voice as the public page.
+   */
+  it('welcomes a returning visitor with the accent-highlighted headline', () => {
+    vi.mocked(useAuth).mockReturnValue(authState({}));
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+
+    const heading = screen.getByRole('heading', { level: 1, name: 'Bienvenido de vuelta' });
+    expect(heading).toBeInTheDocument();
+    expect(screen.getByText('Accede a tu cuenta para continuar preparándote')).toBeInTheDocument();
+
+    const accent = screen.getByText('vuelta');
+    expect(accent.tagName).toBe('SPAN');
+    expect(accent.className).toContain(authStyles.titleAccent);
+  });
+
+  it('paints the login headline accent with the shared landing gradient token', () => {
+    expect(authCss).toMatch(
+      /\.titleAccent\s*{[^}]*background-image:\s*var\(--gradient-accent-text\);[^}]*background-clip:\s*text;[^}]*color:\s*transparent;/s,
+    );
+  });
+
   it('logs in from the Spanish form', async () => {
     const login = vi.fn().mockResolvedValue(undefined);
     vi.mocked(useAuth).mockReturnValue(authState({ login }));

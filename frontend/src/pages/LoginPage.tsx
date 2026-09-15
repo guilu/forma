@@ -50,8 +50,9 @@ export function LoginPage() {
             page already carries it. */}
         <header className={styles.header}>
           <h1 id="login-title" className={styles.title}>
-            Iniciar sesión
+            Bienvenido de <span className={styles.titleAccent}>vuelta</span>
           </h1>
+          <p className={styles.subtitle}>Accede a tu cuenta para continuar preparándote</p>
         </header>
         <GoogleAuthButton />
         <OrDivider />
