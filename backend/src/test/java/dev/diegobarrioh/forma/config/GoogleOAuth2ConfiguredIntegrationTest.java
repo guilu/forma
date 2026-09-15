@@ -97,4 +97,66 @@ class GoogleOAuth2ConfiguredIntegrationTest {
             .orElseThrow(() -> new AssertionError("No redirect_uri param in: " + location));
     assertThat(redirectUri).isEqualTo("http://localhost:5173/api/login/oauth2/code/google");
   }
+
+  /**
+   * Regression coverage for the double-reverse-proxy bug found in a real deployment (public TLS
+   * proxy → {@code frontend/nginx.conf} → this backend): the redirect_uri contract this backend
+   * half owns. These three pin exactly what {@link
+   * #authorizationPathBuildsTheRedirectUriFromXForwardedHost} already pins, plus the two extra
+   * cases the bug report needed: a proto/host pair with no port at all (prod, over https), and the
+   * same pair with an explicit {@code X-Forwarded-Port} that must NOT leak into the URI as {@code
+   * :443}. All three were passing before the nginx fix — the bug was entirely in {@code
+   * frontend/nginx.conf} overwriting these headers with its own view instead of forwarding what the
+   * outer proxy sent (see the file's header comment and {@code docs/adr/ADR-014-google-login.md}) —
+   * so this class only pins the backend's half of the contract; it does not reproduce the nginx bug
+   * itself (that needs a real double-nginx setup — see {@code frontend/nginx/test/}).
+   */
+  @Test
+  void authorizationPathBuildsHttpsRedirectUriWithNoPortFromForwardedHeaders() throws Exception {
+    String redirectUri = redirectUriFor("https", "forma.diegobarrioh.dev", null);
+
+    assertThat(redirectUri)
+        .isEqualTo("https://forma.diegobarrioh.dev/api/login/oauth2/code/google");
+  }
+
+  @Test
+  void authorizationPathIgnoresXForwardedPortWhenItMatchesTheSchemesDefaultPort() throws Exception {
+    String redirectUri = redirectUriFor("https", "forma.diegobarrioh.dev", "443");
+
+    assertThat(redirectUri)
+        .isEqualTo("https://forma.diegobarrioh.dev/api/login/oauth2/code/google");
+  }
+
+  @Test
+  void authorizationPathKeepsAnExplicitPortCarriedInsideXForwardedHost() throws Exception {
+    String redirectUri = redirectUriFor("http", "localhost:3002", null);
+
+    assertThat(redirectUri).isEqualTo("http://localhost:3002/api/login/oauth2/code/google");
+  }
+
+  private String redirectUriFor(String forwardedProto, String forwardedHost, String forwardedPort)
+      throws Exception {
+    HttpClient httpClient =
+        HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).build();
+    HttpRequest.Builder requestBuilder =
+        HttpRequest.newBuilder()
+            .uri(URI.create(restTemplate.getRootUri() + "/api/oauth2/authorization/google"))
+            .header("X-Forwarded-Proto", forwardedProto)
+            .header("X-Forwarded-Host", forwardedHost);
+    if (forwardedPort != null) {
+      requestBuilder.header("X-Forwarded-Port", forwardedPort);
+    }
+
+    HttpResponse<Void> response =
+        httpClient.send(requestBuilder.GET().build(), HttpResponse.BodyHandlers.discarding());
+
+    assertThat(response.statusCode()).isBetween(300, 399);
+    String location = response.headers().firstValue("Location").orElseThrow();
+    return java.util.Arrays.stream(URI.create(location).getRawQuery().split("&"))
+        .filter(param -> param.startsWith("redirect_uri="))
+        .map(param -> param.substring("redirect_uri=".length()))
+        .map(value -> java.net.URLDecoder.decode(value, java.nio.charset.StandardCharsets.UTF_8))
+        .findFirst()
+        .orElseThrow(() -> new AssertionError("No redirect_uri param in: " + location));
+  }
 }
