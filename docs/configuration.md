@@ -42,7 +42,7 @@ to override locally; `.env` is gitignored.
 | `FORMA_BOOTSTRAP_LEGACY_USER_PASSWORD` | backend | (empty) | **yes** | Activates the pre-auth placeholder account (FOR-145). |
 | `GOOGLE_CLIENT_ID` | backend | (empty) | no | Google OAuth client id. Empty disables `oauth2Login()`; `/api/oauth2/authorization/google` redirects to `/login?error=google` instead of 404/500ing. |
 | `GOOGLE_CLIENT_SECRET` | backend | (empty) | **yes** | Google OAuth client secret. |
-| `FORMA_FRONTEND_URL` | backend | `http://localhost:5173` | no | Where the backend redirects the browser after a Google login (or a failed one, with `?error=google`). Compose overrides it to `http://localhost:3000` (its published frontend port); a real deployment MUST set it to its own origin, e.g. `https://forma.diegobarrioh.dev` — same-origin behind nginx. |
+| `FORMA_FRONTEND_URL` | backend | (empty) | no | Where the backend redirects the browser after a Google login (or a failed one, with `?error=google`). Empty resolves to a same-origin **relative** redirect (`/app`, `/login?error=google`), which is correct in every supported flow — prod and compose both proxy `/api/` to the backend behind one nginx origin, and Vite's dev server proxies it the same way for plain `npm run dev`. Only needs a value to exercise Google login against the backend directly, bypassing every proxy. |
 
 ### Getting a variable into the backend container
 

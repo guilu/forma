@@ -3,11 +3,13 @@ package dev.diegobarrioh.forma.delivery.security;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import dev.diegobarrioh.forma.application.GoogleIdentity;
+import dev.diegobarrioh.forma.application.UnauthorizedException;
 import dev.diegobarrioh.forma.application.UserService;
 import dev.diegobarrioh.forma.domain.User;
 import dev.diegobarrioh.forma.domain.UserRole;
@@ -58,7 +60,10 @@ class GoogleOAuth2SuccessHandlerTest {
     UserService userService = mock(UserService.class);
     SessionAuthenticator sessionAuthenticator = mock(SessionAuthenticator.class);
     GoogleOAuth2SuccessHandler handler =
-        new GoogleOAuth2SuccessHandler(userService, sessionAuthenticator, "http://localhost:5173");
+        new GoogleOAuth2SuccessHandler(
+            userService,
+            sessionAuthenticator,
+            new FrontendRedirectResolver("http://localhost:5173"));
     UUID userId = UUID.randomUUID();
     User user =
         new User(userId, "a@x.com", null, Instant.now(), null, true, UserRole.USER, "google-sub-1");
@@ -83,6 +88,74 @@ class GoogleOAuth2SuccessHandlerTest {
     verify(sessionAuthenticator, times(1)).establishSession(builtAuthentication, request, response);
     verify(userService, times(1)).recordSuccessfulLogin(userId);
     assertThat(response.redirectedTo).isEqualTo("http://localhost:5173/app");
+  }
+
+  @Test
+  void withNoConfiguredFrontendUrlRedirectsToARelativePath() throws Exception {
+    UserService userService = mock(UserService.class);
+    SessionAuthenticator sessionAuthenticator = mock(SessionAuthenticator.class);
+    GoogleOAuth2SuccessHandler handler =
+        new GoogleOAuth2SuccessHandler(
+            userService, sessionAuthenticator, new FrontendRedirectResolver(""));
+    User user =
+        new User(
+            UUID.randomUUID(),
+            "a@x.com",
+            null,
+            Instant.now(),
+            null,
+            true,
+            UserRole.USER,
+            "google-sub-1");
+    when(userService.loginWithGoogle(any())).thenReturn(user);
+    when(sessionAuthenticator.authenticationFor(user)).thenReturn(mock(Authentication.class));
+    Authentication authentication = mock(Authentication.class);
+    when(authentication.getPrincipal()).thenReturn(oidcUser("google-sub-1", "a@x.com", true));
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    // DefaultRedirectStrategy prefixes a relative target with the request's context path (empty in
+    // a real request against this app's root-mounted servlet) before handing it to sendRedirect.
+    when(request.getContextPath()).thenReturn("");
+    RecordingResponse response = new RecordingResponse();
+
+    handler.onAuthenticationSuccess(request, response, authentication);
+
+    assertThat(response.redirectedTo).isEqualTo("/app");
+  }
+
+  /**
+   * Regression test (finding #2 of the fresh-review fixes on ADR-014): {@code
+   * AbstractAuthenticationProcessingFilter} only catches {@code AuthenticationException} around
+   * {@code successfulAuthentication} — an {@link UnauthorizedException} from {@code
+   * UserService#loginWithGoogle} (unverified email, inactive account, re-link conflict) would
+   * otherwise propagate out of the success handler and surface to the browser as a bare 500. The
+   * handler must catch it, tear down the half-built session Spring Security's filter already saved
+   * (the raw OidcUser-principal {@code Authentication}, from before our handler ever ran), and
+   * redirect to the same {@code ?error=google} page the failure handler uses — with nothing from
+   * the exception itself in the URL.
+   */
+  @Test
+  void aRejectionFromLoginWithGoogleClearsTheSessionAndRedirectsToTheErrorPageInsteadOfThrowing()
+      throws Exception {
+    UserService userService = mock(UserService.class);
+    SessionAuthenticator sessionAuthenticator = mock(SessionAuthenticator.class);
+    GoogleOAuth2SuccessHandler handler =
+        new GoogleOAuth2SuccessHandler(
+            userService,
+            sessionAuthenticator,
+            new FrontendRedirectResolver("http://localhost:5173"));
+    when(userService.loginWithGoogle(any()))
+        .thenThrow(new UnauthorizedException("El email de Google no está verificado"));
+    Authentication authentication = mock(Authentication.class);
+    when(authentication.getPrincipal()).thenReturn(oidcUser("google-sub-1", "a@x.com", false));
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    RecordingResponse response = new RecordingResponse();
+
+    handler.onAuthenticationSuccess(request, response, authentication);
+
+    assertThat(response.redirectedTo).isEqualTo("http://localhost:5173/login?error=google");
+    verify(sessionAuthenticator, times(1)).clearSession(request);
+    verify(sessionAuthenticator, never()).establishSession(any(), any(), any());
+    verify(userService, never()).recordSuccessfulLogin(any());
   }
 
   /**

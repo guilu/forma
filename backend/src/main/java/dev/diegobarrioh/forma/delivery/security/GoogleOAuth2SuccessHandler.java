@@ -1,11 +1,11 @@
 package dev.diegobarrioh.forma.delivery.security;
 
 import dev.diegobarrioh.forma.application.GoogleIdentity;
+import dev.diegobarrioh.forma.application.UnauthorizedException;
 import dev.diegobarrioh.forma.application.UserService;
 import dev.diegobarrioh.forma.domain.User;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.oidc.OidcIdToken;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
@@ -19,21 +19,31 @@ import org.springframework.stereotype.Component;
  * to a FORMA account via {@link UserService#loginWithGoogle}, establishes the session exactly like
  * {@code AuthController#login} does (via the shared {@link SessionAuthenticator}), records the
  * login, and redirects the browser back to the SPA's default authenticated destination.
+ *
+ * <p>"Success", here, is only "Spring Security's OAuth2/OIDC exchange with Google succeeded" — this
+ * handler is where FORMA's own business rules (email verified, account active, no re-link takeover)
+ * get their say, and {@link UserService#loginWithGoogle} can still reject. {@code
+ * AbstractAuthenticationProcessingFilter} only catches {@code AuthenticationException} around the
+ * call into this handler, so an {@link UnauthorizedException} escaping here would surface to the
+ * browser as a bare 500 — caught instead, tearing down the session the filter already half-built
+ * (see {@link SessionAuthenticator#clearSession}) and redirecting to the same {@code ?error=google}
+ * page {@code SecurityConfig}'s {@code oauth2Login} failure handler uses. Never puts anything from
+ * the exception itself into that redirect.
  */
 @Component
 public class GoogleOAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
   private final UserService userService;
   private final SessionAuthenticator sessionAuthenticator;
-  private final String frontendUrl;
+  private final FrontendRedirectResolver frontendRedirectResolver;
 
   public GoogleOAuth2SuccessHandler(
       UserService userService,
       SessionAuthenticator sessionAuthenticator,
-      @Value("${forma.frontend-url:http://localhost:5173}") String frontendUrl) {
+      FrontendRedirectResolver frontendRedirectResolver) {
     this.userService = userService;
     this.sessionAuthenticator = sessionAuthenticator;
-    this.frontendUrl = frontendUrl;
+    this.frontendRedirectResolver = frontendRedirectResolver;
   }
 
   @Override
@@ -48,7 +58,16 @@ public class GoogleOAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHa
             idToken.getEmail(),
             Boolean.TRUE.equals(idToken.getEmailVerified()));
 
-    User user = userService.loginWithGoogle(identity);
+    User user;
+    try {
+      user = userService.loginWithGoogle(identity);
+    } catch (UnauthorizedException ex) {
+      sessionAuthenticator.clearSession(request);
+      getRedirectStrategy()
+          .sendRedirect(request, response, frontendRedirectResolver.resolve("/login?error=google"));
+      return;
+    }
+
     sessionAuthenticator.establishSession(
         sessionAuthenticator.authenticationFor(user), request, response);
     userService.recordSuccessfulLogin(user.id());
@@ -56,6 +75,6 @@ public class GoogleOAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHa
     // "/app" is the SPA's own default authenticated destination (authDestination.ts). The
     // pre-login "from" location is not preserved across the Google redirect round trip — a known,
     // documented limitation (the PR notes), not an oversight.
-    getRedirectStrategy().sendRedirect(request, response, frontendUrl + "/app");
+    getRedirectStrategy().sendRedirect(request, response, frontendRedirectResolver.resolve("/app"));
   }
 }

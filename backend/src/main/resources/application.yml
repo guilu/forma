@@ -86,13 +86,22 @@ forma:
       client-id: ${GOOGLE_CLIENT_ID:}
       client-secret: ${GOOGLE_CLIENT_SECRET:}
 
-  # Where the backend redirects the browser after a Google login (ADR-012 addendum) and where an
-  # unconfigured/failed attempt sends it back with ?error=google. Defaults to plain local dev
-  # (`npm run dev`, Vite on :5173); Docker Compose overrides it to the compose frontend's published
-  # origin (compose.yaml). A real deployment MUST set this to its own origin (e.g.
-  # https://forma.diegobarrioh.dev) — same-origin behind nginx, exactly like every other same-origin
-  # API call the SPA makes.
-  frontend-url: ${FORMA_FRONTEND_URL:http://localhost:5173}
+  # Where the backend redirects the browser after a Google login (ADR-012 addendum, ADR-014) and
+  # where an unconfigured/failed attempt sends it back with ?error=google.
+  #
+  # Empty by default — FrontendRedirectResolver then redirects to a same-origin RELATIVE path
+  # ("/app", "/login?error=google") instead of prefixing an absolute origin. This is correct in
+  # every supported flow, not only production: frontend/nginx.conf proxies /api/ to this backend
+  # behind one origin in both prod and Docker Compose, and Vite's dev server proxies it the same
+  # way for plain `npm run dev` (vite.config.ts's server.proxy['/api']) — in all three, the browser
+  # only ever talks to the frontend's own origin, so a relative Location header resolves correctly
+  # with no configuration at all. FORMA_FRONTEND_URL only needs a value for the one flow that
+  # genuinely differs: hitting this backend directly, bypassing every proxy (e.g. exercising
+  # `./gradlew bootRun` with no frontend running) — not how Google login is normally exercised, so
+  # it is deliberately not the default (an earlier version of this defaulted to
+  # http://localhost:5173, which would have sent a real deployment's users to localhost had the
+  # variable been forgotten — see docs/adr/ADR-014-google-login.md).
+  frontend-url: ${FORMA_FRONTEND_URL:}
 
 server:
   port: ${SERVER_PORT:8080}

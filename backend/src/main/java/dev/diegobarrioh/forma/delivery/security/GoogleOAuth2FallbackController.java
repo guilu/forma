@@ -2,7 +2,6 @@ package dev.diegobarrioh.forma.delivery.security;
 
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -21,15 +20,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class GoogleOAuth2FallbackController {
 
-  private final String frontendUrl;
+  private final FrontendRedirectResolver frontendRedirectResolver;
 
-  public GoogleOAuth2FallbackController(
-      @Value("${forma.frontend-url:http://localhost:5173}") String frontendUrl) {
-    this.frontendUrl = frontendUrl;
+  public GoogleOAuth2FallbackController(FrontendRedirectResolver frontendRedirectResolver) {
+    this.frontendRedirectResolver = frontendRedirectResolver;
   }
 
   @GetMapping("/api/oauth2/authorization/google")
   public void googleLoginUnavailable(HttpServletResponse response) throws IOException {
-    response.sendRedirect(frontendUrl + "/login?error=google");
+    response.sendRedirect(frontendRedirectResolver.resolve("/login?error=google"));
   }
 }

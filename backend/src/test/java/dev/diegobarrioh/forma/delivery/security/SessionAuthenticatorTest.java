@@ -104,4 +104,50 @@ class SessionAuthenticatorTest {
 
     verify(request, times(1)).changeSessionId();
   }
+
+  /**
+   * Regression test (finding #2 of the fresh-review fixes on ADR-014): {@code
+   * GoogleOAuth2SuccessHandler} must be able to tear down a half-built session — the raw
+   * OAuth2AuthenticationToken/OidcUser Spring Security's filter already saved before our handler
+   * ran — when {@code UserService#loginWithGoogle} rejects the login. No trace of that
+   * not-a-FormaUserPrincipal Authentication may survive: neither in the thread-local context nor in
+   * the session.
+   */
+  @Test
+  void clearSessionClearsTheContextAndInvalidatesAnExistingSession() {
+    SecurityContextRepository repository = mock(SecurityContextRepository.class);
+    SessionAuthenticator authenticator = new SessionAuthenticator(repository);
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    HttpSession session = mock(HttpSession.class);
+    when(request.getSession(false)).thenReturn(session);
+    SecurityContextHolder.getContext()
+        .setAuthentication(
+            authenticator.authenticationFor(
+                new User(
+                    UUID.randomUUID(),
+                    "a@x.com",
+                    null,
+                    Instant.now(),
+                    null,
+                    true,
+                    UserRole.USER,
+                    null)));
+
+    authenticator.clearSession(request);
+
+    assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+    verify(session, times(1)).invalidate();
+  }
+
+  @Test
+  void clearSessionIsANoOpWhenNoSessionExists() {
+    SecurityContextRepository repository = mock(SecurityContextRepository.class);
+    SessionAuthenticator authenticator = new SessionAuthenticator(repository);
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getSession(false)).thenReturn(null);
+
+    authenticator.clearSession(request);
+
+    assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+  }
 }

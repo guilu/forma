@@ -4,6 +4,7 @@ import dev.diegobarrioh.forma.delivery.ApiPaths;
 import dev.diegobarrioh.forma.delivery.security.ApiAccessDeniedHandler;
 import dev.diegobarrioh.forma.delivery.security.ApiAuthenticationEntryPoint;
 import dev.diegobarrioh.forma.delivery.security.CsrfCookieFilter;
+import dev.diegobarrioh.forma.delivery.security.FrontendRedirectResolver;
 import dev.diegobarrioh.forma.delivery.security.GoogleOAuth2SuccessHandler;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.HashMap;
@@ -48,24 +49,20 @@ public class SecurityConfig {
 
   private final String googleClientId;
   private final String googleClientSecret;
-  private final String frontendUrl;
 
   /**
-   * Google login credentials (ADR-012 addendum) and the SPA's own origin, for the failure redirect
-   * and for {@link #googleConfigured()}. Read here — not via Boot's {@code
-   * spring.security.oauth2.client.registration.*} autoconfiguration — because that
-   * autoconfiguration fails application startup when {@code client-id} is an empty string (a real
-   * environment that has not configured Google yet would otherwise never boot); {@link
+   * Google login credentials (ADR-012 addendum), for {@link #googleConfigured()}. Read here — not
+   * via Boot's {@code spring.security.oauth2.client.registration.*} autoconfiguration — because
+   * that autoconfiguration fails application startup when {@code client-id} is an empty string (a
+   * real environment that has not configured Google yet would otherwise never boot); {@link
    * #googleClientRegistration()} builds the {@link ClientRegistration} by hand instead, only when
    * both are non-blank ({@link #googleConfigured()}).
    */
   public SecurityConfig(
       @Value("${forma.oauth2.google.client-id:}") String googleClientId,
-      @Value("${forma.oauth2.google.client-secret:}") String googleClientSecret,
-      @Value("${forma.frontend-url:http://localhost:5173}") String frontendUrl) {
+      @Value("${forma.oauth2.google.client-secret:}") String googleClientSecret) {
     this.googleClientId = googleClientId;
     this.googleClientSecret = googleClientSecret;
-    this.frontendUrl = frontendUrl;
   }
 
   private boolean googleConfigured() {
@@ -148,7 +145,8 @@ public class SecurityConfig {
       ApiAuthenticationEntryPoint authenticationEntryPoint,
       ApiAccessDeniedHandler accessDeniedHandler,
       CsrfCookieFilter csrfCookieFilter,
-      GoogleOAuth2SuccessHandler googleOAuth2SuccessHandler)
+      GoogleOAuth2SuccessHandler googleOAuth2SuccessHandler,
+      FrontendRedirectResolver frontendRedirectResolver)
       throws Exception {
     http.cors(cors -> cors.configurationSource(corsConfigurationSource))
         // Cookie-based CSRF (ADR-012): the SPA reads the JS-readable XSRF-TOKEN cookie and echoes
@@ -226,7 +224,8 @@ public class SecurityConfig {
                   .successHandler(googleOAuth2SuccessHandler)
                   .failureHandler(
                       (request, response, exception) ->
-                          response.sendRedirect(frontendUrl + "/login?error=google")));
+                          response.sendRedirect(
+                              frontendRedirectResolver.resolve("/login?error=google"))));
     }
 
     return http.build();

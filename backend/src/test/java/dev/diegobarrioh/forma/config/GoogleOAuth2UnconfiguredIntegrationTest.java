@@ -42,7 +42,13 @@ class GoogleOAuth2UnconfiguredIntegrationTest {
     HttpResponse<Void> response = httpClient.send(request, HttpResponse.BodyHandlers.discarding());
 
     assertThat(response.statusCode()).isBetween(300, 399);
-    assertThat(response.headers().firstValue("Location"))
-        .contains("http://localhost:5173/login?error=google");
+    // forma.frontend-url defaults to empty (finding #3 of the fresh-review fixes on ADR-014) — a
+    // same-origin relative redirect, correct behind nginx (prod/compose) and Vite's dev proxy
+    // alike, so the Location's path is what matters here, not its authority (the servlet container
+    // is free to resolve a relative sendRedirect(...) target into an absolute URI on the request's
+    // own host:port, which is exactly this same-origin behavior working as intended).
+    String location = response.headers().firstValue("Location").orElseThrow();
+    assertThat(URI.create(location).getPath()).isEqualTo("/login");
+    assertThat(URI.create(location).getQuery()).isEqualTo("error=google");
   }
 }
