@@ -63,7 +63,7 @@ public class UserService {
     repository.insert(id, normalizedEmail, hash);
     // Registration always creates an ordinary account: an admin is granted deliberately
     // afterwards (FOR-190), never by being the first to sign up.
-    return new User(id, normalizedEmail, hash, Instant.now(), null, true, UserRole.USER);
+    return new User(id, normalizedEmail, hash, Instant.now(), null, true, UserRole.USER, null);
   }
 
   /** Looks up an account by id (e.g. to build {@code AuthUserResponse} for the current caller). */

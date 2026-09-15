@@ -87,7 +87,7 @@ class UserServiceTest {
   @Test
   void findByIdReturnsTheStoredAccount() {
     UUID id = UUID.randomUUID();
-    User stored = new User(id, "a@x.com", "{argon2}hash", null, null, true, UserRole.USER);
+    User stored = new User(id, "a@x.com", "{argon2}hash", null, null, true, UserRole.USER, null);
     when(repository.findById(id)).thenReturn(Optional.of(stored));
 
     assertThat(service.findById(id)).isEqualTo(stored);

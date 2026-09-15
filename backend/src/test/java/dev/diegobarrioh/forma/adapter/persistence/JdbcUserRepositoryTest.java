@@ -1,6 +1,7 @@
 package dev.diegobarrioh.forma.adapter.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.diegobarrioh.forma.application.UserRepository;
 import dev.diegobarrioh.forma.bootstrap.LegacyUserBootstrap;
@@ -90,5 +91,58 @@ class JdbcUserRepositoryTest {
   @Test
   void findByIdOfAnUnknownAccountIsEmpty() {
     assertThat(repository.findById(UUID.randomUUID())).isEmpty();
+  }
+
+  @Test
+  void insertWithGoogleSubjectCreatesAnActiveAccountWithNoPasswordHash() {
+    UUID id = UUID.randomUUID();
+
+    repository.insertWithGoogleSubject(id, "google.only@x.com", "google-sub-1");
+
+    Optional<User> stored = repository.findById(id);
+    assertThat(stored).isPresent();
+    assertThat(stored.get().passwordHash()).isNull();
+    assertThat(stored.get().active()).isTrue();
+    assertThat(stored.get().googleSubject()).isEqualTo("google-sub-1");
+  }
+
+  @Test
+  void findByGoogleSubjectFindsAnAccountLinkedToThatSubject() {
+    UUID id = UUID.randomUUID();
+    repository.insertWithGoogleSubject(id, "google.find@x.com", "google-sub-2");
+
+    Optional<User> found = repository.findByGoogleSubject("google-sub-2");
+
+    assertThat(found).isPresent();
+    assertThat(found.get().id()).isEqualTo(id);
+  }
+
+  @Test
+  void findByGoogleSubjectIsEmptyWhenNoAccountIsLinked() {
+    assertThat(repository.findByGoogleSubject("no-such-subject")).isEmpty();
+  }
+
+  @Test
+  void linkGoogleSubjectAttachesTheSubjectWithoutTouchingThePasswordHash() {
+    UUID id = UUID.randomUUID();
+    repository.insert(id, "linkme@x.com", "{argon2}somehash");
+
+    repository.linkGoogleSubject(id, "google-sub-3");
+
+    Optional<User> reloaded = repository.findById(id);
+    assertThat(reloaded).isPresent();
+    assertThat(reloaded.get().googleSubject()).isEqualTo("google-sub-3");
+    assertThat(reloaded.get().passwordHash()).isEqualTo("{argon2}somehash");
+  }
+
+  @Test
+  void googleSubjectMustBeUniqueAcrossAccounts() {
+    repository.insertWithGoogleSubject(UUID.randomUUID(), "first@x.com", "duplicate-sub");
+
+    assertThatThrownBy(
+            () ->
+                repository.insertWithGoogleSubject(
+                    UUID.randomUUID(), "second@x.com", "duplicate-sub"))
+        .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
   }
 }
