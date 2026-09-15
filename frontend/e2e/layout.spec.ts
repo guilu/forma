@@ -552,7 +552,11 @@ test.describe('dashboard widget internals', () => {
     await gotoApp(page, '/app');
 
     const header = page.getByRole('heading', { level: 1 }).locator('xpath=ancestor::header[1]');
-    const dateText = header.locator('time, span').filter({ hasText: /\d{1,2} \w{3} \d{4}/ });
+    // `\w+` and not `\w{3}`: `formatShortDate` uses `Intl.DateTimeFormat('es-ES', { month:
+    // 'short' })`, and that abbreviates most months to 3 letters but September to 4 ("sept"),
+    // so a fixed 3-letter month made this locator match nothing — and only in September —
+    // instead of the actual date span.
+    const dateText = header.locator('time, span').filter({ hasText: /\d{1,2} \w+ \d{4}/ });
     const before = await dateText.first().innerText();
 
     await page.getByRole('button', { name: '-30 d' }).click();
