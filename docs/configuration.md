@@ -53,12 +53,16 @@ above) — `SecurityConfig#googleClientRegistration`'s `redirect-uri` template
 the inbound request's `X-Forwarded-Host`/`X-Forwarded-Proto`
 (`server.forward-headers-strategy=framework`), which both
 `frontend/vite.config.ts`'s dev proxy (`xfwd: true`, verified empirically —
-see its commit) and `frontend/nginx.conf` set:
+see its commit) and `frontend/nginx.conf` set — the latter now *preserving* an
+incoming `X-Forwarded-Proto`/`X-Forwarded-Host` from a public proxy in front of
+it rather than overwriting it, a production bug fixed for the double-reverse-
+proxy topology (see [ADR-014](adr/ADR-014-google-login.md) point 13):
 
 | Environment | Authorized redirect URI |
 | --- | --- |
 | Production | `https://forma.diegobarrioh.dev/api/login/oauth2/code/google` — this is currently a domain [`PreproRibbon`](../frontend/src/layout/preproHost.ts) itself recognizes as preproduction (`diegobarrioh.dev`); there is no separate staging host to register in addition to it. |
 | Docker Compose | `http://localhost:3000/api/login/oauth2/code/google` (the published frontend port) |
+| Docker Compose, alternate local/preprod port | `http://localhost:3002/api/login/oauth2/code/google` — `compose.yaml`'s `FORMA_CORS_ALLOWED_ORIGINS` default already includes `http://localhost:3002` for this; set `FRONTEND_PORT=3002` to serve the frontend there (see `docs/plans/FOR-145d-frontend-auth-state.md`'s manual test steps). |
 | `npm run dev` (no Compose) | `http://localhost:5173/api/login/oauth2/code/google` (Vite's dev server port) |
 
 Hitting the backend directly on `http://localhost:8080` (bypassing every

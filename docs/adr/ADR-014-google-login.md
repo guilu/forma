@@ -159,6 +159,40 @@ token to hand the browser at all — the existing session machinery does the who
     must not be publicly reachable in production** — only the proxy that legitimately sets these
     headers should ever be able to reach it. This ADR does not change the deployment to enforce
     that; it is a precondition the decision above assumes.
+13. **A real deployment behind a DOUBLE reverse proxy broke redirect_uri twice over** (production
+    bug fix): FORMA's actual topology is a public TLS-terminating proxy (OUTER, the edge of the
+    network) in front of the frontend container's own nginx (INNER, `frontend/nginx.conf`), in
+    front of this backend. The outer proxy already sets `X-Forwarded-Proto`/`X-Forwarded-Host`
+    correctly; `frontend/nginx.conf` used to blindly *overwrite* both with its own,
+    inner-container view of the request — `$scheme` (always `http`, since the outer proxy
+    terminates TLS and talks plain http onward to the inner one) and `$host` (the `Host` header
+    value, which nginx normalizes **without** a port even when the outer proxy's `Host` carried
+    one). Two distinct symptoms in production: `redirect_uri` came out `http://` instead of
+    `https://` on the real domain, and — reached through a published local/preprod port such as
+    `:3002` (FOR-145d) — it came out as a bare `127.0.0.1` with the port silently dropped.
+
+    Fixed by having `frontend/nginx.conf` *prefer* an incoming `X-Forwarded-Proto`/
+    `X-Forwarded-Host` when the outer proxy already set one, falling back to its own `$scheme`/
+    `$http_host` (unlike `$host`, `$http_host` keeps an explicit port) only when nothing arrived —
+    i.e. only when this container is itself the edge (plain `docker compose up`, no outer proxy).
+    `X-Forwarded-Port` needed no equivalent fix: nginx already forwards any header it does not
+    itself set, so an outer-supplied `X-Forwarded-Port` reaches this backend unchanged with no
+    `proxy_set_header` needed — verified against this backend's own header handling
+    (`GoogleOAuth2ConfiguredIntegrationTest`): a port explicitly set to the scheme's own default
+    (`443` for `https`) collapses out of the built URI exactly the way a `X-Forwarded-Host` with no
+    port at all does, so neither path leaks a spurious `:443`.
+
+    **Trust boundary, extended**: the inner nginx now trusts an incoming `X-Forwarded-Proto`/
+    `X-Forwarded-Host` the same way this backend already does (point 12's trust boundary) —
+    acceptable in production because the outer proxy is the actual edge of the network and nothing
+    else can reach the frontend container directly. When the frontend container *is* the edge
+    itself (no outer proxy — a bare `docker compose up` reachable directly), a client could in
+    principle spoof these headers; the impact stays the same as point 12 already reasons through:
+    Google validates `redirect_uri` against the registered list, and every redirect this app issues
+    afterwards is a same-origin relative path, never an attacker-supplied absolute one. Covered by
+    an automated double-proxy test that runs the real `frontend/nginx.conf` against a throwaway
+    outer proxy and echo backend in Docker (`frontend/nginx/test/`, CI job `nginx` in
+    `.github/workflows/ci.yml` — Docker is not available on every developer machine, hence CI-only).
 
 ## Consequences
 
