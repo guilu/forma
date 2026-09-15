@@ -112,6 +112,22 @@ token to hand the browser at all — the existing session machinery does the who
    into the session ahead of calling `successfulAuthentication`, regardless of what the handler goes
    on to do), and redirects to the same `/login?error=google` page the `oauth2Login` failure handler
    uses — never putting anything from the exception itself into that redirect.
+10. **A blank/missing email is rejected even when `email_verified: true`** (fresh-review fix,
+    SUGGESTION): that claim only promises the address is verified, not that one was sent at all.
+    `UserService#loginWithGoogle` checks this before the `email_verified` check's neighbour ever
+    reaches a repository call.
+11. **End-to-end coverage of the success path** (fresh-review fix):
+    `GoogleOAuth2LoginEndToEndIntegrationTest` drives the real `GoogleOAuth2SuccessHandler` bean —
+    real `UserService`/`JdbcUserRepository`/`SessionAuthenticator`/`SecurityContextRepository` — with
+    a real `OAuth2AuthenticationToken`/`DefaultOidcUser`, and checks the database row, the rotated
+    session id, the persisted `SecurityContext`'s `FormaUserPrincipal`, and the redirect target. It
+    stops short of a literal `GET /api/v1/auth/me` HTTP round trip: doing that would need either a
+    hand-built session wired into a real embedded Tomcat's own session store (not possible — they are
+    unrelated stores) or a local stub of Google's authorization/token/userinfo endpoints with signed
+    ID tokens and a JWKS, which is not simple to stand up correctly. Instead it asks the real
+    `SecurityContextRepository` bean to reload the context from the same session — the exact
+    operation a follow-up request's `SecurityContextHolderFilter` performs — which is the closest
+    practical proof available that `/auth/me` would in fact see that principal.
 
 ## Consequences
 
