@@ -40,8 +40,14 @@ public interface UserRepository {
    * Links a Google "sub" claim to an existing account found by email (migration V62 — first Google
    * login for an account that already exists, e.g. one created by self-registration). Never touches
    * {@code password_hash} or {@code role}: linking is additive, not a takeover.
+   *
+   * <p>Only updates a row whose {@code google_subject} is currently {@code NULL} — never overwrites
+   * an existing link, defense-in-depth alongside {@code UserService}'s own check against re-linking
+   * an account that is already linked to a different subject. Returns {@code false} (and changes
+   * nothing) when the row did not qualify: either it no longer exists, or a concurrent login
+   * already linked it to some subject between the caller's read and this write.
    */
-  void linkGoogleSubject(UUID id, String googleSubject);
+  boolean linkGoogleSubject(UUID id, String googleSubject);
 
   /** Records a successful login (FOR-145 spec: "last_login_at MUST update"). */
   void updateLastLoginAt(UUID id, Instant at);

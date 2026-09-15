@@ -110,8 +110,16 @@ public class JdbcUserRepository implements UserRepository {
   }
 
   @Override
-  public void linkGoogleSubject(UUID id, String googleSubject) {
-    jdbcTemplate.update("UPDATE users SET google_subject = ? WHERE id = ?", googleSubject, id);
+  public boolean linkGoogleSubject(UUID id, String googleSubject) {
+    // "AND google_subject IS NULL" is the defense-in-depth half of the re-link-takeover fix
+    // (UserService#loginWithGoogle's own check is the other half): even if a caller somehow got
+    // here with an already-linked row, the UPDATE simply cannot touch it.
+    int rowsUpdated =
+        jdbcTemplate.update(
+            "UPDATE users SET google_subject = ? WHERE id = ? AND google_subject IS NULL",
+            googleSubject,
+            id);
+    return rowsUpdated == 1;
   }
 
   @Override

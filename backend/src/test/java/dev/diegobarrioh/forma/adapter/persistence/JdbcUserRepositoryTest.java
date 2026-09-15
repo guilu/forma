@@ -127,12 +127,38 @@ class JdbcUserRepositoryTest {
     UUID id = UUID.randomUUID();
     repository.insert(id, "linkme@x.com", "{argon2}somehash");
 
-    repository.linkGoogleSubject(id, "google-sub-3");
+    boolean linked = repository.linkGoogleSubject(id, "google-sub-3");
 
+    assertThat(linked).isTrue();
     Optional<User> reloaded = repository.findById(id);
     assertThat(reloaded).isPresent();
     assertThat(reloaded.get().googleSubject()).isEqualTo("google-sub-3");
     assertThat(reloaded.get().passwordHash()).isEqualTo("{argon2}somehash");
+  }
+
+  /**
+   * Regression test (re-link takeover finding): {@code linkGoogleSubject} must never overwrite an
+   * account that is already linked to a (different) Google subject — defense-in-depth for {@code
+   * UserService#loginWithGoogle}'s own reject-before-writing check.
+   */
+  @Test
+  void linkGoogleSubjectDoesNotOverwriteAnAccountAlreadyLinkedToADifferentSubject() {
+    UUID id = UUID.randomUUID();
+    repository.insertWithGoogleSubject(id, "already-linked@x.com", "original-sub");
+
+    boolean linked = repository.linkGoogleSubject(id, "attacker-sub");
+
+    assertThat(linked).isFalse();
+    Optional<User> reloaded = repository.findById(id);
+    assertThat(reloaded).isPresent();
+    assertThat(reloaded.get().googleSubject()).isEqualTo("original-sub");
+  }
+
+  @Test
+  void linkGoogleSubjectReturnsFalseForAnUnknownAccount() {
+    boolean linked = repository.linkGoogleSubject(UUID.randomUUID(), "google-sub-unknown");
+
+    assertThat(linked).isFalse();
   }
 
   @Test

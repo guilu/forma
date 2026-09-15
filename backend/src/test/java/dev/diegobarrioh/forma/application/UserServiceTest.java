@@ -144,6 +144,7 @@ class UserServiceTest {
         new User(id, "existing@x.com", "{argon2}hash", null, null, true, UserRole.USER, null);
     when(repository.findByGoogleSubject("google-sub-3")).thenReturn(Optional.empty());
     when(repository.findByEmail("existing@x.com")).thenReturn(Optional.of(existing));
+    when(repository.linkGoogleSubject(id, "google-sub-3")).thenReturn(true);
 
     User result = service.loginWithGoogle(identity);
 
@@ -152,6 +153,52 @@ class UserServiceTest {
     assertThat(result.googleSubject()).isEqualTo("google-sub-3");
     // Linking never touches the password an account already had.
     assertThat(result.passwordHash()).isEqualTo("{argon2}hash");
+  }
+
+  /**
+   * Regression test (re-link takeover finding, CRITICAL): an account already linked to a
+   * *different* Google subject must never be silently re-linked to a new one — that would let
+   * someone reassign an existing account's identity out from under it. Rejected before any
+   * repository write is attempted.
+   */
+  @Test
+  void loginWithGoogleRejectsAnAccountFoundByEmailAlreadyLinkedToADifferentSubject() {
+    GoogleIdentity identity = new GoogleIdentity("attacker-sub", "existing@x.com", true);
+    UUID id = UUID.randomUUID();
+    User alreadyLinked =
+        new User(
+            id, "existing@x.com", "{argon2}hash", null, null, true, UserRole.USER, "original-sub");
+    when(repository.findByGoogleSubject("attacker-sub")).thenReturn(Optional.empty());
+    when(repository.findByEmail("existing@x.com")).thenReturn(Optional.of(alreadyLinked));
+
+    assertThatThrownBy(() -> service.loginWithGoogle(identity))
+        .isInstanceOf(UnauthorizedException.class);
+
+    verify(repository, never()).linkGoogleSubject(any(), anyString());
+    verify(repository, never()).insertWithGoogleSubject(any(), anyString(), anyString());
+  }
+
+  /**
+   * If the account found by email already carries the *same* subject we are trying to link
+   * (reachable only through an inconsistent read, since a matching subject would normally have been
+   * found by {@code findByGoogleSubject} first), linking is a safe no-op — never rejected as a
+   * takeover, and never re-issues a redundant write.
+   */
+  @Test
+  void loginWithGoogleTreatsRelinkingTheSameSubjectAsANoOp() {
+    GoogleIdentity identity = new GoogleIdentity("same-sub", "existing@x.com", true);
+    UUID id = UUID.randomUUID();
+    User alreadyLinkedToSameSubject =
+        new User(id, "existing@x.com", "{argon2}hash", null, null, true, UserRole.USER, "same-sub");
+    when(repository.findByGoogleSubject("same-sub")).thenReturn(Optional.empty());
+    when(repository.findByEmail("existing@x.com"))
+        .thenReturn(Optional.of(alreadyLinkedToSameSubject));
+
+    User result = service.loginWithGoogle(identity);
+
+    assertThat(result.id()).isEqualTo(id);
+    assertThat(result.googleSubject()).isEqualTo("same-sub");
+    verify(repository, never()).linkGoogleSubject(any(), anyString());
   }
 
   @Test

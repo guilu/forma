@@ -87,8 +87,10 @@ public class UserService {
    * that, creates a new Google-only account. Never called with an unverified email — Google's own
    * account-recovery/verification is the only thing this trusts to prove ownership of the address.
    *
-   * @throws UnauthorizedException if {@code identity.emailVerified()} is false, or the resolved
-   *     account is not active
+   * @throws UnauthorizedException if {@code identity.emailVerified()} is false, the resolved
+   *     account is not active, or the account found by email is already linked to a
+   *     <em>different</em> Google subject (re-link takeover guard — an existing link is never
+   *     silently reassigned)
    */
   public User loginWithGoogle(GoogleIdentity identity) {
     if (!identity.emailVerified()) {
@@ -114,14 +116,42 @@ public class UserService {
     Optional<User> byEmail = repository.findByEmail(normalizedEmail);
     if (byEmail.isPresent()) {
       User existing = requireActive(byEmail.get());
-      try {
-        repository.linkGoogleSubject(existing.id(), subject);
-      } catch (DataIntegrityViolationException ex) {
-        if (!allowRetry) {
-          throw ex;
-        }
-        return resolveGoogleUser(subject, normalizedEmail, false);
+      String existingSubject = existing.googleSubject();
+
+      // Re-link takeover guard: an account already linked to a DIFFERENT Google subject must
+      // never be silently reassigned to a new one — that would let a second Google identity take
+      // over an existing account's email-matched row. Rejected before any write is attempted
+      // (JdbcUserRepository#linkGoogleSubject also refuses this at the SQL level, defense-in-depth,
+      // but the common, expected path never reaches it).
+      if (existingSubject != null && !existingSubject.equals(subject)) {
+        throw new UnauthorizedException("Esa cuenta ya está enlazada a otra identidad de Google");
       }
+
+      // Already linked to this exact subject (only reachable via a stale/inconsistent read, since
+      // a matching subject would normally have been found by findByGoogleSubject above already) —
+      // a safe no-op, not a re-link.
+      if (existingSubject == null) {
+        boolean linked;
+        try {
+          linked = repository.linkGoogleSubject(existing.id(), subject);
+        } catch (DataIntegrityViolationException ex) {
+          if (!allowRetry) {
+            throw ex;
+          }
+          return resolveGoogleUser(subject, normalizedEmail, false);
+        }
+        if (!linked) {
+          // 0 rows affected: a concurrent login already linked this row (to some subject) between
+          // our read and this write. Re-resolving finds the current truth — either that subject is
+          // ours (no-op) or a different one (rejected by the guard above).
+          if (!allowRetry) {
+            throw new UnauthorizedException(
+                "Esa cuenta ya está enlazada a otra identidad de Google");
+          }
+          return resolveGoogleUser(subject, normalizedEmail, false);
+        }
+      }
+
       return new User(
           existing.id(),
           existing.email(),
