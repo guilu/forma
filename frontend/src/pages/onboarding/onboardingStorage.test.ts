@@ -2,6 +2,10 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import type { ApiClient } from '../../api/client';
 import type { UserProfile } from '../../api/profile';
 import {
+  baseProfile,
+  EMPTY_ONBOARDING_ANSWERS as EMPTY_ONBOARDING_ANSWERS_OUTPUT,
+} from '../../test/profileFixtures';
+import {
   clearOnboardingProgress,
   fetchOnboardingBackendState,
   fromOnboardingAnswersOutput,
@@ -14,15 +18,6 @@ import {
   EMPTY_ANSWERS,
   type OnboardingProgress,
 } from './onboardingStorage';
-
-const EMPTY_ONBOARDING_ANSWERS_OUTPUT = {
-  profile: { name: '', birthDate: '', sex: '', heightCm: '' },
-  metrics: { measurementSaved: false },
-  goal: {},
-  training: { days: [] },
-  equipment: { items: [] },
-  nutrition: { preference: '', restrictions: '' },
-};
 
 describe('onboardingStorage', () => {
   beforeEach(() => {
@@ -173,20 +168,13 @@ describe('syncOnboardingProgress (FOR-121)', () => {
 
 describe('fetchOnboardingBackendState (FOR-121)', () => {
   it('returns firstRunCompleted + recovered answers on success', async () => {
-    const profile: UserProfile = {
-      unitPreferences: {
-        weightUnit: 'KG',
-        heightUnit: 'CM',
-        distanceUnit: 'KM',
-        energyUnit: 'KCAL',
-      },
-      themeMode: 'DARK',
+    const profile: UserProfile = baseProfile({
       onboardingAnswers: {
         ...EMPTY_ONBOARDING_ANSWERS_OUTPUT,
         profile: { name: 'Diego', birthDate: '', sex: '', heightCm: '' },
       },
       firstRunCompleted: true,
-    };
+    });
     const request = vi.fn().mockResolvedValue(profile);
     const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
 

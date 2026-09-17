@@ -4,6 +4,7 @@ import { Link, MemoryRouter, Outlet, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { OnboardingGate } from './OnboardingGate';
 import { getProfile, type UserProfile } from '../api/profile';
+import { baseProfile } from '../test/profileFixtures';
 
 vi.mock('../api/profile', async () => {
   const actual = await vi.importActual<typeof import('../api/profile')>('../api/profile');
@@ -11,20 +12,6 @@ vi.mock('../api/profile', async () => {
 });
 
 const getProfileMock = vi.mocked(getProfile);
-
-const BASE_PROFILE: UserProfile = {
-  unitPreferences: { weightUnit: 'KG', heightUnit: 'CM', distanceUnit: 'KM', energyUnit: 'KCAL' },
-  themeMode: 'DARK',
-  onboardingAnswers: {
-    profile: { name: '', birthDate: '', sex: '', heightCm: '' },
-    metrics: { measurementSaved: false },
-    goal: {},
-    training: { days: [] },
-    equipment: { items: [] },
-    nutrition: { preference: '', restrictions: '' },
-  },
-  firstRunCompleted: false,
-};
 
 function renderGate(initialEntry = '/app') {
   return render(
@@ -51,7 +38,7 @@ describe('OnboardingGate', () => {
   });
 
   it('sends a user who has not finished the first run to /onboarding', async () => {
-    getProfileMock.mockResolvedValue({ ...BASE_PROFILE, firstRunCompleted: false });
+    getProfileMock.mockResolvedValue(baseProfile({ firstRunCompleted: false }));
 
     renderGate();
 
@@ -59,7 +46,7 @@ describe('OnboardingGate', () => {
   });
 
   it('does not redirect a user who already finished the first run', async () => {
-    getProfileMock.mockResolvedValue({ ...BASE_PROFILE, firstRunCompleted: true });
+    getProfileMock.mockResolvedValue(baseProfile({ firstRunCompleted: true }));
 
     renderGate();
 
@@ -81,13 +68,13 @@ describe('OnboardingGate', () => {
     // Nothing redirected yet — the pending fetch must never bounce the user.
     expect(screen.getByText('Panel principal')).toBeInTheDocument();
 
-    resolveProfile({ ...BASE_PROFILE, firstRunCompleted: false });
+    resolveProfile(baseProfile({ firstRunCompleted: false }));
 
     expect(await screen.findByText('Configuración inicial')).toBeInTheDocument();
   });
 
   it('never redirects while already on /onboarding', async () => {
-    getProfileMock.mockResolvedValue({ ...BASE_PROFILE, firstRunCompleted: false });
+    getProfileMock.mockResolvedValue(baseProfile({ firstRunCompleted: false }));
 
     render(
       <MemoryRouter initialEntries={['/onboarding']}>
@@ -128,7 +115,7 @@ describe('OnboardingGate', () => {
    * that swaps only the nested child route.
    */
   it('checks the profile once on mount, not again on every in-app navigation', async () => {
-    getProfileMock.mockResolvedValue({ ...BASE_PROFILE, firstRunCompleted: true });
+    getProfileMock.mockResolvedValue(baseProfile({ firstRunCompleted: true }));
     const user = userEvent.setup();
 
     function Shell() {

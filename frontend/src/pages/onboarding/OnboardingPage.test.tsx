@@ -7,6 +7,7 @@ import { saveOnboardingProgress, INITIAL_PROGRESS } from './onboardingStorage';
 import { NotificationProvider } from '../../components/NotificationProvider';
 import { getProfile, submitOnboardingAnswers, type UserProfile } from '../../api/profile';
 import { axe } from '../../test/axe';
+import { baseProfile } from '../../test/profileFixtures';
 
 /**
  * Covers `specs/FOR-59/tests.md` UI Tests: ordered steps with progress,
@@ -25,19 +26,7 @@ const getProfileMock = vi.mocked(getProfile);
 const submitOnboardingAnswersMock = vi.mocked(submitOnboardingAnswers);
 
 /** Default fixture: fresh/first-run profile (FOR-107 Edge Cases default), never completed. */
-const FRESH_PROFILE: UserProfile = {
-  unitPreferences: { weightUnit: 'KG', heightUnit: 'CM', distanceUnit: 'KM', energyUnit: 'KCAL' },
-  themeMode: 'DARK',
-  onboardingAnswers: {
-    profile: { name: '', birthDate: '', sex: '', heightCm: '' },
-    metrics: { measurementSaved: false },
-    goal: {},
-    training: { days: [] },
-    equipment: { items: [] },
-    nutrition: { preference: '', restrictions: '' },
-  },
-  firstRunCompleted: false,
-};
+const FRESH_PROFILE: UserProfile = baseProfile();
 
 function renderOnboarding() {
   return render(
@@ -54,6 +43,21 @@ function renderOnboarding() {
 
 async function fillName(user: ReturnType<typeof userEvent.setup>, name: string) {
   await user.type(screen.getByLabelText('Nombre'), name);
+}
+
+/**
+ * Walks from the profile step to the completion screen: fills the one
+ * required field, advances past it, then skips every remaining optional
+ * step. Shared by every test whose interest starts *at* the completion
+ * screen rather than in getting there — each keeps its own assertions
+ * (including the "Todo listo" heading check), only the navigation moves.
+ */
+async function goToCompletionScreen(user: ReturnType<typeof userEvent.setup>) {
+  await fillName(user, 'Diego');
+  await user.click(screen.getByRole('button', { name: 'Siguiente' })); // metrics -> goal
+  for (let i = 0; i < 6; i += 1) {
+    await user.click(screen.getByRole('button', { name: 'Omitir este paso' }));
+  }
 }
 
 describe('OnboardingPage', () => {
@@ -171,11 +175,7 @@ describe('OnboardingPage', () => {
     const user = userEvent.setup();
     renderOnboarding();
 
-    await fillName(user, 'Diego');
-    await user.click(screen.getByRole('button', { name: 'Siguiente' })); // metrics -> goal
-    for (let i = 0; i < 6; i += 1) {
-      await user.click(screen.getByRole('button', { name: 'Omitir este paso' }));
-    }
+    await goToCompletionScreen(user);
 
     expect(screen.getByRole('heading', { name: 'Todo listo' })).toBeInTheDocument();
 
@@ -264,11 +264,7 @@ describe('OnboardingPage', () => {
     const user = userEvent.setup();
     renderOnboarding();
 
-    await fillName(user, 'Diego');
-    await user.click(screen.getByRole('button', { name: 'Siguiente' })); // metrics -> goal
-    for (let i = 0; i < 6; i += 1) {
-      await user.click(screen.getByRole('button', { name: 'Omitir este paso' }));
-    }
+    await goToCompletionScreen(user);
 
     expect(screen.getByRole('heading', { name: 'Todo listo' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Ahora no, ir al panel' })).not.toBeInTheDocument();
@@ -325,11 +321,7 @@ describe('OnboardingPage — backend persistence (FOR-121)', () => {
     renderOnboarding();
     await waitFor(() => expect(getProfileMock).toHaveBeenCalled());
 
-    await fillName(user, 'Diego');
-    await user.click(screen.getByRole('button', { name: 'Siguiente' })); // -> metrics
-    for (let i = 0; i < 6; i += 1) {
-      await user.click(screen.getByRole('button', { name: 'Omitir este paso' }));
-    }
+    await goToCompletionScreen(user);
     expect(screen.getByRole('heading', { name: 'Todo listo' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Ir al panel' }));
