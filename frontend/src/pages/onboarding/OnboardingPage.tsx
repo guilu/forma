@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Brand } from '../../components/Brand';
+import { Button } from '../../components/Button';
 import { useNotify } from '../../components/NotificationProvider';
 import { OnboardingStepShell } from './OnboardingStepShell';
 import { CompletionStep } from './CompletionStep';
@@ -50,15 +51,27 @@ const SYNC_FAILED_MESSAGE =
  * finished back into onboarding. The local flag also drives the very first
  * paint, so there is no flash of the wrong screen while the fetch resolves,
  * and it is the fallback if the backend is unreachable — a fetch failure
- * must never trap a user in or out of onboarding either way. This story
- * deliberately does not add a forced redirect from `/` into `/onboarding` —
- * `AGENTS.md`/story guidance is explicit that a manual route is enough for
- * the MVP, and a destructive automatic redirect could trap a returning user
- * with no way out; that decision is unchanged, only where the "already
- * completed" signal comes from. Once the user interacts (advances/restarts),
- * the backend gate stops being consulted for the rest of the session so a
- * late-resolving fetch never yanks the screen out from under an in-progress
- * or just-restarted flow.
+ * must never trap a user in or out of onboarding either way. Once the user
+ * interacts (advances/restarts), the backend gate stops being consulted for
+ * the rest of the session so a late-resolving fetch never yanks the screen
+ * out from under an in-progress or just-restarted flow.
+ *
+ * <p><b>Forced redirect on first login (feat/onboarding-primera-vez,
+ * supersedes the earlier "no forced redirect" decision this comment used to
+ * document)</b>: a user who has not completed the first run is now sent to
+ * `/onboarding` automatically — see {@link OnboardingGate}, mounted in
+ * `AppShell` (`app/OnboardingGate.tsx`), not here. The criterion is this same
+ * `firstRunCompleted` flag, not whether a plan exists, so a user who
+ * finished onboarding but has no plan yet is never sent back — that empty
+ * state belongs to the dashboard, not to this wizard. This page stays
+ * unaware of the redirect: it only has to keep offering a way out, which it
+ * already did for a returning user via {@link handleGoToDashboard} ("Ir al
+ * panel" on the completion screen) and now also offers from every step via
+ * the header's "Ahora no, ir al panel" exit ({@link OnboardingHeader}) — both
+ * mark {@code completed: true} and persist it before navigating to `/app`,
+ * so the redirect gate never sees them again. A forced entry that cannot be
+ * dismissed would be a trap, not a guide; this flow was already built so
+ * that it never is one.
  *
  * <p><b>Persistence (FOR-121)</b>: every answer is written to the local
  * draft (`onboardingStorage.ts`) immediately (fast, synchronous, never
@@ -308,7 +321,7 @@ export function OnboardingPage() {
 
   return (
     <div className={styles.page}>
-      <OnboardingHeader />
+      <OnboardingHeader onExit={handleGoToDashboard} />
       <div className={styles.panel}>
         <OnboardingStepShell
           stepIndex={progress.stepIndex}
@@ -338,13 +351,25 @@ export function OnboardingPage() {
  * per-step content, so it stays identical across every step instead of
  * resetting alongside {@link OnboardingStepShell}'s step `<h2>` (which keeps
  * receiving focus on step change, unaffected by this addition — FOR-61).
+ *
+ * <p><b>`onExit` (feat/onboarding-primera-vez)</b>: the explicit, visible way
+ * out of a forced first-run redirect ({@link OnboardingGate}). Passed only on
+ * the step view — the completion screen already offers the same exit as its
+ * primary "Ir al panel" action, so a second copy here would be redundant.
+ * Ghost-variant per `docs/ui-guidelines.md` (lowest emphasis, since the
+ * primary action on every step is still "Siguiente"/"Finalizar").
  */
-function OnboardingHeader() {
+function OnboardingHeader({ onExit }: { readonly onExit?: () => void }) {
   return (
     <div className={styles.header}>
       <Brand />
       <h1 className={styles.title}>Configuración inicial</h1>
       <p className={styles.subtitle}>Configuremos tu experiencia en unos pocos pasos.</p>
+      {onExit && (
+        <Button variant="ghost" type="button" onClick={onExit}>
+          Ahora no, ir al panel
+        </Button>
+      )}
     </div>
   );
 }
