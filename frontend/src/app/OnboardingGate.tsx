@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getProfile } from '../api/profile';
 
@@ -27,6 +27,25 @@ import { getProfile } from '../api/profile';
  * belt-and-suspenders check for the same rule, not the only thing enforcing
  * it.
  *
+ * <p><b>Runs once per mount, not once per navigation</b>: `AppShell` mounts
+ * once per session (it wraps every `/app/*` route behind a single `<Outlet
+ * />`, per `app/routes.tsx`), so the profile check — and the redirect
+ * decision it drives — only needs to happen once. The effect's dependency
+ * array is empty; both `location.pathname` and `navigate` are captured once
+ * into refs at mount instead of listed as dependencies, so navigating
+ * between in-app routes (`/app` -&gt; `/app/nutrition` -&gt; ...) does not
+ * re-trigger it and fire another `GET /api/v1/profile` for a decision that
+ * is already settled. `navigate` specifically has to go through a ref
+ * (not just be omitted): this app uses the classic `<BrowserRouter>` (see
+ * `main.tsx`), not a data router, and under that mode `useNavigate()`
+ * returns a *new function identity on every navigation* — it closes over
+ * the current location to resolve relative paths — so leaving it in the
+ * effect's own dependency array would silently reintroduce the same
+ * per-navigation re-fetch this fix removes. Capturing it once is safe here
+ * because this component only ever navigates to the fixed absolute path
+ * `/onboarding`, whose resolution does not depend on which render produced
+ * the closure.
+ *
  * <p><b>No trap</b>: this only ever adds a redirect *into* onboarding, never
  * removes a way out of it — the flow's own "Ahora no, ir al panel" exit
  * (visible on every step, see `OnboardingPage.tsx`) and its completion
@@ -41,16 +60,22 @@ import { getProfile } from '../api/profile';
 export function OnboardingGate() {
   const navigate = useNavigate();
   const location = useLocation();
+  // Captured once, at mount — see class doc "Runs once per mount". Reading
+  // these from refs instead of listing `navigate`/`location.pathname` as
+  // effect dependencies is what keeps the check from re-running on every
+  // in-app navigation.
+  const navigateRef = useRef(navigate);
+  const initialPathnameRef = useRef(location.pathname);
 
   useEffect(() => {
-    if (location.pathname.startsWith('/onboarding')) {
+    if (initialPathnameRef.current.startsWith('/onboarding')) {
       return;
     }
     let active = true;
     getProfile()
       .then((profile) => {
         if (active && !profile.firstRunCompleted) {
-          navigate('/onboarding', { replace: true });
+          navigateRef.current('/onboarding', { replace: true });
         }
       })
       .catch(() => {
@@ -61,7 +86,7 @@ export function OnboardingGate() {
     return () => {
       active = false;
     };
-  }, [location.pathname, navigate]);
+  }, []);
 
   return null;
 }

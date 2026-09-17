@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import userEvent from '@testing-library/user-event';
+import { Link, MemoryRouter, Outlet, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { OnboardingGate } from './OnboardingGate';
 import { getProfile, type UserProfile } from '../api/profile';
@@ -117,5 +118,46 @@ describe('OnboardingGate', () => {
     await waitFor(() => expect(getProfileMock).toHaveBeenCalled());
     expect(screen.getByText('Panel principal')).toBeInTheDocument();
     expect(screen.queryByText('Configuración inicial')).not.toBeInTheDocument();
+  });
+
+  /**
+   * AppShell mounts OnboardingGate once per session, not once per route — the
+   * check must run once on mount, not again on every in-app navigation
+   * (`/app` -> `/app/nutrition` -> ...). This mirrors AppShell's real
+   * structure: the gate and a persistent shell sit above an `<Outlet />`
+   * that swaps only the nested child route.
+   */
+  it('checks the profile once on mount, not again on every in-app navigation', async () => {
+    getProfileMock.mockResolvedValue({ ...BASE_PROFILE, firstRunCompleted: true });
+    const user = userEvent.setup();
+
+    function Shell() {
+      return (
+        <>
+          <OnboardingGate />
+          <Link to="/app/nutrition">Ir a nutrición</Link>
+          <Outlet />
+        </>
+      );
+    }
+
+    render(
+      <MemoryRouter initialEntries={['/app']}>
+        <Routes>
+          <Route path="/app" element={<Shell />}>
+            <Route index element={<div>Panel principal</div>} />
+            <Route path="nutrition" element={<div>Vista de nutrición</div>} />
+          </Route>
+          <Route path="/onboarding" element={<div>Configuración inicial</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(getProfileMock).toHaveBeenCalledTimes(1));
+
+    await user.click(screen.getByRole('link', { name: 'Ir a nutrición' }));
+
+    expect(await screen.findByText('Vista de nutrición')).toBeInTheDocument();
+    expect(getProfileMock).toHaveBeenCalledTimes(1);
   });
 });
