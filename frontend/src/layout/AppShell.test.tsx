@@ -9,10 +9,14 @@ import { ThemeProvider } from '../theme/ThemeContext';
 // FOR-120: ThemeProvider reads/persists the theme preference through this
 // module on mount. Mocked so these shell tests stay network-free; 'SYSTEM'
 // matches the default local mode so the mount-time reconciliation is a no-op.
+// FOR-121/onboarding-primera-vez: OnboardingGate also reads this module on mount
+// (see app/OnboardingGate.tsx) — firstRunCompleted stays true here so these shell
+// tests keep exercising the shell itself, not the first-run redirect.
 vi.mock('../api/profile', () => ({
   getProfile: vi.fn().mockResolvedValue({
     unitPreferences: { weightUnit: 'KG', heightUnit: 'CM', distanceUnit: 'KM', energyUnit: 'KCAL' },
     themeMode: 'SYSTEM',
+    firstRunCompleted: true,
   }),
   updateThemeMode: vi.fn().mockResolvedValue(undefined),
 }));
