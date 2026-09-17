@@ -1,0 +1,32 @@
+/*
+ * "Continuar con Google" (ADR-014). A real `<a href>` navigation, never a
+ * `ButtonLink` — it leaves the SPA entirely (docs/ui-guidelines.md: "Use
+ * composes only where nothing needs to beat the base — typically an external
+ * `<a href>`"). It composes Button.module.css's `.button`/`.surface` classes
+ * directly rather than fighting them for specificity, so it needs only the
+ * properties neither of those declare: full width and the icon/label gap.
+ */
+.googleButton {
+  width: 100%;
+  gap: var(--space-3);
+}
+
+.googleIcon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+/* "o" divider between the Google button and the email/password form. */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--color-text-muted);
+}
+
+.dividerLine {
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}

@@ -32,6 +32,12 @@ dependencies {
     // runtime (not bundled by spring-security-crypto itself) — required or every
     // PasswordEncoder#encode/matches call throws NoClassDefFoundError.
     implementation 'org.bouncycastle:bcprov-jdk18on:1.78.1'
+    // Login with Google (ADR-012 addendum): the server-side OAuth2/OIDC authorization-code flow.
+    // Only the client is used — the ClientRegistrationRepository is built by hand in SecurityConfig
+    // from @Value-bound env vars rather than Boot's spring.security.oauth2.client.registration.*
+    // autoconfiguration, so the app still boots with GOOGLE_CLIENT_ID/SECRET unset (see its
+    // javadoc). Mirrors akademia's dependency choice.
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
 
     // Persistence baseline (FOR-83): JDBC DataSource + Flyway migrations against
     // PostgreSQL (ADR-003). No JPA/ORM yet — the domain stays framework-free.

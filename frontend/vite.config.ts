@@ -65,6 +65,14 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,
+        // Login with Google (ADR-012 addendum, ADR-014): without this, the backend saw no
+        // X-Forwarded-Host at all and built its OAuth redirect_uri from its own plain
+        // `Host: localhost:8080` — the browser landed back on the backend's port instead of the
+        // SPA's. Verified empirically (not just by reading Vite's docs): a throwaway echo server
+        // behind this same proxy config showed `x-forwarded-host: localhost:5173`,
+        // `x-forwarded-proto: http` and `x-forwarded-port: 5173` on every proxied request once
+        // this was set — no extra `configure` hook needed.
+        xfwd: true,
       },
     },
   },

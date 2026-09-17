@@ -90,3 +90,19 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  nginx:
+    name: Nginx proxy headers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Guards the double-reverse-proxy bug found in a real deployment of Google
+      # login: frontend/nginx.conf must PRESERVE an incoming X-Forwarded-Proto/
+      # -Host from a public proxy in front of it, not overwrite them with its
+      # own view of the request (docs/adr/ADR-014-google-login.md). Runs the
+      # real nginx.conf in Docker against a throwaway outer proxy + echo
+      # backend — see frontend/nginx/test/ for the full topology and why this
+      # needs Docker (ubuntu-latest has it; not every dev machine does).
+      - name: Double-proxy forwarded-header coverage
+        run: frontend/nginx/test/forwarded-headers.test.sh

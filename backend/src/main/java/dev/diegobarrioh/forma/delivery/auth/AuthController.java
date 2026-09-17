@@ -5,6 +5,7 @@ import dev.diegobarrioh.forma.application.UnauthorizedException;
 import dev.diegobarrioh.forma.application.UserService;
 import dev.diegobarrioh.forma.delivery.ApiPaths;
 import dev.diegobarrioh.forma.delivery.security.FormaUserPrincipal;
+import dev.diegobarrioh.forma.delivery.security.SessionAuthenticator;
 import dev.diegobarrioh.forma.domain.User;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -14,9 +15,6 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -44,17 +42,17 @@ public class AuthController {
   private final UserService userService;
   private final CurrentUserProvider currentUserProvider;
   private final AuthenticationManager authenticationManager;
-  private final SecurityContextRepository securityContextRepository;
+  private final SessionAuthenticator sessionAuthenticator;
 
   public AuthController(
       UserService userService,
       CurrentUserProvider currentUserProvider,
       AuthenticationManager authenticationManager,
-      SecurityContextRepository securityContextRepository) {
+      SessionAuthenticator sessionAuthenticator) {
     this.userService = userService;
     this.currentUserProvider = currentUserProvider;
     this.authenticationManager = authenticationManager;
-    this.securityContextRepository = securityContextRepository;
+    this.sessionAuthenticator = sessionAuthenticator;
   }
 
   /** Public self-registration (FOR-145 spec: no invite/admin gate). Duplicate email -> 409. */
@@ -85,21 +83,10 @@ public class AuthController {
       throw new UnauthorizedException("Invalid credentials");
     }
 
-    // Session-fixation protection: rotate the session id before establishing the authenticated
-    // context (mirrors SecurityConfig's sessionFixation(changeSessionId) for the filter-driven
-    // path — this endpoint authenticates programmatically, so it must do the same rotation).
-    // changeSessionId() requires an existing session; the CSRF-priming request never creates one
-    // (CookieCsrfTokenRepository is stateless), so there is usually nothing to rotate yet — a
-    // brand-new session created below by securityContextRepository.saveContext() carries no
-    // fixation risk. Only rotate when a pre-existing session is actually present.
-    if (httpRequest.getSession(false) != null) {
-      httpRequest.changeSessionId();
-    }
-
-    SecurityContext context = SecurityContextHolder.createEmptyContext();
-    context.setAuthentication(authenticationResult);
-    SecurityContextHolder.setContext(context);
-    securityContextRepository.saveContext(context, httpRequest, httpResponse);
+    // Session-fixation protection + persisting the context: shared with GoogleOAuth2SuccessHandler
+    // (SessionAuthenticator javadoc) — this endpoint authenticates programmatically rather than via
+    // the filter chain, so it must do that same rotation/save itself.
+    sessionAuthenticator.establishSession(authenticationResult, httpRequest, httpResponse);
 
     FormaUserPrincipal principal = (FormaUserPrincipal) authenticationResult.getPrincipal();
     userService.recordSuccessfulLogin(principal.id());

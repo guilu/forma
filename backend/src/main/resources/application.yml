@@ -71,8 +71,47 @@ forma:
   bootstrap:
     legacy-user-password: ${FORMA_BOOTSTRAP_LEGACY_USER_PASSWORD:}
 
+  # Login with Google (ADR-012 addendum). Empty by default — SecurityConfig builds the
+  # ClientRegistrationRepository by hand from these and only registers oauth2Login() when both are
+  # set (Boot's own spring.security.oauth2.client.registration.* binding fails startup on an empty
+  # client-id, which would break every environment that has not configured Google yet). With no
+  # value, GET /api/oauth2/authorization/google redirects to the frontend login page with
+  # ?error=google instead of 404ing (GoogleOAuth2FallbackController). Register the OAuth client in
+  # Google Cloud Console with one authorized redirect URI per origin the SPA is actually served
+  # from — see env.example/docs/configuration.md for the full list (prod, compose, npm run dev).
+  # SecurityConfig#googleClientRegistration's {baseUrl} template is built from
+  # X-Forwarded-Host/-Proto (server.forward-headers-strategy=framework below), which
+  # vite.config.ts's dev proxy and frontend/nginx.conf both set.
+  oauth2:
+    google:
+      client-id: ${GOOGLE_CLIENT_ID:}
+      client-secret: ${GOOGLE_CLIENT_SECRET:}
+
+  # Where the backend redirects the browser after a Google login (ADR-012 addendum, ADR-014) and
+  # where an unconfigured/failed attempt sends it back with ?error=google.
+  #
+  # Empty by default — FrontendRedirectResolver then redirects to a same-origin RELATIVE path
+  # ("/app", "/login?error=google") instead of prefixing an absolute origin. This is correct in
+  # every supported flow, not only production: frontend/nginx.conf proxies /api/ to this backend
+  # behind one origin in both prod and Docker Compose, and Vite's dev server proxies it the same
+  # way for plain `npm run dev` (vite.config.ts's server.proxy['/api']) — in all three, the browser
+  # only ever talks to the frontend's own origin, so a relative Location header resolves correctly
+  # with no configuration at all. FORMA_FRONTEND_URL only needs a value for the one flow that
+  # genuinely differs: hitting this backend directly, bypassing every proxy (e.g. exercising
+  # `./gradlew bootRun` with no frontend running) — not how Google login is normally exercised, so
+  # it is deliberately not the default (an earlier version of this defaulted to
+  # http://localhost:5173, which would have sent a real deployment's users to localhost had the
+  # variable been forgotten — see docs/adr/ADR-014-google-login.md).
+  frontend-url: ${FORMA_FRONTEND_URL:}
+
 server:
   port: ${SERVER_PORT:8080}
+  # Login with Google (ADR-012 addendum): trust X-Forwarded-Proto/Host/Port from the reverse proxy
+  # (frontend/nginx.conf sets them) to reconstruct the request's public URL. Without this, the
+  # Google OAuth redirect-uri's {baseUrl} placeholder would resolve to the backend's own
+  # plain-http, container-internal view of itself instead of the public https host — building a
+  # redirect_uri Google was never registered with.
+  forward-headers-strategy: framework
   # API error safety baseline (FOR-88, ADR-005): never leak stack traces or raw
   # exception messages to clients. The GlobalExceptionHandler owns the response
   # shape; these settings harden the container's default error path too.

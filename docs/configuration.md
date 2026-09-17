@@ -40,6 +40,35 @@ to override locally; `.env` is gitignored.
 | `WITHINGS_REDIRECT_URI` | backend | `https://forma.diegobarrioh.dev/auth` | no | Must match the URI registered with Withings exactly. |
 | `WITHINGS_TOKEN_ENC_KEY` | backend | (empty) | **yes** | Key for encrypting stored provider tokens. `openssl rand -base64 32`. |
 | `FORMA_BOOTSTRAP_LEGACY_USER_PASSWORD` | backend | (empty) | **yes** | Activates the pre-auth placeholder account (FOR-145). |
+| `GOOGLE_CLIENT_ID` | backend | (empty) | no | Google OAuth client id. Empty disables `oauth2Login()`; `/api/oauth2/authorization/google` redirects to `/login?error=google` instead of 404/500ing. |
+| `GOOGLE_CLIENT_SECRET` | backend | (empty) | **yes** | Google OAuth client secret. |
+| `FORMA_FRONTEND_URL` | backend | (empty) | no | Where the backend redirects the browser after a Google login (or a failed one, with `?error=google`). Empty resolves to a same-origin **relative** redirect (`/app`, `/login?error=google`), which is correct in every supported flow — prod and compose both proxy `/api/` to the backend behind one nginx origin, and Vite's dev server proxies it the same way for plain `npm run dev`. Only needs a value to exercise Google login against the backend directly, bypassing every proxy. |
+
+### Google OAuth client — authorized redirect URIs
+
+Register **one redirect URI per origin the SPA is actually served from** in the
+Google Cloud Console client (`GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`
+above) — `SecurityConfig#googleClientRegistration`'s `redirect-uri` template
+(`{baseUrl}/api/login/oauth2/code/{registrationId}`) resolves `{baseUrl}` from
+the inbound request's `X-Forwarded-Host`/`X-Forwarded-Proto`
+(`server.forward-headers-strategy=framework`), which both
+`frontend/vite.config.ts`'s dev proxy (`xfwd: true`, verified empirically —
+see its commit) and `frontend/nginx.conf` set — the latter now *preserving* an
+incoming `X-Forwarded-Proto`/`X-Forwarded-Host` from a public proxy in front of
+it rather than overwriting it, a production bug fixed for the double-reverse-
+proxy topology (see [ADR-014](adr/ADR-014-google-login.md) point 13):
+
+| Environment | Authorized redirect URI |
+| --- | --- |
+| Production | `https://forma.diegobarrioh.dev/api/login/oauth2/code/google` — this is currently a domain [`PreproRibbon`](../frontend/src/layout/preproHost.ts) itself recognizes as preproduction (`diegobarrioh.dev`); there is no separate staging host to register in addition to it. |
+| Docker Compose | `http://localhost:3000/api/login/oauth2/code/google` (the published frontend port) |
+| Docker Compose, alternate local/preprod port | `http://localhost:3002/api/login/oauth2/code/google` — `compose.yaml`'s `FORMA_CORS_ALLOWED_ORIGINS` default already includes `http://localhost:3002` for this; set `FRONTEND_PORT=3002` to serve the frontend there (see `docs/plans/FOR-145d-frontend-auth-state.md`'s manual test steps). |
+| `npm run dev` (no Compose) | `http://localhost:5173/api/login/oauth2/code/google` (Vite's dev server port) |
+
+Hitting the backend directly on `http://localhost:8080` (bypassing every
+proxy) is not a supported way to exercise Google login and has no registered
+redirect URI by default — it only works if `FORMA_FRONTEND_URL` is also set to
+an absolute origin.
 
 ### Getting a variable into the backend container
 

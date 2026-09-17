@@ -18,7 +18,7 @@ class FormaUserPrincipalTest {
 
   private static User user(UserRole role) {
     return new User(
-        UUID.randomUUID(), "someone@forma.test", "hash", Instant.now(), null, true, role);
+        UUID.randomUUID(), "someone@forma.test", "hash", Instant.now(), null, true, role, null);
   }
 
   @Test

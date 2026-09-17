@@ -5,10 +5,42 @@ import { describe, expect, it, vi } from 'vitest';
 import { useAuth } from '../auth/AuthContext';
 import { LoginPage } from './LoginPage';
 import { RegisterPage } from './RegisterPage';
+import authStyles from './AuthPage.module.css';
+import authCss from './AuthPage.module.css?raw';
 
 vi.mock('../auth/AuthContext', () => ({ useAuth: vi.fn() }));
 
 describe('auth pages', () => {
+  /*
+   * The login card used to open with the generic "Iniciar sesión" — the same
+   * string as the submit button beneath it, so a screen reader announced the
+   * heading and the button as if they were the same thing. "vuelta" carries
+   * the landing headline's accent gradient so the returning-user welcome
+   * reads as the same brand voice as the public page.
+   */
+  it('welcomes a returning visitor with the accent-highlighted headline', () => {
+    vi.mocked(useAuth).mockReturnValue(authState({}));
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+
+    const heading = screen.getByRole('heading', { level: 1, name: 'Bienvenido de vuelta' });
+    expect(heading).toBeInTheDocument();
+    expect(screen.getByText('Accede a tu cuenta para continuar preparándote')).toBeInTheDocument();
+
+    const accent = screen.getByText('vuelta');
+    expect(accent.tagName).toBe('SPAN');
+    expect(accent.className).toContain(authStyles.titleAccent);
+  });
+
+  it('paints the login headline accent with the shared landing gradient token', () => {
+    expect(authCss).toMatch(
+      /\.titleAccent\s*{[^}]*background-image:\s*var\(--gradient-accent-text\);[^}]*background-clip:\s*text;[^}]*color:\s*transparent;/s,
+    );
+  });
+
   it('logs in from the Spanish form', async () => {
     const login = vi.fn().mockResolvedValue(undefined);
     vi.mocked(useAuth).mockReturnValue(authState({ login }));
@@ -243,6 +275,52 @@ describe('auth pages', () => {
       'No se pudo crear la cuenta. Revisa los datos e inténtalo de nuevo.',
     );
     expect(screen.queryByText('database details')).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['/login', <LoginPage />],
+    ['/register', <RegisterPage />],
+  ])(
+    'offers a Google sign-in link pointing at the backend authorization endpoint on %s',
+    (path, page) => {
+      vi.mocked(useAuth).mockReturnValue(authState({}));
+      render(
+        <MemoryRouter initialEntries={[path]}>
+          <Routes>
+            <Route path={path} element={page} />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+      expect(screen.getByRole('link', { name: 'Continuar con Google' })).toHaveAttribute(
+        'href',
+        '/api/oauth2/authorization/google',
+      );
+    },
+  );
+
+  it('shows a Spanish error when redirected back with ?error=google', () => {
+    vi.mocked(useAuth).mockReturnValue(authState({}));
+    render(
+      <MemoryRouter initialEntries={['/login?error=google']}>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('alert')).toHaveTextContent('No se pudo iniciar sesión con Google.');
+  });
+
+  it('shows no Google error when the login page loads without the error flag', () => {
+    vi.mocked(useAuth).mockReturnValue(authState({}));
+    render(
+      <MemoryRouter initialEntries={['/login']}>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByText('No se pudo iniciar sesión con Google.')).not.toBeInTheDocument();
   });
 });
 

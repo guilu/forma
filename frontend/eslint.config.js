@@ -9,7 +9,10 @@ import tseslint from 'typescript-eslint';
 import prettier from 'eslint-config-prettier';
 
 export default tseslint.config(
-  { ignores: ['dist', 'node_modules', 'coverage'] },
+  // `nginx/test/echo-backend.mjs` is Node-only Docker test tooling (double-proxy nginx
+  // coverage, FOR- bug fix), not SPA source — it runs under `node:22-alpine` in CI, never
+  // bundled, and uses Node globals (`console`) the browser lint config below doesn't know.
+  { ignores: ['dist', 'node_modules', 'coverage', 'nginx'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

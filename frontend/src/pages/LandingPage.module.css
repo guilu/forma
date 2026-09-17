@@ -123,7 +123,7 @@
 }
 
 .accentText {
-  background-image: linear-gradient(to right, rgb(18 122 95), #ff9800, rgb(125 237 92));
+  background-image: var(--gradient-accent-text);
   background-clip: text;
   color: transparent;
 }

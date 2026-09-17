@@ -6,13 +6,23 @@ import { useAuth } from '../auth/AuthContext';
 import { axe } from '../test/axe';
 import { LandingPage } from './LandingPage';
 import landingCss from './LandingPage.module.css?raw';
+import themeCss from '../styles/theme.css?raw';
 
 vi.mock('../auth/AuthContext', () => ({ useAuth: vi.fn() }));
 
 describe('LandingPage', () => {
+  /*
+   * The ramp used to be hardcoded here directly; it is now a token
+   * (`--gradient-accent-text`) shared with the login headline's "vuelta"
+   * accent, so both assert against the token's declared value rather than the
+   * page repeating the literal gradient a second place could drift from.
+   */
   it('keeps the branded gradient and gives every call to action the pill radius', () => {
     expect(landingCss).toMatch(
-      /\.accentText\s*{[^}]*background-image:\s*linear-gradient\(to right, rgb\(18 122 95\), #ff9800, rgb\(125 237 92\)\);[^}]*background-clip:\s*text;[^}]*color:\s*transparent;/s,
+      /\.accentText\s*{[^}]*background-image:\s*var\(--gradient-accent-text\);[^}]*background-clip:\s*text;[^}]*color:\s*transparent;/s,
+    );
+    expect(themeCss).toMatch(
+      /--gradient-accent-text:\s*linear-gradient\(to right, rgb\(18 122 95\), #ff9800, rgb\(125 237 92\)\);/,
     );
     /*
      * The buttons are pills. They were the first ones to be — the page parted

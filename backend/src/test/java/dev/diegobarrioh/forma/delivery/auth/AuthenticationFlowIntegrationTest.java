@@ -229,6 +229,42 @@ class AuthenticationFlowIntegrationTest {
     assertThat(hasSessionCookie).isFalse();
   }
 
+  /**
+   * Regression test (ADR-012 addendum, migration V62): a Google-only account has {@code
+   * password_hash = NULL}. {@code DelegatingPasswordEncoder.matches(raw, null)} falls back to
+   * {@code SecurityConfig}'s {@code defaultPasswordEncoderForMatches} (the Argon2 encoder), whose
+   * own null-encoded-password guard returns {@code false} rather than throwing — so this must come
+   * back as the ordinary 401 "Invalid credentials", never a 500.
+   */
+  @Test
+  void passwordLoginForAGoogleOnlyAccountReturns401NotA500() throws Exception {
+    jdbcTemplate.update(
+        "INSERT INTO users (id, email, password_hash, google_subject) VALUES"
+            + " (?, 'google.only@x.com', NULL, 'google-sub-regression')",
+        java.util.UUID.randomUUID());
+    Csrf csrf = primeCsrf();
+
+    // Same JDK HttpClient workaround as loginWithAWrongPasswordReturns401AndSetsNoSessionCookie
+    // (a 401 to a POST-with-body trips a TestRestTemplate/streaming retry bug).
+    java.net.http.HttpClient httpClient = java.net.http.HttpClient.newHttpClient();
+    java.net.http.HttpRequest loginRequest =
+        java.net.http.HttpRequest.newBuilder()
+            .uri(java.net.URI.create(restTemplate.getRootUri() + "/api/v1/auth/login"))
+            .header("Content-Type", "application/json")
+            .header(HttpHeaders.COOKIE, csrf.cookiePair())
+            .header("X-XSRF-TOKEN", csrf.token())
+            .POST(
+                java.net.http.HttpRequest.BodyPublishers.ofString(
+                    "{\"email\":\"google.only@x.com\",\"password\":\"AnyPassword123!\"}"))
+            .build();
+
+    java.net.http.HttpResponse<String> response =
+        httpClient.send(loginRequest, java.net.http.HttpResponse.BodyHandlers.ofString());
+
+    assertThat(response.statusCode()).isEqualTo(HttpStatus.UNAUTHORIZED.value());
+    assertThat(response.body()).contains("UNAUTHORIZED");
+  }
+
   @Test
   void unauthenticatedRequestToAProtectedEndpointReturns401() {
     ResponseEntity<String> response = restTemplate.getForEntity("/api/v1/auth/me", String.class);
