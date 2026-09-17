@@ -239,6 +239,42 @@ describe('OnboardingPage', () => {
     expect(screen.getByText('Paso 1 de 7')).toBeInTheDocument();
   });
 
+  /*
+   * feat/onboarding-primera-vez: AppShell now redirects an unfinished first
+   * run into this page (see app/OnboardingGate.tsx). A forced entry with no
+   * way out would be a trap — this is that way out, reachable from step one,
+   * without having to click/skip through the rest of the wizard first.
+   */
+  it('offers an explicit exit on every step that skips the wizard and returns to the dashboard', async () => {
+    const user = userEvent.setup();
+    renderOnboarding();
+    await waitFor(() => expect(getProfileMock).toHaveBeenCalled());
+
+    expect(screen.getByRole('heading', { name: 'Perfil' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Ahora no, ir al panel' }));
+
+    expect(await screen.findByText('Panel principal')).toBeInTheDocument();
+    await waitFor(() => {
+      const lastCall = submitOnboardingAnswersMock.mock.calls.at(-1);
+      expect(lastCall?.[0]).toMatchObject({ completed: true });
+    });
+  });
+
+  it('does not offer the step-view exit again on the completion screen, which already has its own', async () => {
+    const user = userEvent.setup();
+    renderOnboarding();
+
+    await fillName(user, 'Diego');
+    await user.click(screen.getByRole('button', { name: 'Siguiente' })); // metrics -> goal
+    for (let i = 0; i < 6; i += 1) {
+      await user.click(screen.getByRole('button', { name: 'Omitir este paso' }));
+    }
+
+    expect(screen.getByRole('heading', { name: 'Todo listo' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Ahora no, ir al panel' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ir al panel' })).toBeInTheDocument();
+  });
+
   it('has no accessibility violations on the first step (FOR-114)', async () => {
     const { container } = renderOnboarding();
     await waitFor(() => expect(getProfileMock).toHaveBeenCalled());
