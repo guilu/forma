@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { ThemeProvider, useTheme } from './ThemeContext';
 import { THEME_STORAGE_KEY } from './theme';
 import { getProfile, updateThemeMode, type UserProfile } from '../api/profile';
+import { baseProfile } from '../test/profileFixtures';
 
 // FOR-120: ThemeProvider now reads/persists the theme preference through the
 // FOR-107 profile backend. Mocked here so FOR-62's existing regression tests
@@ -17,20 +18,9 @@ vi.mock('../api/profile', () => ({
 const getProfileMock = vi.mocked(getProfile);
 const updateThemeModeMock = vi.mocked(updateThemeMode);
 
-const BASE_PROFILE: UserProfile = {
-  unitPreferences: { weightUnit: 'KG', heightUnit: 'CM', distanceUnit: 'KM', energyUnit: 'KCAL' },
-  themeMode: 'SYSTEM',
-  // FOR-121 fields: irrelevant to this file's theme tests.
-  onboardingAnswers: {
-    profile: { name: '', birthDate: '', sex: '', heightCm: '' },
-    metrics: { measurementSaved: false },
-    goal: {},
-    training: { days: [] },
-    equipment: { items: [] },
-    nutrition: { preference: '', restrictions: '' },
-  },
-  firstRunCompleted: false,
-};
+// FOR-121 fields: irrelevant to this file's theme tests, so kept at their
+// shared "nothing saved yet" defaults (see test/profileFixtures.ts).
+const BASE_PROFILE: UserProfile = baseProfile({ themeMode: 'SYSTEM' });
 
 /**
  * A controllable `matchMedia('(prefers-color-scheme: light)')` fake: lets a
