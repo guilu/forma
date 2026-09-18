@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { LoadingState } from '../components/LoadingState';
 import { IntegrationsProvider } from '../integrations/IntegrationsContext';
 import { PlanActivationGate } from '../app/PlanActivationGate';
+import { OnboardingGate } from '../app/OnboardingGate';
 import { Sidebar } from './Sidebar';
 import { MobileNav } from './MobileNav';
 import styles from './AppShell.module.css';
@@ -58,6 +59,7 @@ export function AppShell() {
      * reload.
      */
     <IntegrationsProvider>
+      <OnboardingGate />
       <PlanActivationGate onActivated={() => setPlanGeneration((generation) => generation + 1)} />
       <div className={styles.shell} data-sidebar-expanded={tabletSidebarExpanded}>
         <Sidebar expanded={tabletSidebarExpanded} onExpandedChange={setTabletSidebarExpanded} />

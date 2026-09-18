@@ -234,6 +234,19 @@ new button-like control drawn in a page's own CSS module is a bug — that is ho
 the app ended up with the same pill hand-drawn in three places under three
 names.
 
+## First-run redirect
+
+An authenticated user whose profile still has `firstRunCompleted: false` is
+sent to `/onboarding` automatically (`app/OnboardingGate.tsx`, mounted in
+`AppShell` next to `PlanActivationGate`) — from email login, register, Google
+login and reopening the app with a live session alike. The flag, not plan
+existence, is the criterion: a user who finished onboarding without starting
+a plan is never sent back. The redirect is never a trap — the wizard offers
+an explicit exit on every step ("Ahora no, ir al panel") in addition to its
+completion screen's own, both of which mark the flag done before returning to
+`/app`. See `frontend/src/pages/onboarding/OnboardingPage.tsx`'s doc comment
+for the full detail.
+
 ## Interaction style
 
 Forma should feel direct and calm:

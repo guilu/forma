@@ -6,6 +6,7 @@ import { ThemeProvider } from '../../theme/ThemeContext';
 import { NotificationProvider } from '../../components/NotificationProvider';
 import { ApiRequestError } from '../../api/client';
 import { getProfile, updateProfileFields, type UserProfile } from '../../api/profile';
+import { baseProfile } from '../../test/profileFixtures';
 import { ProfileSection } from './ProfileSection';
 
 // FOR-120: ThemeProvider (wrapping ProfileSection below) also reads/persists
@@ -20,45 +21,23 @@ vi.mock('../../api/profile', () => ({
 const getProfileMock = vi.mocked(getProfile);
 const updateProfileFieldsMock = vi.mocked(updateProfileFields);
 
-const PROFILE: UserProfile = {
+// FOR-121 fields: irrelevant to this file's profile-fields tests, so kept at
+// their shared "nothing saved yet" defaults (see test/profileFixtures.ts).
+// 'SYSTEM' matches ThemeProvider's own default local mode, so its FOR-120
+// mount-time reconciliation against this fixture is a no-op here -- this
+// file's tests are about profile fields, not theme.
+const PROFILE: UserProfile = baseProfile({
   name: 'Usuario FORMA',
   email: 'usuario@forma.app',
   birthDate: '1990-05-12',
   heightCm: 178,
   activityLevel: 'MODERATE',
   mainGoal: 'COMPOSICION',
-  unitPreferences: { weightUnit: 'KG', heightUnit: 'CM', distanceUnit: 'KM', energyUnit: 'KCAL' },
-  // 'SYSTEM' matches ThemeProvider's own default local mode, so its FOR-120
-  // mount-time reconciliation against this fixture is a no-op here -- this
-  // file's tests are about profile fields, not theme.
   themeMode: 'SYSTEM',
-  // FOR-121 fields: irrelevant to this file's profile-fields tests, so kept
-  // at their "nothing saved yet" defaults.
-  onboardingAnswers: {
-    profile: { name: '', birthDate: '', sex: '', heightCm: '' },
-    metrics: { measurementSaved: false },
-    goal: {},
-    training: { days: [] },
-    equipment: { items: [] },
-    nutrition: { preference: '', restrictions: '' },
-  },
-  firstRunCompleted: false,
-};
+});
 
 /** First-run default profile (FOR-107 Edge Cases): no profile fields saved yet. */
-const DEFAULT_PROFILE: UserProfile = {
-  unitPreferences: { weightUnit: 'KG', heightUnit: 'CM', distanceUnit: 'KM', energyUnit: 'KCAL' },
-  themeMode: 'DARK',
-  onboardingAnswers: {
-    profile: { name: '', birthDate: '', sex: '', heightCm: '' },
-    metrics: { measurementSaved: false },
-    goal: {},
-    training: { days: [] },
-    equipment: { items: [] },
-    nutrition: { preference: '', restrictions: '' },
-  },
-  firstRunCompleted: false,
-};
+const DEFAULT_PROFILE: UserProfile = baseProfile();
 
 function renderProfileSection() {
   return render(

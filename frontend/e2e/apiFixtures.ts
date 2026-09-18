@@ -269,6 +269,11 @@ const FIXTURES: ReadonlyArray<readonly [string, unknown]> = [
         energyUnit: 'KCAL',
       },
       themeMode: 'DARK',
+      // feat/onboarding-primera-vez: AppShell mounts OnboardingGate, which reads
+      // this flag and redirects to /onboarding when it is false. Fixed true here
+      // so the fixture-backed app keeps landing on /app — the layout specs are
+      // about the app screens, not the first-run flow.
+      firstRunCompleted: true,
     },
   ],
   ['/api/v1/body/measurements', MEASUREMENTS],

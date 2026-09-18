@@ -4,6 +4,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ApiRequestError } from '../../api/client';
 import { getProfile, type UserProfile } from '../../api/profile';
+import { baseProfile } from '../../test/profileFixtures';
 import { UnitsSection } from './UnitsSection';
 
 vi.mock('../../api/profile', () => ({
@@ -12,20 +13,9 @@ vi.mock('../../api/profile', () => ({
 
 const getProfileMock = vi.mocked(getProfile);
 
-const PROFILE: UserProfile = {
-  unitPreferences: { weightUnit: 'KG', heightUnit: 'CM', distanceUnit: 'KM', energyUnit: 'KCAL' },
-  themeMode: 'DARK',
-  // FOR-121 fields: irrelevant to this file's unit-preference tests.
-  onboardingAnswers: {
-    profile: { name: '', birthDate: '', sex: '', heightCm: '' },
-    metrics: { measurementSaved: false },
-    goal: {},
-    training: { days: [] },
-    equipment: { items: [] },
-    nutrition: { preference: '', restrictions: '' },
-  },
-  firstRunCompleted: false,
-};
+// FOR-121 fields: irrelevant to this file's unit-preference tests, so kept
+// at their shared "nothing saved yet" defaults (see test/profileFixtures.ts).
+const PROFILE: UserProfile = baseProfile();
 
 describe('UnitsSection', () => {
   afterEach(() => {
