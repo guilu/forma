@@ -30,7 +30,9 @@ export function PlanBanner({ hasPlan }: { readonly hasPlan: boolean | undefined 
       <section className={styles.banner} aria-label="Todavía no tienes un plan">
         <div className={styles.text}>
           <p className={styles.title}>Todavía no tienes un plan</p>
-          <p className={styles.subtitle}>Créalo y en cuanto esté en marcha verás aquí tu progreso.</p>
+          <p className={styles.subtitle}>
+            Créalo y en cuanto esté en marcha verás aquí tu progreso.
+          </p>
         </div>
         <ButtonLink variant="accent" className={styles.cta} to="/app/nutrition/plans">
           Crear mi plan
