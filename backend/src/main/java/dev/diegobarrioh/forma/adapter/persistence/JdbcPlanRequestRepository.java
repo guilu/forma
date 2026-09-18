@@ -108,6 +108,22 @@ public class JdbcPlanRequestRepository implements PlanRequestRepository {
         .findFirst();
   }
 
+  @Override
+  public Optional<PlanRequest> findOpenByUser(UUID userId) {
+    // open_marker IS NOT NULL, not status IN ('PENDING', 'GENERATING'): reading the same sentinel
+    // the unique index enforces (ADR-015 decision 4) rather than re-deriving the open/closed rule
+    // here, so this can never disagree with what the constraint actually admits.
+    return jdbcTemplate
+        .query(
+            "SELECT "
+                + COLUMNS
+                + " FROM plan_request WHERE user_id = ? AND open_marker IS NOT NULL",
+            JdbcPlanRequestRepository::mapRow,
+            userId)
+        .stream()
+        .findFirst();
+  }
+
   private static PlanRequest mapRow(ResultSet rs, int rowNum) throws SQLException {
     return new PlanRequest(
         (UUID) rs.getObject("id"),
