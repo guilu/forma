@@ -277,6 +277,49 @@ const FIXTURES: ReadonlyArray<readonly [string, unknown]> = [
     },
   ],
   ['/api/v1/body/measurements', MEASUREMENTS],
+  /*
+   * ADR-015 slice 3: the onboarding wizard's final submission. `firstRunCompleted:
+   * true` above means the fixture-backed app never actually reaches /onboarding on
+   * its own, but a fixture-backed dev session that clears that flag by hand (or a
+   * future layout check that does) must not hit the "no fixture" 404 path — see the
+   * note on `fixtureFor` below. `/current` answers the same shape a freshly-created
+   * PENDING request would have, matched independently of the POST above by its own,
+   * longer pathname.
+   */
+  [
+    '/api/v1/plan-requests',
+    {
+      id: '00000000-0000-4000-8000-000000000001',
+      status: 'PENDING',
+      mainGoal: 'COMPOSICION',
+      planObjective: 'WEIGHT_LOSS',
+      planKcal: 2078,
+      trainingDaysPerWeek: 0,
+      trainingWeekdays: [],
+      equipment: [],
+      mealsPerDay: 5,
+      dietPattern: 'UNSPECIFIED',
+      cuisineStyle: 'UNSPECIFIED',
+      requestedAt: daysAgo(0),
+    },
+  ],
+  [
+    '/api/v1/plan-requests/current',
+    {
+      id: '00000000-0000-4000-8000-000000000001',
+      status: 'PENDING',
+      mainGoal: 'COMPOSICION',
+      planObjective: 'WEIGHT_LOSS',
+      planKcal: 2078,
+      trainingDaysPerWeek: 0,
+      trainingWeekdays: [],
+      equipment: [],
+      mealsPerDay: 5,
+      dietPattern: 'UNSPECIFIED',
+      cuisineStyle: 'UNSPECIFIED',
+      requestedAt: daysAgo(0),
+    },
+  ],
   [
     '/api/v1/insights/weekly',
     {

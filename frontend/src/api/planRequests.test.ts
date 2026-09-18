@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createPlanRequest, getCurrentPlanRequest, type CreatePlanRequestInput } from './planRequests';
+import {
+  createPlanRequest,
+  getCurrentPlanRequest,
+  type CreatePlanRequestInput,
+} from './planRequests';
 import type { ApiClient } from './client';
 
 describe('planRequests API', () => {

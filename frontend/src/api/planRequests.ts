@@ -26,12 +26,7 @@ export type PlanDirection = 'LOSE_FAT' | 'GAIN_MUSCLE' | 'MAINTAIN';
 
 /** Mirrors the backend `TrainingEquipment` enum — the wizard's six equipment labels, mapped 1:1. */
 export type TrainingEquipment =
-  | 'BODYWEIGHT'
-  | 'DUMBBELLS'
-  | 'BARBELL'
-  | 'BANDS'
-  | 'MACHINES'
-  | 'CARDIO_MACHINE';
+  'BODYWEIGHT' | 'DUMBBELLS' | 'BARBELL' | 'BANDS' | 'MACHINES' | 'CARDIO_MACHINE';
 
 /** Mirrors the backend `DietPattern` enum — an exclusion rule, orthogonal to {@link CuisineStyle}. */
 export type DietPattern = 'OMNIVORE' | 'VEGETARIAN' | 'VEGAN' | 'GLUTEN_FREE' | 'UNSPECIFIED';
@@ -47,13 +42,7 @@ export type PlanObjective = 'WEIGHT_LOSS' | 'MUSCLE_GAIN' | 'MAINTENANCE' | 'HEA
 
 /** Mirrors `java.time.DayOfWeek`'s enum names — never the wizard's Spanish weekday label. */
 export type DayOfWeekName =
-  | 'MONDAY'
-  | 'TUESDAY'
-  | 'WEDNESDAY'
-  | 'THURSDAY'
-  | 'FRIDAY'
-  | 'SATURDAY'
-  | 'SUNDAY';
+  'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY';
 
 /**
  * Body accepted by `POST /api/v1/plan-requests` (mirrors

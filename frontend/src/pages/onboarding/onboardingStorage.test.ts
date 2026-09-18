@@ -88,9 +88,9 @@ describe('hasOnboardingProgress', () => {
       }),
     ).toBe(true);
     expect(hasOnboardingProgress({ ...EMPTY_ANSWERS, training: { days: ['Lunes'] } })).toBe(true);
-    expect(
-      hasOnboardingProgress({ ...EMPTY_ANSWERS, direction: { selected: 'LOSE_FAT' } }),
-    ).toBe(true);
+    expect(hasOnboardingProgress({ ...EMPTY_ANSWERS, direction: { selected: 'LOSE_FAT' } })).toBe(
+      true,
+    );
     expect(
       hasOnboardingProgress({
         ...EMPTY_ANSWERS,
