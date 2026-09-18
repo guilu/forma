@@ -56,7 +56,29 @@ dependencies {
 }
 
 tasks.named('test') {
-    useJUnitPlatform()
+    // `postgres`-tagged tests need a real PostgreSQL instance (the `postgres-migrations` CI job's
+    // service container) and cannot pass against the H2-in-memory database this task runs on —
+    // excluding the tag here, rather than never writing such a test, means `./gradlew build` stays
+    // the single command every dev and the fast backend CI job run, with or without Postgres
+    // running locally. See `postgresTest` below for where the excluded tests actually run.
+    useJUnitPlatform {
+        excludeTags 'postgres'
+    }
+}
+
+// Verifies every Flyway migration applies cleanly to a REAL PostgreSQL 17, not just H2's
+// PostgreSQL-compatibility mode (see `tasks.named('test')` above and RealPostgresMigrationTest).
+// A separate task instead of folding this into `test`: it needs a real database that is not
+// available to a plain `./gradlew build`, so it is invoked only by the dedicated
+// `postgres-migrations` CI job, which brings up a `postgres:17` service container first.
+tasks.register('postgresTest', Test) {
+    description = 'Verifies the Flyway migration baseline against a real PostgreSQL instance.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform {
+        includeTags 'postgres'
+    }
 }
 
 // Code style baseline (FOR-85, docs/coding-standards.md). `spotlessCheck` runs
