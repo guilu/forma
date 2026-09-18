@@ -153,18 +153,48 @@ Three further facts constrain the design, each verified:
    that do not fit". Picking one would mean either losing the factor or breaking V53's column
    contract. So `plan_request` carries both:
 
-   | `main_goal` (wizard, standing) | default `plan_objective` | factor applied |
+   | `main_goal` (wizard, standing) | default `plan_objective` (REJECTED — see amendment) | factor |
    |---|---|---|
    | `COMPOSICION` | `WEIGHT_LOSS` | 0.80 |
    | `RENDIMIENTO` | `MAINTENANCE` | 1.00 |
    | `HABITO` | `HEALTHY_EATING` | 1.00 |
 
-   The default is a **starting point the user can override in the wizard**, and the redesigned
-   wizard should ask. Deriving `COMPOSICION → WEIGHT_LOSS` silently applies a 20 % deficit to
-   somebody who may have meant to gain; `MUSCLE_GAIN` is an equally honest reading of
-   "recomposición". A derived default that nobody sees is the kind of hidden decision `PlanObjective`'s
-   javadoc exists to prevent ("son EDITORIAL, no aritmético… escritas aquí para que haya un sitio
-   donde discutirlas").
+   **Amendment (2026-09-18, ADR-015 slice 1): the product owner closed Open Point 1 by rejecting
+   inference outright, rather than the "recommend asking, default to inferring" compromise this
+   decision originally proposed.** The table above was this ADR's first draft. It is not what got
+   built, and it stays here struck through by this note rather than deleted, because the reasoning
+   for rejecting it is worth keeping: deriving `COMPOSICION → WEIGHT_LOSS` silently applies a 20 %
+   deficit to somebody who may have meant to gain, `MUSCLE_GAIN` is an equally honest reading of
+   "recomposición", and a derived default that nobody sees is the kind of hidden decision
+   `PlanObjective`'s own javadoc exists to prevent ("son EDITORIAL, no aritmético… escritas aquí
+   para que haya un sitio donde discutirlas"). Guessing somebody's calories is precisely where
+   guessing is unacceptable.
+
+   The wizard instead asks a fourth, explicit question — **direction**: lose fat, gain muscle, or
+   hold steady — carried in code as `domain/PlanDirection` (`LOSE_FAT|GAIN_MUSCLE|MAINTAIN`), which
+   maps 1:1 onto three of `PlanObjective`'s four values and carries no factor of its own:
+
+   | `PlanDirection` (wizard, explicit answer) | `PlanObjective` | factor |
+   |---|---|---|
+   | `LOSE_FAT` | `WEIGHT_LOSS` | 0.80 |
+   | `GAIN_MUSCLE` | `MUSCLE_GAIN` | 1.10 |
+   | `MAINTAIN` | `MAINTENANCE` | 1.00 |
+
+   `main_goal` is unchanged by this amendment — still the profile's standing answer, stored exactly
+   as decided above. `plan_request.plan_objective` is populated from the explicit `PlanDirection`
+   answer, never derived from `main_goal`; the two columns can carry any combination (a `HABITO`
+   user asking to `GAIN_MUSCLE` is an ordinary row, not a contradiction), which is the reason both
+   are carried in the first place.
+
+   **`PlanObjective#HEALTHY_EATING` has no `PlanDirection` and is not reachable through a plan
+   request.** It stays in `PlanObjective` unchanged, and `POST /api/v1/nutrition/plans` still
+   accepts it directly for a human-authored plan — this slice touches neither. But a plan request
+   can never resolve to it: "eat healthier" is not an honest answer to "lose fat, gain muscle, or
+   hold steady", and asking `PlanObjective` directly instead of `PlanDirection` would let it back in
+   through a question that cannot mean it. Nothing is lost in practice — `HEALTHY_EATING`'s factor
+   (1.0) is arithmetically identical to `MAINTENANCE`'s, so "no change, just better food" is reached
+   through `MAINTAIN`. If a real product need for a distinct "hábito" direction appears later, it
+   earns its own `PlanDirection` value then, not a reachability quietly restored through inference.
 
 6. **The remaining vocabulary mismatches resolve toward the machine-readable side, at the delivery
    boundary.** The Spanish UI label is a label; it never crosses the port (ADR-004's rule, applied
@@ -175,7 +205,7 @@ Three further facts constrain the design, each verified:
    | sex | `Sex` = `MALE\|FEMALE\|OTHER` | `MALE\|FEMALE` only | `Sex`, all three, verbatim |
    | training availability | Spanish weekday labels (`'Lunes'`…) | `daysPerWeek: number` | **both**: `training_weekdays` as `java.time.DayOfWeek` names, plus `training_days_per_week` |
    | diet | `preference` = `OMNIVORE\|VEGETARIAN\|VEGAN\|GLUTEN_FREE\|OTHER` | `eatingStyle` = `ESTANDAR_ESPANOL\|MEDITERRANEA` | **two orthogonal fields**: `diet_pattern` (exclusion rule) + `cuisine_style` (`ESPANOLA\|MEDITERRANEA\|UNSPECIFIED`) |
-   | equipment | Spanish sentences | not collected | `Equipment` enum CSV, mapped 1:1 from the six existing labels |
+   | equipment | Spanish sentences | not collected | `TrainingEquipment` enum CSV, mapped 1:1 from the six existing labels — named to avoid colliding with the existing home-only `Equipment` enum (`Exercise`'s equipment, which has no `MACHINES`/`CARDIO_MACHINE`) |
 
    - **Sex needs no new vocabulary and no `UNSPECIFIED`.** `EnergyRequirement#sexOffset` already
      handles all three values — `OTHER` takes −78.0, the midpoint — and its javadoc already argues
@@ -356,7 +386,7 @@ Three further facts constrain the design, each verified:
 | `plan_objective` | VARCHAR(32) | NOT NULL | `PlanObjective` — what carries the arithmetic factor |
 | `training_days_per_week` | INTEGER | NOT NULL | |
 | `training_weekdays` | VARCHAR(64) | NULL | CSV of `DayOfWeek` names; NULL = nobody said |
-| `equipment` | VARCHAR(255) | NULL | CSV of `Equipment`; unused by this slice (decision 11) |
+| `equipment` | VARCHAR(255) | NULL | CSV of `TrainingEquipment`; unused by this slice (decision 11) |
 | `meals_per_day` | INTEGER | NOT NULL | |
 | `diet_pattern` | VARCHAR(32) | NOT NULL | exclusion rule; `UNSPECIFIED` when not answered |
 | `cuisine_style` | VARCHAR(32) | NOT NULL | `ESPANOLA`/`MEDITERRANEA`/`UNSPECIFIED` |
@@ -475,6 +505,15 @@ privacy notice ever states a period for it, that promise needs a job, exactly as
 4. **`plan_kcal` is a frozen number that will eventually look wrong.** The user's weight moves; the
    figure does not. Mitigation: it is audit, not a target (decision 7), and the guard is that
    nothing renders it.
+5. **No migration in this repository is verified against real PostgreSQL before it reaches an
+   environment that runs one.** Verified while implementing slice 1: `.github/workflows/ci.yml`'s
+   `backend` job runs `./gradlew build` with no PostgreSQL service container, so CI exercises every
+   migration — V63 included — against H2 `MODE=PostgreSQL` only. `compose.yaml` provisions real
+   PostgreSQL 17 for local development, but nothing runs migrations against it automatically.
+   Mitigation: none yet. This is a pre-existing gap this ADR did not create, but V63's own
+   nullable-sentinel CHECK is exactly the kind of construct worth confirming behaves identically on
+   both engines before this ADR's status can honestly move past Proposed (see the Status line at the
+   top of this document).
 
 ## Alternatives rejected
 
@@ -516,11 +555,22 @@ privacy notice ever states a period for it, that promise needs a job, exactly as
 PR-sized slices in dependency order. Each carries its own verification; none of them is "and then
 everything works".
 
-1. **Vocabulary and schema.** `Equipment`, `DietPattern`, `CuisineStyle` enums; the weekday-label →
-   `DayOfWeek` mapping; Flyway `V63__plan_request.sql` (V62 is currently the highest).
-   *Verify*: migration applies on PostgreSQL 17 and H2 `MODE=PostgreSQL`; tests that the open-marker
-   unique index admits many closed requests and exactly one open one, and that each CHECK rejects
-   the state it exists for.
+1. **Vocabulary and schema.** `PlanDirection` (added by the decision-5 amendment above, mapping to
+   `PlanObjective`), `TrainingEquipment` (named to avoid colliding with the existing `Equipment`
+   enum, which is deliberately home-only for `Exercise` and has no `MACHINES`/`CARDIO_MACHINE`),
+   `DietPattern`, `CuisineStyle` enums; `PlanRequestStatus`; the weekday-label → `DayOfWeek` mapping
+   (`SpanishWeekdayLabels`); Flyway `V63__plan_request.sql` (V62 was the highest going in).
+   *Verify*: migration applies on H2 `MODE=PostgreSQL` — proven by the test suite's own
+   `@SpringBootTest` context, which does not boot if Flyway fails, plus a dedicated
+   `PlanRequestMigrationTest` exercising every CHECK directly. **PostgreSQL 17 is not verified by
+   this slice**: no Docker was available in the environment that implemented it, so `compose.yaml`
+   could not be brought up, and — separately — `.github/workflows/ci.yml`'s backend job runs
+   `./gradlew build` against H2 only, with no PostgreSQL service container. Nothing in this
+   repository currently verifies a migration against real PostgreSQL before it reaches an
+   environment that uses one; this was already true before V63 and is recorded here as a standing
+   risk, not something this slice introduced or fixed. Tests confirm the open-marker unique index
+   admits many closed requests and exactly one open one, and that each CHECK rejects the state it
+   exists for.
 2. **Capture.** `PlanRequestService` + `JdbcPlanRequestRepository`; `POST /api/v1/plan-requests`
    (resolves profile + newest measurement, computes and freezes `plan_kcal`, writes `PENDING`) and
    `GET /api/v1/plan-requests/current`. `CONFLICT` added to `ApiErrorCode`.
@@ -559,8 +609,10 @@ everything works".
 
 ## Open points
 
-- **Does `COMPOSICION` default to `WEIGHT_LOSS`?** Decision 5 says yes and recommends asking
-  explicitly instead. A product call.
+- ~~Does `COMPOSICION` default to `WEIGHT_LOSS`?~~ **Resolved 2026-09-18 (ADR-015 slice 1): no.**
+  The product owner rejected inference outright rather than defaulting-with-override; the wizard
+  asks an explicit `PlanDirection` and no `plan_objective` value is ever derived from `main_goal`.
+  See the amendment in decision 5 for the full reasoning and the `HEALTHY_EATING` consequence.
 - **May a user activate a plan that failed the tolerance audit?** Decision 9 stores it as DRAFT and
   warns but does not block. A product call.
 - **The agent's authentication model.** Decision 8 picks outbound-only for the first slice
