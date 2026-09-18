@@ -12,7 +12,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 
 /**
@@ -33,20 +32,18 @@ import org.springframework.test.context.ActiveProfiles;
  * to drift (it must: even less food is listed for it than for the other six), just not against a
  * specific number nobody wrote down.
  *
- * <p><b>{@code @DirtiesContext(BEFORE_CLASS)}, and why it is here rather than a style choice.</b>
- * {@code NutritionPlanServiceTest#clearPlans()} unconditionally runs {@code DELETE FROM
- * nutrition_plan} (and its children) in a plain {@code @BeforeEach}, with no context reset of its
- * own. Every {@code @SpringBootTest} class in this module shares one {@code ApplicationContext}
- * (and its H2 in-memory database) unless something marks it dirty, so once that test class has run
- * anywhere earlier in the same JVM, V56's seeded plan is gone for every test that runs after it —
- * discovered by running this class inside {@code ./gradlew build} rather than alone: alone it
- * passes, because nothing has wiped the table yet. Forcing a fresh context (which re-runs every
- * Flyway migration, V56 included) immediately before this class is the smallest fix that does not
- * touch the unrelated test file responsible — see this class's own test report for the discovery.
+ * <p><b>Why this class no longer depends on the order the suite happens to run in.</b> {@code
+ * NutritionPlanServiceTest#clearPlans()} wipes {@code nutrition_plan} and its children whole in a
+ * plain {@code @BeforeEach}. Every {@code @SpringBootTest} here shares one H2 in-memory database
+ * ({@code jdbc:h2:mem:forma}, alive for the whole JVM), so once that class had run, V56's seeded
+ * plan was gone for everything after it — and this test passed or failed purely on alphabetical
+ * position. It passed locally and failed in CI for exactly that reason. The fix is in that class,
+ * not here: it now runs against its own H2 database, so its DELETEs can no longer reach the seed
+ * this test reads. A context reset was tried first and could not work — a fresh context re-uses the
+ * same named in-memory database, so Flyway never re-seeds anything.
  */
 @SpringBootTest
 @ActiveProfiles("test")
-@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_CLASS)
 class PlanToleranceAuditorExcelDietPlanTest {
 
   private static final UUID USER = UUID.fromString("00000000-0000-0000-0000-000000000000");

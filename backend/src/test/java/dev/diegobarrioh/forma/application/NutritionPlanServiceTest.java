@@ -19,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
 
 /**
  * Nutrition plans through the real database (V53): the four tables, the JDBC adapter and {@link
@@ -30,6 +31,9 @@ import org.springframework.test.context.ActiveProfiles;
  */
 @SpringBootTest
 @ActiveProfiles("test")
+@TestPropertySource(
+    properties =
+        "spring.datasource.url=jdbc:h2:mem:nutrition_plan_service;MODE=PostgreSQL;DB_CLOSE_DELAY=-1")
 class NutritionPlanServiceTest {
 
   /** The legacy single-user owner seeded by V26. */
@@ -41,6 +45,17 @@ class NutritionPlanServiceTest {
   @Autowired private NutritionPlanService service;
   @Autowired private JdbcTemplate jdbcTemplate;
 
+  /**
+   * Wipes the four plan tables whole — which is why this class runs against its OWN H2 database
+   * (see the class-level {@code @TestPropertySource}) instead of the shared {@code
+   * application-test.yml} one.
+   *
+   * <p>On the shared database these DELETEs also removed V56's seeded diet, and every
+   * {@code @SpringBootTest} that reads that seed (ExcelDietPlanTest,
+   * PlanToleranceAuditorExcelDietPlanTest) passed or failed depending on whether it happened to run
+   * before or after this class. That is not a dependency any of those tests declared, and
+   * alphabetical order is not a contract.
+   */
   @BeforeEach
   void clearPlans() {
     jdbcTemplate.update("DELETE FROM nutrition_plan_meal_item");
