@@ -1,0 +1,81 @@
+{
+  "_comment": "The contract's own worked example (docs/FORMA_Contrato_Agente_Plan.md, 'El plan / Ejemplo completo'), verbatim: real catalog ids (oats, whey-protein, banana, fresh-cheese, berries, chicken, rice, vegetables, olive-oil, yogurt, almonds-walnuts, fish, potato, salad — all seeded by V22/V25), and the one INSTRUCTION-resolution unmatched entry (lentejas) the contract itself uses to demonstrate the field. NOT captured from a live call — the agent does not exist yet.",
+  "contractVersion": "1",
+  "planRequestId": "8f1c2b64-0e5a-4c7d-9a10-3f2b6d4e7c11",
+  "catalogVersion": "2026-09-18",
+  "plan": {
+    "name": "Recomposición 2000-2150",
+    "description": "Semana con cinco días de entrenamiento.",
+    "objective": "COMPOSICION",
+    "startDate": "2026-09-21",
+    "targets": { "kcalMin": 2000, "kcalMax": 2150, "proteinG": 160, "carbsG": 240, "fatG": 65 },
+    "generation": { "by": "AI" },
+    "days": [
+      {
+        "weekNumber": 1,
+        "dayNumber": 1,
+        "dayType": "STRENGTH",
+        "targets": { "calories": 2078, "proteinG": 160, "carbsG": 240, "fatG": 65 },
+        "notes": "Fuerza por la tarde",
+        "meals": [
+          {
+            "mealType": "BREAKFAST",
+            "name": "Desayuno",
+            "scheduledTime": "08:00:00",
+            "items": [
+              { "foodId": "oats", "amount": 60 },
+              { "foodId": "whey-protein", "amount": 30 },
+              { "foodId": "banana", "servingId": "banana", "amount": 1 }
+            ]
+          },
+          {
+            "mealType": "MID_MORNING",
+            "name": "Media mañana",
+            "items": [
+              { "foodId": "fresh-cheese", "servingId": "fresh-cheese", "amount": 1 },
+              { "foodId": "berries", "amount": 100 }
+            ]
+          },
+          {
+            "mealType": "LUNCH",
+            "name": "Comida",
+            "instructions": "Acompañar con una legumbre cocida (lentejas o garbanzos), unos 150 g.",
+            "items": [
+              { "foodId": "chicken", "amount": 200 },
+              { "foodId": "rice", "amount": 80 },
+              { "foodId": "vegetables", "servingId": "vegetables", "amount": 1 },
+              { "foodId": "olive-oil", "servingId": "olive-oil", "amount": 1 }
+            ]
+          },
+          {
+            "mealType": "SNACK",
+            "name": "Merienda",
+            "items": [
+              { "foodId": "yogurt", "servingId": "yogurt", "amount": 1 },
+              { "foodId": "almonds-walnuts", "servingId": "almonds-walnuts", "amount": 1 }
+            ]
+          },
+          {
+            "mealType": "DINNER",
+            "name": "Cena",
+            "items": [
+              { "foodId": "fish", "amount": 200 },
+              { "foodId": "potato", "amount": 300 },
+              { "foodId": "salad", "servingId": "salad", "amount": 1 }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "unmatched": [
+    {
+      "wanted": "Lentejas cocidas",
+      "where": "days[0].meals[2]",
+      "resolution": "INSTRUCTION",
+      "usedInstead": null,
+      "note": "No hay ninguna legumbre en el catálogo."
+    }
+  ],
+  "agent": { "model": "el-modelo-que-sea", "generatedAt": "2026-09-18T11:04:22Z" }
+}

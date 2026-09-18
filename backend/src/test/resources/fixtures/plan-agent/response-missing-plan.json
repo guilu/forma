@@ -1,0 +1,8 @@
+{
+  "_comment": "Syntactically valid JSON that is still unusable: no 'plan' object at all. Distinct from response-malformed.json (invalid JSON syntax) — this is a structural failure the parser only discovers after successfully reading the tree.",
+  "contractVersion": "1",
+  "planRequestId": "8f1c2b64-0e5a-4c7d-9a10-3f2b6d4e7c11",
+  "catalogVersion": "2026-09-18",
+  "unmatched": [],
+  "agent": { "model": "el-modelo-que-sea", "generatedAt": "2026-09-18T11:04:22Z" }
+}

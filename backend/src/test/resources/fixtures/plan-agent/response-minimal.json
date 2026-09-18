@@ -1,0 +1,31 @@
+{
+  "_comment": "The other clean case: one day, one meal, one item, and an EMPTY unmatched — 'unmatched vacío es una respuesta normal y buena' (docs/FORMA_Contrato_Agente_Plan.md). Real catalog id (oats).",
+  "contractVersion": "1",
+  "planRequestId": "8f1c2b64-0e5a-4c7d-9a10-3f2b6d4e7c11",
+  "catalogVersion": "2026-09-18",
+  "plan": {
+    "name": "Mantenimiento simple",
+    "description": null,
+    "objective": "RENDIMIENTO",
+    "startDate": null,
+    "endDate": null,
+    "targets": { "kcalMin": null, "kcalMax": null, "proteinG": null, "carbsG": null, "fatG": null },
+    "days": [
+      {
+        "weekNumber": 1,
+        "dayNumber": 1,
+        "dayType": "REST",
+        "targets": { "calories": 370, "proteinG": 13.0, "carbsG": 60.0, "fatG": 7.0 },
+        "meals": [
+          {
+            "mealType": "BREAKFAST",
+            "name": "Desayuno",
+            "items": [{ "foodId": "oats", "amount": 100 }]
+          }
+        ]
+      }
+    ]
+  },
+  "unmatched": [],
+  "agent": { "model": "el-modelo-que-sea", "generatedAt": "2026-09-18T11:04:22Z" }
+}

@@ -1,0 +1,37 @@
+{
+  "_comment": "A structurally valid plan whose claimed numbers DON'T add up to its own listed food — the case ADR-015 decision 9 and section 11 exist for (mirrors V56__excel_diet_plan.sql's real, seeded drift). Real catalog ids/amounts (chicken 200g + rice 80g + vegetables serving (300g) + olive-oil serving (10g), all from V22/V25/V49) actually sum to 703 kcal / 57.6 g protein / 81.2 g carbs / 15.7 g fat -- hand-computed from the seeded per-100g values: chicken 110/23/0/2 x2, rice 360/7/79/1 x0.8, vegetables 35/2/6/0.3 x3, olive-oil 900/0/0/100 x0.1. The claimed day target below (1100/100/150/40) is picked to overclaim by roughly the same 379-702 kcal magnitude V56 drifted by. PlanAgentAdapter must parse this and preserve the claimed 1100/100/150/40 verbatim (ADR-015 decision 9: never silently corrected) -- slice 6 hands the parsed plan to PlanToleranceAuditor, which is expected to report EXCEEDS_TOLERANCE on every one of the four day-level metrics.",
+  "contractVersion": "1",
+  "planRequestId": "8f1c2b64-0e5a-4c7d-9a10-3f2b6d4e7c11",
+  "catalogVersion": "2026-09-18",
+  "plan": {
+    "name": "Día de prueba con desviación",
+    "description": "Un único día, para que slice 6 tenga un caso real de desviación al auditar tolerancias (ADR-015 sección 11).",
+    "objective": "COMPOSICION",
+    "startDate": "2026-09-21",
+    "targets": { "kcalMin": 1050, "kcalMax": 1150, "proteinG": 100.0, "carbsG": 150.0, "fatG": 40.0 },
+    "generation": { "by": "AI" },
+    "days": [
+      {
+        "weekNumber": 1,
+        "dayNumber": 1,
+        "dayType": "STRENGTH",
+        "targets": { "calories": 1100, "proteinG": 100.0, "carbsG": 150.0, "fatG": 40.0 },
+        "notes": "El agente afirma 1100 kcal / 100 g proteína / 150 g carbohidratos / 40 g grasa; la comida que lista suma 703 / 57.6 / 81.2 / 15.7.",
+        "meals": [
+          {
+            "mealType": "LUNCH",
+            "name": "Comida",
+            "items": [
+              { "foodId": "chicken", "amount": 200 },
+              { "foodId": "rice", "amount": 80 },
+              { "foodId": "vegetables", "servingId": "vegetables", "amount": 1 },
+              { "foodId": "olive-oil", "servingId": "olive-oil", "amount": 1 }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "unmatched": [],
+  "agent": { "model": "test-agent-v0", "generatedAt": "2026-09-18T11:04:22Z" }
+}
