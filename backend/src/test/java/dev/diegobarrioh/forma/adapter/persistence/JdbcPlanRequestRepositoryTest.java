@@ -217,4 +217,51 @@ class JdbcPlanRequestRepositoryTest {
     assertThatThrownBy(() -> repository.insert(readyWithNoPlan))
         .isInstanceOf(DataIntegrityViolationException.class);
   }
+
+  /**
+   * ADR-015 slice 2: {@code findOpenByUser} is what {@code PlanRequestService#request} uses to
+   * enforce the one-open-request rule as a clean {@code ConflictException} instead of letting the
+   * {@code ux_plan_request_user_open} constraint leak as a 500, and what {@code GET
+   * /api/v1/plan-requests/current} reads to show the caller their open request.
+   */
+  @Test
+  void findOpenByUserFindsAPendingRequest() {
+    UUID id = UUID.randomUUID();
+    repository.insert(fullRequest(id, PlanRequestStatus.PENDING, null));
+
+    Optional<PlanRequest> open = repository.findOpenByUser(LegacyUserBootstrap.PLACEHOLDER_USER_ID);
+
+    assertThat(open).isPresent();
+    assertThat(open.orElseThrow().id()).isEqualTo(id);
+  }
+
+  @Test
+  void findOpenByUserFindsAGeneratingRequest() {
+    UUID id = UUID.randomUUID();
+    repository.insert(fullRequest(id, PlanRequestStatus.GENERATING, null));
+
+    Optional<PlanRequest> open = repository.findOpenByUser(LegacyUserBootstrap.PLACEHOLDER_USER_ID);
+
+    assertThat(open).isPresent();
+    assertThat(open.orElseThrow().id()).isEqualTo(id);
+  }
+
+  @Test
+  void findOpenByUserIgnoresTerminalRequests() {
+    // Two closed rows for the same user (the open-marker unique index admits any number of them,
+    // decision 4) -- neither is "open", so both must be invisible to findOpenByUser.
+    repository.insert(fullRequest(UUID.randomUUID(), PlanRequestStatus.FAILED, null));
+    repository.insert(fullRequest(UUID.randomUUID(), PlanRequestStatus.FAILED, null));
+
+    Optional<PlanRequest> open = repository.findOpenByUser(LegacyUserBootstrap.PLACEHOLDER_USER_ID);
+
+    assertThat(open).isEmpty();
+  }
+
+  @Test
+  void findOpenByUserReturnsEmptyWhenTheUserHasNoRequestsAtAll() {
+    Optional<PlanRequest> open = repository.findOpenByUser(UUID.randomUUID());
+
+    assertThat(open).isEmpty();
+  }
 }
