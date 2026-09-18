@@ -85,6 +85,19 @@ pareciera.
 número detrás (el factor que multiplica el gasto diario). No son lo mismo y colapsarlos perdería
 uno de los dos. El razonamiento largo está en la decisión 5 del ADR-015.
 
+**`planObjective` viene siempre de una pregunta explícita, nunca de `mainGoal`.** La primera versión
+de esta decisión (ADR-015, punto abierto 1) proponía deducirlo — quien elegía «composición»
+heredaba `WEIGHT_LOSS` con un 20 % de déficit por defecto. El dueño de producto lo rechazó: elegir
+«composición» puede significar perder grasa o ganar músculo igual de honestamente, y adivinar las
+calorías de alguien es justo donde adivinar no es aceptable. El asistente ahora pregunta la
+dirección explícitamente — perder grasa, ganar músculo o mantener — y esa respuesta, nunca
+`mainGoal`, es la que decide `planObjective`. Una consecuencia concreta para quien lea este
+contrato: **nunca vas a recibir `planObjective: "HEALTHY_EATING"` procedente de una petición**, esa
+pregunta de tres respuestas no tiene una que signifique «solo comer mejor» — quien quiere eso pide
+`MAINTENANCE`, que le da el mismo factor (1,0). `HEALTHY_EATING` sigue existiendo como valor válido
+del vocabulario, pero fuera de este contrato: solo llega a través de `POST /api/v1/nutrition/plans`
+cuando una persona crea un plan a mano.
+
 **Dos ejes de dieta y no uno.** `dietPattern` es una regla de exclusión y `cuisineStyle` es una
 cocina. Una dieta vegana mediterránea no es una contradicción, y con un solo campo no se puede
 decir.
