@@ -127,6 +127,14 @@ export function DashboardPage() {
    * idénticas por carga del panel, con un limitador delante que convierte las últimas de la
    * ráfaga en 429. Ver `measurementsState.ts`.
    */
+  /*
+   * The same "is there a plan for today" read `NutritionWidget` already turns
+   * into "No hay un plan de comidas para hoy todavía.", reused rather than
+   * asked again for `PlanBanner`: `undefined` while `menu` is still loading or
+   * failed keeps the banner honestly silent instead of guessing.
+   */
+  const hasPlan = menu.status === 'ready' ? true : menu.status === 'empty' ? false : undefined;
+
   const measurements: MeasurementsState = failed
     ? { status: 'error' }
     : history === undefined
@@ -183,7 +191,7 @@ export function DashboardPage() {
             <ShoppingWidget />
             <div className={styles.tipColumn}>
               <TipWidget />
-              <PlanBanner />
+              <PlanBanner hasPlan={hasPlan} />
             </div>
           </div>
         </div>

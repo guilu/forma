@@ -338,11 +338,15 @@ describe('NutritionPage', () => {
     expect(screen.getByText('Sin objetivo')).toBeInTheDocument();
   });
 
-  it('points at the generator when there is no plan for today', async () => {
+  it('points at the in-app plan creator when there is no plan for today', async () => {
     getDayMock.mockResolvedValue({ ...strengthDay, meals: [] });
     renderPage();
 
     expect(await screen.findByText('No existe ningún plan planificado.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Crear mi plan' })).toHaveAttribute(
+      'href',
+      '/app/nutrition/plans',
+    );
   });
 
   it('shows an error state with a retry action', async () => {
