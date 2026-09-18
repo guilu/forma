@@ -20,3 +20,8 @@ node_modules/
 
 # Build output
 backend/bin/
+
+# Worktrees aislados que crean los agentes de IA: viven dentro del repo pero no
+# son del repo. Sin esta línea aparecen como sin seguimiento y un `git add -A`
+# despistado los commitearía enteros.
+.claude/worktrees/
