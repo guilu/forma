@@ -56,7 +56,53 @@ dependencies {
 }
 
 tasks.named('test') {
-    useJUnitPlatform()
+    // `postgres`-tagged tests need a real PostgreSQL instance (the `postgres-migrations` CI job's
+    // service container) and cannot pass against the H2-in-memory database this task runs on —
+    // excluding the tag here, rather than never writing such a test, means `./gradlew build` stays
+    // the single command every dev and the fast backend CI job run, with or without Postgres
+    // running locally. See `postgresTest` below for where the excluded tests actually run.
+    useJUnitPlatform {
+        excludeTags 'postgres'
+    }
+}
+
+// Verifies every Flyway migration applies cleanly to a REAL PostgreSQL 17, not just H2's
+// PostgreSQL-compatibility mode (see `tasks.named('test')` above and RealPostgresMigrationTest).
+// A separate task instead of folding this into `test`: it needs a real database that is not
+// available to a plain `./gradlew build`, so it is invoked only by the dedicated
+// `postgres-migrations` CI job, which brings up a `postgres:17` service container first.
+tasks.register('postgresTest', Test) {
+    description = 'Verifies the Flyway migration baseline against a real PostgreSQL instance.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform {
+        includeTags 'postgres'
+    }
+    // A Test task that matches nothing SUCCEEDS silently, which would turn this whole job into a
+    // green tick that verifies nothing -- the exact failure this job exists to prevent. If the tag
+    // ever stops matching (renamed, moved, deleted), fail loudly instead.
+    //
+    // Counting executed tests, and not `filter.failOnNoMatchingTests`: that flag governs name-based
+    // filters (`--tests`, `includeTestsMatching`), NOT JUnit Platform tag includes. Verified here on
+    // Gradle 8.14.1 -- pointing `includeTags` at a tag nothing uses still reported BUILD SUCCESSFUL
+    // with the flag set. `failOnNoDiscoveredTests` does not exist in this version either.
+    def executedTests = new java.util.concurrent.atomic.AtomicInteger()
+    afterTest { desc, result -> executedTests.incrementAndGet() }
+    doLast {
+        if (executedTests.get() == 0) {
+            throw new GradleException(
+                'postgresTest ran zero tests: the `postgres` tag matched nothing, so not a single ' +
+                'migration was verified against real PostgreSQL. This task passing must mean the ' +
+                'migrations were applied.')
+        }
+    }
+    // The test reports what it applied and how far it got. Without this the CI log shows only
+    // `BUILD SUCCESSFUL`, and a reader cannot tell a real 62-migration run from a no-op.
+    testLogging {
+        showStandardStreams = true
+        events 'passed', 'failed'
+    }
 }
 
 // Code style baseline (FOR-85, docs/coding-standards.md). `spotlessCheck` runs

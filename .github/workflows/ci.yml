@@ -40,6 +40,86 @@ jobs:
       - name: Build and test
         run: ./gradlew build --no-daemon
 
+  postgres-migrations:
+    name: Postgres migration verification
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    # No migration in this repository has ever been verified against a real PostgreSQL server
+    # before deploy. The `backend` job above tests against H2 in PostgreSQL-compatibility mode
+    # (application-test.yml, FOR-83) so `./gradlew build` needs no Docker — but that compatibility
+    # mode is not Postgres: it has already forced real design decisions here (e.g. ADR-011's
+    # nullable-sentinel + UNIQUE trick, used by V49/food_serving and V53/nutrition_plan among
+    # others, in place of a partial index, because H2's `CREATE INDEX ... WHERE` does not parse).
+    # Anything Postgres-specific that H2 silently accepts, or silently rejects, has been invisible
+    # to CI until this job.
+    #
+    # A separate job rather than adding a service to `backend` above: this job runs in parallel
+    # with `backend`/`frontend`/`nginx`, so it costs the pipeline's wall-clock nothing beyond what
+    # it would already spend waiting on the ~4-minute frontend job — while the existing `backend`
+    # job (the fast, Docker-free gate every PR hits first) stays byte-for-byte as it was. The
+    # trade-off is a second JDK setup + Gradle classpath compile (a small amount of extra runner
+    # time), which is worth paying to keep the fast path fast.
+    #
+    # Only Flyway's migration baseline runs here, NOT the full test suite a second time: re-running
+    # every unit/integration test against Postgres would roughly double backend CI time for little
+    # marginal signal, since the overwhelming majority of those tests exercise business logic that
+    # never touches SQL dialect differences — the actual unverified risk is schema DDL, not
+    # application code. The trade-off: this proves the 62+ migrations' SQL is valid on real
+    # Postgres, but it does NOT prove the repository/adapter layer's queries (SELECT/INSERT/UPDATE)
+    # behave identically on Postgres vs H2. That residual gap is real and left for future work
+    # (e.g. tagging specific repository integration tests `postgres` incrementally, the same way
+    # RealPostgresMigrationTest opts in below) rather than solved here.
+    services:
+      # Pinned to major version 17 to match compose.yaml's production image (postgres:17-alpine)
+      # exactly — Postgres migration/SQL support can differ across major versions, so "real
+      # Postgres, any version" would not actually prove anything about the version this deploys to.
+      # Credentials and db name mirror compose.yaml's own local defaults (and application.yml's
+      # fallback datasource URL), so this job invents no new configuration.
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: forma
+          POSTGRES_USER: forma
+          POSTGRES_PASSWORD: forma_local_password
+        ports:
+          - 5432:5432
+        # GitHub Actions blocks every step in this job until the service reports healthy, so
+        # Flyway can never race an unready server — the same problem compose.yaml's own
+        # `depends_on: condition: service_healthy` exists to prevent.
+        options: >-
+          --health-cmd "pg_isready -U forma -d forma"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      # Runs only RealPostgresMigrationTest (tagged `postgres`; excluded from the plain `test`
+      # task so `./gradlew build` never needs Postgres — see build.gradle). It boots the full
+      # Spring context with NO profile active, so application.yml's base datasource applies
+      # (the same SPRING_DATASOURCE_* variables compose.yaml and application-prod.yml use) instead
+      # of application-test.yml's H2. Flyway runs automatically on context startup
+      # (spring.flyway.enabled: true): if any migration fails to apply, context startup throws and
+      # this step fails with Flyway's own error naming the exact migration and SQL error — that
+      # failure mode alone proves the job ran. The test's own assertions go further and print, in
+      # this step's log, how many of the migrations found on disk were applied and the version/
+      # description of the last one — so a passing run is also observable, not just "no exception".
+      - name: Verify all migrations apply cleanly to real PostgreSQL 17
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/forma
+          SPRING_DATASOURCE_USERNAME: forma
+          SPRING_DATASOURCE_PASSWORD: forma_local_password
+        run: ./gradlew postgresTest --no-daemon
+
   frontend:
     name: Frontend build & test
     runs-on: ubuntu-latest
