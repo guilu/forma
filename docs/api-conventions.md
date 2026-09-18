@@ -59,6 +59,7 @@ Every error returns the same JSON shape (`ApiError`). Null fields are omitted.
 | `NOT_FOUND` | 404 | Requested resource does not exist. |
 | `UNAUTHORIZED` | 401 | Authentication required or failed. **Reserved placeholder** — auth flow is ADR-002 / a later story. |
 | `FORBIDDEN` | 403 | Authenticated caller lacks permission. **Reserved placeholder.** |
+| `CONFLICT` | 409 | The request conflicts with existing state (e.g. a duplicate registration email, or a second plan request while one is already open — [ADR-015](adr/ADR-015-plan-request-and-ai-generation.md)). |
 | `INTERNAL_ERROR` | 500 | Unexpected server error. Full detail is logged server-side (keyed by `correlationId`); the client only ever sees the generic message. |
 
 ## Rules (from ADR-005)
