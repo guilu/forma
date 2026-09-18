@@ -79,6 +79,30 @@ tasks.register('postgresTest', Test) {
     useJUnitPlatform {
         includeTags 'postgres'
     }
+    // A Test task that matches nothing SUCCEEDS silently, which would turn this whole job into a
+    // green tick that verifies nothing -- the exact failure this job exists to prevent. If the tag
+    // ever stops matching (renamed, moved, deleted), fail loudly instead.
+    //
+    // Counting executed tests, and not `filter.failOnNoMatchingTests`: that flag governs name-based
+    // filters (`--tests`, `includeTestsMatching`), NOT JUnit Platform tag includes. Verified here on
+    // Gradle 8.14.1 -- pointing `includeTags` at a tag nothing uses still reported BUILD SUCCESSFUL
+    // with the flag set. `failOnNoDiscoveredTests` does not exist in this version either.
+    def executedTests = new java.util.concurrent.atomic.AtomicInteger()
+    afterTest { desc, result -> executedTests.incrementAndGet() }
+    doLast {
+        if (executedTests.get() == 0) {
+            throw new GradleException(
+                'postgresTest ran zero tests: the `postgres` tag matched nothing, so not a single ' +
+                'migration was verified against real PostgreSQL. This task passing must mean the ' +
+                'migrations were applied.')
+        }
+    }
+    // The test reports what it applied and how far it got. Without this the CI log shows only
+    // `BUILD SUCCESSFUL`, and a reader cannot tell a real 62-migration run from a no-op.
+    testLogging {
+        showStandardStreams = true
+        events 'passed', 'failed'
+    }
 }
 
 // Code style baseline (FOR-85, docs/coding-standards.md). `spotlessCheck` runs
