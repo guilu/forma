@@ -34,6 +34,19 @@ import { apiClient, type ApiClient } from '../../api/client';
 
 export type GoalOption = 'COMPOSICION' | 'RENDIMIENTO' | 'HABITO';
 
+/**
+ * The plan's explicit direction (ADR-015 decision 5's amendment): lose fat,
+ * gain muscle, or hold steady. A different question from {@link GoalOption}
+ * — that is the profile's standing life goal, this is what THIS plan should
+ * do with calories — and it is the one the backend requires to resolve
+ * `plan_request.plan_objective` ({@code
+ * dev.diegobarrioh.forma.domain.PlanDirection}, verified against the backend
+ * source). Never derived from {@link GoalOption}: "composición corporal" is
+ * an honest answer to both "lose fat" and "gain muscle", and guessing which
+ * one someone meant is exactly where guessing is unacceptable.
+ */
+export type DirectionOption = 'LOSE_FAT' | 'GAIN_MUSCLE' | 'MAINTAIN';
+
 export type BodyMetricsChoice = 'MANUAL' | 'IMPORT';
 
 export interface OnboardingAnswers {
@@ -50,15 +63,30 @@ export interface OnboardingAnswers {
   readonly goal: {
     readonly selected: GoalOption | undefined;
   };
+  readonly direction: {
+    readonly selected: DirectionOption | undefined;
+  };
   readonly training: {
     readonly days: readonly string[];
   };
   readonly equipment: {
     readonly items: readonly string[];
   };
+  /**
+   * No `restrictions` field (ADR-015 decision 12): the free-text "food to
+   * avoid" question collected GDPR art.9 health data with no reader and no
+   * purpose, and was removed from the wizard rather than left dormant.
+   * `mealsPerDay`/`cuisineStyle` are new, local-only answers the plan-request
+   * submission needs ({@code
+   * dev.diegobarrioh.forma.delivery.planrequest.PlanRequestCreateRequest}) —
+   * they are never synced through `PATCH /api/v1/profile/onboarding`, whose
+   * backend contract has no field for either (ADR-015 slice 3: that draft
+   * endpoint "stays as it is").
+   */
   readonly nutrition: {
     readonly preference: string;
-    readonly restrictions: string;
+    readonly mealsPerDay: number;
+    readonly cuisineStyle: string;
   };
 }
 
@@ -71,13 +99,23 @@ export interface OnboardingProgress {
 /** Bumped if the stored shape ever changes incompatibly (defensive default fallback). */
 const STORAGE_KEY = 'forma.onboarding.v1';
 
+/**
+ * The meals-per-day question has no natural "unanswered" value the way a
+ * select defaulting to `''` does — the backend requires 3-6 (`PlanRequestCreateRequest`)
+ * — so the step starts pre-selected on the public funnel's own default
+ * (`frontend/src/pages/generator/funnelState.ts`'s `mealsPerDay: 5`), a real,
+ * changeable choice rather than a hidden fallback applied silently at submit time.
+ */
+export const DEFAULT_MEALS_PER_DAY = 5;
+
 export const EMPTY_ANSWERS: OnboardingAnswers = {
   profile: { name: '', birthDate: '', sex: '', heightCm: '' },
   metrics: { choice: undefined, measurementSaved: false },
   goal: { selected: undefined },
+  direction: { selected: undefined },
   training: { days: [] },
   equipment: { items: [] },
-  nutrition: { preference: '', restrictions: '' },
+  nutrition: { preference: '', mealsPerDay: DEFAULT_MEALS_PER_DAY, cuisineStyle: '' },
 };
 
 export const INITIAL_PROGRESS: OnboardingProgress = {
@@ -106,6 +144,7 @@ export function loadOnboardingProgress(): OnboardingProgress {
         profile: { ...EMPTY_ANSWERS.profile, ...parsed.answers?.profile },
         metrics: { ...EMPTY_ANSWERS.metrics, ...parsed.answers?.metrics },
         goal: { ...EMPTY_ANSWERS.goal, ...parsed.answers?.goal },
+        direction: { ...EMPTY_ANSWERS.direction, ...parsed.answers?.direction },
         training: { ...EMPTY_ANSWERS.training, ...parsed.answers?.training },
         equipment: { ...EMPTY_ANSWERS.equipment, ...parsed.answers?.equipment },
         nutrition: { ...EMPTY_ANSWERS.nutrition, ...parsed.answers?.nutrition },
@@ -136,7 +175,15 @@ export function clearOnboardingProgress(): void {
   }
 }
 
-/** True once any answer group holds a real (non-blank/non-empty) value. */
+/**
+ * True once any answer group holds a real (non-blank/non-empty) value.
+ *
+ * <p>{@code nutrition.mealsPerDay} is deliberately excluded: it always holds
+ * a real number ({@link DEFAULT_MEALS_PER_DAY} or a deliberate choice), so
+ * unlike every other field here it cannot distinguish "answered" from
+ * "still at its default" — the same reason {@code goal.selected}/{@code
+ * metrics.choice} use `undefined` rather than a placeholder value.
+ */
 export function hasOnboardingProgress(answers: OnboardingAnswers): boolean {
   return (
     answers.profile.name !== '' ||
@@ -146,10 +193,11 @@ export function hasOnboardingProgress(answers: OnboardingAnswers): boolean {
     answers.metrics.choice !== undefined ||
     answers.metrics.measurementSaved ||
     answers.goal.selected !== undefined ||
+    answers.direction.selected !== undefined ||
     answers.training.days.length > 0 ||
     answers.equipment.items.length > 0 ||
     answers.nutrition.preference !== '' ||
-    answers.nutrition.restrictions !== ''
+    answers.nutrition.cuisineStyle !== ''
   );
 }
 
@@ -159,6 +207,17 @@ export function hasOnboardingProgress(answers: OnboardingAnswers): boolean {
  * needed here (unlike `theme.ts`'s `ThemeMode` mapping), since the backend
  * treats every onboarding field as an unvalidated raw string (verified
  * against `SubmitOnboardingAnswersRequest.toDomain()`).
+ *
+ * <p><b>ADR-015 slice 3 — this endpoint's contract is unchanged.</b>
+ * {@code direction} is never included: it is a plan-request-only answer with
+ * no field on {@code SubmitOnboardingAnswersRequest}, and the backend's
+ * `ObjectMapper` rejects unrecognized JSON properties, so adding it here
+ * would break every background draft-sync call. {@code nutrition.mealsPerDay}
+ * and {@code nutrition.cuisineStyle} are excluded for the same reason —
+ * {@code NutritionDraftRequest} still only knows {@code preference}/{@code
+ * restrictions} — and {@code restrictions} itself is now always omitted
+ * (decision 12: the wizard no longer asks it; the backend defaults a missing
+ * group to blank).
  */
 export function toOnboardingAnswersInput(
   answers: OnboardingAnswers,
@@ -170,7 +229,7 @@ export function toOnboardingAnswersInput(
     goal: { selected: answers.goal.selected },
     training: { days: answers.training.days },
     equipment: { items: answers.equipment.items },
-    nutrition: { ...answers.nutrition },
+    nutrition: { preference: answers.nutrition.preference },
     completed,
   };
 }
@@ -189,6 +248,14 @@ function isGoalOption(value: string | undefined): value is GoalOption {
  * backend already has prior progress (spec edge case). An unrecognized
  * `choice`/`selected` value (the backend never validates these — they are
  * raw strings) falls back to `undefined` rather than trusting it blindly.
+ *
+ * <p><b>ADR-015 slice 3 — known gap, not an oversight.</b> {@code direction}
+ * and {@code nutrition.mealsPerDay}/{@code cuisineStyle} are local-only
+ * answers (see {@link toOnboardingAnswersInput}); the backend's draft
+ * endpoint never stored them, so there is nothing to recover them from, and
+ * this always resets them to their blank defaults. A user who clears
+ * `localStorage` mid-flow re-answers those three questions — the same
+ * recovery gap every field here would have if the backend did not carry it.
  */
 export function fromOnboardingAnswersOutput(output: OnboardingAnswersOutput): OnboardingAnswers {
   return {
@@ -198,9 +265,14 @@ export function fromOnboardingAnswersOutput(output: OnboardingAnswersOutput): On
       measurementSaved: output.metrics.measurementSaved,
     },
     goal: { selected: isGoalOption(output.goal.selected) ? output.goal.selected : undefined },
+    direction: { selected: undefined },
     training: { days: output.training.days },
     equipment: { items: output.equipment.items },
-    nutrition: { ...output.nutrition },
+    nutrition: {
+      preference: output.nutrition.preference,
+      mealsPerDay: DEFAULT_MEALS_PER_DAY,
+      cuisineStyle: '',
+    },
   };
 }
 

@@ -6,6 +6,8 @@ import { OnboardingPage } from './OnboardingPage';
 import { saveOnboardingProgress, INITIAL_PROGRESS } from './onboardingStorage';
 import { NotificationProvider } from '../../components/NotificationProvider';
 import { getProfile, submitOnboardingAnswers, type UserProfile } from '../../api/profile';
+import { createPlanRequest, getCurrentPlanRequest, type PlanRequest } from '../../api/planRequests';
+import { ApiRequestError } from '../../api/client';
 import { axe } from '../../test/axe';
 import { baseProfile } from '../../test/profileFixtures';
 
@@ -22,11 +24,34 @@ vi.mock('../../api/profile', async () => {
   return { ...actual, getProfile: vi.fn(), submitOnboardingAnswers: vi.fn() };
 });
 
+vi.mock('../../api/planRequests', async () => {
+  const actual =
+    await vi.importActual<typeof import('../../api/planRequests')>('../../api/planRequests');
+  return { ...actual, createPlanRequest: vi.fn(), getCurrentPlanRequest: vi.fn() };
+});
+
 const getProfileMock = vi.mocked(getProfile);
 const submitOnboardingAnswersMock = vi.mocked(submitOnboardingAnswers);
+const createPlanRequestMock = vi.mocked(createPlanRequest);
+const getCurrentPlanRequestMock = vi.mocked(getCurrentPlanRequest);
 
 /** Default fixture: fresh/first-run profile (FOR-107 Edge Cases default), never completed. */
 const FRESH_PROFILE: UserProfile = baseProfile();
+
+const PLAN_REQUEST: PlanRequest = {
+  id: 'r1',
+  status: 'PENDING',
+  mainGoal: 'COMPOSICION',
+  planObjective: 'WEIGHT_LOSS',
+  planKcal: 2078,
+  trainingDaysPerWeek: 0,
+  trainingWeekdays: [],
+  equipment: [],
+  mealsPerDay: 5,
+  dietPattern: 'UNSPECIFIED',
+  cuisineStyle: 'UNSPECIFIED',
+  requestedAt: '2026-09-18T10:00:00Z',
+};
 
 function renderOnboarding() {
   return render(
@@ -35,6 +60,8 @@ function renderOnboarding() {
         <Routes>
           <Route path="/onboarding" element={<OnboardingPage />} />
           <Route path="/app" element={<div>Panel principal</div>} />
+          <Route path="/app/settings" element={<div>Ajustes</div>} />
+          <Route path="/app/measurements" element={<div>Mediciones</div>} />
         </Routes>
       </NotificationProvider>
     </MemoryRouter>,
@@ -48,14 +75,36 @@ async function fillName(user: ReturnType<typeof userEvent.setup>, name: string) 
 /**
  * Walks from the profile step to the completion screen: fills the one
  * required field, advances past it, then skips every remaining optional
- * step. Shared by every test whose interest starts *at* the completion
- * screen rather than in getting there — each keeps its own assertions
- * (including the "Todo listo" heading check), only the navigation moves.
+ * step — including direction, so `answers.direction.selected` stays
+ * `undefined` and no plan-request is ever sent by this helper. Shared by
+ * every test whose interest starts *at* the completion screen rather than in
+ * getting there — each keeps its own assertions (including the "Todo listo"
+ * heading check), only the navigation moves.
  */
 async function goToCompletionScreen(user: ReturnType<typeof userEvent.setup>) {
   await fillName(user, 'Diego');
   await user.click(screen.getByRole('button', { name: 'Siguiente' })); // metrics -> goal
-  for (let i = 0; i < 6; i += 1) {
+  for (let i = 0; i < 7; i += 1) {
+    await user.click(screen.getByRole('button', { name: 'Omitir este paso' }));
+  }
+}
+
+/**
+ * Walks all the way to the completion screen with a direction chosen — the
+ * one answer `buildPlanRequestInput` requires — so the plan-request
+ * submission (ADR-015 slice 3) actually fires.
+ */
+async function goToCompletionScreenWithDirection(
+  user: ReturnType<typeof userEvent.setup>,
+  direction: 'Perder grasa' | 'Ganar músculo' | 'Mantenerme' = 'Perder grasa',
+) {
+  await fillName(user, 'Diego');
+  await user.click(screen.getByRole('button', { name: 'Siguiente' })); // profile -> metrics
+  await user.click(screen.getByRole('button', { name: 'Omitir este paso' })); // metrics -> goal
+  await user.click(screen.getByRole('button', { name: 'Omitir este paso' })); // goal -> direction
+  await user.click(screen.getByRole('radio', { name: new RegExp(direction) }));
+  await user.click(screen.getByRole('button', { name: 'Siguiente' })); // direction -> training
+  for (let i = 0; i < 4; i += 1) {
     await user.click(screen.getByRole('button', { name: 'Omitir este paso' }));
   }
 }
@@ -66,6 +115,8 @@ describe('OnboardingPage', () => {
     vi.clearAllMocks();
     getProfileMock.mockResolvedValue(FRESH_PROFILE);
     submitOnboardingAnswersMock.mockResolvedValue(FRESH_PROFILE);
+    createPlanRequestMock.mockResolvedValue(PLAN_REQUEST);
+    getCurrentPlanRequestMock.mockResolvedValue(PLAN_REQUEST);
   });
 
   it('renders steps in order with progress indication as the user advances', async () => {
@@ -73,34 +124,38 @@ describe('OnboardingPage', () => {
     renderOnboarding();
 
     expect(screen.getByRole('heading', { name: 'Perfil' })).toBeInTheDocument();
-    expect(screen.getByText('Paso 1 de 7')).toBeInTheDocument();
+    expect(screen.getByText('Paso 1 de 8')).toBeInTheDocument();
 
     await fillName(user, 'Diego');
     await user.click(screen.getByRole('button', { name: 'Siguiente' }));
     expect(screen.getByRole('heading', { name: 'Métricas actuales' })).toBeInTheDocument();
-    expect(screen.getByText('Paso 2 de 7')).toBeInTheDocument();
+    expect(screen.getByText('Paso 2 de 8')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Omitir este paso' }));
     expect(screen.getByRole('heading', { name: 'Objetivo' })).toBeInTheDocument();
-    expect(screen.getByText('Paso 3 de 7')).toBeInTheDocument();
+    expect(screen.getByText('Paso 3 de 8')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Omitir este paso' }));
+    expect(screen.getByRole('heading', { name: 'Dirección del plan' })).toBeInTheDocument();
+    expect(screen.getByText('Paso 4 de 8')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Omitir este paso' }));
     expect(
       screen.getByRole('heading', { name: 'Disponibilidad de entrenamiento' }),
     ).toBeInTheDocument();
-    expect(screen.getByText('Paso 4 de 7')).toBeInTheDocument();
+    expect(screen.getByText('Paso 5 de 8')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Omitir este paso' }));
     expect(screen.getByRole('heading', { name: 'Equipamiento' })).toBeInTheDocument();
-    expect(screen.getByText('Paso 5 de 7')).toBeInTheDocument();
+    expect(screen.getByText('Paso 6 de 8')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Omitir este paso' }));
     expect(screen.getByRole('heading', { name: 'Preferencias de nutrición' })).toBeInTheDocument();
-    expect(screen.getByText('Paso 6 de 7')).toBeInTheDocument();
+    expect(screen.getByText('Paso 7 de 8')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Omitir este paso' }));
     expect(screen.getByRole('heading', { name: 'Conectar integración' })).toBeInTheDocument();
-    expect(screen.getByText('Paso 7 de 7')).toBeInTheDocument();
+    expect(screen.getByText('Paso 8 de 8')).toBeInTheDocument();
   });
 
   it('navigates back while preserving previously entered answers', async () => {
@@ -150,9 +205,7 @@ describe('OnboardingPage', () => {
     expect(screen.getByRole('heading', { name: 'Objetivo' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Omitir este paso' }));
-    expect(
-      screen.getByRole('heading', { name: 'Disponibilidad de entrenamiento' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Dirección del plan' })).toBeInTheDocument();
   });
 
   it('advances the goal step via "Siguiente" once an option is selected', async () => {
@@ -164,6 +217,43 @@ describe('OnboardingPage', () => {
     await user.click(screen.getByRole('button', { name: 'Omitir este paso' })); // -> goal
 
     await user.click(screen.getByRole('radio', { name: /Hábito/ }));
+    await user.click(screen.getByRole('button', { name: 'Siguiente' }));
+
+    expect(screen.getByRole('heading', { name: 'Dirección del plan' })).toBeInTheDocument();
+  });
+
+  it('blocks "Siguiente" on the direction step without a selection, but "Omitir" still advances', async () => {
+    const user = userEvent.setup();
+    renderOnboarding();
+
+    await fillName(user, 'Diego');
+    await user.click(screen.getByRole('button', { name: 'Siguiente' })); // -> metrics
+    await user.click(screen.getByRole('button', { name: 'Omitir este paso' })); // -> goal
+    await user.click(screen.getByRole('button', { name: 'Omitir este paso' })); // -> direction
+    expect(screen.getByRole('heading', { name: 'Dirección del plan' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Siguiente' }));
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Selecciona una dirección o pulsa "Omitir este paso".',
+    );
+    expect(screen.getByRole('heading', { name: 'Dirección del plan' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Omitir este paso' }));
+    expect(
+      screen.getByRole('heading', { name: 'Disponibilidad de entrenamiento' }),
+    ).toBeInTheDocument();
+  });
+
+  it('advances the direction step via "Siguiente" once an option is selected', async () => {
+    const user = userEvent.setup();
+    renderOnboarding();
+
+    await fillName(user, 'Diego');
+    await user.click(screen.getByRole('button', { name: 'Siguiente' })); // -> metrics
+    await user.click(screen.getByRole('button', { name: 'Omitir este paso' })); // -> goal
+    await user.click(screen.getByRole('button', { name: 'Omitir este paso' })); // -> direction
+
+    await user.click(screen.getByRole('radio', { name: /Ganar músculo/ }));
     await user.click(screen.getByRole('button', { name: 'Siguiente' }));
 
     expect(
@@ -206,7 +296,7 @@ describe('OnboardingPage', () => {
 
   it('resumes mid-flow progress from local storage', async () => {
     saveOnboardingProgress({
-      stepIndex: 3,
+      stepIndex: 4,
       completed: false,
       answers: {
         ...INITIAL_PROGRESS.answers,
@@ -220,7 +310,7 @@ describe('OnboardingPage', () => {
     expect(
       screen.getByRole('heading', { name: 'Disponibilidad de entrenamiento' }),
     ).toBeInTheDocument();
-    expect(screen.getByText('Paso 4 de 7')).toBeInTheDocument();
+    expect(screen.getByText('Paso 5 de 8')).toBeInTheDocument();
   });
 
   it('shows the already-completed gate and lets the user restart on a return visit', async () => {
@@ -236,7 +326,7 @@ describe('OnboardingPage', () => {
     await user.click(screen.getByRole('button', { name: 'Volver a empezar' }));
 
     expect(screen.getByRole('heading', { name: 'Perfil' })).toBeInTheDocument();
-    expect(screen.getByText('Paso 1 de 7')).toBeInTheDocument();
+    expect(screen.getByText('Paso 1 de 8')).toBeInTheDocument();
   });
 
   /*
@@ -298,6 +388,8 @@ describe('OnboardingPage — backend persistence (FOR-121)', () => {
     vi.clearAllMocks();
     getProfileMock.mockResolvedValue(FRESH_PROFILE);
     submitOnboardingAnswersMock.mockResolvedValue(FRESH_PROFILE);
+    createPlanRequestMock.mockResolvedValue(PLAN_REQUEST);
+    getCurrentPlanRequestMock.mockResolvedValue(PLAN_REQUEST);
   });
 
   it("persists that step's answers to the backend at each step boundary", async () => {
@@ -380,7 +472,7 @@ describe('OnboardingPage — backend persistence (FOR-121)', () => {
     await user.click(screen.getByRole('button', { name: 'Siguiente' })); // -> metrics
     expect(await screen.findByText(/no se pudieron guardar/i)).toBeInTheDocument();
 
-    for (let i = 0; i < 6; i += 1) {
+    for (let i = 0; i < 7; i += 1) {
       await user.click(screen.getByRole('button', { name: 'Omitir este paso' }));
     }
     expect(screen.getByRole('heading', { name: 'Todo listo' })).toBeInTheDocument();
@@ -425,5 +517,162 @@ describe('OnboardingPage — backend persistence (FOR-121)', () => {
 
     await waitFor(() => expect(submitOnboardingAnswersMock).toHaveBeenCalled());
     expect(screen.getByRole('heading', { name: 'Métricas actuales' })).toBeInTheDocument();
+  });
+});
+
+/**
+ * Covers ADR-015 slice 3: the wizard's final, additional submission — `POST
+ * /api/v1/plan-requests` — fired once the flow is genuinely finished (never
+ * on the "Ahora no, ir al panel" early exit, which `goToCompletionScreen`/
+ * `goToCompletionScreenWithDirection` never take).
+ */
+describe('OnboardingPage — plan-request submission (ADR-015 slice 3)', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    vi.clearAllMocks();
+    getProfileMock.mockResolvedValue(FRESH_PROFILE);
+    submitOnboardingAnswersMock.mockResolvedValue(FRESH_PROFILE);
+    createPlanRequestMock.mockResolvedValue(PLAN_REQUEST);
+    getCurrentPlanRequestMock.mockResolvedValue(PLAN_REQUEST);
+  });
+
+  it('does not submit a plan request when the wizard finishes without a direction', async () => {
+    const user = userEvent.setup();
+    renderOnboarding();
+
+    await goToCompletionScreen(user);
+
+    expect(screen.getByRole('heading', { name: 'Todo listo' })).toBeInTheDocument();
+    expect(createPlanRequestMock).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toHaveTextContent(/dirección/i);
+  });
+
+  it('lets the user jump back to the direction step from the missing-direction notice', async () => {
+    const user = userEvent.setup();
+    renderOnboarding();
+
+    await goToCompletionScreen(user);
+    await user.click(screen.getByRole('button', { name: 'Elegir dirección' }));
+
+    expect(screen.getByRole('heading', { name: 'Dirección del plan' })).toBeInTheDocument();
+  });
+
+  it('submits the mapped plan request on completion and shows a calm confirmation', async () => {
+    const user = userEvent.setup();
+    renderOnboarding();
+
+    await goToCompletionScreenWithDirection(user, 'Perder grasa');
+
+    await waitFor(() => expect(createPlanRequestMock).toHaveBeenCalled());
+    const [input] = createPlanRequestMock.mock.calls[0];
+    expect(input).toMatchObject({ direction: 'LOSE_FAT', trainingDaysPerWeek: 0 });
+
+    expect(await screen.findByRole('status')).toHaveTextContent(/petición/i);
+    // "Ir al panel" is never blocked by the submission outcome.
+    await user.click(screen.getByRole('button', { name: 'Ir al panel' }));
+    expect(await screen.findByText('Panel principal')).toBeInTheDocument();
+  });
+
+  it('shows that a request is already open on a 409, using GET /plan-requests/current instead of a raw error', async () => {
+    createPlanRequestMock.mockRejectedValue(
+      new ApiRequestError(409, 'Ya tienes una petición de plan en curso.', 'CONFLICT'),
+    );
+    getCurrentPlanRequestMock.mockResolvedValue(PLAN_REQUEST);
+    const user = userEvent.setup();
+    renderOnboarding();
+
+    await goToCompletionScreenWithDirection(user);
+
+    await waitFor(() => expect(getCurrentPlanRequestMock).toHaveBeenCalled());
+    const notice = await screen.findByRole('status');
+    expect(notice).toHaveTextContent(/ya tienes una petición de plan en curso/i);
+  });
+
+  it('names the missing profile field on a validation failure and links to Ajustes', async () => {
+    createPlanRequestMock.mockRejectedValue(
+      new ApiRequestError(
+        400,
+        'Completa tu altura en tu perfil antes de pedir un plan.',
+        'VALIDATION_ERROR',
+      ),
+    );
+    const user = userEvent.setup();
+    renderOnboarding();
+
+    await goToCompletionScreenWithDirection(user);
+
+    const notice = await screen.findByRole('alert');
+    expect(notice).toHaveTextContent('Completa tu altura en tu perfil antes de pedir un plan.');
+    expect(screen.getByRole('link', { name: 'Ir a Ajustes' })).toHaveAttribute(
+      'href',
+      '/app/settings',
+    );
+  });
+
+  it('points to Mediciones when the missing piece is the body measurement', async () => {
+    createPlanRequestMock.mockRejectedValue(
+      new ApiRequestError(
+        400,
+        'Necesitas registrar al menos una medición corporal antes de pedir un plan.',
+        'VALIDATION_ERROR',
+      ),
+    );
+    const user = userEvent.setup();
+    renderOnboarding();
+
+    await goToCompletionScreenWithDirection(user);
+
+    expect(screen.getByRole('link', { name: 'Registrar medición' })).toHaveAttribute(
+      'href',
+      '/app/measurements',
+    );
+  });
+
+  it('jumps back to the goal step when the missing piece is the objective', async () => {
+    createPlanRequestMock.mockRejectedValue(
+      new ApiRequestError(
+        400,
+        'Necesitas indicar tu objetivo antes de pedir un plan.',
+        'VALIDATION_ERROR',
+      ),
+    );
+    const user = userEvent.setup();
+    renderOnboarding();
+
+    await goToCompletionScreenWithDirection(user);
+    await user.click(screen.getByRole('button', { name: 'Elegir objetivo' }));
+
+    expect(screen.getByRole('heading', { name: 'Objetivo' })).toBeInTheDocument();
+  });
+
+  it('shows the backend-safe message for any other failure, never a generic "algo ha ido mal"', async () => {
+    createPlanRequestMock.mockRejectedValue(
+      new ApiRequestError(500, 'Ha ocurrido un error inesperado.', 'INTERNAL_ERROR'),
+    );
+    const user = userEvent.setup();
+    renderOnboarding();
+
+    await goToCompletionScreenWithDirection(user);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Ha ocurrido un error inesperado.');
+  });
+
+  it('re-attempts the submission if the user fixes the direction and finishes the wizard again', async () => {
+    const user = userEvent.setup();
+    renderOnboarding();
+
+    await goToCompletionScreen(user);
+    expect(createPlanRequestMock).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: 'Elegir dirección' }));
+    await user.click(screen.getByRole('radio', { name: /Mantenerme/ }));
+    await user.click(screen.getByRole('button', { name: 'Siguiente' })); // direction -> training
+    for (let i = 0; i < 4; i += 1) {
+      await user.click(screen.getByRole('button', { name: 'Omitir este paso' }));
+    }
+
+    await waitFor(() => expect(createPlanRequestMock).toHaveBeenCalledTimes(1));
+    const [input] = createPlanRequestMock.mock.calls[0];
+    expect(input).toMatchObject({ direction: 'MAINTAIN' });
   });
 });

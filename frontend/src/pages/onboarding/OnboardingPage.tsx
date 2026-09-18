@@ -3,15 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import { Brand } from '../../components/Brand';
 import { Button } from '../../components/Button';
 import { useNotify } from '../../components/NotificationProvider';
+import { ApiRequestError } from '../../api/client';
+import { createPlanRequest, getCurrentPlanRequest } from '../../api/planRequests';
 import { OnboardingStepShell } from './OnboardingStepShell';
-import { CompletionStep } from './CompletionStep';
+import { CompletionStep, type PlanRequestNotice } from './CompletionStep';
 import { ProfileStep } from './steps/ProfileStep';
 import { BodyMetricsStep } from './steps/BodyMetricsStep';
 import { GoalStep } from './steps/GoalStep';
+import { DirectionStep } from './steps/DirectionStep';
 import { TrainingAvailabilityStep } from './steps/TrainingAvailabilityStep';
 import { EquipmentStep } from './steps/EquipmentStep';
 import { NutritionBasicsStep } from './steps/NutritionBasicsStep';
 import { IntegrationStep } from './steps/IntegrationStep';
+import { buildPlanRequestInput } from './planRequestMapping';
+import { formatShortDate } from '../dateLabel';
 import {
   clearOnboardingProgress,
   fetchOnboardingBackendState,
@@ -27,6 +32,19 @@ import styles from './OnboardingPage.module.css';
 
 const SYNC_FAILED_MESSAGE =
   'No se pudieron guardar tus respuestas en el servidor. Se han guardado localmente y lo intentaremos más tarde.';
+
+/**
+ * "Nobody chose a direction" (ADR-015 decision 5's amendment): the one input
+ * `buildPlanRequestInput` cannot default, so the wizard's own completion
+ * never sends the request with a guessed value — it tells the person what
+ * to fix instead.
+ */
+const MISSING_DIRECTION_MESSAGE =
+  'No elegiste una dirección para tu plan (perder grasa, ganar músculo o mantenerte), así que no hemos podido pedirlo todavía.';
+
+const PLAN_REQUEST_SENT_MESSAGE = 'Hemos enviado tu petición de un plan generado por IA.';
+
+const PLAN_REQUEST_GENERIC_FAILURE_MESSAGE = 'No hemos podido enviar tu petición de plan.';
 
 /**
  * First-run onboarding flow (FOR-59). A multi-step flow — profile
@@ -84,12 +102,32 @@ const SYNC_FAILED_MESSAGE =
  * independent of this draft sync.
  */
 type StepId =
-  'profile' | 'metrics' | 'goal' | 'training' | 'equipment' | 'nutrition' | 'integration';
+  | 'profile'
+  | 'metrics'
+  | 'goal'
+  | 'direction'
+  | 'training'
+  | 'equipment'
+  | 'nutrition'
+  | 'integration';
 
+/**
+ * `direction` sits right after `goal`, not folded into it (ADR-015 decision
+ * 5's amendment). The two are adjacent questions that answer different
+ * things — `goal` is the profile's standing life goal (`MainGoal`, stored on
+ * `user_profile.main_goal`/its onboarding draft, unchanged by this slice);
+ * `direction` is what THIS plan should do with calories
+ * (`plan_request.plan_objective`, via `PlanDirection`). Placing them next to
+ * each other keeps the two-question relationship visible without merging
+ * them into one screen, which would blur which answer sets which field — a
+ * `HABITO` user asking to `GAIN_MUSCLE` is an ordinary combination the
+ * backend accepts, not a contradiction a shared screen should imply.
+ */
 const STEP_ORDER: readonly StepId[] = [
   'profile',
   'metrics',
   'goal',
+  'direction',
   'training',
   'equipment',
   'nutrition',
@@ -100,6 +138,7 @@ const STEP_TITLES: Record<StepId, string> = {
   profile: 'Perfil',
   metrics: 'Métricas actuales',
   goal: 'Objetivo',
+  direction: 'Dirección del plan',
   training: 'Disponibilidad de entrenamiento',
   equipment: 'Equipamiento',
   nutrition: 'Preferencias de nutrición',
@@ -110,11 +149,15 @@ const STEP_TITLES: Record<StepId, string> = {
  * Profile is the only critical (non-skippable) step — every other step is
  * optional context that improves future guidance but must not block a new
  * user from reaching the dashboard (spec: "skip for non-critical steps").
+ * `direction` follows the same rule as `goal`: skippable here, but a missing
+ * answer is caught before the plan-request is ever sent (see {@link
+ * buildAndSubmitPlanRequest}) rather than forcing a choice this early.
  */
 const SKIPPABLE: Record<StepId, boolean> = {
   profile: false,
   metrics: true,
   goal: true,
+  direction: true,
   training: true,
   equipment: true,
   nutrition: true,
@@ -122,10 +165,10 @@ const SKIPPABLE: Record<StepId, boolean> = {
 };
 
 /**
- * Only two steps enforce real validation: the required name (profile) and
- * requiring an explicit goal choice when advancing via "Siguiente" (skip
- * still bypasses it, matching the spec's own distinction between "blocked
- * advance" and "skip past a non-critical step").
+ * Only three steps enforce real validation: the required name (profile) and
+ * requiring an explicit goal/direction choice when advancing via "Siguiente"
+ * (skip still bypasses it, matching the spec's own distinction between
+ * "blocked advance" and "skip past a non-critical step").
  */
 function validateStep(id: StepId, answers: OnboardingAnswers): string | undefined {
   if (id === 'profile') {
@@ -135,6 +178,11 @@ function validateStep(id: StepId, answers: OnboardingAnswers): string | undefine
   }
   if (id === 'goal') {
     return answers.goal.selected ? undefined : 'Selecciona un objetivo o pulsa "Omitir este paso".';
+  }
+  if (id === 'direction') {
+    return answers.direction.selected
+      ? undefined
+      : 'Selecciona una dirección o pulsa "Omitir este paso".';
   }
   return undefined;
 }
@@ -166,6 +214,13 @@ function renderStepContent(
       );
     case 'goal':
       return <GoalStep value={answers.goal} onChange={(patch) => updateSection('goal', patch)} />;
+    case 'direction':
+      return (
+        <DirectionStep
+          value={answers.direction}
+          onChange={(patch) => updateSection('direction', patch)}
+        />
+      );
     case 'training':
       return (
         <TrainingAvailabilityStep
@@ -197,6 +252,11 @@ export function OnboardingPage() {
   const notify = useNotify();
   const [progress, setProgress] = useState<OnboardingProgress>(() => loadOnboardingProgress());
   const [error, setError] = useState<string | undefined>(undefined);
+  // The wizard's final, additional submission (ADR-015 slice 3) — see
+  // buildAndSubmitPlanRequest. undefined until the flow is finished once.
+  const [planRequestNotice, setPlanRequestNotice] = useState<PlanRequestNotice | undefined>(
+    undefined,
+  );
   // Backend-sourced first-run gate (FOR-121): `undefined` means "not resolved
   // yet, or the fetch failed" — the render falls back to the local flag in
   // that case, per the graceful-fallback requirement (never trap the user in
@@ -266,6 +326,128 @@ export function OnboardingPage() {
     const next: OnboardingProgress = { ...progress, stepIndex: index };
     setProgress(next);
     syncInBackground(next);
+    // Fires exactly on the transition into the completion screen via a real
+    // "Finalizar"/"Omitir" click — never on a page reload that happens to
+    // land back on an already-atEnd, not-yet-completed state, and never on
+    // the "Ahora no, ir al panel" early exit (which calls
+    // handleGoToDashboard, not goToStep). Re-fires correctly if the person
+    // goes back (e.g. via the missing-direction notice's action) and
+    // finishes the wizard again — see the dedicated OnboardingPage test.
+    if (index >= totalSteps && !progress.completed) {
+      setPlanRequestNotice(undefined);
+      void buildAndSubmitPlanRequest(next.answers);
+    }
+  }
+
+  /**
+   * The wizard's final, additional submission (ADR-015 decision 8) — `POST
+   * /api/v1/plan-requests`, distinct from {@link syncInBackground}'s
+   * draft-progress PATCH, which keeps running exactly as it did before this
+   * slice. Never blocks "Ir al panel": every branch below only ever sets
+   * {@link planRequestNotice}, which {@link CompletionStep} renders
+   * alongside its own actions, not in place of them.
+   */
+  async function buildAndSubmitPlanRequest(answers: OnboardingAnswers) {
+    const input = buildPlanRequestInput(answers);
+    if (!input) {
+      setPlanRequestNotice({
+        message: MISSING_DIRECTION_MESSAGE,
+        tone: 'alert',
+        action: {
+          kind: 'step',
+          label: 'Elegir dirección',
+          onClick: () => goToStep(STEP_ORDER.indexOf('direction')),
+        },
+      });
+      return;
+    }
+
+    try {
+      await createPlanRequest(input);
+      setPlanRequestNotice({ message: PLAN_REQUEST_SENT_MESSAGE, tone: 'status' });
+    } catch (submitError) {
+      await handlePlanRequestFailure(submitError);
+    }
+  }
+
+  /**
+   * Turns a failed `POST /api/v1/plan-requests` into an honest, specific
+   * notice (ADR-015 slice 3 "handle the failures honestly") rather than a
+   * raw error or a generic "algo ha ido mal":
+   *
+   * <ul>
+   *   <li>409 CONFLICT — a request is already open; {@link
+   *       getCurrentPlanRequest} explains it with real data instead of the
+   *       raw error.
+   *   <li>400 VALIDATION_ERROR — the caller's profile/body-measurement data
+   *       is incomplete. The backend's own {@code message} already names
+   *       which piece is missing ({@code PlanRequestService}); this only
+   *       adds where to fix it, classified by the one fact the message
+   *       reliably carries — which noun it names — since no field-level
+   *       error code exists for this particular failure family.
+   *   <li>anything else — the backend's safe {@code ApiError.message}
+   *       (ADR-005: never a stack trace) shown as-is, which is already more
+   *       specific than a generic fallback.
+   * </ul>
+   */
+  async function handlePlanRequestFailure(submitError: unknown) {
+    if (submitError instanceof ApiRequestError && submitError.status === 409) {
+      try {
+        const current = await getCurrentPlanRequest();
+        setPlanRequestNotice({
+          message: `Ya tienes una petición de plan en curso, solicitada el ${formatShortDate(
+            new Date(current.requestedAt),
+          )}.`,
+          tone: 'status',
+        });
+      } catch {
+        setPlanRequestNotice({ message: submitError.message, tone: 'status' });
+      }
+      return;
+    }
+
+    if (submitError instanceof ApiRequestError && submitError.status === 400) {
+      setPlanRequestNotice({
+        message: submitError.message,
+        tone: 'alert',
+        action: buildValidationAction(submitError.message),
+      });
+      return;
+    }
+
+    setPlanRequestNotice({
+      message:
+        submitError instanceof ApiRequestError
+          ? submitError.message
+          : PLAN_REQUEST_GENERIC_FAILURE_MESSAGE,
+      tone: 'alert',
+    });
+  }
+
+  /**
+   * Classifies a `PlanRequestService` validation message to point at where
+   * it can be fixed. There is no field-level error code for this family
+   * (unlike bean-validation's `details[].field`) — `PlanRequestService`
+   * throws a single-message `ValidationException` — so this reads the one
+   * noun each message reliably names: "medición corporal" only ever means
+   * the body-measurement step, "objetivo" only ever means the goal
+   * question, and everything else in that service's messages ("tu sexo",
+   * "tu altura", "tu nivel de actividad", "tu fecha de nacimiento") is a
+   * canonical profile field this wizard does not itself collect (`activityLevel`
+   * has no onboarding step at all) — so it routes to Ajustes.
+   */
+  function buildValidationAction(message: string): NonNullable<PlanRequestNotice['action']> {
+    if (message.includes('medición corporal')) {
+      return { kind: 'link', label: 'Registrar medición', to: '/app/measurements' };
+    }
+    if (message.includes('objetivo')) {
+      return {
+        kind: 'step',
+        label: 'Elegir objetivo',
+        onClick: () => goToStep(STEP_ORDER.indexOf('goal')),
+      };
+    }
+    return { kind: 'link', label: 'Ir a Ajustes', to: '/app/settings' };
   }
 
   function handleNext() {
@@ -300,6 +482,7 @@ export function OnboardingPage() {
     clearOnboardingProgress();
     setProgress(INITIAL_PROGRESS);
     setError(undefined);
+    setPlanRequestNotice(undefined);
   }
 
   if (completed || atEnd) {
@@ -311,6 +494,7 @@ export function OnboardingPage() {
             alreadyCompleted={completed}
             onGoToDashboard={handleGoToDashboard}
             onRestart={handleRestart}
+            planRequestNotice={planRequestNotice}
           />
         </div>
       </div>
