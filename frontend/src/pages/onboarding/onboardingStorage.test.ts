@@ -16,6 +16,7 @@ import {
   toOnboardingAnswersInput,
   INITIAL_PROGRESS,
   EMPTY_ANSWERS,
+  DEFAULT_MEALS_PER_DAY,
   type OnboardingProgress,
 } from './onboardingStorage';
 
@@ -87,6 +88,15 @@ describe('hasOnboardingProgress', () => {
       }),
     ).toBe(true);
     expect(hasOnboardingProgress({ ...EMPTY_ANSWERS, training: { days: ['Lunes'] } })).toBe(true);
+    expect(
+      hasOnboardingProgress({ ...EMPTY_ANSWERS, direction: { selected: 'LOSE_FAT' } }),
+    ).toBe(true);
+    expect(
+      hasOnboardingProgress({
+        ...EMPTY_ANSWERS,
+        nutrition: { ...EMPTY_ANSWERS.nutrition, cuisineStyle: 'ESPANOLA' },
+      }),
+    ).toBe(true);
   });
 });
 
@@ -104,9 +114,31 @@ describe('toOnboardingAnswersInput (FOR-121 — the swap onboardingStorage.ts an
       goal: { selected: 'HABITO' },
       training: { days: [] },
       equipment: { items: [] },
-      nutrition: { preference: '', restrictions: '' },
+      nutrition: { preference: '' },
       completed: true,
     });
+  });
+
+  it('never sends direction — the backend draft endpoint has no field for it (ADR-015: it is plan-request-only)', () => {
+    const answers = {
+      ...EMPTY_ANSWERS,
+      direction: { selected: 'LOSE_FAT' as const },
+    };
+
+    const input = toOnboardingAnswersInput(answers, false);
+
+    expect(input).not.toHaveProperty('direction');
+  });
+
+  it('never sends mealsPerDay/cuisineStyle — local-only answers the draft endpoint does not know (ADR-015)', () => {
+    const answers = {
+      ...EMPTY_ANSWERS,
+      nutrition: { preference: 'VEGAN', mealsPerDay: 4, cuisineStyle: 'MEDITERRANEA' },
+    };
+
+    const input = toOnboardingAnswersInput(answers, false);
+
+    expect(input.nutrition).toEqual({ preference: 'VEGAN' });
   });
 });
 
@@ -125,9 +157,26 @@ describe('fromOnboardingAnswersOutput', () => {
       profile: { name: 'Ada', birthDate: '', sex: '', heightCm: '' },
       metrics: { choice: 'MANUAL', measurementSaved: true },
       goal: { selected: 'COMPOSICION' },
+      direction: { selected: undefined },
       training: { days: ['Lunes'] },
       equipment: { items: ['Mancuernas'] },
-      nutrition: { preference: 'VEGAN', restrictions: 'Frutos secos' },
+      nutrition: { preference: 'VEGAN', mealsPerDay: DEFAULT_MEALS_PER_DAY, cuisineStyle: '' },
+    });
+  });
+
+  it('never recovers direction/mealsPerDay/cuisineStyle from the backend — they are local-only (ADR-015, not synced by the draft endpoint)', () => {
+    const output = {
+      ...EMPTY_ONBOARDING_ANSWERS_OUTPUT,
+      nutrition: { preference: 'OMNIVORE', restrictions: 'algo' },
+    };
+
+    const answers = fromOnboardingAnswersOutput(output);
+
+    expect(answers.direction).toEqual({ selected: undefined });
+    expect(answers.nutrition).toEqual({
+      preference: 'OMNIVORE',
+      mealsPerDay: DEFAULT_MEALS_PER_DAY,
+      cuisineStyle: '',
     });
   });
 
