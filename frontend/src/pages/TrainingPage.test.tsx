@@ -847,6 +847,10 @@ describe('TrainingPage', () => {
     await waitFor(() => {
       expect(screen.getByRole('status')).toHaveTextContent('No existe ningún plan planificado.');
     });
+    expect(screen.getByRole('link', { name: 'Crear mi plan' })).toHaveAttribute(
+      'href',
+      '/app/nutrition/plans',
+    );
   });
 
   it('renders a rest day today with no session actions', async () => {
