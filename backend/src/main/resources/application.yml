@@ -54,6 +54,23 @@ forma:
       measure-url: https://wbsapi.withings.net/measure
       token-encryption-key: ${WITHINGS_TOKEN_ENC_KEY:}
 
+  # The external AI plan agent (ADR-015 decision 10, slice 5). Empty by default, same posture as
+  # the Withings block above and the same lesson ADR-014 decision 6 records for the Google OAuth
+  # client: the app MUST boot with these unset (PlanAgentAdapter fails loudly at the point of use —
+  # generate() — never at startup, when base-url is blank). Nothing in this slice calls generate()
+  # yet (slice 6 wires the dispatcher), so an unconfigured environment is simply inert here, not
+  # broken.
+  plan-agent:
+    base-url: ${FORMA_PLAN_AGENT_BASE_URL:}
+    api-key: ${FORMA_PLAN_AGENT_API_KEY:}
+    # The ADR's own proposed default (Risk 1: "every number here is unmeasured" — the agent does
+    # not exist yet). Withings' JdkHttpWithingsTransport uses a fixed 10s because Getmeas is a
+    # simple lookup; writing a week of meals against a full food catalog is a different kind of
+    # call and 10s would fail it immediately. Kept at the ADR's own guess rather than substituting
+    # a different one with no more evidence behind it; configurable so the first real integration
+    # can correct it without a code change.
+    timeout-seconds: ${FORMA_PLAN_AGENT_TIMEOUT_SECONDS:120}
+
   # Progress-photo private binary storage (FOR-140, spec FOR-140 Storage decision Option A: a
   # filesystem-backed private directory for this MVP — never a web-served/static path; see
   # FilesystemProgressPhotoStore). Defaults to a per-user directory outside the repo/container

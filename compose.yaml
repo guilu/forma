@@ -64,6 +64,12 @@ services:
       WITHINGS_CLIENT_SECRET: ${WITHINGS_CLIENT_SECRET:-}
       WITHINGS_REDIRECT_URI: ${WITHINGS_REDIRECT_URI:-https://forma.diegobarrioh.dev/auth}
       WITHINGS_TOKEN_ENC_KEY: ${WITHINGS_TOKEN_ENC_KEY:-}
+      # The external AI plan agent (ADR-015 decision 10, slice 5). Same pass-through gap as the
+      # Withings block above. Empty by default — nothing in this slice calls generate() yet
+      # (slice 6 wires the dispatcher), so a fresh checkout is simply inert here, not broken.
+      FORMA_PLAN_AGENT_BASE_URL: ${FORMA_PLAN_AGENT_BASE_URL:-}
+      FORMA_PLAN_AGENT_API_KEY: ${FORMA_PLAN_AGENT_API_KEY:-}
+      FORMA_PLAN_AGENT_TIMEOUT_SECONDS: ${FORMA_PLAN_AGENT_TIMEOUT_SECONDS:-120}
       # Activates the pre-auth placeholder account (FOR-145, ADR-012). Same
       # pass-through gap as the Withings block above.
       FORMA_BOOTSTRAP_LEGACY_USER_PASSWORD: ${FORMA_BOOTSTRAP_LEGACY_USER_PASSWORD:-}
