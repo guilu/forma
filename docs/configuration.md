@@ -39,6 +39,9 @@ to override locally; `.env` is gitignored.
 | `WITHINGS_CLIENT_SECRET` | backend | (empty) | **yes** | Withings application secret. |
 | `WITHINGS_REDIRECT_URI` | backend | `https://forma.diegobarrioh.dev/auth` | no | Must match the URI registered with Withings exactly. |
 | `WITHINGS_TOKEN_ENC_KEY` | backend | (empty) | **yes** | Key for encrypting stored provider tokens. `openssl rand -base64 32`. |
+| `FORMA_PLAN_AGENT_BASE_URL` | backend | (empty) | no | The external AI plan agent's endpoint (ADR-015 decision 10). Empty disables `PlanGenerationGateway#generate`, with a named `PlanGenerationException` at the point of use — nothing calls it yet (slice 6 wires the dispatcher). |
+| `FORMA_PLAN_AGENT_API_KEY` | backend | (empty) | **yes** | The plan agent's API key, sent as an `Authorization: Bearer` header. Never logged (ADR-008). |
+| `FORMA_PLAN_AGENT_TIMEOUT_SECONDS` | backend | `120` | no | HTTP request timeout for the plan agent call. The ADR's own proposed default — an explicit, unmeasured guess (writing a week of meals is a slower call than Withings' 10 s Getmeas lookup); override once the first real integration measures it. |
 | `FORMA_BOOTSTRAP_LEGACY_USER_PASSWORD` | backend | (empty) | **yes** | Activates the pre-auth placeholder account (FOR-145). |
 | `GOOGLE_CLIENT_ID` | backend | (empty) | no | Google OAuth client id. Empty disables `oauth2Login()`; `/api/oauth2/authorization/google` redirects to `/login?error=google` instead of 404/500ing. |
 | `GOOGLE_CLIENT_SECRET` | backend | (empty) | **yes** | Google OAuth client secret. |

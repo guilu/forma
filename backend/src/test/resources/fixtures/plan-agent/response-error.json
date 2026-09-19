@@ -1,0 +1,5 @@
+{
+  "_comment": "An in-band failure signal from the plan agent. JUDGMENT CALL: docs/FORMA_Contrato_Agente_Plan.md defines FORMA's OWN error shape for rejecting a plan (the 'Errores' section, ApiError-shaped) but does not define an envelope for the AGENT reporting its own failure back to FORMA — the agent does not exist yet, so nobody has written that half. This fixture assumes the minimal, HTTP-error-conventional {error, message} shape; PlanAgentAdapter treats any response body with a top-level 'error' key this way. If the real agent's failure envelope differs, only PlanAgentAdapter#parseGeneratedPlan needs to change — the port is unaffected.",
+  "error": "insufficient_catalog",
+  "message": "El catálogo recibido no tiene alimentos suficientes para una dieta vegana."
+}

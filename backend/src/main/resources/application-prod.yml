@@ -27,3 +27,9 @@ server:
 # that never uses Withings is unaffected, and a real connect/callback without them fails loudly at
 # that call with a clear ProviderOAuthException / "key not configured" error instead of at startup.
 # A deployment that DOES use Withings must set all three — see the PR's Security notes.
+
+# The plan agent (ADR-015 decision 10, slice 5) follows the identical posture: FORMA_PLAN_AGENT_*
+# are read via application.yml's empty-default placeholders and are deliberately NOT required here
+# either. Nothing calls PlanAgentAdapter#generate yet (slice 5 builds it unwired), so there is no
+# "real connect attempt" to fail loudly at until slice 6 exists — an unconfigured deployment is
+# simply inert, not degraded.

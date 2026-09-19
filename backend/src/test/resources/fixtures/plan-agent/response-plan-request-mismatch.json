@@ -1,0 +1,22 @@
+{
+  "_comment": "A well-formed plan answering a DIFFERENT planRequestId than the one asked (defensive check, PlanAgentAdapter#generate — not explicitly required by the contract document, but a request/response mismatch here is exactly the kind of silent misattribution slice 6's dispatcher must never write to the wrong row).",
+  "contractVersion": "1",
+  "planRequestId": "00000000-0000-0000-0000-000000000000",
+  "catalogVersion": "2026-09-18",
+  "plan": {
+    "name": "Plan de otra petición",
+    "objective": "RENDIMIENTO",
+    "targets": { "kcalMin": null, "kcalMax": null, "proteinG": null, "carbsG": null, "fatG": null },
+    "days": [
+      {
+        "weekNumber": 1,
+        "dayNumber": 1,
+        "meals": [
+          { "mealType": "BREAKFAST", "name": "Desayuno", "items": [{ "foodId": "oats", "amount": 100 }] }
+        ]
+      }
+    ]
+  },
+  "unmatched": [],
+  "agent": { "model": "el-modelo-que-sea", "generatedAt": "2026-09-18T11:04:22Z" }
+}
