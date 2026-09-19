@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
-import { ConfirmDialog } from '../components/ConfirmDialog';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
 import { Icon } from '../components/Icon';
@@ -11,6 +10,7 @@ import { IconButton } from '../components/IconButton';
 import { LoadingState } from '../components/LoadingState';
 import { Modal } from '../components/Modal';
 import { useNotify } from '../components/NotificationProvider';
+import { TypedConfirmDialog } from '../components/TypedConfirmDialog';
 import { ApiRequestError } from '../api/client';
 import {
   activatePlan,
@@ -219,9 +219,10 @@ export function PlansPage() {
       )}
 
       {deleting && (
-        <ConfirmDialog
+        <TypedConfirmDialog
           title={`Eliminar ${deleting.name}`}
-          message="El plan y todos sus días desaparecen. Los alimentos y las recetas no se tocan."
+          message="El plan y todos sus días desaparecen para siempre. Esta acción no se puede deshacer. Los alimentos y las recetas del catálogo no se tocan."
+          confirmWord="eliminar"
           confirmLabel="Eliminar"
           onConfirm={() => {
             const target = deleting;
