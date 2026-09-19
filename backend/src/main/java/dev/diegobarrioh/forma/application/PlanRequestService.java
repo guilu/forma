@@ -39,6 +39,13 @@ import org.springframework.stereotype.Service;
  * (ADR-015 slice 6), not at capture. {@code contract_version} is different — it is the shape THIS
  * build's outbound message would speak once dispatched, known already, so it is stamped at capture
  * (ADR-015 decision 13: "the outbound one is stored on the row").
+ *
+ * <p>{@code block_length_weeks} and {@code block_number} (migration V64, ADR-015 decision 14) are
+ * stamped {@code 4} and {@code 1}: every request this method can produce today is somebody's first
+ * request into a fresh open-request slot, and there is no successor-block logic yet to say a
+ * request is for block 2 or 3 of an ongoing programme — deciding that is later work, not guessed
+ * here. {@code next_review_date} is left {@code null} for the same reason {@code catalog_version}
+ * is: it describes something (the block's actual start) that has not happened at capture time.
  */
 @Service
 public class PlanRequestService {
@@ -155,6 +162,10 @@ public class PlanRequestService {
             profile.defaultObjectives().proteinTargetG(),
             profile.personalTargets().carbsTargetG(),
             profile.personalTargets().fatTargetG(),
+            4, // block_length_weeks: the programme is three four-week blocks (ADR-015 decision 14)
+            1, // block_number: nothing yet decides a request is for block 2 or 3 (ADR-015
+            // decision 14)
+            null, // next_review_date: needs the block's start date, not fixed at capture yet
             null, // request_payload: the outbound agent call's audit trail, written at dispatch
             null, // validation_report: written by the ingest (slice 6)
             null, // nutrition_plan_id: NULL until READY (slice 6) -- see the "known trap" this

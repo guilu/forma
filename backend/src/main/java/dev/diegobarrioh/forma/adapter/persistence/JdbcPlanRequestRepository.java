@@ -13,6 +13,7 @@ import dev.diegobarrioh.forma.domain.TrainingEquipment;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
@@ -44,9 +45,10 @@ public class JdbcPlanRequestRepository implements PlanRequestRepository {
       "id, user_id, status, contract_version, catalog_version, sex, age_years, weight_kg,"
           + " height_cm, activity_level, main_goal, plan_objective, training_days_per_week,"
           + " training_weekdays, equipment, meals_per_day, diet_pattern, cuisine_style, plan_kcal,"
-          + " target_protein_g, target_carbs_g, target_fat_g, request_payload, validation_report,"
-          + " nutrition_plan_id, failure_code, failure_detail, attempt_count, requested_at,"
-          + " dispatched_at, completed_at, updated_at";
+          + " target_protein_g, target_carbs_g, target_fat_g, block_length_weeks, block_number,"
+          + " next_review_date, request_payload, validation_report, nutrition_plan_id,"
+          + " failure_code, failure_detail, attempt_count, requested_at, dispatched_at,"
+          + " completed_at, updated_at";
 
   private final JdbcTemplate jdbcTemplate;
 
@@ -61,7 +63,7 @@ public class JdbcPlanRequestRepository implements PlanRequestRepository {
             + COLUMNS
             + ", open_marker) VALUES ("
             + "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,"
-            + " ?, ?, ?, ?, ?)",
+            + " ?, ?, ?, ?, ?, ?, ?, ?)",
         request.id(),
         request.userId(),
         request.status().name(),
@@ -84,6 +86,9 @@ public class JdbcPlanRequestRepository implements PlanRequestRepository {
         request.targetProteinG(),
         request.targetCarbsG(),
         request.targetFatG(),
+        request.blockLengthWeeks(),
+        request.blockNumber(),
+        request.nextReviewDate(),
         request.requestPayload(),
         request.validationReport(),
         request.nutritionPlanId(),
@@ -148,6 +153,9 @@ public class JdbcPlanRequestRepository implements PlanRequestRepository {
         nullableDouble(rs, "target_protein_g"),
         nullableDouble(rs, "target_carbs_g"),
         nullableDouble(rs, "target_fat_g"),
+        rs.getInt("block_length_weeks"),
+        rs.getInt("block_number"),
+        rs.getObject("next_review_date", LocalDate.class),
         rs.getString("request_payload"),
         rs.getString("validation_report"),
         (UUID) rs.getObject("nutrition_plan_id"),

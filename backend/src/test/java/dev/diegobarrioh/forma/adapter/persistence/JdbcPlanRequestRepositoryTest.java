@@ -15,6 +15,7 @@ import dev.diegobarrioh.forma.domain.PlanRequestStatus;
 import dev.diegobarrioh.forma.domain.Sex;
 import dev.diegobarrioh.forma.domain.TrainingEquipment;
 import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Optional;
@@ -78,6 +79,9 @@ class JdbcPlanRequestRepositoryTest {
         160.0,
         260.0,
         70.0,
+        4,
+        1,
+        LocalDate.parse("2026-10-05"),
         "{\"contractVersion\":\"1\"}",
         null,
         nutritionPlanId,
@@ -122,6 +126,9 @@ class JdbcPlanRequestRepositoryTest {
     assertThat(request.targetProteinG()).isEqualTo(160.0);
     assertThat(request.targetCarbsG()).isEqualTo(260.0);
     assertThat(request.targetFatG()).isEqualTo(70.0);
+    assertThat(request.blockLengthWeeks()).isEqualTo(4);
+    assertThat(request.blockNumber()).isEqualTo(1);
+    assertThat(request.nextReviewDate()).isEqualTo(LocalDate.parse("2026-10-05"));
     assertThat(request.requestPayload()).contains("contractVersion");
     assertThat(request.validationReport()).isNull();
     assertThat(request.nutritionPlanId()).isNull();
@@ -160,6 +167,9 @@ class JdbcPlanRequestRepositoryTest {
             null,
             null,
             null,
+            4,
+            2,
+            null,
             null,
             null,
             null,
@@ -178,6 +188,8 @@ class JdbcPlanRequestRepositoryTest {
     assertThat(found.equipment()).isNull();
     assertThat(found.catalogVersion()).isNull();
     assertThat(found.targetProteinG()).isNull();
+    assertThat(found.blockNumber()).isEqualTo(2);
+    assertThat(found.nextReviewDate()).isNull();
     assertThat(found.failureCode()).isEqualTo("UNREACHABLE");
   }
 
