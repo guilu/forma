@@ -164,24 +164,52 @@ class PlanRequestMigrationTest {
         .containsExactly((String) null);
   }
 
-  /** The decision fixes the block at exactly four weeks; this CHECK is written just as rigid. */
+  /**
+   * The CHECK rules out the impossible, not the undecided: a block of zero weeks, or one longer
+   * than the twelve-week programme it belongs to. That blocks are four weeks today lives in the
+   * column's DEFAULT and in decision 14, not in a constraint that would need a migration to allow a
+   * six-week block for one user.
+   */
   @Test
-  void refusesABlockLengthOtherThanFourWeeks() {
-    assertThatThrownBy(
-            () ->
-                execute(
-                    "INSERT INTO plan_request (id, user_id, status, open_marker,"
-                        + " contract_version, sex, age_years, weight_kg, height_cm,"
-                        + " activity_level, main_goal, plan_objective, training_days_per_week,"
-                        + " meals_per_day, diet_pattern, cuisine_style, plan_kcal,"
-                        + " block_length_weeks)"
-                        + " VALUES ('"
-                        + uuid()
-                        + "', '"
-                        + USER
-                        + "', 'PENDING', '1', '1', 'MALE', 38, 73.6, 180.0, 'MODERATE',"
-                        + " 'COMPOSICION', 'WEIGHT_LOSS', 5, 5, 'OMNIVORE', 'ESPANOLA', 2078, 1)"))
-        .isInstanceOf(SQLException.class);
+  void refusesABlockLengthOutsideTheProgramme() {
+    for (int weeks : new int[] {0, 13}) {
+      int outOfRange = weeks;
+      assertThatThrownBy(() -> execute(insertWithBlockLength(outOfRange)))
+          .as("block_length_weeks = %d", outOfRange)
+          .isInstanceOf(SQLException.class);
+    }
+  }
+
+  /**
+   * A block length other than the default is accepted: the decision is not welded into the schema.
+   */
+  @Test
+  void acceptsABlockLengthInsideTheProgramme() throws Exception {
+    String id = uuid();
+    execute(insertWithBlockLength(6, id));
+
+    assertThat(column("SELECT block_length_weeks FROM plan_request WHERE id = '" + id + "'"))
+        .containsExactly("6");
+  }
+
+  private String insertWithBlockLength(int weeks) {
+    return insertWithBlockLength(weeks, uuid());
+  }
+
+  private String insertWithBlockLength(int weeks, String id) {
+    return "INSERT INTO plan_request (id, user_id, status, open_marker,"
+        + " contract_version, sex, age_years, weight_kg, height_cm,"
+        + " activity_level, main_goal, plan_objective, training_days_per_week,"
+        + " meals_per_day, diet_pattern, cuisine_style, plan_kcal,"
+        + " block_length_weeks)"
+        + " VALUES ('"
+        + id
+        + "', '"
+        + USER
+        + "', 'PENDING', '1', '1', 'MALE', 38, 73.6, 180.0, 'MODERATE',"
+        + " 'COMPOSICION', 'WEIGHT_LOSS', 5, 5, 'OMNIVORE', 'ESPANOLA', 2078, "
+        + weeks
+        + ")";
   }
 
   @Test

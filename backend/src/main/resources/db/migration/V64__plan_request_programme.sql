@@ -22,14 +22,18 @@
 -- lifecycle to stay in sync with three children it does not itself own -- the same "two doors into one
 -- rule" failure decision 8 already refuses for a different endpoint.
 --
--- block_length_weeks IS NOT A FREE PARAMETER, AND THE CHECK IS WRITTEN AS RIGID AS THE DECISION
+-- block_length_weeks: THE DEFAULT CARRIES THE DECISION, THE CHECK ONLY CARRIES THE IMPOSSIBLE
 --
--- The decision fixes the shape at three blocks of exactly four weeks; it does not propose a
--- configurable block length, so CHECK (block_length_weeks = 4) is exact rather than merely positive.
--- This mirrors how meals_per_day and training_days_per_week (V63) already encode bean-validated
--- ranges as CHECKs rather than leaving them to application code alone. A future decision that varies
--- block length needs its own migration to loosen this CHECK -- that is the correct order: relax a
--- constraint once the decision that justifies it exists, not ahead of it on a guess.
+-- Decision 14 says blocks are four weeks, and DEFAULT 4 is where that lives: every row this build
+-- can write is four weeks long. The CHECK deliberately does NOT repeat it as `= 4`.
+--
+-- A CHECK written `= 4` would not be validating an input, it would be forbidding a product change:
+-- the day someone wants to try a six-week block with one user, the database refuses until a
+-- migration runs. The V63 precedent points the other way -- meals_per_day BETWEEN 3 AND 6 and
+-- training_days_per_week BETWEEN 0 AND 7 describe the space of legitimate answers, not a single
+-- frozen one. So this CHECK does the same: it rules out the genuinely impossible (zero or negative
+-- weeks, and a block longer than the twelve-week programme it belongs to) and leaves the product
+-- decision where product decisions belong -- in the default, the ADR and the code that writes it.
 --
 -- block_number DEFAULTS TO 1 BECAUSE NOTHING YET DECIDES BLOCK 2 OR 3
 --
@@ -61,7 +65,7 @@ ALTER TABLE plan_request ADD COLUMN block_number INTEGER NOT NULL DEFAULT 1;
 ALTER TABLE plan_request ADD COLUMN next_review_date DATE;
 
 ALTER TABLE plan_request ADD CONSTRAINT chk_plan_request_block_length CHECK (
-  block_length_weeks = 4
+  block_length_weeks BETWEEN 1 AND 12
 );
 
 ALTER TABLE plan_request ADD CONSTRAINT chk_plan_request_block_number CHECK (
