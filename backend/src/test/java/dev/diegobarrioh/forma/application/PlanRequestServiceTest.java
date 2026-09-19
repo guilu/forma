@@ -143,6 +143,13 @@ class PlanRequestServiceTest {
     assertThat(stored.targetProteinG()).isEqualTo(160.0);
     assertThat(stored.targetCarbsG()).isEqualTo(260.0);
     assertThat(stored.targetFatG()).isEqualTo(70.0);
+    // block_length_weeks/block_number/next_review_date: the programme's shape (ADR-015 decision
+    // 14). This service always writes the first block of a fresh programme today -- there is no
+    // successor-block logic yet -- and leaves the review date null until a block start exists to
+    // measure it from.
+    assertThat(stored.blockLengthWeeks()).isEqualTo(4);
+    assertThat(stored.blockNumber()).isEqualTo(1);
+    assertThat(stored.nextReviewDate()).isNull();
     // request_payload is the outbound agent call's audit trail (ADR-015 decision 8/13); that call
     // happens at dispatch, slice 6 — this slice must leave it null, not invent a serialisation.
     assertThat(stored.requestPayload()).isNull();
@@ -299,6 +306,9 @@ class PlanRequestServiceTest {
         160.0,
         260.0,
         70.0,
+        4,
+        1,
+        null,
         null,
         null,
         null,
