@@ -9,6 +9,7 @@ import { listServings, type FoodServing } from '../api/servings';
 import {
   activatePlan,
   createPlan,
+  deletePlan,
   getPlan,
   listPlans,
   updatePlan,
@@ -32,6 +33,7 @@ const getMock = vi.mocked(getPlan);
 const createMock = vi.mocked(createPlan);
 const updateMock = vi.mocked(updatePlan);
 const activateMock = vi.mocked(activatePlan);
+const deleteMock = vi.mocked(deletePlan);
 const foodsMock = vi.mocked(listFoods);
 const servingsMock = vi.mocked(listServings);
 
@@ -133,6 +135,8 @@ describe('PlansPage — the user’s own nutrition plans', () => {
     updateMock.mockReset();
     activateMock.mockReset();
     activateMock.mockResolvedValue(following);
+    deleteMock.mockReset();
+    deleteMock.mockResolvedValue(undefined);
     foodsMock.mockReset();
     foodsMock.mockResolvedValue([oats, banana]);
     servingsMock.mockReset();
@@ -310,5 +314,43 @@ describe('PlansPage — the user’s own nutrition plans', () => {
         }),
       ),
     );
+  });
+
+  /**
+   * Deleting a plan is destructive and permanent, so it asks for more than a click: typing
+   * "eliminar" is what enables the confirm action (TypedConfirmDialog).
+   */
+  it('requires typing "eliminar" before the plan can actually be deleted', async () => {
+    const user = renderPage();
+    await screen.findByText('Semana base');
+
+    await user.click(screen.getByRole('button', { name: 'Eliminar Semana base' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Eliminar Semana base' });
+    const confirmButton = within(dialog).getByRole('button', { name: 'Eliminar' });
+    expect(confirmButton).toBeDisabled();
+
+    await user.click(confirmButton);
+    expect(deleteMock).not.toHaveBeenCalled();
+
+    await user.type(within(dialog).getByLabelText('Escribe "eliminar" para confirmar'), 'eliminar');
+    expect(confirmButton).toBeEnabled();
+    await user.click(confirmButton);
+
+    await waitFor(() => expect(deleteMock).toHaveBeenCalledWith('plan-1'));
+  });
+
+  /** Cancelling never deletes anything, however much was typed first. */
+  it('does not delete the plan when the typed confirmation is cancelled', async () => {
+    const user = renderPage();
+    await screen.findByText('Semana base');
+
+    await user.click(screen.getByRole('button', { name: 'Eliminar Semana base' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Eliminar Semana base' });
+    await user.type(within(dialog).getByLabelText('Escribe "eliminar" para confirmar'), 'eliminar');
+
+    await user.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
+
+    expect(deleteMock).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog', { name: 'Eliminar Semana base' })).not.toBeInTheDocument();
   });
 });

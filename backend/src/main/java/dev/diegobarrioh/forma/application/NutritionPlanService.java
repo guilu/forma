@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Owning nutrition plans (V53).
@@ -28,16 +29,19 @@ public class NutritionPlanService {
   private final FoodCatalogService foods;
   private final FoodServingRepository servings;
   private final RecipeRepository recipes;
+  private final PlanRequestRepository planRequests;
 
   public NutritionPlanService(
       NutritionPlanRepository repository,
       FoodCatalogService foods,
       FoodServingRepository servings,
-      RecipeRepository recipes) {
+      RecipeRepository recipes,
+      PlanRequestRepository planRequests) {
     this.repository = repository;
     this.foods = foods;
     this.servings = servings;
     this.recipes = recipes;
+    this.planRequests = planRequests;
   }
 
   /** Every plan this user owns, newest first. */
@@ -144,10 +148,21 @@ public class NutritionPlanService {
   /**
    * Removes a plan and everything under it.
    *
+   * <p>{@code plan_request.nutrition_plan_id} has no {@code ON DELETE} clause (migration V63) and
+   * so defaults to {@code RESTRICT}: a {@code READY} request still pointing at this plan would make
+   * the {@code DELETE} below fail with a raw {@code DataIntegrityViolationException} — no handler
+   * for it exists in {@code GlobalExceptionHandler}, so it would surface as an unexplained 500.
+   * Marking every such request {@link dev.diegobarrioh.forma.domain.PlanRequestStatus#DELETED}
+   * first, in the same transaction, clears the pointer before the plan row disappears (migration
+   * V65's header comment has the full reasoning for why {@code DELETED} rather than {@code ON
+   * DELETE SET NULL} or {@code CASCADE}).
+   *
    * @throws NotFoundException when it does not exist, or belongs to somebody else
    */
+  @Transactional
   public void delete(UUID userId, UUID planId) {
     findById(userId, planId);
+    planRequests.markDeletedByPlan(userId, planId);
     repository.delete(userId, planId);
   }
 

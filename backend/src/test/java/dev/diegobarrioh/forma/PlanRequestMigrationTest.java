@@ -72,6 +72,44 @@ class PlanRequestMigrationTest {
         .isInstanceOf(SQLException.class);
   }
 
+  /**
+   * V65: DELETED is now a legal terminal status, with no plan pointer and no open marker — exactly
+   * what {@code NutritionPlanService#delete} writes once a READY request's plan is removed.
+   */
+  @Test
+  void acceptsTheDeletedStatusWithNoPlanAndNoOpenMarker() throws Exception {
+    request(uuid(), "DELETED", null, null, 38, 73.6, 180.0, 5, 5, 2078);
+
+    assertThat(column("SELECT status FROM plan_request")).containsExactly("DELETED");
+  }
+
+  /**
+   * DELETED with a plan pointer still set is not what the application ever writes (it clears
+   * nutrition_plan_id in the same UPDATE as the status), but nothing in the schema forbids it —
+   * chk_plan_request_ready_has_plan only constrains READY. This documents that DELETED is not
+   * subject to the same "must point at a plan" rule READY is.
+   */
+  @Test
+  void deletedDoesNotRequireANullPlanPointerAtTheSchemaLevel() throws Exception {
+    java.util.UUID plan = java.util.UUID.randomUUID();
+    execute(
+        "INSERT INTO nutrition_plan (id, user_id, name, status, active_marker)"
+            + " VALUES ('"
+            + plan
+            + "', '"
+            + USER
+            + "', 'Plan de prueba V65', 'DRAFT', NULL)");
+
+    assertThatCode(
+            () -> request(uuid(), "DELETED", null, plan.toString(), 38, 73.6, 180.0, 5, 5, 2078))
+        .doesNotThrowAnyException();
+
+    // plan_request is cleared by @AfterEach; the plan itself is this test's own to remove, and
+    // must go after the row still pointing at it or the FK (ON DELETE RESTRICT) refuses it.
+    execute("DELETE FROM plan_request WHERE nutrition_plan_id = '" + plan + "'");
+    execute("DELETE FROM nutrition_plan WHERE id = '" + plan + "'");
+  }
+
   /** The marker and the status are one fact; letting them disagree either way is how they lie. */
   @Test
   void refusesAMarkerThatContradictsTheStatus() {

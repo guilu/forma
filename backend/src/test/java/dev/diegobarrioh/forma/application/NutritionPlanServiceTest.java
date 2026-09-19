@@ -3,14 +3,22 @@ package dev.diegobarrioh.forma.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.diegobarrioh.forma.domain.ActivityLevel;
+import dev.diegobarrioh.forma.domain.CuisineStyle;
+import dev.diegobarrioh.forma.domain.DietPattern;
 import dev.diegobarrioh.forma.domain.MacroTargets;
 import dev.diegobarrioh.forma.domain.MainGoal;
 import dev.diegobarrioh.forma.domain.MealType;
 import dev.diegobarrioh.forma.domain.NutritionDayType;
+import dev.diegobarrioh.forma.domain.PlanObjective;
 import dev.diegobarrioh.forma.domain.PlanOrigin;
+import dev.diegobarrioh.forma.domain.PlanRequestStatus;
 import dev.diegobarrioh.forma.domain.PlanStatus;
+import dev.diegobarrioh.forma.domain.Sex;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,12 +51,13 @@ class NutritionPlanServiceTest {
   private static final UUID SOMEBODY_ELSE = UUID.fromString("99999999-9999-9999-9999-999999999999");
 
   @Autowired private NutritionPlanService service;
+  @Autowired private PlanRequestRepository planRequests;
   @Autowired private JdbcTemplate jdbcTemplate;
 
   /**
-   * Wipes the four plan tables whole — which is why this class runs against its OWN H2 database
-   * (see the class-level {@code @TestPropertySource}) instead of the shared {@code
-   * application-test.yml} one.
+   * Wipes the four plan tables whole, plus {@code plan_request} — which is why this class runs
+   * against its OWN H2 database (see the class-level {@code @TestPropertySource}) instead of the
+   * shared {@code application-test.yml} one.
    *
    * <p>On the shared database these DELETEs also removed V56's seeded diet, and every
    * {@code @SpringBootTest} that reads that seed (ExcelDietPlanTest,
@@ -58,6 +67,7 @@ class NutritionPlanServiceTest {
    */
   @BeforeEach
   void clearPlans() {
+    jdbcTemplate.update("DELETE FROM plan_request");
     jdbcTemplate.update("DELETE FROM nutrition_plan_meal_item");
     jdbcTemplate.update("DELETE FROM nutrition_plan_meal");
     jdbcTemplate.update("DELETE FROM nutrition_plan_day");
@@ -277,6 +287,101 @@ class NutritionPlanServiceTest {
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM nutrition_plan_meal_item", Integer.class))
         .isZero();
+  }
+
+  /**
+   * The bug this PR fixes: {@code plan_request.nutrition_plan_id} defaults to {@code ON DELETE
+   * RESTRICT} (migration V63). Before migration V65 added the {@code DELETED} status, a {@code
+   * READY} request still pointing at a plan made this delete throw {@code
+   * DataIntegrityViolationException} — no handler in {@code GlobalExceptionHandler}, so it surfaced
+   * as an unexplained 500. Now {@code NutritionPlanService#delete} marks the request {@code
+   * DELETED} first, in the same transaction, so the plan becomes deletable and the request survives
+   * as history.
+   */
+  @Test
+  void deletingAPlanMarksItsReadyRequestDeletedAndClearsThePointer() {
+    NutritionPlan stored = service.create(weekOf(USER, "Con solicitud"));
+    UUID requestId = UUID.randomUUID();
+    planRequests.insert(readyRequestFor(requestId, USER, stored.id()));
+
+    service.delete(USER, stored.id());
+
+    PlanRequest afterDelete = planRequests.findById(requestId).orElseThrow();
+    assertThat(afterDelete.status()).isEqualTo(PlanRequestStatus.DELETED);
+    assertThat(afterDelete.nutritionPlanId()).isNull();
+    assertThat(service.findAll(USER)).isEmpty();
+
+    Integer openMarker =
+        jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM plan_request WHERE id = ? AND open_marker IS NOT NULL",
+            Integer.class,
+            requestId);
+    assertThat(openMarker).isZero();
+  }
+
+  /** Most plans have no request at all (created by hand) — deleting one must still just work. */
+  @Test
+  void deletingAPlanWithNoRequestStillWorks() {
+    NutritionPlan stored = service.create(weekOf(USER, "Sin solicitud"));
+
+    service.delete(USER, stored.id());
+
+    assertThat(service.findAll(USER)).isEmpty();
+  }
+
+  /** A request DELETED by one plan's removal must not be touched by another plan's. */
+  @Test
+  void deletingAPlanLeavesOtherUsersOrOtherPlansRequestsAlone() {
+    NutritionPlan targetPlan = service.create(weekOf(USER, "Se borra"));
+    NutritionPlan otherPlan = service.create(weekOf(USER, "Se queda"));
+    UUID untouchedRequestId = UUID.randomUUID();
+    planRequests.insert(readyRequestFor(untouchedRequestId, USER, otherPlan.id()));
+
+    service.delete(USER, targetPlan.id());
+
+    PlanRequest untouched = planRequests.findById(untouchedRequestId).orElseThrow();
+    assertThat(untouched.status()).isEqualTo(PlanRequestStatus.READY);
+    assertThat(untouched.nutritionPlanId()).isEqualTo(otherPlan.id());
+  }
+
+  private static PlanRequest readyRequestFor(UUID id, UUID userId, UUID nutritionPlanId) {
+    OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+    return new PlanRequest(
+        id,
+        userId,
+        PlanRequestStatus.READY,
+        "1",
+        null,
+        Sex.MALE,
+        38,
+        73.6,
+        180.0,
+        ActivityLevel.MODERATE,
+        MainGoal.COMPOSICION,
+        PlanObjective.WEIGHT_LOSS,
+        5,
+        null,
+        null,
+        5,
+        DietPattern.OMNIVORE,
+        CuisineStyle.ESPANOLA,
+        2078,
+        null,
+        null,
+        null,
+        4,
+        1,
+        null,
+        null,
+        null,
+        nutritionPlanId,
+        null,
+        null,
+        0,
+        now,
+        now,
+        now,
+        now);
   }
 
   @Test

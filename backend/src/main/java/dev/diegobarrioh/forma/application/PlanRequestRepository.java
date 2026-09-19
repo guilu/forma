@@ -39,4 +39,18 @@ public interface PlanRequestRepository {
    * @return the open request, or empty when the account has none
    */
   Optional<PlanRequest> findOpenByUser(UUID userId);
+
+  /**
+   * Marks every request of this user's that points at this plan as {@code DELETED} (migration V65),
+   * clearing {@code nutrition_plan_id} in the same write — called by {@code
+   * NutritionPlanService#delete} before the plan itself is removed, so the FK's default {@code
+   * RESTRICT} never sees a row still pointing at the plan being deleted.
+   *
+   * <p>Scoped to {@code userId} as well as {@code planId} for the same reason every other write in
+   * this codebase is user-scoped: a plan id alone is not proof of ownership.
+   *
+   * @return how many rows were marked — 0 is an ordinary answer, not a fault: most plans have no
+   *     request at all (created by hand, or a request whose plan was replaced some other way)
+   */
+  int markDeletedByPlan(UUID userId, UUID planId);
 }

@@ -129,6 +129,19 @@ public class JdbcPlanRequestRepository implements PlanRequestRepository {
         .findFirst();
   }
 
+  @Override
+  public int markDeletedByPlan(UUID userId, UUID planId) {
+    // completed_at is left alone: it already recorded when this request first became READY, and
+    // that fact does not change because the plan it produced was later deleted. updated_at moves,
+    // as it does on every write to this row.
+    return jdbcTemplate.update(
+        "UPDATE plan_request SET status = ?, nutrition_plan_id = NULL, open_marker = NULL,"
+            + " updated_at = CURRENT_TIMESTAMP WHERE nutrition_plan_id = ? AND user_id = ?",
+        PlanRequestStatus.DELETED.name(),
+        planId,
+        userId);
+  }
+
   private static PlanRequest mapRow(ResultSet rs, int rowNum) throws SQLException {
     return new PlanRequest(
         (UUID) rs.getObject("id"),
