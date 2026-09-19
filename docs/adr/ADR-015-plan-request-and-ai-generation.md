@@ -394,6 +394,9 @@ Three further facts constrain the design, each verified:
 | `target_protein_g` | NUMERIC(6,1) | NULL | from the profile when set |
 | `target_carbs_g` | NUMERIC(6,1) | NULL | |
 | `target_fat_g` | NUMERIC(6,1) | NULL | |
+| `block_length_weeks` | INTEGER | NOT NULL | default 4; the block's length — `plan.weeks` in the contract (decision 14, migration V64) |
+| `block_number` | INTEGER | NOT NULL | default 1; which of the programme's three blocks this is (decision 14) |
+| `next_review_date` | DATE | NULL | the next review's date, and nothing else; `NULL` until computed (decision 14) |
 | `request_payload` | TEXT | NULL | exactly what crossed the wire, for audit. TEXT, not JSONB (ADR-011) |
 | `validation_report` | TEXT | NULL | the section-11 audit result as JSON-in-TEXT; NULL until ingest |
 | `nutrition_plan_id` | UUID | NULL | FK → `nutrition_plan(id)`; NOT NULL in practice once `READY` |
@@ -421,6 +424,8 @@ CHECK (weight_kg > 0 AND height_cm > 0)
 CHECK (meals_per_day BETWEEN 3 AND 6)
 CHECK (training_days_per_week BETWEEN 0 AND 7)
 CHECK (plan_kcal > 0)
+CHECK (block_length_weeks = 4)              -- the decided shape, not a configurable one (decision 14)
+CHECK (block_number BETWEEN 1 AND 3)
 ```
 
 Indexes:
@@ -462,6 +467,70 @@ privacy notice ever states a period for it, that promise needs a job, exactly as
     `catalog_version` is a separate axis and is stored separately: it says which food vocabulary was
     in force, which is data drift, not shape drift. Conflating them would make a newly added food
     look like a contract change.
+
+### The twelve-week programme
+
+14. **Amendment (2026-09-19, migration V64): the product owner has decided FORMA
+    generates a twelve-week programme, in three blocks of four weeks, with weekly menus and a review
+    every two weeks — and this had not been written down anywhere in this repository before today.**
+    Verified before writing this: not in `docs/`, not in `specs/`, not in `.ai/`, not in this ADR.
+    The closest trace is a comment on `nutrition_plan_day.week_number` in
+    `docs/FORMA_Spec_Modelo_Datos_Plan_Alimentacion.md` (line ~143) keeping the column around "para
+    soportar planes de cuatro, ocho o doce semanas" — schema foresight that a column might be needed
+    someday, not a decision that FORMA generates four, eight, or twelve weeks, or in what shape. This
+    decision is that decision, and this amendment is where it becomes discoverable.
+
+    FORMA does **not** generate 84 days up front. It generates one four-week block, lets the person
+    follow it, and generates the next block from how they actually did — which is how professional
+    nutrition follow-up already works, and the whole reason a single twelve-week plan written once
+    against a guess about weeks 9-12 would be worse than what this design already refuses to do for a
+    single day: store a number nothing has confirmed (decision 9's V56 evidence makes the same point
+    at the scale of one week; guessing eight weeks ahead is that mistake, compounded).
+
+    **One `nutrition_plan` per block, not one per programme — no `programme` table.** Each four-week
+    block is its own `plan_request`, with its own outbound message to the agent (decision 8), its own
+    section-11 tolerance audit (decision 9) and its own activation. The programme is the succession of
+    three such requests. This is not a new shape bolted onto the design; it is the existing
+    one-open-request-per-user (decision 4) and one-active-plan-per-user (`nutrition_plan.active_marker`,
+    V53) invariants, applied three times in sequence rather than stretched to cover a bigger unit. A
+    `programme` table today would duplicate what those two already enforce, and would need its own
+    status lifecycle kept in sync with three children it does not itself own — the same "two doors
+    into one rule" failure decision 8 already refuses for a different endpoint.
+
+    **A review, at this stage, is a date and nothing else.** `plan_request.next_review_date` records
+    when the next check-in falls due. It does not alert anyone, does not collect a measurement, and
+    does not regenerate anything — none of that exists after this amendment, and none of it should be
+    inferred from the column's presence. Naming what is deliberately **not** built here, so its
+    absence reads as a decision and not a gap still to notice:
+    - **Alerting** the user (or anyone) that a review is due.
+    - **Collecting measurements** at the review.
+    - **Regenerating the next block** from the review's results.
+
+    Each of those is real product work with its own decisions still to make — who initiates a review,
+    what happens if the person misses one, what "the user's real results" means precisely enough to
+    act on — and none of it is decided yet. Storing the date now, alone, is what lets whichever slice
+    makes those decisions compute and act on it without a second migration only to add a column that
+    was already foreseeable today — the same argument V53 already made keeping `week_number` around
+    for this exact day.
+
+    **Migration V64 adds three columns to `plan_request`**, all frozen at capture like every other
+    input on the row:
+
+    | column | type | null | notes |
+    |---|---|---|---|
+    | `block_length_weeks` | INTEGER | NOT NULL, default 4 | the requested block's length — what `plan.weeks` means in the outbound contract from now on (the block's length, never the programme's twelve). `CHECK (block_length_weeks = 4)`: the decision fixes the shape, it does not propose a configurable one, so the CHECK is exact rather than merely positive |
+    | `block_number` | INTEGER | NOT NULL, default 1 | which of the programme's three blocks this request is for. `CHECK (block_number BETWEEN 1 AND 3)`. Always `1` in this slice — see below |
+    | `next_review_date` | DATE | NULL | the next review's date; `NULL` until something computes it — see below |
+
+    **What this amendment leaves for later, named rather than silently assumed:** `PlanRequestService`
+    stamps `block_length_weeks = 4` and `block_number = 1` on every request it writes, and leaves
+    `next_review_date` `NULL`. That is not a placeholder pretending to be complete — it is what every
+    request this codebase can currently produce actually is: there is no successor-block logic
+    anywhere yet (verified: no reference to a previous block or a programme id in
+    `PlanRequestService`), so nothing today asks for block 2 or 3, and nothing fixes a block's real
+    start date for `next_review_date` to be measured from. Deciding how a later request learns it is
+    block 2 or 3 of an *existing* programme, and what `next_review_date` is measured from once a real
+    start date exists, is exactly the "regenerating the next block" work named above as deferred.
 
 ## Consequences
 
@@ -619,3 +688,8 @@ everything works".
   specifically to avoid choosing one. It has to be chosen before any callback exists.
 - **Whether `plan_request` is ever surfaced to the user as history** ("you asked for this on this
   date, weighing this"). The table supports it; no screen is proposed here.
+- **How a request learns it is block 2 or 3 of an existing programme, and what `next_review_date` is
+  measured from once a block has a real start date.** Decision 14 adds the columns and freezes
+  `block_number = 1` / `next_review_date = NULL` on every request this codebase can currently write;
+  it does not decide how a successor request is created, linked back to the block before it, or dated.
+  That is the "regenerating the next block" work decision 14 explicitly defers, not an oversight here.

@@ -76,8 +76,8 @@ pareciera.
 | `preferences.mealsPerDay` | entero | sí | 3–6 |
 | `preferences.dietPattern` | enum | sí | `OMNIVORE` · `VEGETARIAN` · `VEGAN` · `GLUTEN_FREE` · `UNSPECIFIED` |
 | `preferences.cuisineStyle` | enum | sí | `ESPANOLA` · `MEDITERRANEA` · `UNSPECIFIED` |
-| `plan.weeks` | entero | sí | cuántas semanas se piden |
-| `plan.startDate` | fecha | no | ISO. De ella salen las fechas de cada día |
+| `plan.weeks` | entero | sí | semanas de **este bloque**, no del programa entero. Hoy siempre `4` |
+| `plan.startDate` | fecha | no | ISO, el inicio de este bloque. De ella salen las fechas de cada día |
 | `catalog.foods[]` | lista | sí | el catálogo entero. Ver abajo |
 
 **Dos objetivos y no uno, a propósito.** `mainGoal` es lo que esa persona persigue en general;
@@ -107,6 +107,15 @@ por el factor de objetivo (`EnergyRequirement`), se calcula una vez cuando se cr
 congela. Es la cifra que esa persona vio en pantalla; si mañana cambiamos la fórmula, su plan tiene
 que poder compararse con el número que le convenció, no con el que daría hoy. Recalcúlalo por tu
 cuenta y estarás construyendo un plan para otra cifra.
+
+**`plan.weeks` es el bloque, no el programa.** FORMA genera un programa de doce semanas en tres
+bloques de cuatro, con revisión cada dos semanas, y no genera las doce de golpe: cada bloque se pide,
+se sigue y se ajusta a como le fue a la persona en el bloque anterior, antes de pedir el siguiente —
+así es como funciona un seguimiento nutricional real. Un programa, para este contrato, **son tres
+peticiones**, cada una con su propio `planRequestId`, su propio `plan.weeks` (siempre `4`) y su propio
+`plan.startDate` (el inicio de ese bloque, no del programa). No vas a recibir una petición que pida
+doce semanas de una vez, y si alguna vez la recibes es un fallo de quien la generó, no una petición
+válida que este contrato contemple. (Decisión completa: ADR-015, decisión 14.)
 
 ## Aquí no hay datos de salud
 
@@ -162,7 +171,7 @@ significa que nadie lo ha decidido, que no es lo mismo que «da igual».
     "dietPattern": "OMNIVORE",
     "cuisineStyle": "ESPANOLA"
   },
-  "plan": { "weeks": 1, "startDate": "2026-09-21" },
+  "plan": { "weeks": 4, "startDate": "2026-09-21" },
   "catalog": { "foods": [ "… el catálogo entero …" ] }
 }
 ```
