@@ -19,7 +19,7 @@ The bootstrap phase is over. Backend, frontend, database, Docker Compose environ
 |---|---|
 | Backend | `backend/` — Gradle, hexagonal packages under `dev.diegobarrioh.forma` |
 | Frontend | `frontend/` — Vite + React, CSS Modules |
-| Migrations | `backend/src/main/resources/db/migration/` — Flyway, `V1..V60` and counting |
+| Migrations | `backend/src/main/resources/db/migration/` — Flyway. The directory is the source of truth for the highest version; `V64` at the time of writing |
 | Local environment | `compose.yaml` — Postgres + backend + frontend |
 | CI | `.github/workflows/ci.yml` |
 | Story specs | `specs/FOR-XXX/` |
@@ -45,7 +45,14 @@ Do not store technical configuration decisions in `.ai/`. The `.ai/` directory i
 
 ## Verification guidance
 
-Run the checks that match what you touched. These are the same commands CI runs — see `.github/workflows/ci.yml`.
+Run the checks that match what you touched.
+
+CI runs four independent jobs (`.github/workflows/ci.yml`): **Backend build & test**, **Frontend build & test**,
+**Postgres migration verification** and **Nginx proxy headers**. The first two are the commands below. The last
+two have no local equivalent and both need Docker: one applies every migration to a real PostgreSQL 17 (H2's
+PostgreSQL mode is a compatibility layer, not Postgres — it silently accepts and rejects different things), the
+other runs the real `frontend/nginx.conf` behind a simulated outer proxy. A green local build does not mean
+those two will pass.
 
 **Backend** (from `backend/`):
 
@@ -81,7 +88,7 @@ Before modifying code, read:
 4. `docs/definition-of-done.md`
 5. `docs/coding-standards.md`
 6. This file's stack and verification sections
-7. Relevant ADRs under `docs/adr/` (`ADR-001` .. `ADR-013`)
+7. Relevant ADRs under `docs/adr/` (`ADR-001` .. `ADR-015`)
 8. The story spec under `specs/FOR-XXX/` when the work names a key, or when one exists for the area you are changing
 9. `.ai/product.md`, `.ai/architecture.md`, `.ai/domain.md`, `.ai/conventions.md`, `.ai/roadmap.md`
 
@@ -194,3 +201,11 @@ Every implementation should satisfy:
 - Creating speculative abstractions not needed by the current story.
 - Claiming a component exists without checking the repository.
 - Leaving a comment, message or placeholder that describes a limitation the code no longer has.
+- Editing a migration that has already been applied anywhere. Flyway validates checksums when the application
+  starts, before it runs anything new, so the app stops booting and no later migration can rescue it. Add a new
+  migration, or drop a development database (`docker compose down -v`).
+- A test that deletes whole tables. Every `@SpringBootTest` shares one in-memory database
+  (`jdbc:h2:mem:forma`) for the whole JVM, so wiping a table silently breaks any test that reads
+  migration-seeded data, and makes the suite depend on alphabetical order. `@DirtiesContext` does not help — a
+  fresh context reuses the same named database. Give the class its own with `@TestPropertySource`, as
+  `NutritionPlanServiceTest` does.
