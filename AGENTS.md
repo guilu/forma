@@ -88,7 +88,7 @@ Before modifying code, read:
 4. `docs/definition-of-done.md`
 5. `docs/coding-standards.md`
 6. This file's stack and verification sections
-7. Relevant ADRs under `docs/adr/` (`ADR-001` .. `ADR-015`)
+7. Relevant ADRs under `docs/adr/` (`ADR-001` .. `ADR-016`)
 8. The story spec under `specs/FOR-XXX/` when the work names a key, or when one exists for the area you are changing
 9. `.ai/product.md`, `.ai/architecture.md`, `.ai/domain.md`, `.ai/conventions.md`, `.ai/roadmap.md`
 
