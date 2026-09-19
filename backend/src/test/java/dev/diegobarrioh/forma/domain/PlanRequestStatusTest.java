@@ -22,4 +22,10 @@ class PlanRequestStatusTest {
     assertThat(PlanRequestStatus.READY.openMarker()).isNull();
     assertThat(PlanRequestStatus.FAILED.openMarker()).isNull();
   }
+
+  /** DELETED (migration V65) is terminal exactly like READY and FAILED: no open_marker. */
+  @Test
+  void deletedCarriesNoMarker() {
+    assertThat(PlanRequestStatus.DELETED.openMarker()).isNull();
+  }
 }

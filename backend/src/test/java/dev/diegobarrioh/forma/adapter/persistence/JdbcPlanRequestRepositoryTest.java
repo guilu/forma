@@ -276,4 +276,76 @@ class JdbcPlanRequestRepositoryTest {
 
     assertThat(open).isEmpty();
   }
+
+  /**
+   * {@link PlanRequestRepository#markDeletedByPlan} (migration V65): what {@code
+   * NutritionPlanService#delete} calls before removing a {@code nutrition_plan}, so a {@code READY}
+   * request pointing at it does not trip the FK's default {@code ON DELETE RESTRICT}.
+   */
+  @Test
+  void markDeletedByPlanSetsStatusClearsThePlanPointerAndTheOpenMarker() {
+    UUID requestId = UUID.randomUUID();
+    UUID planId = insertNutritionPlan(LegacyUserBootstrap.PLACEHOLDER_USER_ID);
+    repository.insert(fullRequest(requestId, PlanRequestStatus.READY, planId));
+
+    int updated = repository.markDeletedByPlan(LegacyUserBootstrap.PLACEHOLDER_USER_ID, planId);
+
+    assertThat(updated).isEqualTo(1);
+    PlanRequest after = repository.findById(requestId).orElseThrow();
+    assertThat(after.status()).isEqualTo(PlanRequestStatus.DELETED);
+    assertThat(after.nutritionPlanId()).isNull();
+    Integer openMarker =
+        jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM plan_request WHERE id = ? AND open_marker IS NOT NULL",
+            Integer.class,
+            requestId);
+    assertThat(openMarker).isZero();
+    jdbcTemplate.update("DELETE FROM nutrition_plan WHERE id = ?", planId);
+  }
+
+  /** No request points at this plan — nothing to mark, and nothing wrong with that. */
+  @Test
+  void markDeletedByPlanReturnsZeroWhenNoRequestPointsAtThePlan() {
+    int updated =
+        repository.markDeletedByPlan(LegacyUserBootstrap.PLACEHOLDER_USER_ID, UUID.randomUUID());
+
+    assertThat(updated).isZero();
+  }
+
+  /** Scoped to the user: another account's request pointing at the same plan id is untouched. */
+  @Test
+  void markDeletedByPlanIsScopedToTheUser() {
+    UUID otherUser = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)",
+        otherUser,
+        "other-plan-request-scope@example.com",
+        "{argon2}x");
+    UUID planId = insertNutritionPlan(otherUser);
+    UUID otherUsersRequestId = UUID.randomUUID();
+    repository.insert(fullRequest(otherUsersRequestId, PlanRequestStatus.READY, planId));
+    // Move the row to the other user directly: fullRequest always writes PLACEHOLDER_USER_ID.
+    jdbcTemplate.update(
+        "UPDATE plan_request SET user_id = ? WHERE id = ?", otherUser, otherUsersRequestId);
+
+    int updated = repository.markDeletedByPlan(LegacyUserBootstrap.PLACEHOLDER_USER_ID, planId);
+
+    assertThat(updated).isZero();
+    assertThat(repository.findById(otherUsersRequestId).orElseThrow().status())
+        .isEqualTo(PlanRequestStatus.READY);
+    jdbcTemplate.update("DELETE FROM plan_request WHERE id = ?", otherUsersRequestId);
+    jdbcTemplate.update("DELETE FROM nutrition_plan WHERE id = ?", planId);
+    jdbcTemplate.update("DELETE FROM users WHERE id = ?", otherUser);
+  }
+
+  private UUID insertNutritionPlan(UUID userId) {
+    UUID planId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO nutrition_plan (id, user_id, name, status, active_marker)"
+            + " VALUES (?, ?, ?, 'DRAFT', NULL)",
+        planId,
+        userId,
+        "Plan de prueba markDeletedByPlan");
+    return planId;
+  }
 }

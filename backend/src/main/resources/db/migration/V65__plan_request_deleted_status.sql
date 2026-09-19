@@ -1,0 +1,56 @@
+-- A fifth, terminal status for plan_request: DELETED (ADR-015, product-owner decision recorded here
+-- because ADR-015 itself does not anticipate it). It exists to fix a hole nothing had noticed until
+-- now: nutrition_plan_id REFERENCES nutrition_plan (id) with no ON DELETE clause (V63:124), which
+-- defaults to RESTRICT. Deleting a nutrition_plan that a READY plan_request still points at was
+-- refused by the database with a raw constraint violation, surfaced to the caller as an
+-- unexplained 500 (GlobalExceptionHandler has no handler for DataIntegrityViolationException, so it
+-- falls through to the generic catch-all) -- a bug, not a feature: nobody chose that plans a request
+-- produced would become permanently undeletable.
+--
+-- WHY DELETED, NOT ON DELETE SET NULL
+--
+-- Setting nutrition_plan_id to NULL from the database side, on the plan's deletion, looks like the
+-- obvious fix and is wrong: chk_plan_request_ready_has_plan (V63:165) reads
+-- "status <> 'READY' OR nutrition_plan_id IS NOT NULL" -- a READY row is exactly the row this
+-- CHECK says must have a plan. ON DELETE SET NULL would leave a READY row with no plan, which is
+-- precisely the lie that CHECK exists to prevent (V63's own comment: "a status lying about what
+-- happened"). The CHECK would then refuse the DELETE itself (it is enforced on every write, and
+-- SET NULL is a write), so this alternative does not even work mechanically -- it was rejected
+-- before reaching the product owner.
+--
+-- WHY NOT CASCADE
+--
+-- ON DELETE CASCADE would remove the plan_request row along with the plan, silently destroying the
+-- one thing this table exists to keep: the durable record that the plan was ever requested (V63's
+-- own header: "a request is precisely the thing you need to be able to read back months later to
+-- explain why a plan says what it says"). A user who deletes a plan did not ask to also erase the
+-- history of having asked for it.
+--
+-- WHY DELETED, THEN
+--
+-- The request survives, as history of the plan that existed; the plan becomes deletable. A DELETED
+-- row keeps everything it always had -- the frozen inputs, the audit trail, requested_at/completed_at
+-- -- except the pointer to a plan that no longer exists. Application code (NutritionPlanService#delete)
+-- marks every plan_request pointing at the plan DELETED, in the same transaction as the plan's
+-- removal, before the DELETE FROM nutrition_plan statement runs; by the time that statement executes
+-- no row references the plan any more, so the FK's default RESTRICT never fires.
+--
+-- chk_plan_request_ready_has_plan NEEDS NO CHANGE
+--
+-- With status = 'DELETED', the CHECK's first disjunct (status <> 'READY') is already true, so the
+-- whole OR is true regardless of nutrition_plan_id -- a DELETED row with a NULL plan pointer already
+-- satisfies this CHECK exactly as written. The invariant it protects, "a READY row always points at
+-- a stored plan", survives intact: nothing here is READY with no plan, because the transition out of
+-- READY happens in the same UPDATE that clears nutrition_plan_id.
+--
+-- chk_plan_request_open_marker ALSO NEEDS NO CHANGE
+--
+-- That CHECK (V63:156-159) requires open_marker IS NOT NULL while status IN ('PENDING', 'GENERATING')
+-- and NULL otherwise. 'DELETED' is not in ('PENDING', 'GENERATING'), so a DELETED row must carry a
+-- NULL open_marker -- the UPDATE the application issues sets open_marker = NULL in the same statement
+-- as status = 'DELETED', satisfying this CHECK the same way every other terminal transition already
+-- does (READY and FAILED both clear the marker on the same write that sets the status).
+ALTER TABLE plan_request DROP CONSTRAINT chk_plan_request_status;
+ALTER TABLE plan_request ADD CONSTRAINT chk_plan_request_status CHECK (
+  status IN ('PENDING', 'GENERATING', 'READY', 'FAILED', 'DELETED')
+);
