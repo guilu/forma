@@ -54,7 +54,8 @@ public class WithingsOAuthAdapter implements ProviderOAuthGateway {
   public WithingsOAuthAdapter(
       @Value("${forma.integrations.withings.client-id:}") String clientId,
       @Value("${forma.integrations.withings.client-secret:}") String clientSecret,
-      @Value("${forma.integrations.withings.redirect-uri:https://forma.backendtothefuture.com/auth}")
+      @Value(
+              "${forma.integrations.withings.redirect-uri:https://forma.backendtothefuture.com/auth}")
           String redirectUri,
       @Value("${forma.integrations.withings.scope:user.metrics}") String scope,
       @Value(
