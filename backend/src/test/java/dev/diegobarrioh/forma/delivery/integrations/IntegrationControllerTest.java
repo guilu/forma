@@ -91,7 +91,7 @@ class IntegrationControllerTest {
     when(service.connect(IntegrationProvider.WITHINGS))
         .thenReturn(
             ConnectResult.authorizationRequired(
-                "https://account.withings.com/oauth2_user/authorize2?client_id=test&state=abc&redirect_uri=https%3A%2F%2Fforma.diegobarrioh.dev%2Fauth&scope=user.metrics&code_challenge=xyz"));
+                "https://account.withings.com/oauth2_user/authorize2?client_id=test&state=abc&redirect_uri=https%3A%2F%2Fforma.backendtothefuture.com%2Fauth&scope=user.metrics&code_challenge=xyz"));
 
     mockMvc
         .perform(post("/api/v1/integrations/withings/connect"))
@@ -105,7 +105,7 @@ class IntegrationControllerTest {
             jsonPath("$.authorizationUrl")
                 .value(
                     org.hamcrest.Matchers.containsString(
-                        "redirect_uri=https%3A%2F%2Fforma.diegobarrioh.dev%2Fauth")))
+                        "redirect_uri=https%3A%2F%2Fforma.backendtothefuture.com%2Fauth")))
         .andExpect(
             jsonPath("$.authorizationUrl")
                 .value(org.hamcrest.Matchers.containsString("scope=user.metrics")))

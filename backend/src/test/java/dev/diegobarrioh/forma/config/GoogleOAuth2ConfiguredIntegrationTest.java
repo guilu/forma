@@ -113,18 +113,18 @@ class GoogleOAuth2ConfiguredIntegrationTest {
    */
   @Test
   void authorizationPathBuildsHttpsRedirectUriWithNoPortFromForwardedHeaders() throws Exception {
-    String redirectUri = redirectUriFor("https", "forma.diegobarrioh.dev", null);
+    String redirectUri = redirectUriFor("https", "forma.backendtothefuture.com", null);
 
     assertThat(redirectUri)
-        .isEqualTo("https://forma.diegobarrioh.dev/api/login/oauth2/code/google");
+        .isEqualTo("https://forma.backendtothefuture.com/api/login/oauth2/code/google");
   }
 
   @Test
   void authorizationPathIgnoresXForwardedPortWhenItMatchesTheSchemesDefaultPort() throws Exception {
-    String redirectUri = redirectUriFor("https", "forma.diegobarrioh.dev", "443");
+    String redirectUri = redirectUriFor("https", "forma.backendtothefuture.com", "443");
 
     assertThat(redirectUri)
-        .isEqualTo("https://forma.diegobarrioh.dev/api/login/oauth2/code/google");
+        .isEqualTo("https://forma.backendtothefuture.com/api/login/oauth2/code/google");
   }
 
   @Test

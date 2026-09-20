@@ -29,7 +29,7 @@ class WithingsOAuthAdapterTest {
 
   private static final String CLIENT_ID = "test-client-id";
   private static final String CLIENT_SECRET = "test-client-secret";
-  private static final String REDIRECT_URI = "https://forma.diegobarrioh.dev/auth";
+  private static final String REDIRECT_URI = "https://forma.backendtothefuture.com/auth";
   private static final String SCOPE = "user.metrics";
   private static final String AUTHORIZE_URL = "https://account.withings.com/oauth2_user/authorize2";
   private static final String TOKEN_URL = "https://wbsapi.withings.net/v2/oauth2";

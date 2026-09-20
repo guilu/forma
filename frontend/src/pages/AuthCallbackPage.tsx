@@ -15,7 +15,7 @@ import styles from './AuthCallbackPage.module.css';
 /**
  * OAuth callback landing page (FOR-133), mounted at `/auth` — the SPA route
  * registered as Withings' OAuth2 redirect URL (spec FOR-131:
- * `https://forma.diegobarrioh.dev/auth`). Withings redirects the browser
+ * `https://forma.backendtothefuture.com/auth`). Withings redirects the browser
  * here with `?code&state` after the user authorizes; this page relays them
  * to the backend callback ({@link completeIntegrationCallback}) to complete
  * the token exchange, then lands the user back on Integraciones.

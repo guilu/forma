@@ -14,7 +14,7 @@ A predictable platform lets agents ship changes safely without turning every PR 
 - PostgreSQL
 - Flyway
 - GitHub Actions
-- deployment to forma.diegobarrioh.dev
+- deployment to forma.backendtothefuture.com
 - environment configuration
 - observability basics later
 
