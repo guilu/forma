@@ -28,15 +28,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-function expectFields(
-  record: Record<string, unknown>,
-  fields: readonly string[],
-  context: string,
-) {
+function expectFields(record: Record<string, unknown>, fields: readonly string[], context: string) {
   for (const field of fields) {
-    expect(Object.prototype.hasOwnProperty.call(record, field), `${context} is missing "${field}"`).toBe(
-      true,
-    );
+    expect(
+      Object.prototype.hasOwnProperty.call(record, field),
+      `${context} is missing "${field}"`,
+    ).toBe(true);
     expect(record[field], `${context}.${field} must not be undefined`).not.toBeUndefined();
   }
 }
@@ -47,9 +44,7 @@ const ROUTES: readonly Route[] = [
     // not `{ plans: [...] }` — unlike /api/v1/goals, which really is wrapped.
     path: '/api/v1/nutrition/plans',
     assert(body) {
-      expect(Array.isArray(body), 'listPlans() expects a bare array (src/api/plans.ts)').toBe(
-        true,
-      );
+      expect(Array.isArray(body), 'listPlans() expects a bare array (src/api/plans.ts)').toBe(true);
       const plans = body as unknown[];
       expect(
         plans.length,
@@ -77,10 +72,17 @@ const ROUTES: readonly Route[] = [
       );
       expect(isRecord(list.budget), 'ShoppingList.budget must be an object').toBe(true);
       // ShoppingPage.tsx reads budget.weeklyEur directly (src/api/shopping.ts ShoppingBudget).
-      expectFields(list.budget as Record<string, unknown>, ['weeklyEur', 'monthlyEur'], 'ShoppingList.budget');
+      expectFields(
+        list.budget as Record<string, unknown>,
+        ['weeklyEur', 'monthlyEur'],
+        'ShoppingList.budget',
+      );
       expect(Array.isArray(list.items), 'ShoppingList.items must be an array').toBe(true);
       const items = list.items as unknown[];
-      expect(items.length, 'an empty items fixture never exercises the real table layout').toBeGreaterThan(0);
+      expect(
+        items.length,
+        'an empty items fixture never exercises the real table layout',
+      ).toBeGreaterThan(0);
       for (const item of items) {
         expect(isRecord(item), 'each shopping item must be an object').toBe(true);
         // Every field ShoppingPage.tsx reads off a ShoppingItem (src/api/shopping.ts):
