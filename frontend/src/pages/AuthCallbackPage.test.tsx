@@ -10,7 +10,7 @@ import { axe } from '../test/axe';
 
 /**
  * FOR-133: the SPA route Withings redirects the browser back to
- * (`https://forma.diegobarrioh.dev/auth?code=...&state=...`, registered in
+ * (`https://forma.backendtothefuture.com/auth?code=...&state=...`, registered in
  * FOR-131). Completes the OAuth round trip by relaying `code`/`state` to the
  * backend callback, then lands the user back on Integraciones.
  */

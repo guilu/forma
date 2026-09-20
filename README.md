@@ -17,7 +17,7 @@ It should help answer questions such as:
 ## Target domain
 
 ```txt
-forma.diegobarrioh.dev
+forma.backendtothefuture.com
 ```
 
 ## Proposed stack

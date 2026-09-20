@@ -37,7 +37,7 @@ to override locally; `.env` is gitignored.
 | `VITE_API_BASE_URL` | **frontend (public)** | `http://localhost:8080` | no | Bundled into the SPA; never a secret. |
 | `WITHINGS_CLIENT_ID` | backend | (empty) | no | Withings application id. Empty disables connecting, with a named error. |
 | `WITHINGS_CLIENT_SECRET` | backend | (empty) | **yes** | Withings application secret. |
-| `WITHINGS_REDIRECT_URI` | backend | `https://forma.diegobarrioh.dev/auth` | no | Must match the URI registered with Withings exactly. |
+| `WITHINGS_REDIRECT_URI` | backend | `https://forma.backendtothefuture.com/auth` | no | Must match the URI registered with Withings exactly. |
 | `WITHINGS_TOKEN_ENC_KEY` | backend | (empty) | **yes** | Key for encrypting stored provider tokens. `openssl rand -base64 32`. |
 | `FORMA_PLAN_AGENT_BASE_URL` | backend | (empty) | no | The external AI plan agent's endpoint (ADR-015 decision 10). Empty disables `PlanGenerationGateway#generate`, with a named `PlanGenerationException` at the point of use — nothing calls it yet (slice 6 wires the dispatcher). |
 | `FORMA_PLAN_AGENT_API_KEY` | backend | (empty) | **yes** | The plan agent's API key, sent as an `Authorization: Bearer` header. Never logged (ADR-008). |
@@ -63,7 +63,7 @@ proxy topology (see [ADR-014](adr/ADR-014-google-login.md) point 13):
 
 | Environment | Authorized redirect URI |
 | --- | --- |
-| Production | `https://forma.diegobarrioh.dev/api/login/oauth2/code/google` — this is currently a domain [`PreproRibbon`](../frontend/src/layout/preproHost.ts) itself recognizes as preproduction (`diegobarrioh.dev`); there is no separate staging host to register in addition to it. |
+| Production | `https://forma.backendtothefuture.com/api/login/oauth2/code/google` — this is currently a domain [`PreproRibbon`](../frontend/src/layout/preproHost.ts) itself recognizes as preproduction (`backendtothefuture.com`); there is no separate staging host to register in addition to it. |
 | Docker Compose | `http://localhost:3000/api/login/oauth2/code/google` (the published frontend port) |
 | Docker Compose, alternate local/preprod port | `http://localhost:3002/api/login/oauth2/code/google` — `compose.yaml`'s `FORMA_CORS_ALLOWED_ORIGINS` default already includes `http://localhost:3002` for this; set `FRONTEND_PORT=3002` to serve the frontend there (see `docs/plans/FOR-145d-frontend-auth-state.md`'s manual test steps). |
 | `npm run dev` (no Compose) | `http://localhost:5173/api/login/oauth2/code/google` (Vite's dev server port) |

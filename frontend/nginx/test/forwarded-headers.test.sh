@@ -117,10 +117,10 @@ assert_header() {
 }
 
 echo
-echo "==> (a) Through outer, public prod hostname (Host: forma.diegobarrioh.dev)"
-response_a="$(curl -s -H 'Host: forma.diegobarrioh.dev' "http://127.0.0.1:${OUTER_PORT}/api/v1/auth/me")"
+echo "==> (a) Through outer, public prod hostname (Host: forma.backendtothefuture.com)"
+response_a="$(curl -s -H 'Host: forma.backendtothefuture.com' "http://127.0.0.1:${OUTER_PORT}/api/v1/auth/me")"
 assert_header "prod hostname: proto preserved as https" "${response_a}" "x-forwarded-proto" "https"
-assert_header "prod hostname: host preserved" "${response_a}" "x-forwarded-host" "forma.diegobarrioh.dev"
+assert_header "prod hostname: host preserved" "${response_a}" "x-forwarded-host" "forma.backendtothefuture.com"
 
 echo
 echo "==> (b) Through outer, published local port (Host: localhost:3002, FOR-145d)"
@@ -136,7 +136,7 @@ assert_header "no outer: falls back to inner's own Host (port kept)" "${response
 
 echo
 echo "==> (d) /actuator/health also preserves X-Forwarded-Proto"
-response_d="$(curl -s -H 'Host: forma.diegobarrioh.dev' "http://127.0.0.1:${OUTER_PORT}/actuator/health")"
+response_d="$(curl -s -H 'Host: forma.backendtothefuture.com' "http://127.0.0.1:${OUTER_PORT}/actuator/health")"
 assert_header "actuator/health: proto preserved as https" "${response_d}" "x-forwarded-proto" "https"
 
 echo
