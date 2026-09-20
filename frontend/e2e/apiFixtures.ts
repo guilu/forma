@@ -108,6 +108,43 @@ const NUTRITION_CONSUMPTION = {
   ],
 };
 
+/**
+ * The caller's plans (V53/V54), headers only — mirrors
+ * `NutritionPlanResponse.summary()` (backend/.../delivery/plan), which the
+ * list endpoint returns: `days: []`, since the list never resolves a plan's
+ * days against the catalog (`PlansPage.tsx` fetches one plan's days only when
+ * it is opened). One ACTIVE plan and one DRAFT, so both `Badge` tones and the
+ * "Seguir este" action (hidden on the active plan only) render.
+ */
+const NUTRITION_PLANS = [
+  {
+    id: '00000000-0000-4000-8000-0000000000a1',
+    name: 'Recomposición 12 semanas',
+    description: 'Corredor, dos días de fuerza. Ajuste -20% sobre mantenimiento.',
+    objective: 'WEIGHT_LOSS',
+    status: 'ACTIVE',
+    active: true,
+    startDate: '2026-07-06',
+    endDate: '2026-09-28',
+    targets: { kcalMin: 2200, kcalMax: 2400, proteinG: 160, carbsG: 250, fatG: 70 },
+    generation: { by: 'AI', prompt: 'Plan de recomposición para corredor amateur', metadata: null },
+    days: [],
+  },
+  {
+    id: '00000000-0000-4000-8000-0000000000a2',
+    name: 'Mantenimiento — borrador',
+    description: 'Ajuste para la semana de descarga.',
+    objective: null,
+    status: 'DRAFT',
+    active: false,
+    startDate: null,
+    endDate: null,
+    targets: { kcalMin: null, kcalMax: null, proteinG: null, carbsG: null, fatG: null },
+    generation: { by: 'HUMAN', prompt: null, metadata: null },
+    days: [],
+  },
+];
+
 /*
  * A week with something on most days, so the playground has an app to walk
  * through and the layout checks measure a card with real content in it. It used
@@ -383,6 +420,7 @@ const FIXTURES: ReadonlyArray<readonly [string, unknown]> = [
   ['/api/v1/nutrition/days/running', NUTRITION_DAY],
   // Matched on the pathname, so the `?date=` the page sends does not have to be guessed here.
   ['/api/v1/nutrition/consumption', NUTRITION_CONSUMPTION],
+  ['/api/v1/nutrition/plans', NUTRITION_PLANS],
   ['/api/v1/foods', []],
   // All three provider rows the backend knows about, so the settings checks
   // see what the UI does with the two FORMA does not offer yet.
@@ -424,43 +462,98 @@ const FIXTURES: ReadonlyArray<readonly [string, unknown]> = [
       items: [
         {
           id: 's1',
+          productId: 'p1',
           productName: 'Atún claro al natural Hacendado',
+          category: 'PROTEINAS',
           quantity: 1,
+          catalogued: true,
           unit: 'UD',
+          servings: 2,
+          estimatedCostEur: 1.35,
           checked: false,
         },
         {
           id: 's2',
+          productId: 'p2',
           productName: 'Almendra natural Hacendado',
+          category: 'GRASAS_Y_ACEITES',
           quantity: 1,
+          catalogued: true,
           unit: 'UD',
+          servings: 8,
+          estimatedCostEur: 2.65,
           checked: false,
         },
         {
           id: 's3',
+          productId: 'p3',
           productName: 'Claras de huevo líquidas pasteurizadas',
+          category: 'PROTEINAS',
           quantity: 1,
+          catalogued: true,
           unit: 'UD',
+          servings: 6,
+          estimatedCostEur: 2.1,
           checked: false,
         },
         {
           id: 's4',
+          productId: 'p4',
           productName: 'Ensalada mezcla 4 estaciones lavada',
+          category: 'FRUTAS_Y_VERDURAS',
           quantity: 1,
+          catalogued: true,
           unit: 'UD',
+          servings: 3,
+          estimatedCostEur: 1.8,
           checked: false,
         },
         {
           id: 's5',
+          productId: 'p5',
           productName: 'Spaghetti integral Hacendado',
+          category: 'CEREALES_Y_LEGUMBRES',
           quantity: 1,
+          catalogued: true,
           unit: 'UD',
+          servings: 5,
+          estimatedCostEur: 1.45,
           checked: false,
         },
-        { id: 's6', productName: 'Salmón fresco', quantity: 2, unit: 'UD', checked: false },
-        { id: 's7', productName: 'Huevos camperos', quantity: 6, unit: 'UD', checked: false },
+        {
+          id: 's6',
+          productId: 'p6',
+          productName: 'Salmón fresco',
+          category: 'PROTEINAS',
+          quantity: 2,
+          catalogued: true,
+          unit: 'UD',
+          servings: 4,
+          estimatedCostEur: 9.98,
+          checked: false,
+        },
+        {
+          id: 's7',
+          productId: 'p7',
+          productName: 'Huevos camperos',
+          category: 'LACTEOS_Y_HUEVOS',
+          quantity: 6,
+          catalogued: true,
+          unit: 'UD',
+          servings: 6,
+          estimatedCostEur: 2.75,
+          checked: false,
+        },
       ],
-      budget: { estimatedTotal: 48.5, currency: 'EUR' },
+      // Sums the items above (FOR-38); monthly is the FOR-152 weekly-times-4.33
+      // approximation and the threshold/overThreshold pair mirrors
+      // `ShoppingListResponse.Budget` (weeklyThresholdEur < 120 €/sem, FOR-150 rule 6).
+      //
+      // `monthlyEur` follows `ShoppingBudgetCalculator`'s own rounding rather than
+      // being eyeballed: 22.08 × 4.33 = 95.6064, which HALF_UP at scale 2 is 95.61.
+      // A fixture that rounds differently from the calculator it stands in for is a
+      // trap for whoever later compares the two.
+      budget: { weeklyEur: 22.08, monthlyEur: 95.61, weeklyThresholdEur: 120, overThreshold: false },
     },
   ],
 ];
