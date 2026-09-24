@@ -9,6 +9,14 @@ import { apiClient, type ApiClient } from './client';
 export interface NutritionItem {
   readonly food: string;
   readonly quantityG: number;
+  /** Free-text preparation note ("a la plancha"), when the plan carries one. */
+  readonly preparationNotes?: string;
+  /**
+   * The id of the food that could not be resolved, when this line's food has since gone from the
+   * catalog. Its `quantityG` is `0` in that case — a real 0 g is indistinguishable from "unknown",
+   * so this field is what tells the screen not to print a confident "0g".
+   */
+  readonly unresolved?: string;
 }
 
 /** A meal in the day's flow; `optional` marks a skippable item (e.g. post-run recovery). */
@@ -22,6 +30,10 @@ export interface NutritionMeal {
   readonly name: string;
   readonly preferredTime: string;
   readonly optional: boolean;
+  /** The rule, for a meal that is a rule rather than a list ("una proteína, un carbo y una verdura"). */
+  readonly instructions?: string;
+  /** What this meal was asked to hit; absent when nobody set one — never zero-filled. */
+  readonly targets?: NutritionTargets;
   /** What its items add up to, computed by the server against today's catalog. */
   readonly totals: NutritionTotals;
   readonly items: NutritionItem[];
@@ -53,6 +65,8 @@ export interface NutritionTargets {
 /** A day of the plan being followed: what it aims for, what it comes to, and its meals. */
 export interface NutritionDay {
   readonly type: string;
+  /** Free text from the plan ("Running 4-5 km"), stored as-is. Absent when nobody wrote one. */
+  readonly notes?: string;
   /** What the day was ASKED to hit. A decision, and nobody can compute it. */
   readonly targets: NutritionTargets;
   /** What its meals actually add up to. Not the same thing, and that is the point. */
