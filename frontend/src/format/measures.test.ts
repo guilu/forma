@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { change, euro, fixed, measure } from './measures';
+import { change, euro, fixed, grams, measure } from './measures';
 
 describe('measure formatting', () => {
   it('separates decimals with a point', () => {
@@ -60,6 +60,20 @@ describe('measure formatting', () => {
 
     it('does not group thousands either', () => {
       expect(euro(1234.5)).toBe('1234.50 €');
+    });
+  });
+
+  describe('grams', () => {
+    /**
+     * Sin espacio, igual que los chips de macros de la misma tarjeta («162g P»):
+     * dos convenciones distintas en un mismo sitio se leen como un fallo.
+     */
+    it('writes a quantity with no space before the unit', () => {
+      expect(grams(200)).toBe('200g');
+    });
+
+    it('never groups thousands either', () => {
+      expect(grams(1500)).toBe('1500g');
     });
   });
 
