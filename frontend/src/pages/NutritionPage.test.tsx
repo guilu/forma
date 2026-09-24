@@ -59,6 +59,39 @@ const strengthDay: NutritionDay = {
   ],
 };
 
+/**
+ * Una variante con el detalle que el corte añade: nota del día, instrucciones en solo una comida, y
+ * un ítem sin resolver junto a uno normal, para ejercitar los tres caminos a la vez.
+ */
+const richDay: NutritionDay = {
+  ...strengthDay,
+  notes: 'Running 4-5 km',
+  meals: [
+    {
+      id: 'meal-desayuno',
+      mealType: 'BREAKFAST',
+      name: 'Bowl de Yogur Proteico y Fruta',
+      preferredTime: '08:00',
+      optional: false,
+      instructions: 'una proteína, un carbo y una verdura',
+      totals: { calories: 350, proteinG: 30, carbsG: 45, fatG: 8 },
+      items: [
+        { food: 'Yogur griego', quantityG: 200, preparationNotes: 'sin azúcar' },
+        { food: 'lost-food-id', quantityG: 0, unresolved: 'lost-food-id' },
+      ],
+    },
+    {
+      id: 'meal-comida',
+      mealType: 'LUNCH',
+      name: 'Pollo a la Plancha con Boniato',
+      preferredTime: '14:00',
+      optional: false,
+      totals: { calories: 650, proteinG: 55, carbsG: 70, fatG: 12 },
+      items: [{ food: 'Pechuga de pollo', quantityG: 180 }],
+    },
+  ],
+};
+
 function consumption(overrides: Partial<DayConsumption> = {}): DayConsumption {
   return {
     date: '2026-08-07',
@@ -162,7 +195,9 @@ describe('NutritionPage', () => {
 
   /**
    * The seeded plan names each meal after its own type — the breakfast is called "Desayuno" — so
-   * under the type label the same word came out twice and neither said what there was to eat.
+   * under the type label the same word came out twice and neither said what there was to eat. When
+   * the meal name duplicates the type label, the heading falls back to that label; the type line
+   * is hidden to avoid repetition (FOR-728 D7).
    */
   it('titles a meal with its food when its name only repeats the meal type', async () => {
     getDayMock.mockResolvedValue({
@@ -184,9 +219,11 @@ describe('NutritionPage', () => {
     });
     renderPage();
 
-    expect(
-      await screen.findByRole('heading', { name: 'Copos de avena, Plátano' }),
-    ).toBeInTheDocument();
+    // h3 shows the fallback label since the meal name duplicates it (FOR-728 D7).
+    expect(await screen.findByRole('heading', { name: 'Desayuno' })).toBeInTheDocument();
+    // Items are listed with quantities now, not joined.
+    expect(screen.getByText('Copos de avena 80g')).toBeInTheDocument();
+    expect(screen.getByText('Plátano 120g')).toBeInTheDocument();
   });
 
   /** A plan that does name its meals keeps the name: somebody wrote it and it says more. */
@@ -357,5 +394,100 @@ describe('NutritionPage', () => {
     await user.click(await screen.findByRole('button', { name: 'Reintentar' }));
 
     expect(await screen.findByText('Bowl de Yogur Proteico y Fruta')).toBeInTheDocument();
+  });
+
+  /**
+   * FOR-728: each item shows `food + quantityG` in grams format without space before the unit,
+   * matching the macro chips of the same card (162g P).
+   */
+  it('shows each food with its quantity in grams', async () => {
+    getDayMock.mockResolvedValue(richDay);
+    renderPage();
+
+    expect(await screen.findByText('Yogur griego 200g')).toBeInTheDocument();
+    expect(screen.getByText('Pechuga de pollo 180g')).toBeInTheDocument();
+  });
+
+  /**
+   * A meal's instructions block only renders when the plan sets one. No empty label, no reserved
+   * space (FOR-728 D6).
+   */
+  it("shows a meal's instructions block only when the plan sets them", async () => {
+    getDayMock.mockResolvedValue(richDay);
+    renderPage();
+
+    const instructionsBlocks = await screen.findAllByTestId('meal-instructions');
+    expect(instructionsBlocks).toHaveLength(1);
+    expect(instructionsBlocks[0]).toHaveTextContent('una proteína, un carbo y una verdura');
+  });
+
+  /**
+   * An unresolved item (food gone from the catalog) does NOT print "id 0g" — zero is
+   * indistinguishable from truly resolved 0g. Instead it carries a marker (FOR-728 D5).
+   */
+  it('does not print a confident 0g for an item whose food could not be resolved', async () => {
+    const dayWithUnresolved: NutritionDay = {
+      type: 'STRENGTH',
+      targets: { calories: 2850, proteinG: 180, carbsG: 320, fatG: 75 },
+      totals: { calories: 2850, proteinG: 180, carbsG: 320, fatG: 75 },
+      targetComparison: {
+        caloriesReached: true,
+        proteinReached: true,
+        carbsReached: true,
+        fatReached: true,
+      },
+      meals: [
+        {
+          id: 'meal-desayuno',
+          mealType: 'BREAKFAST',
+          name: 'Desayuno con extras',
+          preferredTime: '08:00',
+          optional: false,
+          totals: { calories: 350, proteinG: 30, carbsG: 45, fatG: 8 },
+          items: [
+            { food: 'Yogur griego', quantityG: 200 },
+            { food: 'unknown-food', quantityG: 0, unresolved: 'unknown-food' },
+          ],
+        },
+      ],
+    };
+    getConsumptionMock.mockResolvedValue(consumption());
+    getDayMock.mockResolvedValue(dayWithUnresolved);
+    renderPage();
+
+    // Wait for the meal to render.
+    await screen.findByText('Yogur griego 200g');
+    // The marker is split across spans; use regex to match.
+    expect(screen.getByText(/no disponible/)).toBeInTheDocument();
+    expect(screen.queryByText('unknown-food 0g')).not.toBeInTheDocument();
+  });
+
+  /**
+   * The day's free-text note, when set, appears in the meals section — not the page header,
+   * to preserve the layout check's date-finding logic (FOR-728 D8).
+   */
+  it("shows the day's free-text note in the meals section", async () => {
+    getDayMock.mockResolvedValue(richDay);
+    renderPage();
+
+    // The note appears after the meal list in the same section.
+    expect(await screen.findByText('Running 4-5 km')).toBeInTheDocument();
+  });
+
+  it('shows no note block when the day carries none', async () => {
+    renderPage(); // strengthDay has no notes field
+    await screen.findByText('Bowl de Yogur Proteico y Fruta');
+    expect(screen.queryByText(/Running/)).not.toBeInTheDocument();
+  });
+
+  /**
+   * When an item carries preparation notes, they display below the quantity in muted text
+   * (FOR-728 D7).
+   */
+  it("shows an item's preparation notes when set", async () => {
+    getDayMock.mockResolvedValue(richDay);
+    renderPage();
+
+    expect(await screen.findByText('sin azúcar')).toBeInTheDocument();
   });
 });
