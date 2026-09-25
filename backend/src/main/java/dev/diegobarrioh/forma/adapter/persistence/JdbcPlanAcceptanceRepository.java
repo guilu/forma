@@ -4,7 +4,9 @@ import dev.diegobarrioh.forma.application.PlanAcceptanceRepository;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.Optional;
 import java.util.UUID;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -19,6 +21,9 @@ import org.springframework.stereotype.Repository;
 public class JdbcPlanAcceptanceRepository implements PlanAcceptanceRepository {
 
   private static final String EXISTS_SQL = "SELECT COUNT(*) FROM plan_acceptance WHERE user_id = ?";
+
+  private static final String STARTED_AT_SQL =
+      "SELECT accepted_at FROM plan_acceptance WHERE user_id = ?";
 
   /**
    * Insert-if-absent. Accepting twice keeps the first instant rather than moving it: the question
@@ -45,5 +50,15 @@ public class JdbcPlanAcceptanceRepository implements PlanAcceptanceRepository {
   @Override
   public void markAccepted(UUID userId, Instant at) {
     jdbcTemplate.update(INSERT_SQL, userId, OffsetDateTime.ofInstant(at, ZoneOffset.UTC), userId);
+  }
+
+  @Override
+  public Optional<Instant> planStartedAt(UUID userId) {
+    try {
+      return Optional.ofNullable(
+          jdbcTemplate.queryForObject(STARTED_AT_SQL, Instant.class, userId));
+    } catch (EmptyResultDataAccessException e) {
+      return Optional.empty();
+    }
   }
 }

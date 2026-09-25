@@ -1,6 +1,7 @@
 package dev.diegobarrioh.forma.application;
 
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -19,4 +20,10 @@ public interface PlanAcceptanceRepository {
    * Records the acceptance. Repeated calls keep the first instant: it happened when it happened.
    */
   void markAccepted(UUID userId, Instant at);
+
+  /**
+   * The instant this account's current plan cycle started, or empty if it never accepted one. This
+   * is the single fact the current training week is derived from (no persisted week counter).
+   */
+  Optional<Instant> planStartedAt(UUID userId);
 }
