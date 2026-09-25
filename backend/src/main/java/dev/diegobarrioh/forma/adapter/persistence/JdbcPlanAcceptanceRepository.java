@@ -22,8 +22,16 @@ public class JdbcPlanAcceptanceRepository implements PlanAcceptanceRepository {
 
   private static final String EXISTS_SQL = "SELECT COUNT(*) FROM plan_acceptance WHERE user_id = ?";
 
+  /**
+   * The vigent cycle's anchor (design D5, migration V66): a restarted cycle answers ahead of the
+   * original acceptance, but only while it is set — {@code cycle_started_at} starts out {@code
+   * NULL} for every account, including ones accepted before V66.
+   */
   private static final String STARTED_AT_SQL =
-      "SELECT accepted_at FROM plan_acceptance WHERE user_id = ?";
+      "SELECT COALESCE(cycle_started_at, accepted_at) FROM plan_acceptance WHERE user_id = ?";
+
+  private static final String RESTART_CYCLE_SQL =
+      "UPDATE plan_acceptance SET cycle_started_at = ? WHERE user_id = ?";
 
   /**
    * Insert-if-absent. Accepting twice keeps the first instant rather than moving it: the question
@@ -60,5 +68,14 @@ public class JdbcPlanAcceptanceRepository implements PlanAcceptanceRepository {
     } catch (EmptyResultDataAccessException e) {
       return Optional.empty();
     }
+  }
+
+  /**
+   * No-op for an account with no {@code plan_acceptance} row (never accepted a plan): there is no
+   * row to reanchor, and this endpoint is only reachable behind authentication.
+   */
+  @Override
+  public void restartCycle(UUID userId, Instant at) {
+    jdbcTemplate.update(RESTART_CYCLE_SQL, OffsetDateTime.ofInstant(at, ZoneOffset.UTC), userId);
   }
 }

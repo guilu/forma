@@ -3,9 +3,12 @@ package dev.diegobarrioh.forma.delivery.training;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.anonymous;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -13,6 +16,7 @@ import dev.diegobarrioh.forma.application.MuscleWorkedMap;
 import dev.diegobarrioh.forma.application.MuscleWorkedMap.MuscleWorked;
 import dev.diegobarrioh.forma.application.MuscleWorkedMapService;
 import dev.diegobarrioh.forma.application.NotFoundException;
+import dev.diegobarrioh.forma.application.PlanRestartService;
 import dev.diegobarrioh.forma.application.StoredSessionStatus;
 import dev.diegobarrioh.forma.application.TrainingSessionRescheduleService;
 import dev.diegobarrioh.forma.application.TrainingSessionStatusService;
@@ -55,6 +59,7 @@ class TrainingControllerTest {
   @MockBean private WeeklyTrainingSummaryService summaryService;
   @MockBean private MuscleWorkedMapService muscleWorkedMapService;
   @MockBean private TrainingSessionRescheduleService rescheduleService;
+  @MockBean private PlanRestartService restartService;
 
   @Test
   void returnsNotStartedWithANullWeekAndAnEmptyCalendarWhenNoPlanWasEverAccepted()
@@ -227,6 +232,36 @@ class TrainingControllerTest {
 
     // Null is meaningful here, not missing: it clears the override.
     verify(rescheduleService).reschedule("STRENGTH:PUSH", null);
+  }
+
+  /**
+   * A2 (design D5): restarting reanchors the cycle; the next {@code GET /training/week} — which
+   * this test drives through the same {@code scheduleService} stub every other read here does —
+   * comes back at week 1, {@code ACTIVE}.
+   */
+  @Test
+  void restartsThePlanCycleThenTheNextWeekReadIsBackAtWeekOneActive() throws Exception {
+    mockMvc.perform(post("/api/v1/training/plan/restart")).andExpect(status().isNoContent());
+
+    verify(restartService).restart();
+
+    when(scheduleService.currentWeek())
+        .thenReturn(new WeeklyTrainingSchedule(List.of(), "ACTIVE", 1, 16));
+
+    mockMvc
+        .perform(get("/api/v1/training/week"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.planState").value("ACTIVE"))
+        .andExpect(jsonPath("$.planWeek").value(1));
+  }
+
+  @Test
+  void restartingWithoutAuthenticationIsRejected() throws Exception {
+    mockMvc
+        .perform(post("/api/v1/training/plan/restart").with(anonymous()))
+        .andExpect(status().isUnauthorized());
+
+    verifyNoInteractions(restartService);
   }
 
   @Test

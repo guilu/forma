@@ -9,6 +9,7 @@ import {
   getTrainingWeek,
   getWorkout,
   rescheduleSession,
+  restartPlan,
   updateSessionStatus,
   type TrainingWeek,
   type Workout,
@@ -39,6 +40,7 @@ vi.mock('../api/training', () => ({
   getMuscleMap: vi.fn(),
   getWorkout: vi.fn(),
   rescheduleSession: vi.fn(),
+  restartPlan: vi.fn(),
 }));
 
 // FOR-143: streak + weekly-history widgets fetch independently of the week
@@ -59,6 +61,7 @@ const getMuscleMapMock = vi.mocked(getMuscleMap);
 const getWorkoutMock = vi.mocked(getWorkout);
 const getStreakMock = vi.mocked(getStreak);
 const getProfileMock = vi.mocked(getProfile);
+const restartPlanMock = vi.mocked(restartPlan);
 
 // Fixed "today" = Monday 2026-07-06, so the MONDAY entry below is always
 // picked up by the today's-session card regardless of when the suite runs.
@@ -883,7 +886,7 @@ describe('TrainingPage', () => {
       planTotalWeeks: 16,
     };
 
-    it('shows the completed-plan message and no CTA, without hiding the strength that keeps going', async () => {
+    it('shows the completed-plan message with a restart CTA, without hiding the strength that keeps going', async () => {
       getWeekMock.mockResolvedValue(completedWeek);
 
       renderPage();
@@ -893,9 +896,23 @@ describe('TrainingPage', () => {
       ).toBeInTheDocument();
       // Strength keeps going past the terminal state (D4) — it must still render.
       expect(screen.getByText('Fuerza · Empuje')).toBeInTheDocument();
-      // No restart CTA yet — that is slice A2, not this one.
-      expect(screen.queryByRole('button', { name: /reiniciar/i })).not.toBeInTheDocument();
-      expect(screen.queryByRole('link', { name: /reiniciar/i })).not.toBeInTheDocument();
+      // A2: now there IS a restart button.
+      expect(screen.getByRole('button', { name: /reiniciar/i })).toBeInTheDocument();
+    });
+
+    it('calls restartPlan and reloads the week when the CTA is clicked', async () => {
+      getWeekMock.mockResolvedValue(completedWeek);
+      restartPlanMock.mockResolvedValue(undefined);
+      const user = userEvent.setup();
+
+      renderPage();
+
+      const button = await screen.findByRole('button', { name: /reiniciar/i });
+      await user.click(button);
+
+      expect(restartPlanMock).toHaveBeenCalled();
+      // The week is refetched after restart so the cycle advances to week 1.
+      expect(getWeekMock).toHaveBeenCalledTimes(2); // once on page mount, once after restart
     });
 
     it('never lists a running session once the cycle is over', async () => {

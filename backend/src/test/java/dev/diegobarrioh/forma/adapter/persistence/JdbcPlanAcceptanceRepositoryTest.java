@@ -86,4 +86,27 @@ class JdbcPlanAcceptanceRepositoryTest {
 
     assertThat(acceptances.planStartedAt(USER)).contains(FIRST);
   }
+
+  /** Design D5: a restarted cycle answers {@code planStartedAt}, not the original acceptance. */
+  @Test
+  void planStartedAtPrefersARestartedCycleOverTheOriginalAcceptance() {
+    acceptances.markAccepted(USER, FIRST);
+
+    acceptances.restartCycle(USER, LATER);
+
+    assertThat(acceptances.planStartedAt(USER)).contains(LATER);
+  }
+
+  /** Restarting is a separate write from accepting: {@code accepted_at} MUST NOT move. */
+  @Test
+  void restartingTheCycleDoesNotMoveTheOriginalAcceptedInstant() {
+    acceptances.markAccepted(USER, FIRST);
+
+    acceptances.restartCycle(USER, LATER);
+
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT accepted_at FROM plan_acceptance WHERE user_id = ?", Instant.class, USER))
+        .isEqualTo(FIRST);
+  }
 }

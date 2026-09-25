@@ -32,8 +32,9 @@ public final class FakePlanAcceptanceRepository implements PlanAcceptanceReposit
     return cycle != null ? Optional.of(cycle) : Optional.ofNullable(acceptedAt.get(userId));
   }
 
-  /** Test seam for D5: restarts the cycle at {@code at} without touching {@code accepted_at}. */
-  public void restartCycleAt(UUID userId, Instant at) {
+  /** D5: restarts the cycle at {@code at} without touching {@code accepted_at}. */
+  @Override
+  public void restartCycle(UUID userId, Instant at) {
     cycleStartedAt.put(userId, at);
   }
 }

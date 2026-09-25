@@ -9,9 +9,12 @@ import { useAnatomySex } from '../hooks/useAnatomySex';
 import { StatusPill } from '../components/StatusPill';
 import { WidgetLoading } from '../components/WidgetLoading';
 import { IconButton } from '../components/IconButton';
+import { useNotify } from '../components/NotificationProvider';
+import { ApiRequestError } from '../api/client';
 import { getStreak, type Streak } from '../api/progress';
 import {
   getTrainingWeek,
+  restartPlan,
   type DayOfWeek,
   type SessionStatus,
   type TrainingDay,
@@ -165,7 +168,7 @@ export function TrainingPage() {
   const [detailTarget, setDetailTarget] = useState<DetailTarget | undefined>(undefined);
   const [selectedDay, setSelectedDay] = useState<string>(() => todayDayOfWeek());
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (): Promise<void> => {
     try {
       const week = await getTrainingWeek();
       setState({ status: 'ready', week });
@@ -291,7 +294,7 @@ function renderContent(
 
   return (
     <>
-      {state.week.planState === 'COMPLETED' && <CompletedPlanBanner />}
+      {state.week.planState === 'COMPLETED' && <CompletedPlanBanner reload={reload} />}
       <div className={styles.layout}>
         <WeekStrip
           days={state.week.days}
@@ -316,15 +319,43 @@ function renderContent(
  * rather than replacing it — unlike {@link NoPlanEmptyState}, which replaces
  * the whole page because there genuinely is nothing to show.
  *
- * <p>No action here yet: reaccepting a plan is slice A2 of this same change,
- * not this one. A button that restarted nothing would be exactly the
- * contradiction this change exists to fix.
+ * <p>A2: offers a restart button that reanchors the cycle to now.
  */
-function CompletedPlanBanner() {
+function CompletedPlanBanner({ reload }: { readonly reload: () => any }) {
+  const notify = useNotify();
+  const [restarting, setRestarting] = useState(false);
+
+  const handleRestart = useCallback(async () => {
+    setRestarting(true);
+    try {
+      await restartPlan();
+      await reload();
+      notify.success('Ciclo reiniciado. Tu semana 1 comienza ahora.');
+    } catch (error) {
+      notify.error(
+        error instanceof ApiRequestError ? error.message : 'No se pudo reiniciar el ciclo.',
+      );
+    } finally {
+      setRestarting(false);
+    }
+  }, [reload, notify]);
+
   return (
-    <p className={styles.completedBanner} role="status">
-      Has completado tu plan de entrenamiento. La fuerza sigue en tu calendario.
-    </p>
+    <div className={styles.completedBannerContainer} role="status">
+      <p className={styles.completedBanner}>
+        Has completado tu plan de entrenamiento. La fuerza sigue en tu calendario.
+      </p>
+      <IconButton
+        variant="soft"
+        size="lg"
+        label="Reiniciar el ciclo"
+        title="Reiniciar el ciclo"
+        loading={restarting}
+        onClick={handleRestart}
+      >
+        <Icon name="refresh" size={19} />
+      </IconButton>
+    </div>
   );
 }
 
