@@ -91,4 +91,23 @@ class TrainingPlanProgressTest {
 
     assertThat(progress).isEqualTo(new TrainingPlanProgress.Completed());
   }
+
+  /**
+   * Lower-bound guard: an acceptance instant later than "today" (future acceptance, a
+   * desynchronized clock, or corrupt data) must not produce {@code Active(0)} or a negative week
+   * number — {@link TrainingPlanProgress.Active}'s own javadoc promises {@code 1..totalWeeks}. From
+   * the current week's vantage point, a plan accepted in the future has not started yet, so this is
+   * {@code NotStarted} rather than an invented week or a thrown error — the same terminal kind used
+   * when there is no acceptance instant at all.
+   */
+  @Test
+  void isNotStartedWhenAcceptedAfterTheCurrentWeek() {
+    LocalDate currentMonday = LocalDate.of(2026, 8, 17);
+    LocalDate acceptedMondayInTheFuture = currentMonday.plusWeeks(1);
+
+    TrainingPlanProgress progress =
+        TrainingPlanProgress.since(acceptedMondayInTheFuture, currentMonday, TOTAL_WEEKS);
+
+    assertThat(progress).isEqualTo(new TrainingPlanProgress.NotStarted());
+  }
 }

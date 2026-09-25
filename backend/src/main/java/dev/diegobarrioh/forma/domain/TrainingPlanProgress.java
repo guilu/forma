@@ -31,6 +31,15 @@ public sealed interface TrainingPlanProgress {
       LocalDate acceptedWeekStart, LocalDate currentWeekStart, int totalWeeks) {
     long weeksElapsed = ChronoUnit.WEEKS.between(acceptedWeekStart, currentWeekStart);
     long weekNumber = weeksElapsed + 1;
+    // Guards the 1..totalWeeks invariant Active's javadoc promises. Reachable only through a
+    // future acceptance instant, a desynchronized clock, or corrupt data — never through
+    // PlanActivationService.markAccepted's Instant.now() today — but a domain invariant is
+    // protected regardless of which caller could break it. Seen from the current week, a plan
+    // accepted later than "today" has not started yet, so it is NotStarted rather than an
+    // invented week number or a thrown error.
+    if (weekNumber < 1) {
+      return new NotStarted();
+    }
     if (weekNumber > totalWeeks) {
       return new Completed();
     }
