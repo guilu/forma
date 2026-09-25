@@ -226,6 +226,32 @@ describe('NutritionPage', () => {
     expect(screen.getByText('Plátano 120g')).toBeInTheDocument();
   });
 
+  /**
+   * The optional badge used to live inside the type line, and the type line hides whenever the
+   * meal name duplicates its type label — silently dropping the badge for a meal like this one
+   * (FOR-728 review finding #1). The badge must survive independently of that suppression.
+   */
+  it('shows the optional badge even when the meal name duplicates its type label', async () => {
+    getDayMock.mockResolvedValue({
+      ...strengthDay,
+      meals: [
+        {
+          id: 'meal-post',
+          mealType: 'POST_WORKOUT',
+          name: 'Post-entreno',
+          preferredTime: '20:00',
+          optional: true,
+          totals: { calories: 78, proteinG: 15.6, carbsG: 1.6, fatG: 1.2 },
+          items: [{ food: 'Proteína whey', quantityG: 20 }],
+        },
+      ],
+    });
+    renderPage();
+
+    expect(await screen.findByRole('heading', { name: 'Post-entreno' })).toBeInTheDocument();
+    expect(screen.getByText(/opcional/)).toBeInTheDocument();
+  });
+
   /** A plan that does name its meals keeps the name: somebody wrote it and it says more. */
   it('keeps a meal name that says something the type does not', async () => {
     renderPage();

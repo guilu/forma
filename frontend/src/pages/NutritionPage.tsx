@@ -336,9 +336,10 @@ function MealCard({
 }) {
   const eaten = state === 'EATEN';
   const mealTypeLabel = MEAL_LABELS[meal.mealType] ?? meal.mealType;
-  const title = titleOf(meal) ?? mealTypeLabel;
+  const mealTitle = titleOf(meal);
+  const title = mealTitle ?? mealTypeLabel;
   // Hide the type line when it would duplicate the h3 heading (FOR-728 D7).
-  const showTypeLine = titleOf(meal) !== null;
+  const showTypeLine = mealTitle !== null;
 
   return (
     <article className={eaten ? `${styles.mealCard} ${styles.mealDone}` : styles.mealCard}>
@@ -347,13 +348,11 @@ function MealCard({
         <Icon name="nutrition" size={22} />
       </span>
       <div className={styles.mealBody}>
-        {showTypeLine && (
-          <p className={styles.mealType}>
-            {mealTypeLabel}
-            {meal.optional && <span className={styles.mealOptional}> · opcional</span>}
-          </p>
-        )}
-        <h3 className={styles.mealName}>{title}</h3>
+        {showTypeLine && <p className={styles.mealType}>{mealTypeLabel}</p>}
+        <div className={styles.mealTitleRow}>
+          <h3 className={styles.mealName}>{title}</h3>
+          {meal.optional && <span className={styles.mealOptional}> · opcional</span>}
+        </div>
         {meal.instructions && (
           <p className={styles.mealInstructions} data-testid="meal-instructions">
             {meal.instructions}

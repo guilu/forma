@@ -204,6 +204,14 @@
   color: var(--color-text-muted);
 }
 
+/* El nombre y la marca "· opcional" comparten fila: la marca vive fuera del <h3> a propósito,
+   para no colarse en su nombre accesible (FOR-728 review finding #1). */
+.mealTitleRow {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
 .mealName {
   margin: 0;
   font-size: var(--font-size-base);
