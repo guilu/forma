@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { NutritionRings, RING_ARCS } from '../components/NutritionRings';
-import { measure } from '../format/measures';
+import { measure, grams } from '../format/measures';
 import { NoPlanEmptyState } from '../components/NoPlanEmptyState';
 import { ErrorState } from '../components/ErrorState';
 import { Icon } from '../components/Icon';
@@ -167,22 +167,18 @@ function plain(text: string): string {
 }
 
 /**
- * Qué titula una comida.
+ * El nombre de una comida cuando merece uno.
  *
  * <p>El plan transcrito del Excel llama a cada comida por su tipo: la del desayuno se llama
- * «Desayuno». Puesta bajo la etiqueta del tipo salía dos veces la misma palabra y ninguna decía qué
- * se come. Cuando el nombre no añade nada al tipo, titulan los alimentos, que es lo que alguien
- * mira para saber si le toca cocinar.
+ * «Desayuno». Puesta bajo la etiqueta del tipo salía dos veces la misma palabra. Cuando el nombre
+ * no añade nada, devuelve null para que se use la etiqueta del tipo como fallback (FOR-728 D7).
  *
  * <p>Un plan que SÍ nombre sus comidas —«Bowl de yogur proteico y fruta»— conserva su nombre: lo
  * escribió alguien y dice más que la lista de la compra de ese plato.
  */
-function headlineOf(meal: NutritionMeal): string {
+function titleOf(meal: NutritionMeal): string | null {
   const namesTheType = plain(meal.name) === plain(MEAL_LABELS[meal.mealType] ?? meal.mealType);
-  if (!namesTheType || meal.items.length === 0) {
-    return meal.name;
-  }
-  return meal.items.map((item) => item.food).join(', ');
+  return namesTheType ? null : meal.name;
 }
 
 interface MealActions {
@@ -230,7 +226,10 @@ function renderContent(
         </Card>
       </section>
 
-      <section className={styles.meals} aria-label="Comidas de hoy">
+      {/* `role="region"` is explicit (not just the implicit landmark of a labelled <section>)
+          because the day-notes test below queries it via `getByRole('region', ...)` to scope
+          its assertion to this section (FOR-728 review finding #7/#11). */}
+      <section className={styles.meals} role="region" aria-label="Comidas de hoy">
         <div className={styles.mealsHead}>
           <h2 className={styles.mealsTitle}>Comidas de Hoy</h2>
           <p className={styles.mealsCount}>
@@ -249,6 +248,7 @@ function renderContent(
             </li>
           ))}
         </ol>
+        {state.day.notes && <p className={styles.dayNotes}>{state.day.notes}</p>}
       </section>
     </>
   );
@@ -338,6 +338,12 @@ function MealCard({
   readonly onMark: () => void;
 }) {
   const eaten = state === 'EATEN';
+  const mealTypeLabel = MEAL_LABELS[meal.mealType] ?? meal.mealType;
+  const mealTitle = titleOf(meal);
+  const title = mealTitle ?? mealTypeLabel;
+  // Hide the type line when it would duplicate the h3 heading (FOR-728 D7).
+  const showTypeLine = mealTitle !== null;
+
   return (
     <article className={eaten ? `${styles.mealCard} ${styles.mealDone}` : styles.mealCard}>
       {/* Sin foto: ningún endpoint la tiene. El marco se queda con el glifo. */}
@@ -345,11 +351,37 @@ function MealCard({
         <Icon name="nutrition" size={22} />
       </span>
       <div className={styles.mealBody}>
-        <p className={styles.mealType}>
-          {MEAL_LABELS[meal.mealType] ?? meal.mealType}
+        {showTypeLine && <p className={styles.mealType}>{mealTypeLabel}</p>}
+        <div className={styles.mealTitleRow}>
+          <h3 className={styles.mealName}>{title}</h3>
           {meal.optional && <span className={styles.mealOptional}> · opcional</span>}
-        </p>
-        <h3 className={styles.mealName}>{headlineOf(meal)}</h3>
+        </div>
+        {meal.instructions && (
+          <p className={styles.mealInstructions} data-testid="meal-instructions">
+            {meal.instructions}
+          </p>
+        )}
+        <ul className={styles.itemList}>
+          {meal.items.map((item, idx) => (
+            <li key={`${item.food}-${idx}`} className={styles.item}>
+              {item.unresolved ? (
+                // El id ausente (slug del catálogo o UUID de receta) no dice nada a quien lee el
+                // plan; se guarda en `title` para depurar, no como texto visible (FOR-728 D5,
+                // review finding #5).
+                <span className={styles.itemFood} title={item.unresolved}>
+                  Alimento no disponible
+                </span>
+              ) : (
+                <span className={styles.itemFood}>
+                  {item.food} {grams(item.quantityG)}
+                </span>
+              )}
+              {item.preparationNotes && (
+                <span className={styles.itemNote}>{item.preparationNotes}</span>
+              )}
+            </li>
+          ))}
+        </ul>
         <p className={styles.chips}>
           <span className={styles.chipKcal}>{meal.totals.calories} kcal</span>
           <span className={`${styles.chip} ${styles.chipProtein}`}>{meal.totals.proteinG}g P</span>

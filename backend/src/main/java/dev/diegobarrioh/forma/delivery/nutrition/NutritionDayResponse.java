@@ -1,5 +1,6 @@
 package dev.diegobarrioh.forma.delivery.nutrition;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import dev.diegobarrioh.forma.application.ResolvedDay;
 import dev.diegobarrioh.forma.application.ResolvedItem;
 import dev.diegobarrioh.forma.application.ResolvedMeal;
@@ -24,12 +25,24 @@ import java.util.List;
  * targetComparison} could only ever answer yes.
  *
  * <p><b>A target nobody set renders as 0.</b> {@link MacroTargets} distinguishes "no target" from
- * "a target of zero" and this response does not, because the frontend has no third state to render
- * — its zeroed day IS its empty state. Giving it one is a change to the page rather than to the
- * model, so it is left as known debt rather than half-done here.
+ * "a target of zero" and this response does not at the day level, because the frontend has no third
+ * state to render — its zeroed day IS its empty state. Giving it one is a change to the page rather
+ * than to the model, so it is left as known debt rather than half-done here. The per-meal {@link
+ * Meal#targets()} does NOT repeat that shortcut, and not just at the whole-meal level: {@link
+ * MealTargets} keeps each macro independently nullable, so a meal that sets only {@code calories}
+ * publishes {@code proteinG}/{@code carbsG}/{@code fatG} as absent, not as a fabricated 0.
+ *
+ * <p><b>{@code @JsonInclude(NON_NULL)} lives on the individual new components below, not on the
+ * record type.</b> Other response types in this codebase (e.g. {@code TrainingWeekResponse}, {@code
+ * WeeklyInsightsResponse}) do put it at the component level, so this is not a departure — it is
+ * called out here because it matters for a specific reason: this record already serializes {@code
+ * null} for fields such as {@code Meal.preferredTime}, and a type-level annotation would start
+ * omitting those too — a behavior change this response's rollback promise ("purely additive; a
+ * client that ignores the new fields is unaffected") does not cover.
  */
 public record NutritionDayResponse(
     String type,
+    @JsonInclude(JsonInclude.Include.NON_NULL) String notes,
     Targets targets,
     Totals totals,
     TargetComparison targetComparison,
@@ -51,6 +64,24 @@ public record NutritionDayResponse(
 
     private static double orZero(Double value) {
       return value == null ? 0 : value;
+    }
+  }
+
+  /**
+   * A meal's macro targets, each macro independently nullable (FOR-728 D3) — unlike the day-level
+   * {@link Targets}, this must not zero-fill: a meal that sets only one macro (e.g. a calorie cap
+   * with no protein floor) is a normal, partial decision, and 0 would misreport the other three as
+   * an actual target of zero rather than as "nobody said."
+   */
+  public record MealTargets(
+      @JsonInclude(JsonInclude.Include.NON_NULL) Integer calories,
+      @JsonInclude(JsonInclude.Include.NON_NULL) Double proteinG,
+      @JsonInclude(JsonInclude.Include.NON_NULL) Double carbsG,
+      @JsonInclude(JsonInclude.Include.NON_NULL) Double fatG) {
+
+    static MealTargets from(MacroTargets targets) {
+      return new MealTargets(
+          targets.calories(), targets.proteinG(), targets.carbsG(), targets.fatG());
     }
   }
 
@@ -86,10 +117,16 @@ public record NutritionDayResponse(
       String name,
       String preferredTime,
       boolean optional,
+      @JsonInclude(JsonInclude.Include.NON_NULL) String instructions,
+      @JsonInclude(JsonInclude.Include.NON_NULL) MealTargets targets,
       Totals totals,
       List<Item> items) {}
 
-  public record Item(String food, int quantityG) {}
+  public record Item(
+      String food,
+      int quantityG,
+      @JsonInclude(JsonInclude.Include.NON_NULL) String preparationNotes,
+      @JsonInclude(JsonInclude.Include.NON_NULL) String unresolved) {}
 
   /**
    * Empty day: the requested type with zeroed targets/totals and no meals.
@@ -102,6 +139,7 @@ public record NutritionDayResponse(
   public static NutritionDayResponse empty(NutritionDayType type) {
     return new NutritionDayResponse(
         type.name(),
+        null,
         new Targets(0, 0, 0, 0),
         new Totals(0, 0, 0, 0),
         new TargetComparison(false, false, false, false),
@@ -114,6 +152,7 @@ public record NutritionDayResponse(
     dev.diegobarrioh.forma.domain.TargetComparison comparison = day.comparison();
     return new NutritionDayResponse(
         type.name(),
+        day.notes(),
         Targets.from(day.targets()),
         Totals.from(day.totals()),
         comparison == null
@@ -129,6 +168,11 @@ public record NutritionDayResponse(
         meal.name(),
         meal.scheduledTime() == null ? null : meal.scheduledTime().toString(),
         meal.optional(),
+        meal.instructions(),
+        // A target nobody set at the meal level stays null, and one set only per-macro stays
+        // per-macro null too: `MealTargets.from()` never zero-fills, unlike day-level `Targets`
+        // (FOR-728 D3 — that shortcut is day-level debt only, review finding #2).
+        meal.targets().unset() ? null : MealTargets.from(meal.targets()),
         Totals.from(meal.totals()),
         meal.items().stream().map(NutritionDayResponse::item).toList());
   }
@@ -136,6 +180,6 @@ public record NutritionDayResponse(
   private static Item item(ResolvedItem item) {
     // Grams are rounded for the wire: the plan holds a tenth of a gram of precision so a portion
     // can be counted exactly, and nobody weighs oats to a decimal.
-    return new Item(item.label(), (int) Math.round(item.grams()));
+    return new Item(item.label(), (int) Math.round(item.grams()), item.notes(), item.unresolved());
   }
 }

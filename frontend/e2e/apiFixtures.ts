@@ -59,6 +59,8 @@ const MEASUREMENTS = [
  */
 const NUTRITION_DAY = {
   type: 'running',
+  // Ejercita el bloque de nota del día en la sección de comidas (FOR-728 D8).
+  notes: 'Running 4-5 km',
   targets: { calories: 2300, proteinG: 160, carbsG: 250, fatG: 70 },
   totals: { calories: 2010, proteinG: 148, carbsG: 232, fatG: 61 },
   targetComparison: {
@@ -69,20 +71,31 @@ const NUTRITION_DAY = {
   },
   meals: [
     {
+      // Sin `id` el contador de "completadas" no podía casar esta comida con
+      // `NUTRITION_CONSUMPTION.plannedMeals` y se quedaba siempre en cero bajo
+      // fixtures (FOR-728, bug preexistente). Comparte id con `plannedMeals[0]`.
+      id: 'm1',
       mealType: 'BREAKFAST',
       name: 'Desayuno',
       preferredTime: '08:00',
       optional: false,
+      instructions: 'avena remojada la noche anterior, sin azúcar añadido',
       totals: { calories: 296, proteinG: 10.4, carbsG: 48, fatG: 5.6 },
-      items: [{ food: 'Avena', quantityG: 80 }],
+      items: [{ food: 'Avena', quantityG: 80, preparationNotes: 'con canela' }],
     },
     {
+      id: 'm2',
       mealType: 'LUNCH',
       name: 'Comida',
       preferredTime: '14:00',
       optional: false,
       totals: { calories: 330, proteinG: 62, carbsG: 0, fatG: 7.2 },
-      items: [{ food: 'Pollo', quantityG: 200 }],
+      // Un ítem sin resolver: el catálogo perdió el alimento, pero el resto del
+      // día se sigue mostrando (FOR-728 D5).
+      items: [
+        { food: 'Pollo', quantityG: 200 },
+        { food: 'lost-food-id', quantityG: 0, unresolved: 'lost-food-id' },
+      ],
     },
   ],
 };

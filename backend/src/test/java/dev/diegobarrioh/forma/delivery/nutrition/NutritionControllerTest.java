@@ -77,7 +77,10 @@ class NutritionControllerTest {
         .perform(get("/api/v1/nutrition/days/running"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.type").value("RUNNING"))
-        .andExpect(jsonPath("$.meals").isEmpty());
+        .andExpect(jsonPath("$.meals").isEmpty())
+        // No hay ResolvedDay del que leer una nota, así que no hay campo que mostrar como
+        // cadena vacía (FOR-728 D2/D1).
+        .andExpect(jsonPath("$.notes").doesNotExist());
   }
 
   @Test
@@ -101,7 +104,21 @@ class NutritionControllerTest {
         .andExpect(jsonPath("$.meals[0].items[0].quantityG").value(120))
         .andExpect(jsonPath("$.meals[0].optional").value(false))
         // Read from the plan, not from `mealType == POST_WORKOUT` decided here.
-        .andExpect(jsonPath("$.meals[1].optional").value(true));
+        .andExpect(jsonPath("$.meals[1].optional").value(true))
+        // La nota del día viaja tal cual (FOR-728 D1).
+        .andExpect(jsonPath("$.notes").value("note"))
+        // La instrucción de la comida viaja cuando existe (FOR-728 D1).
+        .andExpect(jsonPath("$.meals[0].instructions").value("avena remojada la noche anterior"))
+        // Nadie fijó objetivo para esta comida: no se rellena con `Targets.from()` (FOR-728 D3).
+        .andExpect(jsonPath("$.meals[0].targets").doesNotExist())
+        // La comida sin instrucciones no publica ni etiqueta ni hueco (FOR-728 D2).
+        .andExpect(jsonPath("$.meals[1].instructions").doesNotExist())
+        // La nota de preparación del ítem viaja cuando existe (FOR-728 D1).
+        .andExpect(jsonPath("$.meals[0].items[0].preparationNotes").value("a fuego lento"))
+        // Un ítem no resuelto transporta el id ausente en vez de fingir cero gramos (FOR-728 D5).
+        .andExpect(jsonPath("$.meals[0].items[0].unresolved").value("oats-legacy-id"))
+        // El ítem resuelto de la segunda comida no lleva marca de no-resuelto.
+        .andExpect(jsonPath("$.meals[1].items[0].unresolved").doesNotExist());
   }
 
   @Test
@@ -145,12 +162,96 @@ class NutritionControllerTest {
         .andExpect(jsonPath("$.targetComparison.caloriesReached").value(false));
   }
 
+  /**
+   * The non-null branch of {@code meal.targets().unset() ? null : ...} had no coverage: both
+   * fixture meals in {@link #runningDay()} use {@code MacroTargets.none()} (review finding #4).
+   */
+  @Test
+  void publishesAMealsFullySetTargetsPerMacro() throws Exception {
+    when(planReader.findDayByType(any(), eq(NutritionDayType.RUNNING)))
+        .thenReturn(Optional.of(dayWithMealTargets(new MacroTargets(300, 20.0, 30.0, 8.0))));
+
+    mockMvc
+        .perform(get("/api/v1/nutrition/days/running"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.meals[0].targets.calories").value(300))
+        .andExpect(jsonPath("$.meals[0].targets.proteinG").value(20.0))
+        .andExpect(jsonPath("$.meals[0].targets.carbsG").value(30.0))
+        .andExpect(jsonPath("$.meals[0].targets.fatG").value(8.0));
+  }
+
+  /**
+   * FOR-728 D3 forbids zero-filling a meal's unset macros — {@code null} means nobody decided,
+   * which is not the same as zero. A meal with only {@code calories} set still went through {@code
+   * Targets.from()} and published {@code proteinG:0,carbsG:0,fatG:0} anyway, because {@code
+   * MacroTargets.unset()} only short-circuits when all four macros are null (review finding #2).
+   */
+  @Test
+  void doesNotZeroFillAMealsUnsetMacrosWhenOnlyOneIsSet() throws Exception {
+    when(planReader.findDayByType(any(), eq(NutritionDayType.RUNNING)))
+        .thenReturn(Optional.of(dayWithMealTargets(new MacroTargets(300, null, null, null))));
+
+    mockMvc
+        .perform(get("/api/v1/nutrition/days/running"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.meals[0].targets.calories").value(300))
+        .andExpect(jsonPath("$.meals[0].targets.proteinG").doesNotExist())
+        .andExpect(jsonPath("$.meals[0].targets.carbsG").doesNotExist())
+        .andExpect(jsonPath("$.meals[0].targets.fatG").doesNotExist());
+  }
+
+  /**
+   * {@link dev.diegobarrioh.forma.application.PlanMeal} defends against a null {@code targets} with
+   * a compact-constructor default; {@link ResolvedMeal} did not, and {@code
+   * NutritionDayResponse.meal()} calls {@code meal.targets().unset()} unconditionally, which NPEs
+   * the whole endpoint the moment one meal's targets is null (review finding #3).
+   */
+  @Test
+  void doesNotNpeWhenAResolvedMealsTargetsIsNull() throws Exception {
+    when(planReader.findDayByType(any(), eq(NutritionDayType.RUNNING)))
+        .thenReturn(Optional.of(dayWithMealTargets(null)));
+
+    mockMvc
+        .perform(get("/api/v1/nutrition/days/running"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.meals[0].targets").doesNotExist());
+  }
+
   @Test
   void unknownDayTypeReturnsNotFound() throws Exception {
     mockMvc
         .perform(get("/api/v1/nutrition/days/does-not-exist"))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+  }
+
+  /**
+   * A single-meal day built fresh for each meal-targets test (review findings #2, #3, #4), rather
+   * than reusing {@link #runningDay()}: that fixture's other assertions depend on its exact meal
+   * count, indices and totals, which a third meal or a targets change would perturb.
+   */
+  private static ResolvedDay dayWithMealTargets(MacroTargets mealTargets) {
+    ResolvedMeal meal =
+        new ResolvedMeal(
+            UUID.randomUUID(),
+            MealType.SNACK,
+            "Snack",
+            null,
+            false,
+            null,
+            mealTargets,
+            new NutritionTotals(280, 18.0, 28.0, 7.0),
+            List.of());
+    return new ResolvedDay(
+        NutritionDayType.RUNNING,
+        1,
+        1,
+        null,
+        null,
+        MacroTargets.none(),
+        meal.totals(),
+        null,
+        List.of(meal));
   }
 
   /** 120 g of oats and 20 g of whey, already worked out — the reader's job, mocked here. */
@@ -162,18 +263,24 @@ class NutritionControllerTest {
             "Desayuno",
             LocalTime.of(8, 0),
             false,
-            null,
+            "avena remojada la noche anterior",
             MacroTargets.none(),
             new NutritionTotals(444, 15.6, 72.0, 8.4),
             List.of(
+                // `unresolved` set alongside a real label/grams/totals is a state the real
+                // resolver never produces (`NutritionPlanReader.unresolved()` always pairs it with
+                // `label = id` and zero totals) — this fixture tests the DTO's own mapping in
+                // isolation, not the resolver's invariant, so the two fields are combined on
+                // purpose to prove `unresolved` alone drives the response's unresolved item
+                // (review finding #13).
                 new ResolvedItem(
                     "oats",
                     "Copos de avena",
                     120,
                     new NutritionTotals(444, 15.6, 72.0, 8.4),
                     false,
-                    null,
-                    null)));
+                    "a fuego lento",
+                    "oats-legacy-id")));
     ResolvedMeal recovery =
         new ResolvedMeal(
             UUID.randomUUID(),

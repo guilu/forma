@@ -144,6 +144,14 @@
   list-style: none;
 }
 
+.dayNotes {
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
 .mealCard {
   display: flex;
   align-items: center;
@@ -175,7 +183,7 @@
 .mealBody {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-2);
   min-width: 0;
   flex: 1;
 }
@@ -196,11 +204,51 @@
   color: var(--color-text-muted);
 }
 
+/* El nombre y la marca "· opcional" comparten fila: la marca vive fuera del <h3> a propósito,
+   para no colarse en su nombre accesible (FOR-728 review finding #1). */
+.mealTitleRow {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
 .mealName {
   margin: 0;
   font-size: var(--font-size-base);
   font-weight: 600;
   color: var(--color-text);
+}
+
+.mealInstructions {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.itemList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.itemFood {
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+}
+
+.itemNote {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
 }
 
 .chips {

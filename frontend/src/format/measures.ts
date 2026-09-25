@@ -62,6 +62,15 @@ export function fixed(value: number, decimals = 1): string {
 }
 
 /**
+ * Una cantidad en gramos: `200g`. Sin espacio antes de la unidad, igual que
+ * los chips de macros de la misma tarjeta (`162g P`) — dos convenciones para
+ * la misma unidad en la misma pantalla se leen como un fallo.
+ */
+export function grams(value: number): string {
+  return `${formatterFor({ maximumFractionDigits: 0 }).format(value)}g`;
+}
+
+/**
  * Un precio: `12.50 €`, `0.00 €`. Siempre con céntimos — «3.9 €» parece a medio
  * escribir.
  *
