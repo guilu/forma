@@ -456,15 +456,7 @@ describe('NutritionPage', () => {
    */
   it('does not print a confident 0g for an item whose food could not be resolved', async () => {
     const dayWithUnresolved: NutritionDay = {
-      type: 'STRENGTH',
-      targets: { calories: 2850, proteinG: 180, carbsG: 320, fatG: 75 },
-      totals: { calories: 2850, proteinG: 180, carbsG: 320, fatG: 75 },
-      targetComparison: {
-        caloriesReached: true,
-        proteinReached: true,
-        carbsReached: true,
-        fatReached: true,
-      },
+      ...strengthDay,
       meals: [
         {
           id: 'meal-desayuno',
