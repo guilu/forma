@@ -3,8 +3,10 @@ package dev.diegobarrioh.forma.application;
 import dev.diegobarrioh.forma.application.WeeklyTrainingSchedule.TrainingDay;
 import dev.diegobarrioh.forma.application.WeeklyTrainingSchedule.TrainingEntry;
 import dev.diegobarrioh.forma.domain.BodyView;
+import dev.diegobarrioh.forma.domain.RunningPlanGenerator;
 import dev.diegobarrioh.forma.domain.SessionStatus;
 import dev.diegobarrioh.forma.domain.SessionType;
+import dev.diegobarrioh.forma.domain.TrainingPlanProgress;
 import dev.diegobarrioh.forma.domain.WeeklyTrainingDayPolicy;
 import dev.diegobarrioh.forma.domain.WorkoutType;
 import java.time.Clock;
@@ -16,6 +18,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 /**
@@ -28,11 +31,18 @@ import org.springframework.stereotype.Service;
  * exact same day-kind classification, not a duplicate):
  *
  * <ul>
- *   <li>Running: plan week {@link #PLAN_WEEK} (the first week), each session on its own day
+ *   <li>Running: the plan week derived from {@link TrainingPlanProgress} (no persisted counter —
+ *       design D1 of the training-progression-and-logging change), each session on its own day
  *       (Mon/Wed/Sat per the generator, FOR-151).
  *   <li>Strength: one template per day — Tuesday PUSH, Thursday PULL, Sunday LEGS (FOR-151).
  *   <li>Any remaining day (i.e. Friday) is a rest day (no entries).
  * </ul>
+ *
+ * <p>Before an account has accepted a plan there is no Monday to anchor on ({@link
+ * TrainingPlanProgress.NotStarted}): the week comes back fully empty, running and strength alike.
+ * Past the plan's last week ({@link TrainingPlanProgress.Completed}, design D4) running sessions
+ * stop, but strength keeps going — {@link WeeklyTrainingDayPolicy} assigns it with no reference to
+ * plan week, so there is nothing in it to "complete".
  *
  * <p><b>A session is not named after its day (V60).</b> Its id is its content — {@code
  * "RUNNING:LONG_RUN"}, {@code "STRENGTH:PUSH"} — and the policy above only supplies its
@@ -53,9 +63,6 @@ import org.springframework.stereotype.Service;
 @Service
 public class WeeklyTrainingScheduleService {
 
-  /** The plan week shown by the MVP calendar. */
-  static final int PLAN_WEEK = 1;
-
   private static final String RUNNING_KIND = "RUNNING";
   private static final String STRENGTH_KIND = "STRENGTH";
 
@@ -64,18 +71,21 @@ public class WeeklyTrainingScheduleService {
   private final TrainingSessionStatusRepository statusRepository;
   private final CurrentUserProvider currentUserProvider;
   private final Clock clock;
+  private final PlanAcceptanceRepository planAcceptanceRepository;
 
   public WeeklyTrainingScheduleService(
       RunningPlanService runningPlanService,
       WorkoutTemplateService workoutTemplateService,
       TrainingSessionStatusRepository statusRepository,
       CurrentUserProvider currentUserProvider,
-      Clock clock) {
+      Clock clock,
+      PlanAcceptanceRepository planAcceptanceRepository) {
     this.runningPlanService = runningPlanService;
     this.workoutTemplateService = workoutTemplateService;
     this.statusRepository = statusRepository;
     this.currentUserProvider = currentUserProvider;
     this.clock = clock;
+    this.planAcceptanceRepository = planAcceptanceRepository;
   }
 
   /** The stable id for a running session of a given type (e.g. {@code "RUNNING:LONG_RUN"}). */
@@ -95,15 +105,18 @@ public class WeeklyTrainingScheduleService {
 
   /** Builds the current week's calendar (Monday through Sunday), with this week's rows applied. */
   public WeeklyTrainingSchedule currentWeek() {
+    UUID userId = currentUserProvider.currentUserId();
+    TrainingPlanProgress progress = resolveProgress(userId);
+
     Map<String, StoredSessionStatus> stored =
-        statusRepository.findByUserAndWeek(currentUserProvider.currentUserId(), currentWeekStart());
+        statusRepository.findByUserAndWeek(userId, currentWeekStart());
 
     Map<DayOfWeek, List<TrainingEntry>> entriesByDay = new EnumMap<>(DayOfWeek.class);
     for (DayOfWeek day : DayOfWeek.values()) {
       entriesByDay.put(day, new ArrayList<>());
     }
 
-    for (PlannedSession planned : plannedSessions()) {
+    for (PlannedSession planned : plannedSessions(progress)) {
       StoredSessionStatus override = stored.get(planned.key());
       // The stored day wins over the policy's, for this week only.
       DayOfWeek day =
@@ -117,46 +130,88 @@ public class WeeklyTrainingScheduleService {
     for (DayOfWeek day : DayOfWeek.values()) {
       days.add(new TrainingDay(day, List.copyOf(entriesByDay.get(day))));
     }
-    return new WeeklyTrainingSchedule(List.copyOf(days));
+    return new WeeklyTrainingSchedule(
+        List.copyOf(days), planStateOf(progress), planWeekOf(progress), RunningPlanGenerator.WEEKS);
+  }
+
+  /**
+   * Where this account's plan sits (design D1/D2): the single fact is {@link
+   * PlanAcceptanceRepository#planStartedAt(UUID)}, converted to the Monday of its week in the same
+   * zone {@link #currentWeekStart()} uses, so the week always advances at that Monday boundary.
+   */
+  private TrainingPlanProgress resolveProgress(UUID userId) {
+    return planAcceptanceRepository
+        .planStartedAt(userId)
+        .map(
+            startedAt ->
+                TrainingPlanProgress.since(
+                    startedAt
+                        .atZone(clock.getZone())
+                        .toLocalDate()
+                        .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+                    currentWeekStart(),
+                    RunningPlanGenerator.WEEKS))
+        .orElseGet(TrainingPlanProgress.NotStarted::new);
+  }
+
+  private static String planStateOf(TrainingPlanProgress progress) {
+    return switch (progress) {
+      case TrainingPlanProgress.NotStarted ignored -> "NOT_STARTED";
+      case TrainingPlanProgress.Active ignored -> "ACTIVE";
+      case TrainingPlanProgress.Completed ignored -> "COMPLETED";
+    };
+  }
+
+  private static Integer planWeekOf(TrainingPlanProgress progress) {
+    return (progress instanceof TrainingPlanProgress.Active active) ? active.weekNumber() : null;
   }
 
   /**
    * This week's sessions with the days the policy assigns them, before any stored override. Running
    * first, then strength, so a day holding both lists them in that order.
+   *
+   * <p>Running is visible only while the plan is {@link TrainingPlanProgress.Active} (its own week
+   * filters the generator's sessions); strength is visible on every state except {@link
+   * TrainingPlanProgress.NotStarted}, since it carries no plan-week concept to be "not started" or
+   * "completed" about (design D4).
    */
-  public List<PlannedSession> plannedSessions() {
+  public List<PlannedSession> plannedSessions(TrainingPlanProgress progress) {
     List<PlannedSession> planned = new ArrayList<>();
 
-    runningPlanService.currentPlan().stream()
-        .filter(session -> session.weekNumber() == PLAN_WEEK)
-        .forEach(
-            session ->
-                planned.add(
-                    new PlannedSession(
-                        runningSessionKey(session.sessionType()),
-                        session.dayOfWeek(),
-                        RUNNING_KIND,
-                        runningTitle(session.sessionType()),
-                        String.format(Locale.ROOT, "%.1f km", session.targetDistanceKm()),
-                        null,
-                        BodyView.FRONT)));
+    if (progress instanceof TrainingPlanProgress.Active active) {
+      runningPlanService.currentPlan().stream()
+          .filter(session -> session.weekNumber() == active.weekNumber())
+          .forEach(
+              session ->
+                  planned.add(
+                      new PlannedSession(
+                          runningSessionKey(session.sessionType()),
+                          session.dayOfWeek(),
+                          RUNNING_KIND,
+                          runningTitle(session.sessionType()),
+                          String.format(Locale.ROOT, "%.1f km", session.targetDistanceKm()),
+                          null,
+                          BodyView.FRONT)));
+    }
 
-    WeeklyTrainingDayPolicy.strengthDays()
-        .forEach(
-            (day, type) ->
-                workoutTemplateService
-                    .findByType(type)
-                    .ifPresent(
-                        template ->
-                            planned.add(
-                                new PlannedSession(
-                                    strengthSessionKey(type),
-                                    day,
-                                    STRENGTH_KIND,
-                                    strengthTitle(type),
-                                    template.items().size() + " ejercicios",
-                                    type.name(),
-                                    type.bodyView()))));
+    if (!(progress instanceof TrainingPlanProgress.NotStarted)) {
+      WeeklyTrainingDayPolicy.strengthDays()
+          .forEach(
+              (day, type) ->
+                  workoutTemplateService
+                      .findByType(type)
+                      .ifPresent(
+                          template ->
+                              planned.add(
+                                  new PlannedSession(
+                                      strengthSessionKey(type),
+                                      day,
+                                      STRENGTH_KIND,
+                                      strengthTitle(type),
+                                      template.items().size() + " ejercicios",
+                                      type.name(),
+                                      type.bodyView()))));
+    }
 
     return List.copyOf(planned);
   }

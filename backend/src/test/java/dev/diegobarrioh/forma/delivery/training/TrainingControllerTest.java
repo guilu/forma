@@ -98,7 +98,10 @@ class TrainingControllerTest {
                             null,
                             "PUSH",
                             BodyView.FRONT))),
-                new TrainingDay(DayOfWeek.FRIDAY, List.of())));
+                new TrainingDay(DayOfWeek.FRIDAY, List.of())),
+            "ACTIVE",
+            1,
+            16);
     when(scheduleService.currentWeek()).thenReturn(schedule);
 
     mockMvc
@@ -129,7 +132,10 @@ class TrainingControllerTest {
                                 "PLANNED",
                                 null,
                                 "PUSH",
-                                BodyView.FRONT))))));
+                                BodyView.FRONT)))),
+                "ACTIVE",
+                1,
+                16));
 
     mockMvc
         .perform(
@@ -145,7 +151,8 @@ class TrainingControllerTest {
 
   @Test
   void aNullDayRestoresThePlannedDay() throws Exception {
-    when(scheduleService.currentWeek()).thenReturn(new WeeklyTrainingSchedule(List.of()));
+    when(scheduleService.currentWeek())
+        .thenReturn(new WeeklyTrainingSchedule(List.of(), "ACTIVE", 1, 16));
 
     mockMvc
         .perform(

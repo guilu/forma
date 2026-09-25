@@ -38,9 +38,23 @@ class TrainingSessionRescheduleServiceTest {
   private final Clock clock = Clock.fixed(MONDAY, ZoneOffset.UTC);
   private final FakeTrainingSessionStatusRepository repository =
       new FakeTrainingSessionStatusRepository();
+  private final FakePlanAcceptanceRepository acceptanceRepository = acceptedAtMonday();
   private final WeeklyTrainingScheduleService scheduleService =
       new WeeklyTrainingScheduleService(
-          new RunningPlanService(), new WorkoutTemplateService(), repository, () -> USER_ID, clock);
+          new RunningPlanService(),
+          new WorkoutTemplateService(),
+          repository,
+          () -> USER_ID,
+          clock,
+          acceptanceRepository);
+
+  /** Accepted this same Monday, so the derived week is always 1 -> ACTIVE (D1). */
+  private static FakePlanAcceptanceRepository acceptedAtMonday() {
+    FakePlanAcceptanceRepository repository = new FakePlanAcceptanceRepository();
+    repository.markAccepted(USER_ID, MONDAY);
+    return repository;
+  }
+
   private final TrainingSessionRescheduleService service =
       new TrainingSessionRescheduleService(scheduleService, repository, () -> USER_ID);
 

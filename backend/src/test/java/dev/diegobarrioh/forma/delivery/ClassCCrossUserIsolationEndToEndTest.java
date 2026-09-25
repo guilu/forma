@@ -75,6 +75,12 @@ class ClassCCrossUserIsolationEndToEndTest {
         "INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)", USER_A, EMAIL_A, "!");
     jdbcTemplate.update(
         "INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)", USER_B, EMAIL_B, "!");
+    // Both accounts accept the plan "now" (D1/D2 of training-progression-and-logging): the
+    // training week is derived from plan_acceptance.accepted_at, so a session id like
+    // RUNNING:LONG_RUN only exists in the current week once a plan is accepted. Cascades away with
+    // the user rows on DELETE (V58 FK), no separate cleanup needed.
+    jdbcTemplate.update("INSERT INTO plan_acceptance (user_id) VALUES (?)", USER_A);
+    jdbcTemplate.update("INSERT INTO plan_acceptance (user_id) VALUES (?)", USER_B);
   }
 
   /**

@@ -35,10 +35,9 @@ public class WeeklyTrainingSummaryService {
 
   /** Computes the current week's training summary. */
   public WeeklyTrainingSummary currentSummary() {
+    WeeklyTrainingSchedule schedule = scheduleService.currentWeek();
     List<TrainingEntry> entries =
-        scheduleService.currentWeek().days().stream()
-            .flatMap(day -> day.entries().stream())
-            .toList();
+        schedule.days().stream().flatMap(day -> day.entries().stream()).toList();
 
     List<TrainingEntry> running = entries.stream().filter(isKind("RUNNING")).toList();
     List<TrainingEntry> strength = entries.stream().filter(isKind("STRENGTH")).toList();
@@ -48,7 +47,7 @@ public class WeeklyTrainingSummaryService {
     int plannedStrength = strength.size();
     int completedStrength = (int) strength.stream().filter(this::isCompleted).count();
 
-    Map<String, Double> kmById = plannedRunningDistancesById();
+    Map<String, Double> kmById = plannedRunningDistancesById(schedule.planWeek());
     double totalPlannedKm = round(sumKm(running, kmById, entry -> true));
     double completedKm = round(sumKm(running, kmById, this::isCompleted));
 
@@ -71,9 +70,16 @@ public class WeeklyTrainingSummaryService {
         message);
   }
 
-  private Map<String, Double> plannedRunningDistancesById() {
+  /**
+   * Running distances for the given plan week (null when NOT_STARTED or COMPLETED), looked up by
+   * session key to compute the weekly running volume.
+   */
+  private Map<String, Double> plannedRunningDistancesById(Integer planWeek) {
+    if (planWeek == null) {
+      return Map.of();
+    }
     return runningPlanService.currentPlan().stream()
-        .filter(session -> session.weekNumber() == WeeklyTrainingScheduleService.PLAN_WEEK)
+        .filter(session -> session.weekNumber() == planWeek)
         .collect(
             Collectors.toMap(
                 session -> WeeklyTrainingScheduleService.runningSessionKey(session.sessionType()),

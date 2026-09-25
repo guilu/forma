@@ -18,23 +18,27 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 
 /**
- * Unit tests for {@link WeeklyTrainingScheduleService} (FOR-26/FOR-27, re-keyed by V60): composes
- * running + strength + rest days from the real FOR-23/FOR-25 services, applies this week's stored
- * status, and honours a stored day override (no Spring — ADR-007).
+ * Unit tests for {@link WeeklyTrainingScheduleService} (FOR-26/FOR-27, re-keyed by V60; week
+ * progression by the training-progression-and-logging change, design D1-D4): composes running +
+ * strength + rest days from the real FOR-23/FOR-25 services, applies this week's stored status,
+ * honours a stored day override, and derives which week of the plan is showing from {@code
+ * plan_acceptance.accepted_at} — no persisted week counter (no Spring — ADR-007).
  */
 class WeeklyTrainingScheduleServiceTest {
 
   static final UUID USER_ID = UUID.randomUUID();
 
-  /** Monday 17 August 2026, so "this week" is a fixed, readable date in every assertion. */
-  private static final Instant MONDAY = Instant.parse("2026-08-17T09:00:00Z");
+  /** Monday 17 August 2026, the account's own acceptance Monday, so week 1 is this same date. */
+  private static final Instant ACCEPTED_MONDAY = Instant.parse("2026-08-17T09:00:00Z");
 
   private static final LocalDate THIS_WEEK = LocalDate.of(2026, 8, 17);
   private static final LocalDate LAST_WEEK = LocalDate.of(2026, 8, 10);
 
   private final FakeTrainingSessionStatusRepository statusRepository =
       new FakeTrainingSessionStatusRepository();
-  private final WeeklyTrainingScheduleService service = serviceAt(MONDAY);
+  private final FakePlanAcceptanceRepository acceptanceRepository =
+      new FakePlanAcceptanceRepository();
+  private final WeeklyTrainingScheduleService service = serviceAt(ACCEPTED_MONDAY);
 
   private WeeklyTrainingScheduleService serviceAt(Instant now) {
     return new WeeklyTrainingScheduleService(
@@ -42,12 +46,25 @@ class WeeklyTrainingScheduleServiceTest {
         new WorkoutTemplateService(),
         statusRepository,
         () -> USER_ID,
-        Clock.fixed(now, ZoneOffset.UTC));
+        Clock.fixed(now, ZoneOffset.UTC),
+        acceptanceRepository);
+  }
+
+  /** Same clock "now" as {@link #service}, but a caller-supplied Monday of acceptance. */
+  private WeeklyTrainingScheduleService serviceAcceptedAt(Instant now, Instant acceptedAt) {
+    WeeklyTrainingScheduleService svc = serviceAt(now);
+    acceptanceRepository.markAccepted(USER_ID, acceptedAt);
+    return svc;
+  }
+
+  private Map<DayOfWeek, TrainingDay> byDay(WeeklyTrainingSchedule schedule) {
+    return schedule.days().stream()
+        .collect(Collectors.toMap(TrainingDay::dayOfWeek, Function.identity()));
   }
 
   private Map<DayOfWeek, TrainingDay> byDay() {
-    return service.currentWeek().days().stream()
-        .collect(Collectors.toMap(TrainingDay::dayOfWeek, Function.identity()));
+    acceptanceRepository.markAccepted(USER_ID, ACCEPTED_MONDAY);
+    return byDay(service.currentWeek());
   }
 
   private TrainingEntry entry(DayOfWeek day, String id) {
@@ -120,7 +137,7 @@ class WeeklyTrainingScheduleServiceTest {
         THIS_WEEK,
         "RUNNING:LONG_RUN",
         SessionStatus.COMPLETED,
-        MONDAY,
+        ACCEPTED_MONDAY,
         "Buenas sensaciones");
 
     TrainingEntry saturdayRun = entry(DayOfWeek.SATURDAY, "RUNNING:LONG_RUN");
@@ -140,7 +157,7 @@ class WeeklyTrainingScheduleServiceTest {
         Instant.parse("2026-08-15T09:00:00Z"),
         "la semana pasada");
 
-    assertThat(service.currentWeek().days())
+    assertThat(byDay().values())
         .allSatisfy(
             day ->
                 assertThat(day.entries())
@@ -193,8 +210,69 @@ class WeeklyTrainingScheduleServiceTest {
     // read back on Saturday rather than landing in a bucket of its own.
     assertThat(serviceAt(Instant.parse("2026-08-20T23:30:00Z")).currentWeekStart())
         .isEqualTo(THIS_WEEK);
-    assertThat(serviceAt(MONDAY).currentWeekStart()).isEqualTo(THIS_WEEK);
+    assertThat(serviceAt(ACCEPTED_MONDAY).currentWeekStart()).isEqualTo(THIS_WEEK);
     assertThat(serviceAt(Instant.parse("2026-08-23T22:00:00Z")).currentWeekStart())
         .isEqualTo(THIS_WEEK);
+  }
+
+  // --- Week progression (D1-D4) ---
+
+  @Test
+  void reportsNotStartedWithAnEmptyWeekWhenNoAcceptanceIsStored() {
+    WeeklyTrainingSchedule schedule = service.currentWeek();
+
+    assertThat(schedule.planState()).isEqualTo("NOT_STARTED");
+    assertThat(schedule.planWeek()).isNull();
+    assertThat(schedule.planTotalWeeks()).isEqualTo(16);
+    assertThat(schedule.days()).allSatisfy(day -> assertThat(day.isRest()).isTrue());
+  }
+
+  @Test
+  void isWeekOneTheMondayItWasAccepted() {
+    acceptanceRepository.markAccepted(USER_ID, ACCEPTED_MONDAY);
+
+    WeeklyTrainingSchedule schedule = service.currentWeek();
+
+    assertThat(schedule.planState()).isEqualTo("ACTIVE");
+    assertThat(schedule.planWeek()).isEqualTo(1);
+  }
+
+  @Test
+  void planWeekThirteenPlansTheTenKilometerLongRun() {
+    Instant twelveWeeksLater = ACCEPTED_MONDAY.plus(12 * 7, java.time.temporal.ChronoUnit.DAYS);
+    WeeklyTrainingScheduleService laterService =
+        serviceAcceptedAt(twelveWeeksLater, ACCEPTED_MONDAY);
+
+    WeeklyTrainingSchedule schedule = laterService.currentWeek();
+
+    assertThat(schedule.planWeek()).isEqualTo(13);
+    assertThat(byDay(schedule).get(DayOfWeek.SATURDAY).entries())
+        .anySatisfy(
+            entry -> {
+              assertThat(entry.id()).isEqualTo("RUNNING:LONG_RUN");
+              assertThat(entry.detail()).isEqualTo("10.0 km");
+            });
+  }
+
+  /** D4: once the 16-week plan is behind the account, running stops but strength survives. */
+  @Test
+  void completedPlanDropsRunningButKeepsStrength() {
+    Instant sixteenWeeksLater = ACCEPTED_MONDAY.plus(16 * 7, java.time.temporal.ChronoUnit.DAYS);
+    WeeklyTrainingScheduleService laterService =
+        serviceAcceptedAt(sixteenWeeksLater, ACCEPTED_MONDAY);
+
+    WeeklyTrainingSchedule schedule = laterService.currentWeek();
+
+    assertThat(schedule.planState()).isEqualTo("COMPLETED");
+    assertThat(schedule.planWeek()).isNull();
+    Map<DayOfWeek, TrainingDay> days = byDay(schedule);
+    assertThat(days.values())
+        .flatExtracting(TrainingDay::entries)
+        .extracting(TrainingEntry::kind)
+        .doesNotContain("RUNNING");
+    assertThat(days.values())
+        .flatExtracting(TrainingDay::entries)
+        .filteredOn(e -> e.kind().equals("STRENGTH"))
+        .hasSize(3);
   }
 }

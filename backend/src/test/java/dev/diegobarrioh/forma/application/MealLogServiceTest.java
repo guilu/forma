@@ -93,8 +93,16 @@ class MealLogServiceTest {
               new WorkoutTemplateService(),
               new FakeTrainingSessionStatusRepository(),
               () -> USER_ID,
-              FIXED_CLOCK),
+              FIXED_CLOCK,
+              acceptedAt(USER_ID, LocalDate.of(2026, 7, 13))),
           FIXED_CLOCK);
+
+  /** A plan accepted on {@code weekStart} itself, so the derived week is always 1 (D1). */
+  private static FakePlanAcceptanceRepository acceptedAt(UUID userId, LocalDate weekStart) {
+    FakePlanAcceptanceRepository repository = new FakePlanAcceptanceRepository();
+    repository.markAccepted(userId, weekStart.atStartOfDay(ZoneOffset.UTC).toInstant());
+    return repository;
+  }
 
   private final RecordingMealLogRepository repository = new RecordingMealLogRepository();
   private final MealLogService service =
