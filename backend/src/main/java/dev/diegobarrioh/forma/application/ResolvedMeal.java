@@ -19,7 +19,8 @@ import java.util.List;
  * @param scheduledTime when it is meant to happen; null when nobody fixed one
  * @param optional whether the meal can be skipped
  * @param instructions the rule, for a meal that is a rule rather than a list
- * @param targets what this meal was asked to hit; possibly unset
+ * @param targets what this meal was asked to hit; never null — {@link MacroTargets#none()} when
+ *     nobody set one, same as {@link PlanMeal}'s own default
  * @param totals what its lines come to
  * @param items its lines
  */
@@ -35,6 +36,7 @@ public record ResolvedMeal(
     List<ResolvedItem> items) {
 
   public ResolvedMeal {
+    targets = targets == null ? MacroTargets.none() : targets;
     items = List.copyOf(items);
   }
 }
