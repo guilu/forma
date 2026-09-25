@@ -362,10 +362,12 @@ function MealCard({
           {meal.items.map((item, idx) => (
             <li key={`${item.food}-${idx}`} className={styles.item}>
               {item.unresolved ? (
-                <>
-                  <span className={styles.itemFood}>{item.food}</span>
-                  <span className={styles.itemUnresolved}> · no disponible</span>
-                </>
+                // El id ausente (slug del catálogo o UUID de receta) no dice nada a quien lee el
+                // plan; se guarda en `title` para depurar, no como texto visible (FOR-728 D5,
+                // review finding #5).
+                <span className={styles.itemFood} title={item.unresolved}>
+                  Alimento no disponible
+                </span>
               ) : (
                 <span className={styles.itemFood}>
                   {item.food} {grams(item.quantityG)}

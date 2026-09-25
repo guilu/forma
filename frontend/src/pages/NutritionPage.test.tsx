@@ -449,7 +449,10 @@ describe('NutritionPage', () => {
 
   /**
    * An unresolved item (food gone from the catalog) does NOT print "id 0g" — zero is
-   * indistinguishable from truly resolved 0g. Instead it carries a marker (FOR-728 D5).
+   * indistinguishable from truly resolved 0g. It also must not print the raw missing id as its
+   * visible label: `NutritionPlanReader.unresolved()` sets `label = id`, and a catalog slug or a
+   * bare UUID means nothing to whoever reads the plan (FOR-728 D5, review finding #5). A fixed,
+   * human-readable label is shown instead; the id stays available via `title` for debugging.
    */
   it('does not print a confident 0g for an item whose food could not be resolved', async () => {
     const dayWithUnresolved: NutritionDay = {
@@ -483,9 +486,12 @@ describe('NutritionPage', () => {
 
     // Wait for the meal to render.
     await screen.findByText('Yogur griego 200g');
-    // The marker is split across spans; use regex to match.
-    expect(screen.getByText(/no disponible/)).toBeInTheDocument();
+    const unresolvedLabel = screen.getByText('Alimento no disponible');
+    expect(unresolvedLabel).toBeInTheDocument();
+    expect(unresolvedLabel).toHaveAttribute('title', 'unknown-food');
+    // Neither the raw id alone nor concatenated with a fake quantity should ever be the visible text.
     expect(screen.queryByText('unknown-food 0g')).not.toBeInTheDocument();
+    expect(screen.queryByText('unknown-food')).not.toBeInTheDocument();
   });
 
   /**
