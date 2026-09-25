@@ -199,7 +199,7 @@ describe('NutritionPage', () => {
    * the meal name duplicates the type label, the heading falls back to that label; the type line
    * is hidden to avoid repetition (FOR-728 D7).
    */
-  it('titles a meal with its food when its name only repeats the meal type', async () => {
+  it('falls back the heading to the meal type label when the name only repeats it', async () => {
     getDayMock.mockResolvedValue({
       ...strengthDay,
       meals: [
@@ -502,8 +502,11 @@ describe('NutritionPage', () => {
     getDayMock.mockResolvedValue(richDay);
     renderPage();
 
-    // The note appears after the meal list in the same section.
-    expect(await screen.findByText('Running 4-5 km')).toBeInTheDocument();
+    // Scoped to the meals section on purpose: the whole point of keeping the note out of the
+    // page header (FOR-728 D8, so the layout check's date-finding logic keeps matching) is that
+    // this assertion would fail if the note ever moved back there (review finding #7).
+    const mealsSection = await screen.findByRole('region', { name: /comidas/i });
+    expect(within(mealsSection).getByText('Running 4-5 km')).toBeInTheDocument();
   });
 
   it('shows no note block when the day carries none', async () => {

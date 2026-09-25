@@ -226,6 +226,9 @@ function renderContent(
         </Card>
       </section>
 
+      {/* `role="region"` is explicit (not just the implicit landmark of a labelled <section>)
+          because the day-notes test below queries it via `getByRole('region', ...)` to scope
+          its assertion to this section (FOR-728 review finding #7/#11). */}
       <section className={styles.meals} role="region" aria-label="Comidas de hoy">
         <div className={styles.mealsHead}>
           <h2 className={styles.mealsTitle}>Comidas de Hoy</h2>
