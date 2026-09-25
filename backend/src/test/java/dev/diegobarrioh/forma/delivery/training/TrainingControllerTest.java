@@ -110,6 +110,29 @@ class TrainingControllerTest {
         .andExpect(jsonPath("$.days[0].sessions[0].id").value("STRENGTH:PUSH"));
   }
 
+  /**
+   * Design D2 kept one guard for {@code GET /training/week}: if a second acceptance gate were ever
+   * reintroduced and disagreed with the schedule service's own read, {@code IllegalStateException}
+   * must map to 500 {@code INTERNAL_ERROR} with a {@code correlationId} — never leak internally, or
+   * silently degrade. {@link dev.diegobarrioh.forma.delivery.error.GlobalExceptionHandler}'s
+   * catch-all already does this for every unhandled exception (verified generically in {@code
+   * GlobalExceptionHandlerTest}); this test pins that same behavior for this endpoint specifically,
+   * so nobody has to re-derive it from the generic case.
+   */
+  @Test
+  void anIllegalStateFromTheScheduleServiceMapsToInternalErrorWithACorrelationId()
+      throws Exception {
+    when(scheduleService.currentWeek())
+        .thenThrow(new IllegalStateException("segundo gate en desacuerdo con el primero"));
+
+    mockMvc
+        .perform(get("/api/v1/training/week").header("X-Correlation-Id", "corr-week-500"))
+        .andExpect(status().isInternalServerError())
+        .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"))
+        .andExpect(jsonPath("$.correlationId").value("corr-week-500"))
+        .andExpect(jsonPath("$.message").value("An unexpected error occurred"));
+  }
+
   @Test
   void returnsTheWeekWithSessionIdsAndRestDays() throws Exception {
     WeeklyTrainingSchedule schedule =
