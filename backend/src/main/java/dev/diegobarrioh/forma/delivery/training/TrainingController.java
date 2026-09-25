@@ -1,7 +1,6 @@
 package dev.diegobarrioh.forma.delivery.training;
 
 import dev.diegobarrioh.forma.application.MuscleWorkedMapService;
-import dev.diegobarrioh.forma.application.PlanActivationService;
 import dev.diegobarrioh.forma.application.TrainingSessionRescheduleService;
 import dev.diegobarrioh.forma.application.TrainingSessionStatusService;
 import dev.diegobarrioh.forma.application.WeeklyTrainingScheduleService;
@@ -35,7 +34,6 @@ public class TrainingController {
   private final TrainingSessionStatusService statusService;
   private final WeeklyTrainingSummaryService summaryService;
   private final MuscleWorkedMapService muscleWorkedMapService;
-  private final PlanActivationService planActivationService;
   private final TrainingSessionRescheduleService rescheduleService;
 
   public TrainingController(
@@ -43,33 +41,27 @@ public class TrainingController {
       TrainingSessionStatusService statusService,
       WeeklyTrainingSummaryService summaryService,
       MuscleWorkedMapService muscleWorkedMapService,
-      PlanActivationService planActivationService,
       TrainingSessionRescheduleService rescheduleService) {
     this.scheduleService = scheduleService;
     this.statusService = statusService;
     this.summaryService = summaryService;
     this.muscleWorkedMapService = muscleWorkedMapService;
-    this.planActivationService = planActivationService;
     this.rescheduleService = rescheduleService;
   }
 
   /**
-   * Returns the current week's training calendar (Monday through Sunday).
+   * Returns the current week's training calendar (Monday through Sunday). Always 200 (design D2 of
+   * training-progression-and-logging): whether the account never accepted a plan, is mid-cycle, or
+   * finished it, is answered by {@code planState} in the body, not by the status code.
    *
-   * <p>Gated on the account having ACCEPTED its plan (V58), not on having filled in the onboarding
-   * form. They used to be the same check and they are not the same question: V57 left accounts
-   * holding a seeded plan with an unset onboarding flag, and this endpoint answered "no training"
-   * to somebody whose plan was sitting right there.
-   *
-   * <p>The nutrition endpoints need no equivalent check — their plan is a row whose status already
-   * says whether it is being followed. This one's plan lives in code ({@code
-   * RunningPlanGenerator}), so the acceptance is the only thing there is to ask.
+   * <p>There used to be a second gate here on the account having accepted its plan (V58), separate
+   * from {@link WeeklyTrainingScheduleService}'s own read of that fact. That duplication is gone:
+   * the schedule service's {@code PlanAcceptanceRepository} read is now the single portero both the
+   * schedule and this response derive from, so "gate says yes but no acceptance instant exists" is
+   * unreachable by construction.
    */
   @GetMapping("/week")
   public TrainingWeekResponse week() {
-    if (!planActivationService.accepted()) {
-      return TrainingWeekResponse.empty();
-    }
     return TrainingWeekResponse.from(scheduleService.currentWeek());
   }
 

@@ -290,19 +290,41 @@ function renderContent(
   }
 
   return (
-    <div className={styles.layout}>
-      <WeekStrip
-        days={state.week.days}
-        selectedDay={selectedDay}
-        mark={mark}
-        move={move}
-        pendingId={pendingId}
-        openDetail={openDetail}
-        openTraining={openTraining}
-        anatomySex={anatomySex}
-      />
-      <WeekStats days={state.week.days} />
-    </div>
+    <>
+      {state.week.planState === 'COMPLETED' && <CompletedPlanBanner />}
+      <div className={styles.layout}>
+        <WeekStrip
+          days={state.week.days}
+          selectedDay={selectedDay}
+          mark={mark}
+          move={move}
+          pendingId={pendingId}
+          openDetail={openDetail}
+          openTraining={openTraining}
+          anatomySex={anatomySex}
+        />
+        <WeekStats days={state.week.days} />
+      </div>
+    </>
+  );
+}
+
+/**
+ * Shown once the plan's cycle is over (design D3/D4 of
+ * training-progression-and-logging): running stops (the server no longer
+ * sends it), but strength keeps going, so this sits *above* the calendar
+ * rather than replacing it — unlike {@link NoPlanEmptyState}, which replaces
+ * the whole page because there genuinely is nothing to show.
+ *
+ * <p>No action here yet: reaccepting a plan is slice A2 of this same change,
+ * not this one. A button that restarted nothing would be exactly the
+ * contradiction this change exists to fix.
+ */
+function CompletedPlanBanner() {
+  return (
+    <p className={styles.completedBanner} role="status">
+      Has completado tu plan de entrenamiento. La fuerza sigue en tu calendario.
+    </p>
   );
 }
 

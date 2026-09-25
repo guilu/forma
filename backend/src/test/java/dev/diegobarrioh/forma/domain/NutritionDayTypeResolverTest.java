@@ -2,12 +2,14 @@ package dev.diegobarrioh.forma.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.diegobarrioh.forma.application.FakePlanAcceptanceRepository;
 import dev.diegobarrioh.forma.application.FakeTrainingSessionStatusRepository;
 import dev.diegobarrioh.forma.application.RunningPlanService;
 import dev.diegobarrioh.forma.application.WeeklyTrainingSchedule;
 import dev.diegobarrioh.forma.application.WeeklyTrainingScheduleService;
 import dev.diegobarrioh.forma.application.WorkoutTemplateService;
 import java.time.DayOfWeek;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Map;
 import java.util.UUID;
@@ -54,13 +56,18 @@ class NutritionDayTypeResolverTest {
   @Test
   void agreesWithWeeklyTrainingScheduleServiceOnEveryDayOfTheWeek() {
     // Same day-kind source (FOR-128): a policy change updates both, so they can never drift.
+    UUID userId = UUID.randomUUID();
+    FakePlanAcceptanceRepository acceptanceRepository = new FakePlanAcceptanceRepository();
+    // Accepted "now" so the derived week is always 1 -> ACTIVE, whenever this test runs (D1).
+    acceptanceRepository.markAccepted(userId, Instant.now());
     WeeklyTrainingScheduleService scheduleService =
         new WeeklyTrainingScheduleService(
             new RunningPlanService(),
             new WorkoutTemplateService(),
             new FakeTrainingSessionStatusRepository(),
-            () -> UUID.randomUUID(),
-            java.time.Clock.systemUTC());
+            () -> userId,
+            java.time.Clock.systemUTC(),
+            acceptanceRepository);
     Map<DayOfWeek, WeeklyTrainingSchedule.TrainingDay> byDay =
         scheduleService.currentWeek().days().stream()
             .collect(

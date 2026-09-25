@@ -853,6 +853,81 @@ describe('TrainingPage', () => {
     );
   });
 
+  /*
+   * D3/D4 of training-progression-and-logging: past the plan's last week, the
+   * calendar still shows what never "completes" (strength has no plan-week
+   * concept) but says plainly that the cycle is over. No CTA yet — that is A2.
+   */
+  describe('plan completado (design D3/D4)', () => {
+    const completedWeek: TrainingWeek = {
+      days: [
+        {
+          dayOfWeek: 'MONDAY',
+          rest: false,
+          sessions: [
+            {
+              id: 'STRENGTH:PUSH',
+              kind: 'STRENGTH',
+              bodyView: 'FRONT',
+              title: 'Fuerza · Empuje',
+              detail: '5 ejercicios',
+              status: 'PLANNED',
+              workoutType: 'PUSH',
+            },
+          ],
+        },
+        { dayOfWeek: 'TUESDAY', rest: true, sessions: [] },
+      ],
+      planState: 'COMPLETED',
+      planWeek: null,
+      planTotalWeeks: 16,
+    };
+
+    it('shows the completed-plan message and no CTA, without hiding the strength that keeps going', async () => {
+      getWeekMock.mockResolvedValue(completedWeek);
+
+      renderPage();
+
+      expect(
+        await screen.findByText(/has completado tu plan de entrenamiento/i),
+      ).toBeInTheDocument();
+      // Strength keeps going past the terminal state (D4) — it must still render.
+      expect(screen.getByText('Fuerza · Empuje')).toBeInTheDocument();
+      // No restart CTA yet — that is slice A2, not this one.
+      expect(screen.queryByRole('button', { name: /reiniciar/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: /reiniciar/i })).not.toBeInTheDocument();
+    });
+
+    it('never lists a running session once the cycle is over', async () => {
+      getWeekMock.mockResolvedValue(completedWeek);
+
+      renderPage();
+      await screen.findByText(/has completado tu plan de entrenamiento/i);
+
+      // The week strip should have no running sessions, only the strength that
+      // keeps going (D4). The stats row still says "Carreras" as a column header,
+      // but it will show 0/0 because no running session reached the calendar.
+      const weekStrip = screen.getByRole('list', { name: 'Semana de entrenamiento' });
+      expect(
+        within(weekStrip).queryByText(/Carrera|Rodaje|Series|Tirada/i),
+      ).not.toBeInTheDocument();
+    });
+
+    it('shows no completed-plan message for an active plan', async () => {
+      getWeekMock.mockResolvedValue({
+        ...week,
+        planState: 'ACTIVE',
+        planWeek: 1,
+        planTotalWeeks: 16,
+      });
+
+      renderPage();
+      await screen.findByRole('heading', { name: 'Hoy · Lunes' });
+
+      expect(screen.queryByText(/has completado tu plan/i)).not.toBeInTheDocument();
+    });
+  });
+
   it('renders a rest day today with no session actions', async () => {
     vi.setSystemTime(new Date('2026-07-12T09:00:00')); // Sunday
     getWeekMock.mockResolvedValue(week);

@@ -258,6 +258,9 @@ const TRAINING_WEEK = {
       ],
     },
   ],
+  planState: 'ACTIVE',
+  planWeek: 5,
+  planTotalWeeks: 16,
 };
 
 /*

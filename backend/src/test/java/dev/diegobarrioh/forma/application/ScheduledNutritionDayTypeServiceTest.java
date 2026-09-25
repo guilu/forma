@@ -30,13 +30,23 @@ class ScheduledNutritionDayTypeServiceTest {
 
   private final FakeTrainingSessionStatusRepository statusRepository =
       new FakeTrainingSessionStatusRepository();
+  private final FakePlanAcceptanceRepository acceptanceRepository = acceptedAtMonday();
   private final WeeklyTrainingScheduleService scheduleService =
       new WeeklyTrainingScheduleService(
           new RunningPlanService(),
           new WorkoutTemplateService(),
           statusRepository,
           () -> USER_ID,
-          Clock.fixed(MONDAY_MORNING, ZoneOffset.UTC));
+          Clock.fixed(MONDAY_MORNING, ZoneOffset.UTC),
+          acceptanceRepository);
+
+  /** Accepted this same Monday, so the derived week is always 1 -> ACTIVE (D1). */
+  private static FakePlanAcceptanceRepository acceptedAtMonday() {
+    FakePlanAcceptanceRepository repository = new FakePlanAcceptanceRepository();
+    repository.markAccepted(USER_ID, MONDAY_MORNING);
+    return repository;
+  }
+
   private final ScheduledNutritionDayTypeService service =
       new ScheduledNutritionDayTypeService(
           scheduleService, Clock.fixed(MONDAY_MORNING, ZoneOffset.UTC));

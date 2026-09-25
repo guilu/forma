@@ -74,4 +74,16 @@ class JdbcPlanAcceptanceRepositoryTest {
     assertThat(acceptances.accepted(UUID.fromString("99999999-9999-9999-9999-999999999999")))
         .isFalse();
   }
+
+  @Test
+  void anAccountThatNeverAcceptedHasNoStartInstant() {
+    assertThat(acceptances.planStartedAt(USER)).isEmpty();
+  }
+
+  @Test
+  void planStartedAtIsTheAcceptedInstant() {
+    acceptances.markAccepted(USER, FIRST);
+
+    assertThat(acceptances.planStartedAt(USER)).contains(FIRST);
+  }
 }

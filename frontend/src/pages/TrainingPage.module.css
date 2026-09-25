@@ -14,6 +14,21 @@
 }
 
 /*
+ * Design D3/D4 of training-progression-and-logging: sits above the calendar,
+ * not instead of it — strength keeps showing once the plan cycle is over, so
+ * this is a notice, not the `EmptyState` this page shows when there is truly
+ * nothing to draw.
+ */
+.completedBanner {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+}
+
+/*
  * Two columns that wrap, exactly like the dashboard's header.
  *
  * FOR-193 pinned the title and the date to one row at every width, to stop the

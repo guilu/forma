@@ -29,9 +29,23 @@ export interface TrainingDay {
   readonly sessions: TrainingSession[];
 }
 
-/** The composed training week (Monday through Sunday). */
+/**
+ * The composed training week (Monday through Sunday).
+ *
+ * <p>`planState`/`planWeek`/`planTotalWeeks` (design D3 of
+ * training-progression-and-logging) say where the account's plan cycle sits:
+ * `NOT_STARTED` (never accepted one), `ACTIVE` (mid-cycle, `planWeek` is the
+ * 1-based week), or `COMPLETED` (finished; `planWeek` is `null`). Optional
+ * here — not because the real API ever omits them, it always sends all
+ * three — but because many fixtures across this codebase predate this field
+ * and only describe `days`; treat a missing `planState` as "unknown", not as
+ * `NOT_STARTED`.
+ */
 export interface TrainingWeek {
   readonly days: TrainingDay[];
+  readonly planState?: 'NOT_STARTED' | 'ACTIVE' | 'COMPLETED';
+  readonly planWeek?: number | null;
+  readonly planTotalWeeks?: number;
 }
 
 /** The updated session status returned by `PATCH …/status` (FOR-27). */

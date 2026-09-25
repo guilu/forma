@@ -13,7 +13,6 @@ import dev.diegobarrioh.forma.application.MuscleWorkedMap;
 import dev.diegobarrioh.forma.application.MuscleWorkedMap.MuscleWorked;
 import dev.diegobarrioh.forma.application.MuscleWorkedMapService;
 import dev.diegobarrioh.forma.application.NotFoundException;
-import dev.diegobarrioh.forma.application.PlanActivationService;
 import dev.diegobarrioh.forma.application.StoredSessionStatus;
 import dev.diegobarrioh.forma.application.TrainingSessionRescheduleService;
 import dev.diegobarrioh.forma.application.TrainingSessionStatusService;
@@ -41,6 +40,10 @@ import org.springframework.test.web.servlet.MockMvc;
 /**
  * Web-slice tests for {@link TrainingController} (FOR-26/FOR-27): the week response shape and the
  * status-update endpoint (happy path, validation, not-found).
+ *
+ * <p>There is no gate here (design D2 of training-progression-and-logging): {@code GET
+ * /training/week} is always 200, and {@code planState} is what tells the caller whether the account
+ * has never accepted a plan, is mid-cycle, or finished it — never a 4xx/204 for that.
  */
 @WebMvcTest(TrainingController.class)
 @Import(WebMvcAuthTestConfig.class)
@@ -51,25 +54,83 @@ class TrainingControllerTest {
   @MockBean private TrainingSessionStatusService statusService;
   @MockBean private WeeklyTrainingSummaryService summaryService;
   @MockBean private MuscleWorkedMapService muscleWorkedMapService;
-  @MockBean private PlanActivationService planActivationService;
   @MockBean private TrainingSessionRescheduleService rescheduleService;
 
-  /** Default to an accepted plan so the week is served; individual tests override. */
-  @org.junit.jupiter.api.BeforeEach
-  void planAcceptedByDefault() {
-    when(planActivationService.accepted()).thenReturn(true);
-  }
-
   @Test
-  void returnsAnEmptyWeekUntilThePlanIsAccepted() throws Exception {
-    when(planActivationService.accepted()).thenReturn(false);
+  void returnsNotStartedWithANullWeekAndAnEmptyCalendarWhenNoPlanWasEverAccepted()
+      throws Exception {
+    when(scheduleService.currentWeek())
+        .thenReturn(
+            new WeeklyTrainingSchedule(
+                List.of(
+                    new TrainingDay(DayOfWeek.MONDAY, List.of()),
+                    new TrainingDay(DayOfWeek.TUESDAY, List.of())),
+                "NOT_STARTED",
+                null,
+                16));
 
     mockMvc
         .perform(get("/api/v1/training/week"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.days.length()").value(7))
+        .andExpect(jsonPath("$.planState").value("NOT_STARTED"))
+        .andExpect(jsonPath("$.planWeek").isEmpty())
+        .andExpect(jsonPath("$.planTotalWeeks").value(16))
         .andExpect(jsonPath("$.days[0].rest").value(true))
         .andExpect(jsonPath("$.days[0].sessions").isEmpty());
+  }
+
+  @Test
+  void returnsCompletedWithANullWeekWhenThePlanCycleIsOver() throws Exception {
+    when(scheduleService.currentWeek())
+        .thenReturn(
+            new WeeklyTrainingSchedule(
+                List.of(
+                    new TrainingDay(
+                        DayOfWeek.TUESDAY,
+                        List.of(
+                            new TrainingEntry(
+                                "STRENGTH:PUSH",
+                                "STRENGTH",
+                                "Fuerza · Empuje",
+                                "5 ejercicios",
+                                "PLANNED",
+                                null,
+                                "PUSH",
+                                BodyView.FRONT)))),
+                "COMPLETED",
+                null,
+                16));
+
+    mockMvc
+        .perform(get("/api/v1/training/week"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.planState").value("COMPLETED"))
+        .andExpect(jsonPath("$.planWeek").isEmpty())
+        // Strength keeps going past the terminal state (design D4); only running stops.
+        .andExpect(jsonPath("$.days[0].sessions[0].id").value("STRENGTH:PUSH"));
+  }
+
+  /**
+   * Design D2 kept one guard for {@code GET /training/week}: if a second acceptance gate were ever
+   * reintroduced and disagreed with the schedule service's own read, {@code IllegalStateException}
+   * must map to 500 {@code INTERNAL_ERROR} with a {@code correlationId} — never leak internally, or
+   * silently degrade. {@link dev.diegobarrioh.forma.delivery.error.GlobalExceptionHandler}'s
+   * catch-all already does this for every unhandled exception (verified generically in {@code
+   * GlobalExceptionHandlerTest}); this test pins that same behavior for this endpoint specifically,
+   * so nobody has to re-derive it from the generic case.
+   */
+  @Test
+  void anIllegalStateFromTheScheduleServiceMapsToInternalErrorWithACorrelationId()
+      throws Exception {
+    when(scheduleService.currentWeek())
+        .thenThrow(new IllegalStateException("segundo gate en desacuerdo con el primero"));
+
+    mockMvc
+        .perform(get("/api/v1/training/week").header("X-Correlation-Id", "corr-week-500"))
+        .andExpect(status().isInternalServerError())
+        .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"))
+        .andExpect(jsonPath("$.correlationId").value("corr-week-500"))
+        .andExpect(jsonPath("$.message").value("An unexpected error occurred"));
   }
 
   @Test
@@ -98,12 +159,18 @@ class TrainingControllerTest {
                             null,
                             "PUSH",
                             BodyView.FRONT))),
-                new TrainingDay(DayOfWeek.FRIDAY, List.of())));
+                new TrainingDay(DayOfWeek.FRIDAY, List.of())),
+            "ACTIVE",
+            1,
+            16);
     when(scheduleService.currentWeek()).thenReturn(schedule);
 
     mockMvc
         .perform(get("/api/v1/training/week"))
         .andExpect(status().isOk())
+        .andExpect(jsonPath("$.planState").value("ACTIVE"))
+        .andExpect(jsonPath("$.planWeek").value(1))
+        .andExpect(jsonPath("$.planTotalWeeks").value(16))
         .andExpect(jsonPath("$.days[0].sessions[0].id").value("RUNNING:LONG_RUN"))
         .andExpect(jsonPath("$.days[0].sessions[0].status").value("PLANNED"))
         .andExpect(jsonPath("$.days[0].sessions[0].workoutType").doesNotExist())
@@ -129,7 +196,10 @@ class TrainingControllerTest {
                                 "PLANNED",
                                 null,
                                 "PUSH",
-                                BodyView.FRONT))))));
+                                BodyView.FRONT)))),
+                "ACTIVE",
+                1,
+                16));
 
     mockMvc
         .perform(
@@ -145,7 +215,8 @@ class TrainingControllerTest {
 
   @Test
   void aNullDayRestoresThePlannedDay() throws Exception {
-    when(scheduleService.currentWeek()).thenReturn(new WeeklyTrainingSchedule(List.of()));
+    when(scheduleService.currentWeek())
+        .thenReturn(new WeeklyTrainingSchedule(List.of(), "ACTIVE", 1, 16));
 
     mockMvc
         .perform(

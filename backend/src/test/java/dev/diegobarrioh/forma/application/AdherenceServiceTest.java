@@ -53,13 +53,23 @@ class AdherenceServiceTest {
 
   private final FakeTrainingSessionStatusRepository statusRepository =
       new FakeTrainingSessionStatusRepository();
+  private final FakePlanAcceptanceRepository acceptanceRepository = acceptedAt(USER_ID, WEEK_START);
   private final WeeklyTrainingScheduleService scheduleService =
       new WeeklyTrainingScheduleService(
           new RunningPlanService(),
           new WorkoutTemplateService(),
           statusRepository,
           () -> USER_ID,
-          FIXED_CLOCK);
+          FIXED_CLOCK,
+          acceptanceRepository);
+
+  /** A plan accepted on {@code weekStart} itself, so the derived week is always 1 (D1). */
+  private static FakePlanAcceptanceRepository acceptedAt(UUID userId, LocalDate weekStart) {
+    FakePlanAcceptanceRepository repository = new FakePlanAcceptanceRepository();
+    repository.markAccepted(userId, weekStart.atStartOfDay(ZoneOffset.UTC).toInstant());
+    return repository;
+  }
+
   private final FakeMealLogRepository mealLogRepository = new FakeMealLogRepository();
   private final FakeBodyMeasurementRepository bodyMeasurementRepository =
       new FakeBodyMeasurementRepository();
@@ -231,7 +241,8 @@ class AdherenceServiceTest {
             new WorkoutTemplateService(),
             statusRepository,
             () -> otherUserId,
-            FIXED_CLOCK);
+            FIXED_CLOCK,
+            acceptedAt(otherUserId, WEEK_START));
     AdherenceService otherUserService =
         new AdherenceService(
             otherScheduleService,
