@@ -2,8 +2,6 @@ package dev.diegobarrioh.forma.delivery.training;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import dev.diegobarrioh.forma.application.WeeklyTrainingSchedule;
-import java.time.DayOfWeek;
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -13,8 +11,14 @@ import java.util.List;
  * controllers never return application/domain types directly). {@code dayOfWeek} is serialized as
  * its name (e.g. {@code "MONDAY"}); {@code rest} flags days with no sessions. Each session carries
  * a stable {@code id} for marking completion (FOR-27) and its current {@code status}/{@code notes}.
+ *
+ * <p>{@code planState} is {@code NOT_STARTED}, {@code ACTIVE}, or {@code COMPLETED} (design D3 of
+ * training-progression-and-logging); {@code planWeek} is the 1-based week number while {@code
+ * ACTIVE} and {@code null} otherwise — serialized explicitly, never omitted, so the caller does not
+ * confuse "not applicable" with "missing".
  */
-public record TrainingWeekResponse(List<Day> days) {
+public record TrainingWeekResponse(
+    List<Day> days, String planState, Integer planWeek, int planTotalWeeks) {
 
   public record Day(String dayOfWeek, boolean rest, List<Session> sessions) {}
 
@@ -53,19 +57,7 @@ public record TrainingWeekResponse(List<Day> days) {
                                         entry.bodyView().name()))
                             .toList()))
             .toList();
-    return new TrainingWeekResponse(days);
-  }
-
-  /**
-   * Empty week for the first-run gate (FOR-169): Monday–Sunday, every day a rest day with no
-   * sessions, so a pre-onboarding user sees no "active" training plan. The frontend treats a week
-   * with no sessions as its empty state.
-   */
-  public static TrainingWeekResponse empty() {
-    List<Day> days =
-        Arrays.stream(DayOfWeek.values())
-            .map(dayOfWeek -> new Day(dayOfWeek.name(), true, List.of()))
-            .toList();
-    return new TrainingWeekResponse(days);
+    return new TrainingWeekResponse(
+        days, schedule.planState(), schedule.planWeek(), schedule.planTotalWeeks());
   }
 }

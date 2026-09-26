@@ -2,12 +2,14 @@ package dev.diegobarrioh.forma.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.diegobarrioh.forma.application.FakePlanAcceptanceRepository;
 import dev.diegobarrioh.forma.application.FakeTrainingSessionStatusRepository;
 import dev.diegobarrioh.forma.application.RunningPlanService;
 import dev.diegobarrioh.forma.application.WeeklyTrainingSchedule;
 import dev.diegobarrioh.forma.application.WeeklyTrainingScheduleService;
 import dev.diegobarrioh.forma.application.WorkoutTemplateService;
 import java.time.DayOfWeek;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Map;
 import java.util.UUID;
@@ -32,35 +34,74 @@ class NutritionDayTypeResolverTest {
   private static final LocalDate A_FRIDAY = LocalDate.of(2026, 7, 17);
   private static final LocalDate A_SUNDAY = LocalDate.of(2026, 7, 19);
 
+  private static final TrainingPlanProgress ACTIVE = new TrainingPlanProgress.Active(1);
+
   @Test
   void resolvesMondayWednesdayAndSaturdayToRunning() {
-    assertThat(NutritionDayTypeResolver.resolve(A_MONDAY)).isEqualTo(NutritionDayType.RUNNING);
-    assertThat(NutritionDayTypeResolver.resolve(A_WEDNESDAY)).isEqualTo(NutritionDayType.RUNNING);
-    assertThat(NutritionDayTypeResolver.resolve(A_SATURDAY)).isEqualTo(NutritionDayType.RUNNING);
+    assertThat(NutritionDayTypeResolver.resolve(A_MONDAY, ACTIVE))
+        .isEqualTo(NutritionDayType.RUNNING);
+    assertThat(NutritionDayTypeResolver.resolve(A_WEDNESDAY, ACTIVE))
+        .isEqualTo(NutritionDayType.RUNNING);
+    assertThat(NutritionDayTypeResolver.resolve(A_SATURDAY, ACTIVE))
+        .isEqualTo(NutritionDayType.RUNNING);
   }
 
   @Test
   void resolvesTuesdayThursdayAndSundayToStrength() {
-    assertThat(NutritionDayTypeResolver.resolve(A_TUESDAY)).isEqualTo(NutritionDayType.STRENGTH);
-    assertThat(NutritionDayTypeResolver.resolve(A_THURSDAY)).isEqualTo(NutritionDayType.STRENGTH);
-    assertThat(NutritionDayTypeResolver.resolve(A_SUNDAY)).isEqualTo(NutritionDayType.STRENGTH);
+    assertThat(NutritionDayTypeResolver.resolve(A_TUESDAY, ACTIVE))
+        .isEqualTo(NutritionDayType.STRENGTH);
+    assertThat(NutritionDayTypeResolver.resolve(A_THURSDAY, ACTIVE))
+        .isEqualTo(NutritionDayType.STRENGTH);
+    assertThat(NutritionDayTypeResolver.resolve(A_SUNDAY, ACTIVE))
+        .isEqualTo(NutritionDayType.STRENGTH);
   }
 
   @Test
   void resolvesFridayToRest() {
-    assertThat(NutritionDayTypeResolver.resolve(A_FRIDAY)).isEqualTo(NutritionDayType.REST);
+    assertThat(NutritionDayTypeResolver.resolve(A_FRIDAY, ACTIVE)).isEqualTo(NutritionDayType.REST);
+  }
+
+  /** FIX1: before the plan has started, every day is a rest day regardless of weekday. */
+  @Test
+  void resolvesToRestWhenThePlanHasNotStarted() {
+    TrainingPlanProgress notStarted = new TrainingPlanProgress.NotStarted();
+
+    assertThat(NutritionDayTypeResolver.resolve(A_MONDAY, notStarted))
+        .isEqualTo(NutritionDayType.REST);
+    assertThat(NutritionDayTypeResolver.resolve(A_TUESDAY, notStarted))
+        .isEqualTo(NutritionDayType.REST);
+    assertThat(NutritionDayTypeResolver.resolve(A_FRIDAY, notStarted))
+        .isEqualTo(NutritionDayType.REST);
+  }
+
+  /** FIX1/D4: once the plan is behind the account, running drops to rest but strength survives. */
+  @Test
+  void dropsRunningToRestButKeepsStrengthWhenThePlanIsCompleted() {
+    TrainingPlanProgress completed = new TrainingPlanProgress.Completed();
+
+    assertThat(NutritionDayTypeResolver.resolve(A_MONDAY, completed))
+        .isEqualTo(NutritionDayType.REST);
+    assertThat(NutritionDayTypeResolver.resolve(A_TUESDAY, completed))
+        .isEqualTo(NutritionDayType.STRENGTH);
+    assertThat(NutritionDayTypeResolver.resolve(A_FRIDAY, completed))
+        .isEqualTo(NutritionDayType.REST);
   }
 
   @Test
   void agreesWithWeeklyTrainingScheduleServiceOnEveryDayOfTheWeek() {
     // Same day-kind source (FOR-128): a policy change updates both, so they can never drift.
+    UUID userId = UUID.randomUUID();
+    FakePlanAcceptanceRepository acceptanceRepository = new FakePlanAcceptanceRepository();
+    // Accepted "now" so the derived week is always 1 -> ACTIVE, whenever this test runs (D1).
+    acceptanceRepository.markAccepted(userId, Instant.now());
     WeeklyTrainingScheduleService scheduleService =
         new WeeklyTrainingScheduleService(
             new RunningPlanService(),
             new WorkoutTemplateService(),
             new FakeTrainingSessionStatusRepository(),
-            () -> UUID.randomUUID(),
-            java.time.Clock.systemUTC());
+            () -> userId,
+            java.time.Clock.systemUTC(),
+            acceptanceRepository);
     Map<DayOfWeek, WeeklyTrainingSchedule.TrainingDay> byDay =
         scheduleService.currentWeek().days().stream()
             .collect(

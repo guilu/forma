@@ -50,7 +50,9 @@ public class ScheduledNutritionDayTypeService {
   /** The day type for {@code date}, honouring any session moved this week. */
   public NutritionDayType resolve(LocalDate date) {
     if (!isCurrentWeek(date)) {
-      return NutritionDayTypeResolver.resolve(date);
+      // FIX1: this date's own week may be NotStarted (before acceptance) or Completed (D4), not
+      // just Active on the weekday policy — ask the plan's progress for THAT week, not "now"'s.
+      return NutritionDayTypeResolver.resolve(date, scheduleService.progressForWeekOf(date));
     }
 
     for (TrainingDay day : scheduleService.currentWeek().days()) {
@@ -66,7 +68,8 @@ public class ScheduledNutritionDayTypeService {
       boolean strength = day.entries().stream().anyMatch(entry -> isKind(entry, STRENGTH_KIND));
       return strength ? NutritionDayType.STRENGTH : NutritionDayType.REST;
     }
-    return NutritionDayTypeResolver.resolve(date);
+    // Defensive: currentWeek().days() covers all seven DayOfWeek values, so this is unreachable.
+    return NutritionDayTypeResolver.resolve(date, scheduleService.currentProgress());
   }
 
   private static boolean isKind(TrainingEntry entry, String kind) {

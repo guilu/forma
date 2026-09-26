@@ -6,6 +6,7 @@
 import { apiClient, type ApiClient } from './client';
 
 const TRAINING_WEEK_PATH = '/api/v1/training/week';
+const PLAN_RESTART_PATH = '/api/v1/training/plan/restart';
 
 /** Completion status of a training session (FOR-27). */
 export type SessionStatus = 'PLANNED' | 'COMPLETED' | 'SKIPPED';
@@ -29,9 +30,23 @@ export interface TrainingDay {
   readonly sessions: TrainingSession[];
 }
 
-/** The composed training week (Monday through Sunday). */
+/**
+ * The composed training week (Monday through Sunday).
+ *
+ * <p>`planState`/`planWeek`/`planTotalWeeks` (design D3 of
+ * training-progression-and-logging) say where the account's plan cycle sits:
+ * `NOT_STARTED` (never accepted one), `ACTIVE` (mid-cycle, `planWeek` is the
+ * 1-based week), or `COMPLETED` (finished; `planWeek` is `null`). Optional
+ * here — not because the real API ever omits them, it always sends all
+ * three — but because many fixtures across this codebase predate this field
+ * and only describe `days`; treat a missing `planState` as "unknown", not as
+ * `NOT_STARTED`.
+ */
 export interface TrainingWeek {
   readonly days: TrainingDay[];
+  readonly planState?: 'NOT_STARTED' | 'ACTIVE' | 'COMPLETED';
+  readonly planWeek?: number | null;
+  readonly planTotalWeeks?: number;
 }
 
 /** The updated session status returned by `PATCH …/status` (FOR-27). */
@@ -44,6 +59,16 @@ export interface SessionStatusResult {
 /** Fetches the current week's training calendar. */
 export function getTrainingWeek(client: ApiClient = apiClient): Promise<TrainingWeek> {
   return client.request<TrainingWeek>(TRAINING_WEEK_PATH);
+}
+
+/**
+ * Starts a new 16-week cycle (design D5 of training-progression-and-logging),
+ * for an account whose plan already reached `planState: 'COMPLETED'`. The
+ * caller refetches the week afterwards — this call answers with nothing to
+ * patch in place, unlike {@link rescheduleSession}.
+ */
+export function restartPlan(client: ApiClient = apiClient): Promise<void> {
+  return client.request<void>(PLAN_RESTART_PATH, { method: 'POST' });
 }
 
 /** Marks a session's completion status (FOR-27). */

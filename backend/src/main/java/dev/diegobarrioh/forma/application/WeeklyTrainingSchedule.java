@@ -13,8 +13,13 @@ import java.util.List;
  * completion status is FOR-27.
  *
  * @param days seven days, Monday through Sunday, in order
+ * @param planState {@code NOT_STARTED}, {@code ACTIVE} or {@code COMPLETED} (design D3), derived
+ *     from {@link dev.diegobarrioh.forma.domain.TrainingPlanProgress}
+ * @param planWeek 1-based week number while {@code ACTIVE}; {@code null} otherwise
+ * @param planTotalWeeks the plan's length ({@code RunningPlanGenerator#WEEKS})
  */
-public record WeeklyTrainingSchedule(List<TrainingDay> days) {
+public record WeeklyTrainingSchedule(
+    List<TrainingDay> days, String planState, Integer planWeek, int planTotalWeeks) {
 
   /** One day of the week and the sessions planned on it (empty = rest day). */
   public record TrainingDay(DayOfWeek dayOfWeek, List<TrainingEntry> entries) {

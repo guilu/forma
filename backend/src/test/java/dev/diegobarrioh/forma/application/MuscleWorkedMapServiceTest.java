@@ -14,13 +14,23 @@ import org.junit.jupiter.api.Test;
  */
 class MuscleWorkedMapServiceTest {
 
+  private final FakePlanAcceptanceRepository acceptanceRepository = acceptedNow();
   private final WeeklyTrainingScheduleService scheduleService =
       new WeeklyTrainingScheduleService(
           new RunningPlanService(),
           new WorkoutTemplateService(),
           new FakeTrainingSessionStatusRepository(),
           () -> WeeklyTrainingScheduleServiceTest.USER_ID,
-          java.time.Clock.systemUTC());
+          java.time.Clock.systemUTC(),
+          acceptanceRepository);
+
+  /** Accepted "now" so the derived week is always 1 -> ACTIVE, whenever this test runs (D1). */
+  private static FakePlanAcceptanceRepository acceptedNow() {
+    FakePlanAcceptanceRepository repository = new FakePlanAcceptanceRepository();
+    repository.markAccepted(WeeklyTrainingScheduleServiceTest.USER_ID, java.time.Instant.now());
+    return repository;
+  }
+
   private final MuscleWorkedMapService service =
       new MuscleWorkedMapService(
           scheduleService, new WorkoutTemplateService(), new ExerciseCatalogService());
