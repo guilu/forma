@@ -4,6 +4,7 @@ import {
   getTrainingWeek,
   getWorkout,
   rescheduleSession,
+  restartPlan,
   updateSessionStatus,
 } from './training';
 import { type ApiClient } from './client';
@@ -60,6 +61,15 @@ describe('training API', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ day: null }),
     });
+  });
+
+  it('POSTs to the plan restart endpoint (design D5)', async () => {
+    const request = vi.fn().mockResolvedValue(undefined);
+    const client: ApiClient = { baseUrl: 'http://test', request, requestBlob: vi.fn() };
+
+    await restartPlan(client);
+
+    expect(request).toHaveBeenCalledWith('/api/v1/training/plan/restart', { method: 'POST' });
   });
 
   it('GETs the muscle-map endpoint for a session (FOR-136)', async () => {

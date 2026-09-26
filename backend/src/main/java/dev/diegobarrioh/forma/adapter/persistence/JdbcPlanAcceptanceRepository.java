@@ -8,6 +8,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -22,8 +23,27 @@ public class JdbcPlanAcceptanceRepository implements PlanAcceptanceRepository {
 
   private static final String EXISTS_SQL = "SELECT COUNT(*) FROM plan_acceptance WHERE user_id = ?";
 
+  /**
+   * The current cycle's anchor (design D5, migration V66): a restarted cycle answers ahead of the
+   * original acceptance, but only while it is set — {@code cycle_started_at} starts out {@code
+   * NULL} for every account, including ones accepted before V66.
+   */
   private static final String STARTED_AT_SQL =
-      "SELECT accepted_at FROM plan_acceptance WHERE user_id = ?";
+      "SELECT COALESCE(cycle_started_at, accepted_at) AS started_at FROM plan_acceptance"
+          + " WHERE user_id = ?";
+
+  /**
+   * Same {@code getObject(..., OffsetDateTime.class).toInstant()} pattern as {@link
+   * JdbcAchievementRepository} — {@code queryForObject(..., Instant.class, ...)} is the only spot
+   * in this repository that asked the driver for an {@link Instant} directly, a request the H2 test
+   * database tolerates but real PostgreSQL's driver does not convert a {@code timestamptz} to
+   * (pattern-alignment only, no contract change).
+   */
+  private static final RowMapper<Instant> STARTED_AT_ROW_MAPPER =
+      (rs, rowNum) -> rs.getObject("started_at", OffsetDateTime.class).toInstant();
+
+  private static final String RESTART_CYCLE_SQL =
+      "UPDATE plan_acceptance SET cycle_started_at = ? WHERE user_id = ?";
 
   /**
    * Insert-if-absent. Accepting twice keeps the first instant rather than moving it: the question
@@ -56,9 +76,22 @@ public class JdbcPlanAcceptanceRepository implements PlanAcceptanceRepository {
   public Optional<Instant> planStartedAt(UUID userId) {
     try {
       return Optional.ofNullable(
-          jdbcTemplate.queryForObject(STARTED_AT_SQL, Instant.class, userId));
+          jdbcTemplate.queryForObject(STARTED_AT_SQL, STARTED_AT_ROW_MAPPER, userId));
     } catch (EmptyResultDataAccessException e) {
       return Optional.empty();
     }
+  }
+
+  /**
+   * No-op for an account with no {@code plan_acceptance} row (never accepted a plan): there is no
+   * row to reanchor. This adapter enforces no precondition of its own about when a caller may reach
+   * this method — that guard ({@link
+   * dev.diegobarrioh.forma.application.PlanRestartService#restart()} requiring the plan to have
+   * already reached {@link dev.diegobarrioh.forma.domain.TrainingPlanProgress.Completed}) lives in
+   * the application layer, one level up.
+   */
+  @Override
+  public void restartCycle(UUID userId, Instant at) {
+    jdbcTemplate.update(RESTART_CYCLE_SQL, OffsetDateTime.ofInstant(at, ZoneOffset.UTC), userId);
   }
 }

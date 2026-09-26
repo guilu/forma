@@ -1,0 +1,13 @@
+-- V66 — Un ciclo se puede reiniciar sin reescribir cuándo se aceptó el plan.
+--
+-- accepted_at (V58) responde "¿cuándo dijo esta cuenta que sí, la primera vez?" — y
+-- JdbcPlanAcceptanceRepository#markAccepted lo protege a propósito con un insert-if-absent: aceptar
+-- dos veces no mueve la fecha. Cuando una cuenta termina las 16 semanas del plan (design D3/D4 de
+-- training-progression-and-logging) y quiere volver a empezar, "cuándo se aceptó por primera vez" y
+-- "cuándo arrancó el ciclo que se está viendo ahora" dejan de ser la misma pregunta. Forzar el
+-- reinicio a través de accepted_at rompería esa invariante para reutilizarla con otro propósito.
+--
+-- cycle_started_at es nullable y NO sustituye a accepted_at: mientras sea NULL, el ciclo vigente
+-- sigue siendo el de la aceptación original (el adapter resuelve
+-- COALESCE(cycle_started_at, accepted_at)). Reiniciar el ciclo escribe aquí, nunca en accepted_at.
+ALTER TABLE plan_acceptance ADD COLUMN cycle_started_at TIMESTAMP WITH TIME ZONE;

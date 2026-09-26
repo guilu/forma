@@ -796,6 +796,11 @@ export function fixtureFor(pathname: string): FixtureResponse {
     return { status: 200, body: { sessionId, muscles: MUSCLE_MAPS[sessionId] ?? [] } };
   }
 
+  // A2 (D5): restarting the plan cycle returns 204 No Content.
+  if (pathname === '/api/v1/training/plan/restart') {
+    return { status: 204, body: {} };
+  }
+
   const match = FIXTURES.find(([fixturePath]) => pathname === fixturePath);
   return match
     ? { status: 200, body: match[1] }

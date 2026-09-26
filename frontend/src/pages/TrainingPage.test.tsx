@@ -9,12 +9,14 @@ import {
   getTrainingWeek,
   getWorkout,
   rescheduleSession,
+  restartPlan,
   updateSessionStatus,
   type TrainingWeek,
   type Workout,
 } from '../api/training';
 import { getStreak } from '../api/progress';
 import { getProfile } from '../api/profile';
+import { ApiRequestError } from '../api/client';
 
 /** TrainingPage calls `useNotify()` (FOR-63), which requires a provider. */
 function renderPage() {
@@ -39,6 +41,7 @@ vi.mock('../api/training', () => ({
   getMuscleMap: vi.fn(),
   getWorkout: vi.fn(),
   rescheduleSession: vi.fn(),
+  restartPlan: vi.fn(),
 }));
 
 // FOR-143: streak + weekly-history widgets fetch independently of the week
@@ -59,6 +62,7 @@ const getMuscleMapMock = vi.mocked(getMuscleMap);
 const getWorkoutMock = vi.mocked(getWorkout);
 const getStreakMock = vi.mocked(getStreak);
 const getProfileMock = vi.mocked(getProfile);
+const restartPlanMock = vi.mocked(restartPlan);
 
 // Fixed "today" = Monday 2026-07-06, so the MONDAY entry below is always
 // picked up by the today's-session card regardless of when the suite runs.
@@ -883,7 +887,7 @@ describe('TrainingPage', () => {
       planTotalWeeks: 16,
     };
 
-    it('shows the completed-plan message and no CTA, without hiding the strength that keeps going', async () => {
+    it('shows the completed-plan message with a restart CTA, without hiding the strength that keeps going', async () => {
       getWeekMock.mockResolvedValue(completedWeek);
 
       renderPage();
@@ -893,9 +897,113 @@ describe('TrainingPage', () => {
       ).toBeInTheDocument();
       // Strength keeps going past the terminal state (D4) — it must still render.
       expect(screen.getByText('Fuerza · Empuje')).toBeInTheDocument();
-      // No restart CTA yet — that is slice A2, not this one.
-      expect(screen.queryByRole('button', { name: /reiniciar/i })).not.toBeInTheDocument();
-      expect(screen.queryByRole('link', { name: /reiniciar/i })).not.toBeInTheDocument();
+      // A2: now there IS a restart button.
+      expect(screen.getByRole('button', { name: /reiniciar/i })).toBeInTheDocument();
+    });
+
+    it('calls restartPlan and reloads the week when the CTA is clicked', async () => {
+      getWeekMock.mockResolvedValue(completedWeek);
+      restartPlanMock.mockResolvedValue(undefined);
+      const user = userEvent.setup();
+
+      renderPage();
+
+      const button = await screen.findByRole('button', { name: /reiniciar/i });
+      await user.click(button);
+
+      expect(restartPlanMock).toHaveBeenCalled();
+      // The week is refetched after restart so the cycle advances to week 1.
+      expect(getWeekMock).toHaveBeenCalledTimes(2); // once on page mount, once after restart
+      // The happy path is the one place this toast should ever fire — the
+      // failure-path tests below assert its absence, which only means
+      // something if this asserts its presence here.
+      const region = screen.getByRole('log');
+      expect(
+        await within(region).findByText('Ciclo reiniciado. Tu semana 1 comienza ahora.'),
+      ).toBeInTheDocument();
+    });
+
+    /*
+     * Post-review fix: the server-side guard (`PlanRestartService.restart()`)
+     * can now answer 409 when this account's plan state moved since the
+     * banner last read it (e.g. a second tab already restarted it). The
+     * caller must see the backend's own message, and the stale banner/week
+     * must resync instead of being left clickable forever.
+     */
+    it('shows the backend message and resyncs the week when restart answers 409', async () => {
+      getWeekMock.mockResolvedValue(completedWeek);
+      restartPlanMock.mockRejectedValueOnce(
+        new ApiRequestError(409, 'El plan debe estar completado para poder reiniciar el ciclo.'),
+      );
+      const user = userEvent.setup();
+
+      renderPage();
+
+      const button = await screen.findByRole('button', { name: /reiniciar/i });
+      await user.click(button);
+
+      const region = screen.getByRole('log');
+      expect(
+        await within(region).findByText(
+          'El plan debe estar completado para poder reiniciar el ciclo.',
+        ),
+      ).toBeInTheDocument();
+      // Reconciliation: the week is refetched even though restart itself
+      // failed, so a stale banner/button never sit indefinitely.
+      await waitFor(() => expect(getWeekMock).toHaveBeenCalledTimes(2));
+    });
+
+    it('shows a generic message and does not resync when restart fails for another reason', async () => {
+      getWeekMock.mockResolvedValue(completedWeek);
+      restartPlanMock.mockRejectedValueOnce(new Error('network'));
+      const user = userEvent.setup();
+
+      renderPage();
+
+      const button = await screen.findByRole('button', { name: /reiniciar/i });
+      await user.click(button);
+
+      const region = screen.getByRole('log');
+      expect(await within(region).findByText('No se pudo reiniciar el ciclo.')).toBeInTheDocument();
+      // Not a 409, so there is nothing stale to resync — only the mount fetch happened.
+      expect(getWeekMock).toHaveBeenCalledTimes(1);
+    });
+
+    /*
+     * Post-review fix (commit afc52bd): `TrainingPage.load` now rethrows after
+     * setting the error state, specifically so a restart that itself
+     * succeeded — but whose immediate refetch fails — never reaches the
+     * success toast below it. Nothing asserted that until now: this is the
+     * one scenario where `restartPlan()` resolves and the very next
+     * `getTrainingWeek()` call is the one that rejects.
+     */
+    it('never shows the success toast when restart succeeds but the reload after it fails', async () => {
+      getWeekMock.mockResolvedValueOnce(completedWeek); // mount
+      restartPlanMock.mockResolvedValueOnce(undefined);
+      getWeekMock.mockRejectedValueOnce(new Error('network')); // reload after restart
+      const user = userEvent.setup();
+
+      renderPage();
+
+      const button = await screen.findByRole('button', { name: /reiniciar/i });
+      await user.click(button);
+
+      expect(getWeekMock).toHaveBeenCalledTimes(2); // once on mount, once after restart
+
+      const region = screen.getByRole('log');
+      // `load`'s rethrow lands in `handleRestart`'s own catch, which reports
+      // the failure — not the success message the restart call itself would
+      // otherwise have earned.
+      expect(await within(region).findByText('No se pudo reiniciar el ciclo.')).toBeInTheDocument();
+      expect(
+        within(region).queryByText('Ciclo reiniciado. Tu semana 1 comienza ahora.'),
+      ).not.toBeInTheDocument();
+      // The failed reload also left `state` on 'error' (that is what `load`'s
+      // rethrow is guarding downstream of), so the page shows the page-level
+      // error state instead of the calendar it could no longer refresh.
+      expect(
+        await screen.findByText(/no se pudo cargar tu semana de entrenamiento/i),
+      ).toBeInTheDocument();
     });
 
     it('never lists a running session once the cycle is over', async () => {

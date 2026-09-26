@@ -9,9 +9,12 @@ import { useAnatomySex } from '../hooks/useAnatomySex';
 import { StatusPill } from '../components/StatusPill';
 import { WidgetLoading } from '../components/WidgetLoading';
 import { IconButton } from '../components/IconButton';
+import { useNotify } from '../components/NotificationProvider';
+import { ApiRequestError } from '../api/client';
 import { getStreak, type Streak } from '../api/progress';
 import {
   getTrainingWeek,
+  restartPlan,
   type DayOfWeek,
   type SessionStatus,
   type TrainingDay,
@@ -165,17 +168,26 @@ export function TrainingPage() {
   const [detailTarget, setDetailTarget] = useState<DetailTarget | undefined>(undefined);
   const [selectedDay, setSelectedDay] = useState<string>(() => todayDayOfWeek());
 
-  const load = useCallback(async () => {
+  /**
+   * Rethrows on failure (in addition to setting the error state) so a caller
+   * that awaits a reload — {@link CompletedPlanBanner}'s restart flow — can
+   * tell a failed refetch from a successful one instead of always reaching
+   * its own next line as if the week were current.
+   */
+  const load = useCallback(async (): Promise<void> => {
     try {
       const week = await getTrainingWeek();
       setState({ status: 'ready', week });
-    } catch {
+    } catch (error) {
       setState({ status: 'error' });
+      throw error;
     }
   }, []);
 
   useEffect(() => {
-    void load();
+    // Fire-and-forget here: the error is already reflected in `state`, and
+    // this mount effect has no caller of its own to propagate it to.
+    load().catch(() => {});
   }, [load]);
 
   const { pendingId, mark, move } = useSessionActions({
@@ -267,7 +279,7 @@ function renderContent(
   pendingId: string | undefined,
   openDetail: (target: DetailTarget) => void,
   openTraining: (session: TrainingSession) => void,
-  reload: () => void,
+  reload: () => Promise<void>,
   selectedDay: string,
   anatomySex: AnatomySex,
 ) {
@@ -279,7 +291,13 @@ function renderContent(
     return (
       <ErrorState
         message="No se pudo cargar tu semana de entrenamiento. Inténtalo de nuevo más tarde."
-        onRetry={reload}
+        // `reload` now rejects on failure (see `load`'s javadoc) instead of
+        // swallowing it; this button has no caller of its own to propagate a
+        // second failure to, so it is deliberately dropped here rather than
+        // left as an unhandled rejection.
+        onRetry={() => {
+          reload().catch(() => {});
+        }}
       />
     );
   }
@@ -291,7 +309,7 @@ function renderContent(
 
   return (
     <>
-      {state.week.planState === 'COMPLETED' && <CompletedPlanBanner />}
+      {state.week.planState === 'COMPLETED' && <CompletedPlanBanner reload={reload} />}
       <div className={styles.layout}>
         <WeekStrip
           days={state.week.days}
@@ -316,15 +334,58 @@ function renderContent(
  * rather than replacing it — unlike {@link NoPlanEmptyState}, which replaces
  * the whole page because there genuinely is nothing to show.
  *
- * <p>No action here yet: reaccepting a plan is slice A2 of this same change,
- * not this one. A button that restarted nothing would be exactly the
- * contradiction this change exists to fix.
+ * <p>A2: offers a restart button that reanchors the cycle to now.
+ *
+ * <p>Post-review fixes: {@code reload} now rejects on a failed refetch
+ * instead of swallowing it (see {@link TrainingPage}'s {@code load}), so this
+ * component never announces success over a refetch that did not happen —
+ * that {@code await} simply jumps to the {@code catch} below instead of
+ * reaching the success toast. A 409 from {@code restartPlan()} itself (the
+ * server-side guard rejecting because this account's plan state moved since
+ * this banner last read it, e.g. a second tab) additionally forces a resync:
+ * without it, the stale banner and week stay on screen and the button keeps
+ * answering 409 until the user reloads by hand.
  */
-function CompletedPlanBanner() {
+function CompletedPlanBanner({ reload }: { readonly reload: () => Promise<void> }) {
+  const notify = useNotify();
+  const [restarting, setRestarting] = useState(false);
+
+  const handleRestart = useCallback(async () => {
+    setRestarting(true);
+    try {
+      await restartPlan();
+      await reload();
+      notify.success('Ciclo reiniciado. Tu semana 1 comienza ahora.');
+    } catch (error) {
+      notify.error(
+        error instanceof ApiRequestError ? error.message : 'No se pudo reiniciar el ciclo.',
+      );
+      if (error instanceof ApiRequestError && error.status === 409) {
+        // Best-effort: if this resync also fails, there is nothing further
+        // to do here — the user already saw the error toast above.
+        await reload().catch(() => {});
+      }
+    } finally {
+      setRestarting(false);
+    }
+  }, [reload, notify]);
+
   return (
-    <p className={styles.completedBanner} role="status">
-      Has completado tu plan de entrenamiento. La fuerza sigue en tu calendario.
-    </p>
+    <div className={styles.completedBannerContainer}>
+      <p className={styles.completedBanner} role="status">
+        Has completado tu plan de entrenamiento. La fuerza sigue en tu calendario.
+      </p>
+      <IconButton
+        variant="soft"
+        size="lg"
+        label="Reiniciar el ciclo"
+        title="Reiniciar el ciclo"
+        loading={restarting}
+        onClick={handleRestart}
+      >
+        <Icon name="refresh" size={19} />
+      </IconButton>
+    </div>
   );
 }
 
