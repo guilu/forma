@@ -52,6 +52,25 @@ class PlanRestartServiceTest {
     assertThat(acceptanceRepository.planStartedAt(USER_ID)).contains(acceptedAt);
   }
 
+  /**
+   * The exact boundary the guard exists to protect: 15 full weeks after acceptance is still {@code
+   * Active(16)} — the plan's own last active week ({@link
+   * dev.diegobarrioh.forma.domain.TrainingPlanProgress#since}'s {@code weekNumber > totalWeeks}
+   * check, not {@code >=}). An off-by-one there would let a restart wipe out the final week of real
+   * progress while every other test in this class still passed.
+   */
+  @Test
+  void rejectsRestartingAPlanOnItsLastActiveWeek() {
+    Instant acceptedAt = Instant.parse("2026-08-17T09:00:00Z");
+    Instant fifteenWeeksLater = acceptedAt.plus(15 * 7, ChronoUnit.DAYS);
+    acceptanceRepository.markAccepted(USER_ID, acceptedAt);
+    PlanRestartService service = serviceAt(fifteenWeeksLater);
+
+    assertThatThrownBy(service::restart).isInstanceOf(ConflictException.class);
+
+    assertThat(acceptanceRepository.planStartedAt(USER_ID)).contains(acceptedAt);
+  }
+
   @Test
   void rejectsRestartingAPlanThatWasNeverAccepted() {
     PlanRestartService service = serviceAt(Instant.parse("2026-08-17T09:00:00Z"));

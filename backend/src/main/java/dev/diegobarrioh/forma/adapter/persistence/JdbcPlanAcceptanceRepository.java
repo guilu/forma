@@ -23,7 +23,7 @@ public class JdbcPlanAcceptanceRepository implements PlanAcceptanceRepository {
   private static final String EXISTS_SQL = "SELECT COUNT(*) FROM plan_acceptance WHERE user_id = ?";
 
   /**
-   * The vigent cycle's anchor (design D5, migration V66): a restarted cycle answers ahead of the
+   * The current cycle's anchor (design D5, migration V66): a restarted cycle answers ahead of the
    * original acceptance, but only while it is set — {@code cycle_started_at} starts out {@code
    * NULL} for every account, including ones accepted before V66.
    */
@@ -72,7 +72,11 @@ public class JdbcPlanAcceptanceRepository implements PlanAcceptanceRepository {
 
   /**
    * No-op for an account with no {@code plan_acceptance} row (never accepted a plan): there is no
-   * row to reanchor, and this endpoint is only reachable behind authentication.
+   * row to reanchor. This adapter enforces no precondition of its own about when a caller may reach
+   * this method — that guard ({@link
+   * dev.diegobarrioh.forma.application.PlanRestartService#restart()} requiring the plan to have
+   * already reached {@link dev.diegobarrioh.forma.domain.TrainingPlanProgress.Completed}) lives in
+   * the application layer, one level up.
    */
   @Override
   public void restartCycle(UUID userId, Instant at) {

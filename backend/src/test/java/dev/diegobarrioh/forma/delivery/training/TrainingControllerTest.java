@@ -2,6 +2,7 @@ package dev.diegobarrioh.forma.delivery.training;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -12,6 +13,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import dev.diegobarrioh.forma.application.ConflictException;
 import dev.diegobarrioh.forma.application.MuscleWorkedMap;
 import dev.diegobarrioh.forma.application.MuscleWorkedMap.MuscleWorked;
 import dev.diegobarrioh.forma.application.MuscleWorkedMapService;
@@ -235,24 +237,40 @@ class TrainingControllerTest {
   }
 
   /**
-   * A2 (design D5): restarting reanchors the cycle; the next {@code GET /training/week} — which
-   * this test drives through the same {@code scheduleService} stub every other read here does —
-   * comes back at week 1, {@code ACTIVE}.
+   * At this layer {@code restartService} is a {@code @MockBean}: the endpoint's own contract is
+   * that a call reaches {@link PlanRestartService#restart()} and answers 204, nothing about what
+   * restarting actually does to the plan's week. That reanchoring behavior (cycle back to week 1)
+   * is {@link PlanRestartService}'s own contract and is pinned by {@code PlanRestartServiceTest}
+   * (no Spring, ADR-007), not provable from a web-slice test stubbing both services independently.
    */
   @Test
-  void restartsThePlanCycleThenTheNextWeekReadIsBackAtWeekOneActive() throws Exception {
+  void restartingThePlanCallsTheRestartServiceAndReturns204() throws Exception {
     mockMvc.perform(post("/api/v1/training/plan/restart")).andExpect(status().isNoContent());
 
     verify(restartService).restart();
+  }
 
-    when(scheduleService.currentWeek())
-        .thenReturn(new WeeklyTrainingSchedule(List.of(), "ACTIVE", 1, 16));
+  /**
+   * {@link TrainingController#restartPlan()}'s javadoc documents 409 {@code CONFLICT} for an
+   * account whose plan has not reached its terminal state (design D5, {@link
+   * PlanRestartService#restart()}'s precondition). Pinned here at the delivery boundary so a
+   * misconfigured {@code @ExceptionHandler} mapping cannot silently degrade the guard to a 500
+   * without failing a test — {@code restartService} is mocked, so {@link ConflictException} is
+   * thrown directly rather than re-deriving the precondition through the schedule service.
+   */
+  @Test
+  void restartingAnActivePlanAnswers409WithTheServicesMessage() throws Exception {
+    doThrow(new ConflictException("El plan debe estar completado para poder reiniciar el ciclo."))
+        .when(restartService)
+        .restart();
 
     mockMvc
-        .perform(get("/api/v1/training/week"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.planState").value("ACTIVE"))
-        .andExpect(jsonPath("$.planWeek").value(1));
+        .perform(post("/api/v1/training/plan/restart"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("CONFLICT"))
+        .andExpect(
+            jsonPath("$.message")
+                .value("El plan debe estar completado para poder reiniciar el ciclo."));
   }
 
   @Test
