@@ -46,10 +46,10 @@ class PlannedMealLogTest {
   private static final LocalDate A_PAST_TUESDAY = LocalDate.of(2026, 7, 14);
 
   /**
-   * FIX1 fallout: the training plan's own progress now governs the nutrition day type for ANY
-   * date, not only weekday alone (see {@code NutritionDayTypeResolver}), so {@code
-   * A_PAST_TUESDAY}'s week must actually be {@code Active} for it to resolve to {@code STRENGTH}.
-   * Seeded to that same Monday so the real clock's run date can never push this week out of range.
+   * FIX1 fallout: the training plan's own progress now governs the nutrition day type for ANY date,
+   * not only weekday alone (see {@code NutritionDayTypeResolver}), so {@code A_PAST_TUESDAY}'s week
+   * must actually be {@code Active} for it to resolve to {@code STRENGTH}. Seeded to that same
+   * Monday so the real clock's run date can never push this week out of range.
    */
   private static final Instant ACCEPTED_MONDAY_OF_THAT_WEEK = Instant.parse("2026-07-13T08:00:00Z");
 

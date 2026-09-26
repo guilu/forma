@@ -221,7 +221,8 @@ class WeeklyTrainingScheduleServiceTest {
   void progressForWeekOfDerivesAnyOtherWeekFromTheSameAcceptance() {
     acceptanceRepository.markAccepted(USER_ID, ACCEPTED_MONDAY);
 
-    assertThat(service.progressForWeekOf(LAST_WEEK)).isEqualTo(new TrainingPlanProgress.NotStarted());
+    assertThat(service.progressForWeekOf(LAST_WEEK))
+        .isEqualTo(new TrainingPlanProgress.NotStarted());
   }
 
   @Test

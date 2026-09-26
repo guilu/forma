@@ -87,8 +87,8 @@ class ScheduledNutritionDayTypeServiceTest {
 
   /**
    * Overrides only exist for the week the calendar composes, so any other date falls back to the
-   * plan's own progress for that week (FIX1) rather than having this week's moves projected onto
-   * it — a future week still active keeps following the weekday policy.
+   * plan's own progress for that week (FIX1) rather than having this week's moves projected onto it
+   * — a future week still active keeps following the weekday policy.
    */
   @Test
   void outsideCurrentWeekIgnoresThisWeeksOverrideWhenThePlanIsStillActive() {

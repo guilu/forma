@@ -26,9 +26,9 @@ public final class NutritionDayTypeResolver {
 
   /**
    * Resolves {@code date} to its {@link NutritionDayType}, via the shared weekly day policy but
-   * governed by where the plan sits for {@code date}'s own week (design D1/D4): before the plan
-   * has started every day is a rest day, and past its last week running drops to rest while
-   * strength keeps going — there is no weekday-only policy to fall back on for either state.
+   * governed by where the plan sits for {@code date}'s own week (design D1/D4): before the plan has
+   * started every day is a rest day, and past its last week running drops to rest while strength
+   * keeps going — there is no weekday-only policy to fall back on for either state.
    */
   public static NutritionDayType resolve(LocalDate date, TrainingPlanProgress progress) {
     if (progress instanceof TrainingPlanProgress.NotStarted) {
