@@ -87,15 +87,91 @@ class ScheduledNutritionDayTypeServiceTest {
 
   /**
    * Overrides only exist for the week the calendar composes, so any other date falls back to the
-   * policy rather than having this week's moves projected onto it.
+   * plan's own progress for that week (FIX1) rather than having this week's moves projected onto it
+   * — a future week still active keeps following the weekday policy.
    */
   @Test
-  void fallsBackToThePolicyOutsideTheCurrentWeek() {
+  void outsideCurrentWeekIgnoresThisWeeksOverrideWhenThePlanIsStillActive() {
+    statusRepository.upsertScheduledDay(USER_ID, THIS_WEEK, "STRENGTH:PUSH", DayOfWeek.MONDAY);
+
+    LocalDate nextMonday = LocalDate.of(2026, 8, 24);
+    assertThat(service.resolve(nextMonday)).isEqualTo(NutritionDayType.RUNNING);
+  }
+
+  /**
+   * FIX1: a date whose week is before the account accepted the plan is {@code NotStarted}, hence
+   * REST — not the weekday policy's answer, and not this week's override either.
+   */
+  @Test
+  void outsideCurrentWeekBeforeAcceptanceIsRestRegardlessOfWeekdayOrOverrides() {
     statusRepository.upsertScheduledDay(USER_ID, THIS_WEEK, "STRENGTH:PUSH", DayOfWeek.MONDAY);
 
     LocalDate lastMonday = LocalDate.of(2026, 8, 10);
+    assertThat(service.resolve(lastMonday)).isEqualTo(NutritionDayType.REST);
+  }
+
+  /** FIX1: a plan that was never accepted is REST on any date — current, past or future week. */
+  @Test
+  void notStartedPlanIsRestOnAnyDate() {
+    ScheduledNutritionDayTypeService neverAccepted =
+        new ScheduledNutritionDayTypeService(
+            new WeeklyTrainingScheduleService(
+                new RunningPlanService(),
+                new WorkoutTemplateService(),
+                new FakeTrainingSessionStatusRepository(),
+                () -> USER_ID,
+                Clock.fixed(MONDAY_MORNING, ZoneOffset.UTC),
+                new FakePlanAcceptanceRepository()),
+            Clock.fixed(MONDAY_MORNING, ZoneOffset.UTC));
+
+    LocalDate lastMonday = LocalDate.of(2026, 8, 10);
     LocalDate nextMonday = LocalDate.of(2026, 8, 24);
-    assertThat(service.resolve(lastMonday)).isEqualTo(NutritionDayType.RUNNING);
-    assertThat(service.resolve(nextMonday)).isEqualTo(NutritionDayType.RUNNING);
+    assertThat(neverAccepted.resolve(MONDAY)).isEqualTo(NutritionDayType.REST);
+    assertThat(neverAccepted.resolve(lastMonday)).isEqualTo(NutritionDayType.REST);
+    assertThat(neverAccepted.resolve(nextMonday)).isEqualTo(NutritionDayType.REST);
+  }
+
+  /**
+   * FIX1/D4: once the 16-week plan is behind the account, running drops to rest but strength
+   * survives — in the current week, where the calendar composes it directly...
+   */
+  @Test
+  void completedPlanKeepsStrengthButDropsRunningInTheCurrentWeek() {
+    ScheduledNutritionDayTypeService completed = completedPlanService();
+
+    assertThat(completed.resolve(MONDAY)).isEqualTo(NutritionDayType.REST);
+    assertThat(completed.resolve(TUESDAY)).isEqualTo(NutritionDayType.STRENGTH);
+    assertThat(completed.resolve(FRIDAY)).isEqualTo(NutritionDayType.REST);
+  }
+
+  /** ...and (FIX1) outside it too, in both a past and a future week that are also completed. */
+  @Test
+  void completedPlanAppliesTheSameRuleOutsideTheCurrentWeek() {
+    ScheduledNutritionDayTypeService completed = completedPlanService();
+
+    LocalDate pastWeekRunningDay = LocalDate.of(2026, 8, 15); // Saturday, week of 2026-08-10
+    LocalDate pastWeekStrengthDay = LocalDate.of(2026, 8, 11); // Tuesday, week of 2026-08-10
+    LocalDate futureWeekRunningDay = LocalDate.of(2026, 8, 24); // Monday, week of 2026-08-24
+    LocalDate futureWeekStrengthDay = LocalDate.of(2026, 8, 25); // Tuesday, week of 2026-08-24
+
+    assertThat(completed.resolve(pastWeekRunningDay)).isEqualTo(NutritionDayType.REST);
+    assertThat(completed.resolve(pastWeekStrengthDay)).isEqualTo(NutritionDayType.STRENGTH);
+    assertThat(completed.resolve(futureWeekRunningDay)).isEqualTo(NutritionDayType.REST);
+    assertThat(completed.resolve(futureWeekStrengthDay)).isEqualTo(NutritionDayType.STRENGTH);
+  }
+
+  /** Accepted 2026-04-20 (Monday), 17 weeks before "now" (2026-08-17) — past the 16-week plan. */
+  private static ScheduledNutritionDayTypeService completedPlanService() {
+    FakePlanAcceptanceRepository longAgo = new FakePlanAcceptanceRepository();
+    longAgo.markAccepted(USER_ID, Instant.parse("2026-04-20T08:00:00Z"));
+    return new ScheduledNutritionDayTypeService(
+        new WeeklyTrainingScheduleService(
+            new RunningPlanService(),
+            new WorkoutTemplateService(),
+            new FakeTrainingSessionStatusRepository(),
+            () -> USER_ID,
+            Clock.fixed(MONDAY_MORNING, ZoneOffset.UTC),
+            longAgo),
+        Clock.fixed(MONDAY_MORNING, ZoneOffset.UTC));
   }
 }

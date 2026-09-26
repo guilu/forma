@@ -1,6 +1,7 @@
 package dev.diegobarrioh.forma.delivery.training;
 
 import dev.diegobarrioh.forma.application.MuscleWorkedMapService;
+import dev.diegobarrioh.forma.application.PlanRestartService;
 import dev.diegobarrioh.forma.application.TrainingSessionRescheduleService;
 import dev.diegobarrioh.forma.application.TrainingSessionStatusService;
 import dev.diegobarrioh.forma.application.WeeklyTrainingScheduleService;
@@ -9,11 +10,14 @@ import dev.diegobarrioh.forma.delivery.ApiPaths;
 import dev.diegobarrioh.forma.domain.SessionStatus;
 import jakarta.validation.Valid;
 import java.time.DayOfWeek;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -35,18 +39,21 @@ public class TrainingController {
   private final WeeklyTrainingSummaryService summaryService;
   private final MuscleWorkedMapService muscleWorkedMapService;
   private final TrainingSessionRescheduleService rescheduleService;
+  private final PlanRestartService restartService;
 
   public TrainingController(
       WeeklyTrainingScheduleService scheduleService,
       TrainingSessionStatusService statusService,
       WeeklyTrainingSummaryService summaryService,
       MuscleWorkedMapService muscleWorkedMapService,
-      TrainingSessionRescheduleService rescheduleService) {
+      TrainingSessionRescheduleService rescheduleService,
+      PlanRestartService restartService) {
     this.scheduleService = scheduleService;
     this.statusService = statusService;
     this.summaryService = summaryService;
     this.muscleWorkedMapService = muscleWorkedMapService;
     this.rescheduleService = rescheduleService;
+    this.restartService = restartService;
   }
 
   /**
@@ -63,6 +70,22 @@ public class TrainingController {
   @GetMapping("/week")
   public TrainingWeekResponse week() {
     return TrainingWeekResponse.from(scheduleService.currentWeek());
+  }
+
+  /**
+   * Starts a new 16-week cycle for an account whose plan already reached its terminal state (design
+   * D5 of training-progression-and-logging): reanchors the cycle to now, so the next {@code GET
+   * /training/week} derives week 1 again.
+   *
+   * <p>The precondition is enforced by {@link PlanRestartService#restart()}, not just by the
+   * frontend hiding the restart CTA outside that state: an account whose plan is still active gets
+   * 409 {@code CONFLICT} (mapped by {@code GlobalExceptionHandler} from {@link
+   * dev.diegobarrioh.forma.application.ConflictException}), never a silent reset back to week 1.
+   */
+  @PostMapping("/plan/restart")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void restartPlan() {
+    restartService.restart();
   }
 
   /** Returns the current week's training adherence summary (FOR-28). */

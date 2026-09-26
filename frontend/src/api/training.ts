@@ -6,6 +6,7 @@
 import { apiClient, type ApiClient } from './client';
 
 const TRAINING_WEEK_PATH = '/api/v1/training/week';
+const PLAN_RESTART_PATH = '/api/v1/training/plan/restart';
 
 /** Completion status of a training session (FOR-27). */
 export type SessionStatus = 'PLANNED' | 'COMPLETED' | 'SKIPPED';
@@ -58,6 +59,16 @@ export interface SessionStatusResult {
 /** Fetches the current week's training calendar. */
 export function getTrainingWeek(client: ApiClient = apiClient): Promise<TrainingWeek> {
   return client.request<TrainingWeek>(TRAINING_WEEK_PATH);
+}
+
+/**
+ * Starts a new 16-week cycle (design D5 of training-progression-and-logging),
+ * for an account whose plan already reached `planState: 'COMPLETED'`. The
+ * caller refetches the week afterwards — this call answers with nothing to
+ * patch in place, unlike {@link rescheduleSession}.
+ */
+export function restartPlan(client: ApiClient = apiClient): Promise<void> {
+  return client.request<void>(PLAN_RESTART_PATH, { method: 'POST' });
 }
 
 /** Marks a session's completion status (FOR-27). */

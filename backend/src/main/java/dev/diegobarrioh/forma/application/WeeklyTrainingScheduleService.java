@@ -103,6 +103,29 @@ public class WeeklyTrainingScheduleService {
     return LocalDate.now(clock).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
   }
 
+  /**
+   * Where the calling account's plan sits right now (design D1/D2), for callers that need only the
+   * state — not the whole calendar. {@link PlanRestartService} uses this to enforce its own
+   * precondition (design D5: restart is only valid once the plan reached {@link
+   * TrainingPlanProgress.Completed}) without re-deriving the same fact from {@link
+   * PlanAcceptanceRepository} a second way — this service stays the single portero (D2).
+   */
+  public TrainingPlanProgress currentProgress() {
+    return resolveProgress(currentUserProvider.currentUserId());
+  }
+
+  /**
+   * Where the calling account's plan sits for the week {@code date} falls in (design D1/D2), for
+   * callers that need to classify a date outside the week this service currently shows — e.g.
+   * {@link ScheduledNutritionDayTypeService} resolving a nutrition day type for any date, not only
+   * this week's. Mirrors {@link #currentProgress()}, only anchored on {@code date}'s own Monday
+   * instead of "now"'s, so this stays the single portero (D2) for both.
+   */
+  public TrainingPlanProgress progressForWeekOf(LocalDate date) {
+    LocalDate weekStart = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+    return resolveProgress(currentUserProvider.currentUserId(), weekStart);
+  }
+
   /** Builds the current week's calendar (Monday through Sunday), with this week's rows applied. */
   public WeeklyTrainingSchedule currentWeek() {
     UUID userId = currentUserProvider.currentUserId();
@@ -140,6 +163,10 @@ public class WeeklyTrainingScheduleService {
    * zone {@link #currentWeekStart()} uses, so the week always advances at that Monday boundary.
    */
   private TrainingPlanProgress resolveProgress(UUID userId) {
+    return resolveProgress(userId, currentWeekStart());
+  }
+
+  private TrainingPlanProgress resolveProgress(UUID userId, LocalDate weekStart) {
     return planAcceptanceRepository
         .planStartedAt(userId)
         .map(
@@ -149,7 +176,7 @@ public class WeeklyTrainingScheduleService {
                         .atZone(clock.getZone())
                         .toLocalDate()
                         .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
-                    currentWeekStart(),
+                    weekStart,
                     RunningPlanGenerator.WEEKS))
         .orElseGet(TrainingPlanProgress.NotStarted::new);
   }

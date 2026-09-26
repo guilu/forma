@@ -19,13 +19,20 @@
  * this is a notice, not the `EmptyState` this page shows when there is truly
  * nothing to draw.
  */
-.completedBanner {
-  margin: 0;
+.completedBannerContainer {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-md);
   background: var(--color-surface-muted);
+}
+
+.completedBanner {
+  margin: 0;
   color: var(--color-text);
   font-size: var(--font-size-sm);
+  flex: 1;
 }
 
 /*
