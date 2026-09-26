@@ -914,6 +914,13 @@ describe('TrainingPage', () => {
       expect(restartPlanMock).toHaveBeenCalled();
       // The week is refetched after restart so the cycle advances to week 1.
       expect(getWeekMock).toHaveBeenCalledTimes(2); // once on page mount, once after restart
+      // The happy path is the one place this toast should ever fire — the
+      // failure-path tests below assert its absence, which only means
+      // something if this asserts its presence here.
+      const region = screen.getByRole('log');
+      expect(
+        await within(region).findByText('Ciclo reiniciado. Tu semana 1 comienza ahora.'),
+      ).toBeInTheDocument();
     });
 
     /*
@@ -960,6 +967,43 @@ describe('TrainingPage', () => {
       expect(await within(region).findByText('No se pudo reiniciar el ciclo.')).toBeInTheDocument();
       // Not a 409, so there is nothing stale to resync — only the mount fetch happened.
       expect(getWeekMock).toHaveBeenCalledTimes(1);
+    });
+
+    /*
+     * Post-review fix (commit afc52bd): `TrainingPage.load` now rethrows after
+     * setting the error state, specifically so a restart that itself
+     * succeeded — but whose immediate refetch fails — never reaches the
+     * success toast below it. Nothing asserted that until now: this is the
+     * one scenario where `restartPlan()` resolves and the very next
+     * `getTrainingWeek()` call is the one that rejects.
+     */
+    it('never shows the success toast when restart succeeds but the reload after it fails', async () => {
+      getWeekMock.mockResolvedValueOnce(completedWeek); // mount
+      restartPlanMock.mockResolvedValueOnce(undefined);
+      getWeekMock.mockRejectedValueOnce(new Error('network')); // reload after restart
+      const user = userEvent.setup();
+
+      renderPage();
+
+      const button = await screen.findByRole('button', { name: /reiniciar/i });
+      await user.click(button);
+
+      expect(getWeekMock).toHaveBeenCalledTimes(2); // once on mount, once after restart
+
+      const region = screen.getByRole('log');
+      // `load`'s rethrow lands in `handleRestart`'s own catch, which reports
+      // the failure — not the success message the restart call itself would
+      // otherwise have earned.
+      expect(await within(region).findByText('No se pudo reiniciar el ciclo.')).toBeInTheDocument();
+      expect(
+        within(region).queryByText('Ciclo reiniciado. Tu semana 1 comienza ahora.'),
+      ).not.toBeInTheDocument();
+      // The failed reload also left `state` on 'error' (that is what `load`'s
+      // rethrow is guarding downstream of), so the page shows the page-level
+      // error state instead of the calendar it could no longer refresh.
+      expect(
+        await screen.findByText(/no se pudo cargar tu semana de entrenamiento/i),
+      ).toBeInTheDocument();
     });
 
     it('never lists a running session once the cycle is over', async () => {
