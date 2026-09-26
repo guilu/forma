@@ -569,7 +569,12 @@ const FIXTURES: ReadonlyArray<readonly [string, unknown]> = [
       // being eyeballed: 22.08 × 4.33 = 95.6064, which HALF_UP at scale 2 is 95.61.
       // A fixture that rounds differently from the calculator it stands in for is a
       // trap for whoever later compares the two.
-      budget: { weeklyEur: 22.08, monthlyEur: 95.61, weeklyThresholdEur: 120, overThreshold: false },
+      budget: {
+        weeklyEur: 22.08,
+        monthlyEur: 95.61,
+        weeklyThresholdEur: 120,
+        overThreshold: false,
+      },
     },
   ],
 ];
@@ -766,6 +771,42 @@ const WORKOUTS: Record<string, unknown> = {
 };
 
 /**
+ * Which workout template backs each strength session's set grid — mirrors
+ * `TRAINING_WEEK` above, so the grid the set-log fixture answers with is the
+ * same one `getWorkout` already serves for that session.
+ */
+const SESSION_WORKOUT_TYPES: Record<string, string> = {
+  'TUESDAY:STRENGTH': 'PUSH',
+  'THURSDAY:STRENGTH': 'PULL',
+  'SUNDAY:STRENGTH': 'LEGS',
+};
+
+/**
+ * The full per-set grid for a session's current workout template, all
+ * unlogged (training-set-log, design D6): every fixture-backed run starts a
+ * fresh week, and a fresh week's log is empty (spec "la semana nueva arranca
+ * limpia"). Not the template itself served twice — this mirrors what the real
+ * `GET .../sets` endpoint answers, one `LoggedSetResponse` per `(exerciseId,
+ * setNumber)` the template prescribes.
+ */
+function emptySetGrid(
+  sessionId: string,
+): { exerciseId: string; setNumber: number; weightKg: null; reps: null; done: false }[] {
+  const workout = WORKOUTS[SESSION_WORKOUT_TYPES[sessionId] ?? ''] as
+    { items: { exerciseId: string; sets: number }[] } | undefined;
+  if (!workout) return [];
+  return workout.items.flatMap((item) =>
+    Array.from({ length: item.sets }, (_, index) => ({
+      exerciseId: item.exerciseId,
+      setNumber: index + 1,
+      weightKg: null,
+      reps: null,
+      done: false,
+    })),
+  );
+}
+
+/**
  * Resolves a request path to its fixture.
  *
  * <p>An unstubbed endpoint answers 404 rather than `{}`: a widget handles a
@@ -794,6 +835,36 @@ export function fixtureFor(pathname: string): FixtureResponse {
   if (muscleMap) {
     const sessionId = decodeURIComponent(muscleMap[1]);
     return { status: 200, body: { sessionId, muscles: MUSCLE_MAPS[sessionId] ?? [] } };
+  }
+
+  /*
+   * Set-write path first — it is a prefix-superset of the read path below
+   * (`…/sets/{exerciseId}/{setNumber}` vs `…/sets`), so it must match first or
+   * the read regex's `$` anchor would simply fail to match and fall through
+   * anyway; checking the more specific path first keeps the intent obvious.
+   * `fixtureFor` never sees the request method or body (see `stubApi`/
+   * `devApiFixtures`), so this always answers with the written identifiers and
+   * a plausible stored value rather than echoing what the caller actually sent.
+   */
+  const putSet = /\/training\/sessions\/([^/]+)\/sets\/([^/]+)\/(\d+)$/.exec(pathname);
+  if (putSet) {
+    const [, , exerciseIdRaw, setNumberRaw] = putSet;
+    return {
+      status: 200,
+      body: {
+        exerciseId: decodeURIComponent(exerciseIdRaw),
+        setNumber: Number(setNumberRaw),
+        weightKg: null,
+        reps: null,
+        done: false,
+      },
+    };
+  }
+
+  const sessionSets = /\/training\/sessions\/([^/]+)\/sets$/.exec(pathname);
+  if (sessionSets) {
+    const sessionId = decodeURIComponent(sessionSets[1]);
+    return { status: 200, body: { sessionId, sets: emptySetGrid(sessionId) } };
   }
 
   // A2 (D5): restarting the plan cycle returns 204 No Content.

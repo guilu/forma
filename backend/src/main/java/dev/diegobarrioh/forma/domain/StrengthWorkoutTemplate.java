@@ -31,6 +31,25 @@ public record StrengthWorkoutTemplate(WorkoutType workoutType, List<StrengthWork
     if (distinctOrders != items.size()) {
       throw new IllegalArgumentException("item order values must be unique within a template");
     }
+    // Design D6 (training-progression-and-logging): the per-serie log keys each row by
+    // exerciseId, not by order — reordering a template must never silently reassign another
+    // exercise's history. That invariant only holds if exerciseId is unique to begin with.
+    long distinctExerciseIds =
+        items.stream().map(StrengthWorkoutItem::exerciseId).distinct().count();
+    if (distinctExerciseIds != items.size()) {
+      throw new IllegalArgumentException("item exerciseId values must be unique within a template");
+    }
     items = List.copyOf(items);
+  }
+
+  /**
+   * Whether this template prescribes a set numbered {@code setNumber} (1-based) for {@code
+   * exerciseId} — used by the training-set-log (design D6) to reject a write for a serie the
+   * current template does not have, without the log needing its own copy of "how many sets".
+   */
+  public boolean hasSet(String exerciseId, int setNumber) {
+    return items.stream()
+        .filter(item -> item.exerciseId().equals(exerciseId))
+        .anyMatch(item -> setNumber >= 1 && setNumber <= item.sets());
   }
 }
