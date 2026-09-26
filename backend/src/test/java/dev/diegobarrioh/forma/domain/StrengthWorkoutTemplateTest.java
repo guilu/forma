@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
 class StrengthWorkoutTemplateTest {
 
   private static StrengthWorkoutItem item(int order) {
-    return StrengthWorkoutItem.range("push-up", order, 3, 8, 12, 90, 2);
+    return StrengthWorkoutItem.range("push-up-" + order, order, 3, 8, 12, 90, 2);
   }
 
   @Test
@@ -153,6 +153,48 @@ class StrengthWorkoutTemplateTest {
               () -> new StrengthWorkoutTemplate(WorkoutType.PUSH, List.of(item(1), item(1))))
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessageContaining("order");
+    }
+
+    @Test
+    void rejectsDuplicateExerciseId() {
+      StrengthWorkoutItem first = StrengthWorkoutItem.range("push-up", 1, 3, 8, 12, 90, 2);
+      StrengthWorkoutItem second = StrengthWorkoutItem.range("push-up", 2, 3, 8, 12, 90, 2);
+
+      assertThatThrownBy(() -> new StrengthWorkoutTemplate(WorkoutType.PUSH, List.of(first, second)))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("exerciseId");
+    }
+  }
+
+  @Nested
+  class HasSet {
+
+    @Test
+    void isTrueForAnExistingExerciseWithinItsSetCount() {
+      StrengthWorkoutTemplate template =
+          new StrengthWorkoutTemplate(
+              WorkoutType.PUSH, List.of(StrengthWorkoutItem.range("push-up", 1, 3, 8, 12, 90, 2)));
+
+      assertThat(template.hasSet("push-up", 1)).isTrue();
+      assertThat(template.hasSet("push-up", 3)).isTrue();
+    }
+
+    @Test
+    void isFalseWhenTheSetNumberExceedsTheItemsSets() {
+      StrengthWorkoutTemplate template =
+          new StrengthWorkoutTemplate(
+              WorkoutType.PUSH, List.of(StrengthWorkoutItem.range("push-up", 1, 3, 8, 12, 90, 2)));
+
+      assertThat(template.hasSet("push-up", 4)).isFalse();
+    }
+
+    @Test
+    void isFalseForAnUnknownExerciseId() {
+      StrengthWorkoutTemplate template =
+          new StrengthWorkoutTemplate(
+              WorkoutType.PUSH, List.of(StrengthWorkoutItem.range("push-up", 1, 3, 8, 12, 90, 2)));
+
+      assertThat(template.hasSet("bench-press", 1)).isFalse();
     }
   }
 }
