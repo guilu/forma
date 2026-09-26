@@ -175,3 +175,77 @@ export interface Workout {
 export function getWorkout(type: string, client: ApiClient = apiClient): Promise<Workout> {
   return client.request<Workout>(`/api/v1/training/workouts/${encodeURIComponent(type)}`);
 }
+
+/**
+ * One set's persisted state, as returned by the per-set log endpoints
+ * (training-progression-and-logging slice B, design D6/D7). A not-yet-logged
+ * set has `weightKg`/`reps` as `null` and `done` as `false`, distinct from an
+ * actual zero.
+ */
+export interface LoggedSet {
+  readonly exerciseId: string;
+  readonly setNumber: number;
+  readonly weightKg: number | null;
+  readonly reps: number | null;
+  readonly done: boolean;
+}
+
+/**
+ * The current week's full set grid for one strength session (design D6): one
+ * entry per `(exerciseId, setNumber)` the active template prescribes,
+ * left-joined with anything already logged. A set the template no longer
+ * prescribes (template changed mid-week) is excluded here — the backend
+ * neither renders nor deletes it.
+ */
+export interface SessionSetLog {
+  readonly sessionId: string;
+  readonly sets: LoggedSet[];
+}
+
+/**
+ * Fetches the current week's per-set log for a strength session (design D6).
+ * 404s for a running session, a session outside the current week, or one
+ * whose exercise/set is outside the current template.
+ */
+export function getSessionSets(
+  sessionId: string,
+  client: ApiClient = apiClient,
+): Promise<SessionSetLog> {
+  return client.request<SessionSetLog>(
+    `/api/v1/training/sessions/${encodeURIComponent(sessionId)}/sets`,
+  );
+}
+
+/**
+ * What to persist for one set (design D7). `weightKg` and `reps` are each
+ * independently optional — logging only the weight is a legitimate partial
+ * write, not an error.
+ */
+export interface LogSetInput {
+  readonly weightKg: number | null;
+  readonly reps: number | null;
+  readonly done: boolean;
+}
+
+/**
+ * Writes one set — never the whole session (design D7): the write unit
+ * matches the user's action (an input losing focus, a toggle), so editing one
+ * set never races, nor last-writer-wins over, another set's write. Returns
+ * the set as stored.
+ */
+export function putSessionSet(
+  sessionId: string,
+  exerciseId: string,
+  setNumber: number,
+  input: LogSetInput,
+  client: ApiClient = apiClient,
+): Promise<LoggedSet> {
+  return client.request<LoggedSet>(
+    `/api/v1/training/sessions/${encodeURIComponent(sessionId)}/sets/${encodeURIComponent(exerciseId)}/${setNumber}`,
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    },
+  );
+}

@@ -2,9 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   getMuscleMap,
+  getSessionSets,
   getTrainingWeek,
   getWorkout,
+  putSessionSet,
   updateSessionStatus,
+  type LoggedSet,
   type MuscleWorkedMap,
   type SessionStatus,
   type TrainingSession,
@@ -34,6 +37,7 @@ type DetailState =
       readonly session: TrainingSession;
       readonly workout: Workout;
       readonly muscleMap: MuscleWorkedMap;
+      readonly sets: readonly LoggedSet[];
     };
 
 const ESTIMATED_DURATION_MIN = 55;
@@ -75,23 +79,49 @@ function formatTimer(totalSeconds: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-function setKey(item: WorkoutItem, setIndex: number): string {
-  return `${item.exerciseId}:${setIndex}`;
+function setKey(exerciseId: string, setNumber: number): string {
+  return `${exerciseId}:${setNumber}`;
 }
 
-function initialSetEntries(workout: Workout, completed: boolean): SetEntries {
+/**
+ * Builds the set table's local editing state from the server's per-set log
+ * (training-set-log, design D6), not from an ephemeral in-memory default: a
+ * reload or a return visit later in the same week must show what was
+ * actually persisted. A set the log has nothing for yet (fresh week, spec
+ * "arranca vacía") falls back to an empty weight and the prescription's own
+ * target reps, mirroring the pre-persistence placeholder behaviour.
+ */
+function buildSetEntries(workout: Workout, sets: readonly LoggedSet[]): SetEntries {
+  const logged = new Map(sets.map((set) => [setKey(set.exerciseId, set.setNumber), set]));
   return Object.fromEntries(
     workout.items.flatMap((item) =>
-      Array.from({ length: item.sets }, (_, setIndex) => [
-        setKey(item, setIndex),
-        {
-          weight: '',
-          reps: String(item.repsMin ?? item.repsMax ?? ''),
-          done: completed,
-        },
-      ]),
+      Array.from({ length: item.sets }, (_, index) => {
+        const setNumber = index + 1;
+        const key = setKey(item.exerciseId, setNumber);
+        const loggedSet = logged.get(key);
+        return [
+          key,
+          {
+            weight: loggedSet?.weightKg != null ? String(loggedSet.weightKg) : '',
+            reps:
+              loggedSet?.reps != null
+                ? String(loggedSet.reps)
+                : String(item.repsMin ?? item.repsMax ?? ''),
+            done: loggedSet?.done ?? false,
+          },
+        ];
+      }),
     ),
   );
+}
+
+/** Parses a set-table input's raw string into what the log endpoint expects: `null` for
+ * an empty/unparseable value, never `NaN` (design D7 "registro parcial"). */
+function parseOptionalNumber(value: string): number | null {
+  const trimmed = value.trim();
+  if (trimmed === '') return null;
+  const parsed = Number(trimmed);
+  return Number.isNaN(parsed) ? null : parsed;
 }
 
 export function TrainingDetailPage() {
@@ -125,11 +155,12 @@ export function TrainingDetailPage() {
         });
         return;
       }
-      const [workout, muscleMap] = await Promise.all([
+      const [workout, muscleMap, sessionSets] = await Promise.all([
         getWorkout(session.workoutType),
         getMuscleMap(session.id),
+        getSessionSets(session.id),
       ]);
-      setState({ status: 'ready', session, workout, muscleMap });
+      setState({ status: 'ready', session, workout, muscleMap, sets: sessionSets.sets });
     } catch {
       setState({ status: 'error', message: 'No se pudo cargar el detalle del entrenamiento.' });
     }
@@ -198,8 +229,9 @@ function TrainingDetailContent({
   const [restSeconds, setRestSeconds] = useState(0);
   const [restPaused, setRestPaused] = useState(false);
   const [setEntries, setSetEntries] = useState<SetEntries>(() =>
-    initialSetEntries(state.workout, completed),
+    buildSetEntries(state.workout, state.sets),
   );
+  const [setLogError, setSetLogError] = useState<string>();
   const muscles = groupMusclesForDisplay(state.muscleMap.muscles);
   const muscleTotal = muscles.reduce((total, muscle) => total + LOAD_WEIGHT[muscle.load], 0);
   const muscleSlices = muscles.map((muscle, index) => ({
@@ -240,14 +272,41 @@ function TrainingDetailContent({
     return () => window.clearInterval(interval);
   }, [restPaused, restSeconds]);
 
-  function updateSet(key: string, field: 'weight' | 'reps', value: string) {
+  function updateSet(
+    item: WorkoutItem,
+    setNumber: number,
+    field: 'weight' | 'reps',
+    value: string,
+  ) {
+    const key = setKey(item.exerciseId, setNumber);
     setSetEntries((entries) => ({
       ...entries,
       [key]: { ...entries[key], [field]: value },
     }));
   }
 
-  function toggleSet(key: string) {
+  /** Persists one set (design D7). Never throws — a failed write shows a visible error
+   * instead of an unhandled rejection, and never blocks the local, already-applied edit. */
+  async function persistSet(item: WorkoutItem, setNumber: number, entry: SetEntry) {
+    setSetLogError(undefined);
+    try {
+      await putSessionSet(state.session.id, item.exerciseId, setNumber, {
+        weightKg: parseOptionalNumber(entry.weight),
+        reps: parseOptionalNumber(entry.reps),
+        done: entry.done,
+      });
+    } catch {
+      setSetLogError('No se pudo guardar la serie. Inténtalo de nuevo.');
+    }
+  }
+
+  function commitSet(item: WorkoutItem, setNumber: number) {
+    const key = setKey(item.exerciseId, setNumber);
+    void persistSet(item, setNumber, setEntries[key]);
+  }
+
+  function toggleSet(item: WorkoutItem, setNumber: number) {
+    const key = setKey(item.exerciseId, setNumber);
     const willBeDone = !setEntries[key].done;
     setSetEntries((entries) => ({
       ...entries,
@@ -257,6 +316,7 @@ function TrainingDetailContent({
       setRestSeconds(REST_SECONDS);
       setRestPaused(false);
     }
+    void persistSet(item, setNumber, { ...setEntries[key], done: willBeDone });
   }
 
   return (
@@ -327,6 +387,7 @@ function TrainingDetailContent({
                   entries={setEntries}
                   disabled={completed}
                   onChange={updateSet}
+                  onBlur={commitSet}
                   onToggle={toggleSet}
                 />
               ))}
@@ -430,6 +491,11 @@ function TrainingDetailContent({
           {actionError}
         </p>
       )}
+      {setLogError && (
+        <p className={styles.actionError} role="alert">
+          {setLogError}
+        </p>
+      )}
     </div>
   );
 }
@@ -518,13 +584,20 @@ function ExerciseCard({
   entries,
   disabled,
   onChange,
+  onBlur,
   onToggle,
 }: {
   readonly item: WorkoutItem;
   readonly entries: SetEntries;
   readonly disabled: boolean;
-  readonly onChange: (key: string, field: 'weight' | 'reps', value: string) => void;
-  readonly onToggle: (key: string) => void;
+  readonly onChange: (
+    item: WorkoutItem,
+    setNumber: number,
+    field: 'weight' | 'reps',
+    value: string,
+  ) => void;
+  readonly onBlur: (item: WorkoutItem, setNumber: number) => void;
+  readonly onToggle: (item: WorkoutItem, setNumber: number) => void;
 }) {
   return (
     <li className={styles.exerciseCard}>
@@ -548,9 +621,9 @@ function ExerciseCard({
           <span>Estado</span>
         </div>
         {Array.from({ length: item.sets }, (_, index) => {
-          const key = setKey(item, index);
-          const entry = entries[key];
           const setNumber = index + 1;
+          const key = setKey(item.exerciseId, setNumber);
+          const entry = entries[key];
           return (
             <div
               key={key}
@@ -566,7 +639,8 @@ function ExerciseCard({
                 placeholder="0"
                 disabled={disabled || entry.done}
                 aria-label={`Peso, ${item.exerciseName}, serie ${setNumber}`}
-                onChange={(event) => onChange(key, 'weight', event.target.value)}
+                onChange={(event) => onChange(item, setNumber, 'weight', event.target.value)}
+                onBlur={() => onBlur(item, setNumber)}
               />
               <input
                 type="number"
@@ -576,7 +650,8 @@ function ExerciseCard({
                 placeholder={repTarget(item)}
                 disabled={disabled || entry.done}
                 aria-label={`Repeticiones, ${item.exerciseName}, serie ${setNumber}`}
-                onChange={(event) => onChange(key, 'reps', event.target.value)}
+                onChange={(event) => onChange(item, setNumber, 'reps', event.target.value)}
+                onBlur={() => onBlur(item, setNumber)}
               />
               <IconButton
                 variant="ghost"
@@ -585,7 +660,7 @@ function ExerciseCard({
                 data-done={entry.done}
                 disabled={disabled}
                 label={`${entry.done ? 'Reabrir' : 'Completar'} ${item.exerciseName}, serie ${setNumber}`}
-                onClick={() => onToggle(key)}
+                onClick={() => onToggle(item, setNumber)}
               >
                 <Icon name="checkCircle" size={17} />
               </IconButton>
