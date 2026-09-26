@@ -103,6 +103,17 @@ public class WeeklyTrainingScheduleService {
     return LocalDate.now(clock).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
   }
 
+  /**
+   * Where the calling account's plan sits right now (design D1/D2), for callers that need only the
+   * state — not the whole calendar. {@link PlanRestartService} uses this to enforce its own
+   * precondition (design D5: restart is only valid once the plan reached {@link
+   * TrainingPlanProgress.Completed}) without re-deriving the same fact from {@link
+   * PlanAcceptanceRepository} a second way — this service stays the single portero (D2).
+   */
+  public TrainingPlanProgress currentProgress() {
+    return resolveProgress(currentUserProvider.currentUserId());
+  }
+
   /** Builds the current week's calendar (Monday through Sunday), with this week's rows applied. */
   public WeeklyTrainingSchedule currentWeek() {
     UUID userId = currentUserProvider.currentUserId();

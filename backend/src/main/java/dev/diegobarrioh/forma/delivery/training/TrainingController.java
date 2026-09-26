@@ -76,6 +76,11 @@ public class TrainingController {
    * Starts a new 16-week cycle for an account whose plan already reached its terminal state (design
    * D5 of training-progression-and-logging): reanchors the cycle to now, so the next {@code GET
    * /training/week} derives week 1 again.
+   *
+   * <p>The precondition is enforced by {@link PlanRestartService#restart()}, not just by the
+   * frontend hiding the restart CTA outside that state: an account whose plan is still active gets
+   * 409 {@code CONFLICT} (mapped by {@code GlobalExceptionHandler} from {@link
+   * dev.diegobarrioh.forma.application.ConflictException}), never a silent reset back to week 1.
    */
   @PostMapping("/plan/restart")
   @ResponseStatus(HttpStatus.NO_CONTENT)
