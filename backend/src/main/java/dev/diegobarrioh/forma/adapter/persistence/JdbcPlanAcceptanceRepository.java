@@ -8,6 +8,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -28,7 +29,18 @@ public class JdbcPlanAcceptanceRepository implements PlanAcceptanceRepository {
    * NULL} for every account, including ones accepted before V66.
    */
   private static final String STARTED_AT_SQL =
-      "SELECT COALESCE(cycle_started_at, accepted_at) FROM plan_acceptance WHERE user_id = ?";
+      "SELECT COALESCE(cycle_started_at, accepted_at) AS started_at FROM plan_acceptance"
+          + " WHERE user_id = ?";
+
+  /**
+   * Same {@code getObject(..., OffsetDateTime.class).toInstant()} pattern as {@link
+   * JdbcAchievementRepository} — {@code queryForObject(..., Instant.class, ...)} is the only spot
+   * in this repository that asked the driver for an {@link Instant} directly, a request the H2 test
+   * database tolerates but real PostgreSQL's driver does not convert a {@code timestamptz} to
+   * (pattern-alignment only, no contract change).
+   */
+  private static final RowMapper<Instant> STARTED_AT_ROW_MAPPER =
+      (rs, rowNum) -> rs.getObject("started_at", OffsetDateTime.class).toInstant();
 
   private static final String RESTART_CYCLE_SQL =
       "UPDATE plan_acceptance SET cycle_started_at = ? WHERE user_id = ?";
@@ -64,7 +76,7 @@ public class JdbcPlanAcceptanceRepository implements PlanAcceptanceRepository {
   public Optional<Instant> planStartedAt(UUID userId) {
     try {
       return Optional.ofNullable(
-          jdbcTemplate.queryForObject(STARTED_AT_SQL, Instant.class, userId));
+          jdbcTemplate.queryForObject(STARTED_AT_SQL, STARTED_AT_ROW_MAPPER, userId));
     } catch (EmptyResultDataAccessException e) {
       return Optional.empty();
     }
