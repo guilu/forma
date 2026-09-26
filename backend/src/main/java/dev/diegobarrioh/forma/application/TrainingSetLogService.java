@@ -21,12 +21,11 @@ import org.springframework.stereotype.Service;
  * design D6/D7).
  *
  * <p><b>No duplicated resolution logic:</b> the session id is validated against the real {@link
- * WeeklyTrainingScheduleService#currentWeek()} entries, exactly like {@link
- * MuscleWorkedMapService} and {@link TrainingSessionStatusService}. Unlike {@link
- * MuscleWorkedMapService} (which returns an empty map for a non-strength session), a {@code
- * "RUNNING"} entry is rejected with {@link NotFoundException} here: the set log has nothing
- * meaningful to say about a session with no sets, so both read and write 404 for it (spec
- * training-set-log).
+ * WeeklyTrainingScheduleService#currentWeek()} entries, exactly like {@link MuscleWorkedMapService}
+ * and {@link TrainingSessionStatusService}. Unlike {@link MuscleWorkedMapService} (which returns an
+ * empty map for a non-strength session), a {@code "RUNNING"} entry is rejected with {@link
+ * NotFoundException} here: the set log has nothing meaningful to say about a session with no sets,
+ * so both read and write 404 for it (spec training-set-log).
  *
  * <p><b>Reads are template-driven (design D6):</b> {@link #getSets(String)} returns one entry per
  * {@code (exerciseId, setNumber)} the current template prescribes, left-joined with any stored
@@ -86,7 +85,8 @@ public class TrainingSetLogService {
     for (StrengthWorkoutItem item : template.items()) {
       for (int setNumber = 1; setNumber <= item.sets(); setNumber++) {
         LoggedSet found = stored.get(item.exerciseId() + ":" + setNumber);
-        sets.add(found != null ? found : new LoggedSet(item.exerciseId(), setNumber, null, null, false));
+        sets.add(
+            found != null ? found : new LoggedSet(item.exerciseId(), setNumber, null, null, false));
       }
     }
     return new TrainingSetLogView(sessionId, List.copyOf(sets));
@@ -100,7 +100,12 @@ public class TrainingSetLogService {
    *     exerciseId}
    */
   public LoggedSet putSet(
-      String sessionId, String exerciseId, int setNumber, Double weightKg, Integer reps, boolean done) {
+      String sessionId,
+      String exerciseId,
+      int setNumber,
+      Double weightKg,
+      Integer reps,
+      boolean done) {
     StrengthWorkoutTemplate template = template(resolveStrengthSessionType(sessionId));
     if (!template.hasSet(exerciseId, setNumber)) {
       throw new NotFoundException(

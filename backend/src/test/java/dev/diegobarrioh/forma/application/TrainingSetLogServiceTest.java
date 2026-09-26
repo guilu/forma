@@ -39,7 +39,9 @@ class TrainingSetLogServiceTest {
           clock,
           acceptanceRepository);
 
-  /** Accepted the same Monday {@link #NOW} falls in, so the derived week is always 1 -> ACTIVE (D1). */
+  /**
+   * Accepted the same Monday {@link #NOW} falls in, so the derived week is always 1 -> ACTIVE (D1).
+   */
   private static FakePlanAcceptanceRepository acceptedAtMonday() {
     FakePlanAcceptanceRepository repository = new FakePlanAcceptanceRepository();
     repository.markAccepted(USER_ID, NOW);
@@ -55,8 +57,7 @@ class TrainingSetLogServiceTest {
     TrainingSetLogView view = service.getSets("STRENGTH:PUSH");
 
     assertThat(view.sessionId()).isEqualTo("STRENGTH:PUSH");
-    assertThat(view.sets())
-        .contains(new LoggedSet("push-up", 1, null, null, false));
+    assertThat(view.sets()).contains(new LoggedSet("push-up", 1, null, null, false));
   }
 
   @Test
@@ -74,15 +75,15 @@ class TrainingSetLogServiceTest {
     assertThatThrownBy(() -> service.getSets("RUNNING:LONG_RUN"))
         .isInstanceOf(NotFoundException.class)
         .hasMessageContaining("RUNNING:LONG_RUN");
-    assertThatThrownBy(
-            () -> service.putSet("RUNNING:LONG_RUN", "push-up", 1, 60.0, 8, true))
+    assertThatThrownBy(() -> service.putSet("RUNNING:LONG_RUN", "push-up", 1, 60.0, 8, true))
         .isInstanceOf(NotFoundException.class)
         .hasMessageContaining("RUNNING:LONG_RUN");
   }
 
   @Test
   void aSessionOutsideTheCurrentWeekIsRejected() {
-    // FULL_BODY has no template on any day of the week (same fixture as MuscleWorkedMapServiceTest).
+    // FULL_BODY has no template on any day of the week (same fixture as
+    // MuscleWorkedMapServiceTest).
     assertThatThrownBy(() -> service.getSets("STRENGTH:FULL_BODY"))
         .isInstanceOf(NotFoundException.class)
         .hasMessageContaining("STRENGTH:FULL_BODY");
@@ -91,8 +92,7 @@ class TrainingSetLogServiceTest {
   @Test
   void writingASetTheTemplateDoesNotPrescribeIsRejected() {
     // Way beyond any real template's set count.
-    assertThatThrownBy(
-            () -> service.putSet("STRENGTH:PUSH", "push-up", 99, 60.0, 8, true))
+    assertThatThrownBy(() -> service.putSet("STRENGTH:PUSH", "push-up", 99, 60.0, 8, true))
         .isInstanceOf(NotFoundException.class)
         .hasMessageContaining("push-up");
     assertThatThrownBy(
@@ -104,7 +104,8 @@ class TrainingSetLogServiceTest {
   @Test
   void anOrphanedSetIsNeitherRenderedNorDeleted() {
     // Written directly against the repository, bypassing the template validation putSet enforces —
-    // simulating a row left behind by a template that has since dropped this exerciseId (design D6).
+    // simulating a row left behind by a template that has since dropped this exerciseId (design
+    // D6).
     repository.upsertSet(
         USER_ID,
         THIS_WEEK,

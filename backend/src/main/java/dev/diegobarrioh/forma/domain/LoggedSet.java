@@ -18,7 +18,8 @@ package dev.diegobarrioh.forma.domain;
  * @param reps logged repetitions, or {@code null} if not recorded; must be >= 0 when present
  * @param done whether the set was marked complete
  */
-public record LoggedSet(String exerciseId, int setNumber, Double weightKg, Integer reps, boolean done) {
+public record LoggedSet(
+    String exerciseId, int setNumber, Double weightKg, Integer reps, boolean done) {
 
   public LoggedSet {
     if (exerciseId == null || exerciseId.isBlank()) {

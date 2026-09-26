@@ -23,12 +23,13 @@ public interface TrainingSetLogRepository {
   List<LoggedSet> findByUserWeekAndSession(UUID userId, LocalDate weekStart, String sessionKey);
 
   /**
-   * Inserts or updates one set (design D7: the write unit is a single set, not the whole
-   * session). Re-sending the same {@code (exerciseId, setNumber)} updates the existing row rather
-   * than duplicating it.
+   * Inserts or updates one set (design D7: the write unit is a single set, not the whole session).
+   * Re-sending the same {@code (exerciseId, setNumber)} updates the existing row rather than
+   * duplicating it.
    *
    * @param loggedAt when this write happened, stamped on every upsert (mirrors {@code
    *     training_session_status.completed_at}'s reasoning for "when", not "when planned")
    */
-  void upsertSet(UUID userId, LocalDate weekStart, String sessionKey, LoggedSet set, Instant loggedAt);
+  void upsertSet(
+      UUID userId, LocalDate weekStart, String sessionKey, LoggedSet set, Instant loggedAt);
 }

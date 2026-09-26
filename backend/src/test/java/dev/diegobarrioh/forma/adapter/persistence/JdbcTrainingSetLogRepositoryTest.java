@@ -18,8 +18,8 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 
 /**
- * Integration test for {@link JdbcTrainingSetLogRepository} (training-progression-and-logging
- * slice B, design D6/D7, migration V67). Runs against the in-memory PostgreSQL-mode H2 with Flyway
+ * Integration test for {@link JdbcTrainingSetLogRepository} (training-progression-and-logging slice
+ * B, design D6/D7, migration V67). Runs against the in-memory PostgreSQL-mode H2 with Flyway
  * migrations applied (ADR-007), like {@code JdbcTrainingSessionStatusRepositoryTest}.
  *
  * <p>Its own H2 database (AGENTS.md: no test wipes a shared table) rather than the shared {@code
@@ -66,7 +66,8 @@ class JdbcTrainingSetLogRepositoryTest {
     repository.upsertSet(
         USER_A, THIS_WEEK, "STRENGTH:PUSH", new LoggedSet("push-up", 2, 60.0, 8, true), loggedAt);
 
-    List<LoggedSet> stored = repository.findByUserWeekAndSession(USER_A, THIS_WEEK, "STRENGTH:PUSH");
+    List<LoggedSet> stored =
+        repository.findByUserWeekAndSession(USER_A, THIS_WEEK, "STRENGTH:PUSH");
 
     assertThat(stored).hasSize(1);
     LoggedSet set = stored.get(0);
@@ -92,7 +93,8 @@ class JdbcTrainingSetLogRepositoryTest {
         new LoggedSet("push-up", 2, 62.5, 6, true),
         Instant.now());
 
-    List<LoggedSet> stored = repository.findByUserWeekAndSession(USER_A, THIS_WEEK, "STRENGTH:PUSH");
+    List<LoggedSet> stored =
+        repository.findByUserWeekAndSession(USER_A, THIS_WEEK, "STRENGTH:PUSH");
 
     assertThat(stored).hasSize(1);
     assertThat(stored.get(0).weightKg()).isEqualTo(62.5);
@@ -102,9 +104,14 @@ class JdbcTrainingSetLogRepositoryTest {
   @Test
   void acceptsAPartialWriteWithOnlyWeight() {
     repository.upsertSet(
-        USER_A, THIS_WEEK, "STRENGTH:PUSH", new LoggedSet("push-up", 1, 60.0, null, false), Instant.now());
+        USER_A,
+        THIS_WEEK,
+        "STRENGTH:PUSH",
+        new LoggedSet("push-up", 1, 60.0, null, false),
+        Instant.now());
 
-    List<LoggedSet> stored = repository.findByUserWeekAndSession(USER_A, THIS_WEEK, "STRENGTH:PUSH");
+    List<LoggedSet> stored =
+        repository.findByUserWeekAndSession(USER_A, THIS_WEEK, "STRENGTH:PUSH");
 
     assertThat(stored.get(0).weightKg()).isEqualTo(60.0);
     assertThat(stored.get(0).reps()).isNull();
@@ -113,7 +120,11 @@ class JdbcTrainingSetLogRepositoryTest {
   @Test
   void isolatesRowsByWeek() {
     repository.upsertSet(
-        USER_A, LAST_WEEK, "STRENGTH:PUSH", new LoggedSet("push-up", 1, 60.0, 8, true), Instant.now());
+        USER_A,
+        LAST_WEEK,
+        "STRENGTH:PUSH",
+        new LoggedSet("push-up", 1, 60.0, 8, true),
+        Instant.now());
 
     assertThat(repository.findByUserWeekAndSession(USER_A, LAST_WEEK, "STRENGTH:PUSH")).hasSize(1);
     // The whole point of scoping by week_start: last week's log is invisible this week.
@@ -123,13 +134,29 @@ class JdbcTrainingSetLogRepositoryTest {
   @Test
   void isolatesRowsByAccount() {
     repository.upsertSet(
-        USER_A, THIS_WEEK, "STRENGTH:PUSH", new LoggedSet("push-up", 1, 60.0, 8, true), Instant.now());
+        USER_A,
+        THIS_WEEK,
+        "STRENGTH:PUSH",
+        new LoggedSet("push-up", 1, 60.0, 8, true),
+        Instant.now());
     repository.upsertSet(
-        USER_B, THIS_WEEK, "STRENGTH:PUSH", new LoggedSet("push-up", 1, 80.0, 5, true), Instant.now());
+        USER_B,
+        THIS_WEEK,
+        "STRENGTH:PUSH",
+        new LoggedSet("push-up", 1, 80.0, 5, true),
+        Instant.now());
 
-    assertThat(repository.findByUserWeekAndSession(USER_A, THIS_WEEK, "STRENGTH:PUSH").get(0).weightKg())
+    assertThat(
+            repository
+                .findByUserWeekAndSession(USER_A, THIS_WEEK, "STRENGTH:PUSH")
+                .get(0)
+                .weightKg())
         .isEqualTo(60.0);
-    assertThat(repository.findByUserWeekAndSession(USER_B, THIS_WEEK, "STRENGTH:PUSH").get(0).weightKg())
+    assertThat(
+            repository
+                .findByUserWeekAndSession(USER_B, THIS_WEEK, "STRENGTH:PUSH")
+                .get(0)
+                .weightKg())
         .isEqualTo(80.0);
   }
 }

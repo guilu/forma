@@ -160,7 +160,8 @@ class StrengthWorkoutTemplateTest {
       StrengthWorkoutItem first = StrengthWorkoutItem.range("push-up", 1, 3, 8, 12, 90, 2);
       StrengthWorkoutItem second = StrengthWorkoutItem.range("push-up", 2, 3, 8, 12, 90, 2);
 
-      assertThatThrownBy(() -> new StrengthWorkoutTemplate(WorkoutType.PUSH, List.of(first, second)))
+      assertThatThrownBy(
+              () -> new StrengthWorkoutTemplate(WorkoutType.PUSH, List.of(first, second)))
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessageContaining("exerciseId");
     }

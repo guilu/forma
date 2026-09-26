@@ -34,7 +34,8 @@ public record StrengthWorkoutTemplate(WorkoutType workoutType, List<StrengthWork
     // Design D6 (training-progression-and-logging): the per-serie log keys each row by
     // exerciseId, not by order — reordering a template must never silently reassign another
     // exercise's history. That invariant only holds if exerciseId is unique to begin with.
-    long distinctExerciseIds = items.stream().map(StrengthWorkoutItem::exerciseId).distinct().count();
+    long distinctExerciseIds =
+        items.stream().map(StrengthWorkoutItem::exerciseId).distinct().count();
     if (distinctExerciseIds != items.size()) {
       throw new IllegalArgumentException("item exerciseId values must be unique within a template");
     }

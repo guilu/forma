@@ -10,10 +10,10 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * In-memory {@link TrainingSetLogRepository} for unit tests (no Spring — ADR-007), mirroring
- * {@link FakeTrainingSessionStatusRepository}: keyed exactly like the real table's {@code
- * (user_id, week_start, session_key, exercise_id, set_number)} primary key (migration V67) so a
- * test cannot quietly disagree with the schema about whose row is whose.
+ * In-memory {@link TrainingSetLogRepository} for unit tests (no Spring — ADR-007), mirroring {@link
+ * FakeTrainingSessionStatusRepository}: keyed exactly like the real table's {@code (user_id,
+ * week_start, session_key, exercise_id, set_number)} primary key (migration V67) so a test cannot
+ * quietly disagree with the schema about whose row is whose.
  */
 public final class FakeTrainingSetLogRepository implements TrainingSetLogRepository {
 
