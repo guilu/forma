@@ -9,6 +9,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.diegobarrioh.forma.application.PlanAcceptanceRepository;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -43,8 +45,17 @@ class PlannedMealLogTest {
   /** 2026-07-14 is a Tuesday, which the shared weekly policy classifies as a strength day. */
   private static final LocalDate A_PAST_TUESDAY = LocalDate.of(2026, 7, 14);
 
+  /**
+   * FIX1 fallout: the training plan's own progress now governs the nutrition day type for ANY
+   * date, not only weekday alone (see {@code NutritionDayTypeResolver}), so {@code
+   * A_PAST_TUESDAY}'s week must actually be {@code Active} for it to resolve to {@code STRENGTH}.
+   * Seeded to that same Monday so the real clock's run date can never push this week out of range.
+   */
+  private static final Instant ACCEPTED_MONDAY_OF_THAT_WEEK = Instant.parse("2026-07-13T08:00:00Z");
+
   @Autowired private MockMvc mockMvc;
   @Autowired private ObjectMapper objectMapper;
+  @Autowired private PlanAcceptanceRepository acceptances;
 
   @Test
   void anEntryRemembersWhichPlannedMealItWas() throws Exception {
@@ -178,6 +189,11 @@ class PlannedMealLogTest {
 
   /** Creates a plan whose tuesday is a strength day with one meal, and returns that meal's id. */
   private String plannedStrengthMeal() throws Exception {
+    // FIX1 fallout: the plan must actually be Active for A_PAST_TUESDAY's own week, not just
+    // accepted "now" by the /activation call below — insert-if-absent (see
+    // JdbcPlanAcceptanceRepository) means seeding this first wins and that call becomes a no-op.
+    acceptances.markAccepted(SOMEBODY, ACCEPTED_MONDAY_OF_THAT_WEEK);
+
     String json =
         mockMvc
             .perform(

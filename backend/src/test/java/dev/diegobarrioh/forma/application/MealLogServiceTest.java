@@ -94,7 +94,9 @@ class MealLogServiceTest {
               new FakeTrainingSessionStatusRepository(),
               () -> USER_ID,
               FIXED_CLOCK,
-              acceptedAt(USER_ID, LocalDate.of(2026, 7, 13))),
+              // 4 weeks before TODAY's week, not the same week (FIX1): the shared-policy dates
+              // below fall in the PRECEDING week, which must still be ACTIVE, not NotStarted.
+              acceptedAt(USER_ID, LocalDate.of(2026, 6, 15))),
           FIXED_CLOCK);
 
   /** A plan accepted on {@code weekStart} itself, so the derived week is always 1 (D1). */

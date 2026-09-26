@@ -6,6 +6,7 @@ import dev.diegobarrioh.forma.application.WeeklyTrainingSchedule.TrainingDay;
 import dev.diegobarrioh.forma.application.WeeklyTrainingSchedule.TrainingEntry;
 import dev.diegobarrioh.forma.domain.BodyView;
 import dev.diegobarrioh.forma.domain.SessionStatus;
+import dev.diegobarrioh.forma.domain.TrainingPlanProgress;
 import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.Instant;
@@ -202,6 +203,25 @@ class WeeklyTrainingScheduleServiceTest {
     assertThat(byDay().get(DayOfWeek.TUESDAY).entries())
         .extracting(TrainingEntry::id)
         .contains("STRENGTH:PUSH");
+  }
+
+  /**
+   * FIX1: {@link WeeklyTrainingScheduleService#progressForWeekOf(LocalDate)} lets a caller ask
+   * about a week other than "now" without duplicating the derivation (design D2 — this service
+   * stays the single portero).
+   */
+  @Test
+  void progressForWeekOfMatchesCurrentProgressForTheCurrentWeek() {
+    acceptanceRepository.markAccepted(USER_ID, ACCEPTED_MONDAY);
+
+    assertThat(service.progressForWeekOf(THIS_WEEK)).isEqualTo(service.currentProgress());
+  }
+
+  @Test
+  void progressForWeekOfDerivesAnyOtherWeekFromTheSameAcceptance() {
+    acceptanceRepository.markAccepted(USER_ID, ACCEPTED_MONDAY);
+
+    assertThat(service.progressForWeekOf(LAST_WEEK)).isEqualTo(new TrainingPlanProgress.NotStarted());
   }
 
   @Test
