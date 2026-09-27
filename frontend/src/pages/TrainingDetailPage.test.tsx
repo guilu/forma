@@ -167,7 +167,10 @@ describe('TrainingDetailPage', () => {
     expect(within(exercises).getByText('90 s')).toBeInTheDocument();
     // A completed session with nothing logged is 0 %, not 100 %: the ring counts
     // sets, and marking the session done does not invent the ones never logged.
-    expect(screen.getByText('0%')).toBeInTheDocument();
+    const progress = screen
+      .getByRole('heading', { name: 'Progreso del entrenamiento' })
+      .closest('section')!;
+    expect(within(progress).getByText('0%')).toBeInTheDocument();
 
     // Named twice on purpose: once as a chip (the muscles this session leans
     // on) and once in the donut legend (every muscle it touches, with its share).
