@@ -165,7 +165,9 @@ describe('TrainingDetailPage', () => {
     ).toHaveValue(10);
     expect(within(exercises).getAllByText('Descanso entre series')).toHaveLength(2);
     expect(within(exercises).getByText('90 s')).toBeInTheDocument();
-    expect(screen.getByText('100%')).toBeInTheDocument();
+    // A completed session with nothing logged is 0 %, not 100 %: the ring counts
+    // sets, and marking the session done does not invent the ones never logged.
+    expect(screen.getByText('0%')).toBeInTheDocument();
 
     // Named twice on purpose: once as a chip (the muscles this session leans
     // on) and once in the donut legend (every muscle it touches, with its share).
@@ -323,6 +325,80 @@ describe('TrainingDetailPage', () => {
         done: true,
       }),
     );
+  });
+
+  describe('progress ring', () => {
+    function progressCard() {
+      return screen
+        .getByRole('heading', { name: 'Progreso del entrenamiento' })
+        .closest('section')!;
+    }
+
+    it('counts done sets over the sets the template prescribes', async () => {
+      weekMock.mockResolvedValueOnce(plannedWeekMock());
+      setsMock.mockResolvedValueOnce({
+        sessionId: 'SUNDAY:STRENGTH',
+        sets: [
+          { exerciseId: 'goblet-squat', setNumber: 1, weightKg: 20, reps: 15, done: true },
+          { exerciseId: 'goblet-squat', setNumber: 2, weightKg: 22, reps: 12, done: true },
+          { exerciseId: 'goblet-squat', setNumber: 3, weightKg: 22, reps: null, done: false },
+        ],
+      });
+      renderPage();
+      await screen.findByRole('heading', { name: 'Pierna y core', level: 1 });
+
+      const card = progressCard();
+      expect(within(card).getByText('29%')).toBeInTheDocument();
+      expect(within(card).getByText('2 de 7 series')).toBeInTheDocument();
+    });
+
+    it('shows the real share, not 100 %, for a completed session with sets still pending', async () => {
+      setsMock.mockResolvedValueOnce({
+        sessionId: 'SUNDAY:STRENGTH',
+        sets: [{ exerciseId: 'dead-bug', setNumber: 1, weightKg: null, reps: 12, done: true }],
+      });
+      renderPage();
+      await screen.findByRole('heading', { name: 'Pierna y core', level: 1 });
+
+      const card = progressCard();
+      expect(within(card).getByText('14%')).toBeInTheDocument();
+      expect(within(card).getByText('1 de 7 series')).toBeInTheDocument();
+      expect(within(card).getByText('¡Entrenamiento completado!')).toBeInTheDocument();
+    });
+
+    it('updates live when a set is ticked and unticked, without reloading', async () => {
+      weekMock.mockResolvedValueOnce(plannedWeekMock());
+      renderPage();
+      await screen.findByRole('heading', { name: 'Pierna y core', level: 1 });
+      const card = progressCard();
+      expect(within(card).getByText('0 de 7 series')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Completar Sentadilla goblet, serie 2' }));
+      expect(within(card).getByText('14%')).toBeInTheDocument();
+      expect(within(card).getByText('1 de 7 series')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Reabrir Sentadilla goblet, serie 2' }));
+      expect(within(card).getByText('0%')).toBeInTheDocument();
+      expect(within(card).getByText('0 de 7 series')).toBeInTheDocument();
+      await waitFor(() => expect(putSetMock).toHaveBeenCalledTimes(2));
+    });
+
+    it('does not count orphaned sets outside the current template (design D6)', async () => {
+      weekMock.mockResolvedValueOnce(plannedWeekMock());
+      setsMock.mockResolvedValueOnce({
+        sessionId: 'SUNDAY:STRENGTH',
+        sets: [
+          { exerciseId: 'removed-exercise', setNumber: 1, weightKg: 30, reps: 10, done: true },
+          { exerciseId: 'goblet-squat', setNumber: 9, weightKg: 30, reps: 10, done: true },
+        ],
+      });
+      renderPage();
+      await screen.findByRole('heading', { name: 'Pierna y core', level: 1 });
+
+      const card = progressCard();
+      expect(within(card).getByText('0%')).toBeInTheDocument();
+      expect(within(card).getByText('0 de 7 series')).toBeInTheDocument();
+    });
   });
 
   it('shows a visible error when a set write fails', async () => {

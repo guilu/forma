@@ -255,6 +255,20 @@ function TrainingDetailContent({
     [setEntries],
   );
 
+  /*
+   * The ring counts sets, not the session's status. `setEntries` is built from the
+   * current template only, so orphaned logged sets (design D6) never reach this
+   * count — the same rule that keeps them off the table. A session marked
+   * COMPLETED with sets still pending shows its real share: completing early is
+   * legitimate, inventing the sets that were never logged is not.
+   */
+  const setProgress = useMemo(() => {
+    const entries = Object.values(setEntries);
+    return { done: entries.filter((entry) => entry.done).length, total: entries.length };
+  }, [setEntries]);
+  const progressPercent =
+    setProgress.total > 0 ? Math.round((setProgress.done / setProgress.total) * 100) : 0;
+
   useEffect(() => {
     const interval = window.setInterval(
       () => setElapsedSeconds(Math.floor((Date.now() - startedAt) / 1000)),
@@ -417,17 +431,19 @@ function TrainingDetailContent({
         <aside className={styles.side}>
           <Card title="Progreso del entrenamiento" className={styles.progressCard}>
             <ProgressRing
-              value={completed ? 1 : 0}
-              max={1}
+              value={setProgress.done}
+              max={setProgress.total}
               size={128}
-              label={completed ? 'Entrenamiento completado' : 'Entrenamiento pendiente'}
+              label={`${setProgress.done} de ${setProgress.total} series completadas`}
             >
-              <strong className={styles.progressPercent}>{completed ? 100 : 0}%</strong>
+              <strong className={styles.progressPercent}>{progressPercent}%</strong>
             </ProgressRing>
             <strong className={styles.progressMessage}>
               {completed ? '¡Entrenamiento completado!' : 'Entrenamiento pendiente'}
             </strong>
-            <span>{state.workout.items.length} ejercicios</span>
+            <span>
+              {setProgress.done} de {setProgress.total} series
+            </span>
             <Button
               type="button"
               disabled={completed || pendingStatus !== undefined}
