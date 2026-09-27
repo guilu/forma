@@ -2,18 +2,23 @@ package dev.diegobarrioh.forma.delivery.training;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.anonymous;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import dev.diegobarrioh.forma.application.ConflictException;
 import dev.diegobarrioh.forma.application.MuscleWorkedMap;
 import dev.diegobarrioh.forma.application.MuscleWorkedMap.MuscleWorked;
 import dev.diegobarrioh.forma.application.MuscleWorkedMapService;
 import dev.diegobarrioh.forma.application.NotFoundException;
-import dev.diegobarrioh.forma.application.PlanActivationService;
+import dev.diegobarrioh.forma.application.PlanRestartService;
 import dev.diegobarrioh.forma.application.StoredSessionStatus;
 import dev.diegobarrioh.forma.application.TrainingSessionRescheduleService;
 import dev.diegobarrioh.forma.application.TrainingSessionStatusService;
@@ -41,6 +46,10 @@ import org.springframework.test.web.servlet.MockMvc;
 /**
  * Web-slice tests for {@link TrainingController} (FOR-26/FOR-27): the week response shape and the
  * status-update endpoint (happy path, validation, not-found).
+ *
+ * <p>There is no gate here (design D2 of training-progression-and-logging): {@code GET
+ * /training/week} is always 200, and {@code planState} is what tells the caller whether the account
+ * has never accepted a plan, is mid-cycle, or finished it — never a 4xx/204 for that.
  */
 @WebMvcTest(TrainingController.class)
 @Import(WebMvcAuthTestConfig.class)
@@ -51,25 +60,84 @@ class TrainingControllerTest {
   @MockBean private TrainingSessionStatusService statusService;
   @MockBean private WeeklyTrainingSummaryService summaryService;
   @MockBean private MuscleWorkedMapService muscleWorkedMapService;
-  @MockBean private PlanActivationService planActivationService;
   @MockBean private TrainingSessionRescheduleService rescheduleService;
-
-  /** Default to an accepted plan so the week is served; individual tests override. */
-  @org.junit.jupiter.api.BeforeEach
-  void planAcceptedByDefault() {
-    when(planActivationService.accepted()).thenReturn(true);
-  }
+  @MockBean private PlanRestartService restartService;
 
   @Test
-  void returnsAnEmptyWeekUntilThePlanIsAccepted() throws Exception {
-    when(planActivationService.accepted()).thenReturn(false);
+  void returnsNotStartedWithANullWeekAndAnEmptyCalendarWhenNoPlanWasEverAccepted()
+      throws Exception {
+    when(scheduleService.currentWeek())
+        .thenReturn(
+            new WeeklyTrainingSchedule(
+                List.of(
+                    new TrainingDay(DayOfWeek.MONDAY, List.of()),
+                    new TrainingDay(DayOfWeek.TUESDAY, List.of())),
+                "NOT_STARTED",
+                null,
+                16));
 
     mockMvc
         .perform(get("/api/v1/training/week"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.days.length()").value(7))
+        .andExpect(jsonPath("$.planState").value("NOT_STARTED"))
+        .andExpect(jsonPath("$.planWeek").isEmpty())
+        .andExpect(jsonPath("$.planTotalWeeks").value(16))
         .andExpect(jsonPath("$.days[0].rest").value(true))
         .andExpect(jsonPath("$.days[0].sessions").isEmpty());
+  }
+
+  @Test
+  void returnsCompletedWithANullWeekWhenThePlanCycleIsOver() throws Exception {
+    when(scheduleService.currentWeek())
+        .thenReturn(
+            new WeeklyTrainingSchedule(
+                List.of(
+                    new TrainingDay(
+                        DayOfWeek.TUESDAY,
+                        List.of(
+                            new TrainingEntry(
+                                "STRENGTH:PUSH",
+                                "STRENGTH",
+                                "Fuerza · Empuje",
+                                "5 ejercicios",
+                                "PLANNED",
+                                null,
+                                "PUSH",
+                                BodyView.FRONT)))),
+                "COMPLETED",
+                null,
+                16));
+
+    mockMvc
+        .perform(get("/api/v1/training/week"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.planState").value("COMPLETED"))
+        .andExpect(jsonPath("$.planWeek").isEmpty())
+        // Strength keeps going past the terminal state (design D4); only running stops.
+        .andExpect(jsonPath("$.days[0].sessions[0].id").value("STRENGTH:PUSH"));
+  }
+
+  /**
+   * Design D2 kept one guard for {@code GET /training/week}: if a second acceptance gate were ever
+   * reintroduced and disagreed with the schedule service's own read, {@code IllegalStateException}
+   * must map to 500 {@code INTERNAL_ERROR} with a {@code correlationId} — never leak internally, or
+   * silently degrade. {@link dev.diegobarrioh.forma.delivery.error.GlobalExceptionHandler}'s
+   * catch-all already does this for every unhandled exception (verified generically in {@code
+   * GlobalExceptionHandlerTest}); this test pins that same behavior for this endpoint specifically,
+   * so nobody has to re-derive it from the generic case.
+   */
+  @Test
+  void anIllegalStateFromTheScheduleServiceMapsToInternalErrorWithACorrelationId()
+      throws Exception {
+    when(scheduleService.currentWeek())
+        .thenThrow(new IllegalStateException("segundo gate en desacuerdo con el primero"));
+
+    mockMvc
+        .perform(get("/api/v1/training/week").header("X-Correlation-Id", "corr-week-500"))
+        .andExpect(status().isInternalServerError())
+        .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"))
+        .andExpect(jsonPath("$.correlationId").value("corr-week-500"))
+        .andExpect(jsonPath("$.message").value("An unexpected error occurred"));
   }
 
   @Test
@@ -98,12 +166,18 @@ class TrainingControllerTest {
                             null,
                             "PUSH",
                             BodyView.FRONT))),
-                new TrainingDay(DayOfWeek.FRIDAY, List.of())));
+                new TrainingDay(DayOfWeek.FRIDAY, List.of())),
+            "ACTIVE",
+            1,
+            16);
     when(scheduleService.currentWeek()).thenReturn(schedule);
 
     mockMvc
         .perform(get("/api/v1/training/week"))
         .andExpect(status().isOk())
+        .andExpect(jsonPath("$.planState").value("ACTIVE"))
+        .andExpect(jsonPath("$.planWeek").value(1))
+        .andExpect(jsonPath("$.planTotalWeeks").value(16))
         .andExpect(jsonPath("$.days[0].sessions[0].id").value("RUNNING:LONG_RUN"))
         .andExpect(jsonPath("$.days[0].sessions[0].status").value("PLANNED"))
         .andExpect(jsonPath("$.days[0].sessions[0].workoutType").doesNotExist())
@@ -129,7 +203,10 @@ class TrainingControllerTest {
                                 "PLANNED",
                                 null,
                                 "PUSH",
-                                BodyView.FRONT))))));
+                                BodyView.FRONT)))),
+                "ACTIVE",
+                1,
+                16));
 
     mockMvc
         .perform(
@@ -145,7 +222,8 @@ class TrainingControllerTest {
 
   @Test
   void aNullDayRestoresThePlannedDay() throws Exception {
-    when(scheduleService.currentWeek()).thenReturn(new WeeklyTrainingSchedule(List.of()));
+    when(scheduleService.currentWeek())
+        .thenReturn(new WeeklyTrainingSchedule(List.of(), "ACTIVE", 1, 16));
 
     mockMvc
         .perform(
@@ -156,6 +234,52 @@ class TrainingControllerTest {
 
     // Null is meaningful here, not missing: it clears the override.
     verify(rescheduleService).reschedule("STRENGTH:PUSH", null);
+  }
+
+  /**
+   * At this layer {@code restartService} is a {@code @MockBean}: the endpoint's own contract is
+   * that a call reaches {@link PlanRestartService#restart()} and answers 204, nothing about what
+   * restarting actually does to the plan's week. That reanchoring behavior (cycle back to week 1)
+   * is {@link PlanRestartService}'s own contract and is pinned by {@code PlanRestartServiceTest}
+   * (no Spring, ADR-007), not provable from a web-slice test stubbing both services independently.
+   */
+  @Test
+  void restartingThePlanCallsTheRestartServiceAndReturns204() throws Exception {
+    mockMvc.perform(post("/api/v1/training/plan/restart")).andExpect(status().isNoContent());
+
+    verify(restartService).restart();
+  }
+
+  /**
+   * {@link TrainingController#restartPlan()}'s javadoc documents 409 {@code CONFLICT} for an
+   * account whose plan has not reached its terminal state (design D5, {@link
+   * PlanRestartService#restart()}'s precondition). Pinned here at the delivery boundary so a
+   * misconfigured {@code @ExceptionHandler} mapping cannot silently degrade the guard to a 500
+   * without failing a test — {@code restartService} is mocked, so {@link ConflictException} is
+   * thrown directly rather than re-deriving the precondition through the schedule service.
+   */
+  @Test
+  void restartingAnActivePlanAnswers409WithTheServicesMessage() throws Exception {
+    doThrow(new ConflictException("El plan debe estar completado para poder reiniciar el ciclo."))
+        .when(restartService)
+        .restart();
+
+    mockMvc
+        .perform(post("/api/v1/training/plan/restart"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("CONFLICT"))
+        .andExpect(
+            jsonPath("$.message")
+                .value("El plan debe estar completado para poder reiniciar el ciclo."));
+  }
+
+  @Test
+  void restartingWithoutAuthenticationIsRejected() throws Exception {
+    mockMvc
+        .perform(post("/api/v1/training/plan/restart").with(anonymous()))
+        .andExpect(status().isUnauthorized());
+
+    verifyNoInteractions(restartService);
   }
 
   @Test

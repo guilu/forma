@@ -1,19 +1,29 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { getMuscleMap, getTrainingWeek, getWorkout } from '../api/training';
+import {
+  getMuscleMap,
+  getSessionSets,
+  getTrainingWeek,
+  getWorkout,
+  putSessionSet,
+} from '../api/training';
 import { TrainingDetailPage } from './TrainingDetailPage';
 
 vi.mock('../api/training', () => ({
   getTrainingWeek: vi.fn(),
   getWorkout: vi.fn(),
   getMuscleMap: vi.fn(),
+  getSessionSets: vi.fn(),
+  putSessionSet: vi.fn(),
   updateSessionStatus: vi.fn(),
 }));
 
 const weekMock = vi.mocked(getTrainingWeek);
 const workoutMock = vi.mocked(getWorkout);
 const muscleMapMock = vi.mocked(getMuscleMap);
+const setsMock = vi.mocked(getSessionSets);
+const putSetMock = vi.mocked(putSessionSet);
 
 function renderPage() {
   render(
@@ -25,11 +35,50 @@ function renderPage() {
   );
 }
 
+/**
+ * Same session as the default `weekMock`, but `PLANNED`: the set table locks every
+ * row while its session is `COMPLETED` (a finished workout is not re-editable), so
+ * tests that persist a set write need a session still in progress.
+ */
+function plannedWeekMock() {
+  return {
+    days: [
+      {
+        dayOfWeek: 'SUNDAY',
+        rest: false,
+        sessions: [
+          {
+            id: 'SUNDAY:STRENGTH',
+            kind: 'STRENGTH' as const,
+            bodyView: 'FRONT' as const,
+            title: 'Fuerza · Pierna y core',
+            detail: '5 ejercicios',
+            status: 'PLANNED' as const,
+            workoutType: 'LEGS',
+          },
+        ],
+      },
+    ],
+  };
+}
+
 describe('TrainingDetailPage', () => {
   beforeEach(() => {
     weekMock.mockReset();
     workoutMock.mockReset();
     muscleMapMock.mockReset();
+    setsMock.mockReset();
+    putSetMock.mockReset();
+    // A fresh week starts with an empty log (spec "La semana nueva arranca
+    // limpia"); individual tests below override this to exercise hydration.
+    setsMock.mockResolvedValue({ sessionId: 'SUNDAY:STRENGTH', sets: [] });
+    putSetMock.mockResolvedValue({
+      exerciseId: 'goblet-squat',
+      setNumber: 1,
+      weightKg: null,
+      reps: null,
+      done: false,
+    });
     weekMock.mockResolvedValue({
       days: [
         {
@@ -210,5 +259,83 @@ describe('TrainingDetailPage', () => {
     });
     expect(screen.getByText('00:01')).toBeInTheDocument();
     expect(screen.getByText('89s')).toBeInTheDocument();
+  });
+
+  /*
+   * B.12 — the log persists server-side (training-set-log, design D6): the
+   * page must show what the server already has, not an ephemeral in-memory
+   * default that a reload would throw away.
+   */
+  it('hydrates the set table from the server on mount, not from an ephemeral default', async () => {
+    setsMock.mockResolvedValueOnce({
+      sessionId: 'SUNDAY:STRENGTH',
+      sets: [{ exerciseId: 'goblet-squat', setNumber: 1, weightKg: 42.5, reps: 12, done: true }],
+    });
+    renderPage();
+
+    await screen.findByRole('heading', { name: 'Pierna y core', level: 1 });
+    expect(setsMock).toHaveBeenCalledWith('SUNDAY:STRENGTH');
+    expect(
+      screen.getByRole('spinbutton', { name: 'Peso, Sentadilla goblet, serie 1' }),
+    ).toHaveValue(42.5);
+    expect(
+      screen.getByRole('spinbutton', { name: 'Repeticiones, Sentadilla goblet, serie 1' }),
+    ).toHaveValue(12);
+    expect(
+      screen.getByRole('button', { name: 'Reabrir Sentadilla goblet, serie 1' }),
+    ).toBeInTheDocument();
+  });
+
+  it('persists a set write when its weight or reps input loses focus (design D7)', async () => {
+    weekMock.mockResolvedValueOnce(plannedWeekMock());
+    renderPage();
+    await screen.findByRole('heading', { name: 'Pierna y core', level: 1 });
+
+    const weightInput = screen.getByRole('spinbutton', {
+      name: 'Peso, Sentadilla goblet, serie 2',
+    });
+    fireEvent.change(weightInput, { target: { value: '50' } });
+    fireEvent.blur(weightInput);
+
+    await waitFor(() =>
+      expect(putSetMock).toHaveBeenCalledWith('SUNDAY:STRENGTH', 'goblet-squat', 2, {
+        weightKg: 50,
+        reps: 10,
+        done: false,
+      }),
+    );
+  });
+
+  it('persists a set write immediately when its Completado toggle is pressed', async () => {
+    weekMock.mockResolvedValueOnce(plannedWeekMock());
+    renderPage();
+    await screen.findByRole('heading', { name: 'Pierna y core', level: 1 });
+
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Peso, Sentadilla goblet, serie 2' }), {
+      target: { value: '60' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Completar Sentadilla goblet, serie 2' }));
+
+    await waitFor(() =>
+      expect(putSetMock).toHaveBeenCalledWith('SUNDAY:STRENGTH', 'goblet-squat', 2, {
+        weightKg: 60,
+        reps: 10,
+        done: true,
+      }),
+    );
+  });
+
+  it('shows a visible error when a set write fails', async () => {
+    putSetMock.mockRejectedValueOnce(new Error('network down'));
+    renderPage();
+    await screen.findByRole('heading', { name: 'Pierna y core', level: 1 });
+
+    const weightInput = screen.getByRole('spinbutton', {
+      name: 'Peso, Sentadilla goblet, serie 2',
+    });
+    fireEvent.change(weightInput, { target: { value: '55' } });
+    fireEvent.blur(weightInput);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/no se pudo guardar/i);
   });
 });
