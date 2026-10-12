@@ -1,0 +1,68 @@
+.dialog {
+  position: fixed;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  left: var(--space-4);
+  z-index: 110;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  max-width: 900px;
+  margin-inline: auto;
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-lg);
+}
+
+.copy {
+  max-width: 620px;
+}
+
+.copy h2 {
+  margin-bottom: var(--space-2);
+  font-size: var(--font-size-lg);
+}
+
+.copy p {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.copy a {
+  color: var(--color-accent-strong);
+  text-decoration: underline;
+}
+
+.actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--space-2);
+}
+
+.preferences.preferences {
+  position: fixed;
+  right: var(--space-3);
+  bottom: var(--space-3);
+  z-index: 90;
+  min-height: 32px;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  box-shadow: var(--shadow-sm);
+}
+
+@media (max-width: 700px) {
+  .dialog {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .actions {
+    flex-direction: column-reverse;
+  }
+}
