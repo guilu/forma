@@ -48,8 +48,8 @@ export function PrivacyNotice({ heading }: { readonly heading?: ReactNode }) {
         {heading}
         <p className={styles.lead}>
           En corto: los usamos para construirte el plan que pides y para que la aplicación funcione.
-          No los vendemos, no los cedemos a nadie que no sea necesario para prestarte el servicio, y
-          no llevamos ninguna herramienta de analítica ni de rastreo.
+          No los vendemos ni los cedemos con fines comerciales. Google Analytics solo se carga si
+          aceptas la analítica opcional y puedes retirar ese permiso cuando quieras.
         </p>
         <p className={styles.version}>Última actualización: {PRIVACY_POLICY_VERSION}</p>
       </header>
@@ -219,6 +219,11 @@ export function PrivacyNotice({ heading }: { readonly heading?: ReactNode }) {
             <strong>Withings</strong>, y solo si tú conectas la integración: en ese caso el
             intercambio de datos es entre tu cuenta de Withings y la tuya aquí.
           </li>
+          <li>
+            <strong>Google Analytics</strong>, solo si aceptas la analítica opcional: recibe la ruta
+            visitada y datos técnicos que genera su servicio. No enviamos respuestas de formularios,
+            correo, nombre ni datos de salud como parámetros de analítica.
+          </li>
         </ul>
         <p className={styles.note}>
           <strong>Transferencias fuera del Espacio Económico Europeo:</strong> {PENDING} INDICAR
@@ -274,10 +279,11 @@ export function PrivacyNotice({ heading }: { readonly heading?: ReactNode }) {
           7. Cookies y qué guarda tu navegador
         </h2>
         <p>
-          <strong>No usamos analítica, ni publicidad, ni rastreo de terceros.</strong> Ni Google
-          Analytics, ni píxeles, ni nada parecido. Por eso no verás un banner de cookies pidiéndote
-          permiso: lo que guardamos es estrictamente necesario para que la aplicación funcione, y
-          para eso el permiso no hace falta.
+          <strong>La analítica es opcional.</strong> Google Analytics no se descarga, no recibe
+          visitas y no crea sus cookies hasta que pulsas «Aceptar analítica». La decisión queda
+          guardada en tu navegador. Puedes abrir «Configurar analítica» en cualquier momento para
+          rechazarla; al hacerlo dejamos de enviar visitas y eliminamos las cookies de Google
+          Analytics que pueda leer esta web.
         </p>
         <ul className={styles.list}>
           <li>
@@ -290,6 +296,10 @@ export function PrivacyNotice({ heading }: { readonly heading?: ReactNode }) {
           <li>
             En tu navegador, tu <strong>preferencia de tema</strong> (claro u oscuro) y el avance
             del cuestionario inicial si lo dejas a medias. Eso no sale de tu equipo.
+          </li>
+          <li>
+            Si eliges, tu <strong>preferencia de analítica</strong>. Si aceptas, Google Analytics
+            puede crear cookies con nombres como <code>_ga</code> para distinguir visitas.
           </li>
         </ul>
       </section>

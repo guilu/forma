@@ -108,6 +108,9 @@ services:
         # works whether the app is reached on localhost or a public domain,
         # so no fixed backend host is baked into the bundle.
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
+        # Public identifier (not a secret). Loading remains gated in the SPA by
+        # an explicit persisted analytics grant.
+        VITE_GA_MEASUREMENT_ID: ${VITE_GA_MEASUREMENT_ID:-G-GGBK0B9LNN}
         # Commit desplegado, para la banda de preproducción. Quien construye lo
         # pasa con `VITE_BUILD_SHA=$(git rev-parse --short HEAD) docker compose
         # build frontend`; sin él la banda avisa igual, sólo que sin versión.

@@ -16,6 +16,11 @@ RUN npm ci
 ARG VITE_API_BASE_URL=
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
+# Public GA4 stream identifier. The application still loads gtag.js only after
+# the visitor has explicitly granted and persisted analytics consent.
+ARG VITE_GA_MEASUREMENT_ID=G-GGBK0B9LNN
+ENV VITE_GA_MEASUREMENT_ID=$VITE_GA_MEASUREMENT_ID
+
 # Commit desplegado, para la banda de preproducción.
 #
 # Va como argumento porque dentro de la imagen no hay forma de averiguarlo: el

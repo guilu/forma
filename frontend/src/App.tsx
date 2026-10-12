@@ -5,6 +5,7 @@ import { LoadingState } from './components/LoadingState';
 import { NotificationProvider } from './components/NotificationProvider';
 import { ThemeProvider } from './theme/ThemeContext';
 import { AuthProvider } from './auth/AuthContext';
+import { AnalyticsConsent } from './analytics/AnalyticsConsent';
 
 /**
  * Root application component (FOR-81). Resolves the route table into the current
@@ -32,6 +33,7 @@ export function App() {
             one.
           */}
           <Suspense fallback={<LoadingState />}>{element}</Suspense>
+          <AnalyticsConsent />
         </AuthProvider>
       </NotificationProvider>
     </ThemeProvider>
